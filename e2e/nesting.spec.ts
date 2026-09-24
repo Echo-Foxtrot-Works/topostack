@@ -15,6 +15,8 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
 
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  // The nesting engine is credited wherever the tool appears.
+  await expect(page.getByRole("link", { name: /^sparrow/ })).toHaveAttribute("href", "https://github.com/JeroenGar/sparrow");
   await page.getByRole("radio", { name: "Nested sheets" }).check();
   await page.getByRole("spinbutton", { name: "Sheet width", exact: true }).fill("400");
   await page.getByRole("spinbutton", { name: "Sheet height", exact: true }).fill("300");

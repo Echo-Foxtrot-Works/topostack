@@ -35,6 +35,15 @@ describe("the sheet layout section", () => {
     return { target, nesting, updateProject };
   }
 
+  it("credits sparrow and jagua-rs whenever the tool is shown", async () => {
+    const { target } = await render();
+    const credit = target.querySelector(".sheet-layout-credit")!;
+    expect(credit.textContent).toContain("Nesting by sparrow");
+    expect(credit.textContent).toContain("Jeroen Gardeyn (KU Leuven)");
+    const links = [...credit.querySelectorAll("a")].map((link) => link.getAttribute("href"));
+    expect(links).toEqual(["https://github.com/JeroenGar/sparrow", "https://github.com/JeroenGar/jagua-rs", "/attribution#software", "/licenses/third-party.txt"]);
+  });
+
   it("keeps the original panels until the maker picks nested sheets", async () => {
     const { target, nesting } = await render();
     expect(target.querySelector(".sheet-layout-fields")).toBeNull();

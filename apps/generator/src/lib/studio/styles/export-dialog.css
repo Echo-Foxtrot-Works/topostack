@@ -137,3 +137,7 @@
 .sheet-previews .sheet-preview-stock { fill: var(--loidolt-surface-alt); stroke: var(--loidolt-border); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .sheet-previews path { fill: color-mix(in srgb, var(--loidolt-accent) 22%, var(--loidolt-surface)); stroke: var(--loidolt-accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .sheet-previews .sheet-preview--provisional path { fill: none; stroke-dasharray: 3 2; }
+/* Credit for the nesting engine: always shown with the tool. */
+.sheet-layout-credit { margin: 0; color: var(--loidolt-text-muted); font-size: 11px; line-height: 1.5; }
+.sheet-layout-credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.sheet-layout-credit a:hover { color: var(--loidolt-accent); }
