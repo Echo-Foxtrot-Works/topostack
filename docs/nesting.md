@@ -47,7 +47,12 @@ Layouts stop on time, so the same job can come out differently on a faster machi
 
 - **Sheet files:** `<name>-sheet-NN.svg`, its `-engrave.svg` companion, and `-paint-<kind>.svg` stencils. Each is in sheet coordinates with a viewBox of `0 0 W H`. The master SVG lays the sheets out side by side.
 - **Placing parts** (`sheet-svg.ts`): each part is drawn by the same panel writer as before, from its own polygons in model coordinates. It is wrapped in `<g id="part-N-<OP>" data-part="<label>" transform="matrix(...)">`, with rotation terms written to nine decimals. Kerf offsets do not depend on rotation, so path data is reused unchanged. Ids inside each part get a `--pN` suffix so repeated layer groups stay unique. Engraving is prefiltered by bounding box before it is clipped to each part.
-- **Part ids** (`part-labels.ts`): seam pieces already carry their `L03-B2` id from generation. Every other piece gets `L03`, or `L03-2` for an island, engraved as a green ASSEMBLY mark where the layer above hides it. This uses the same placement as generation (`pipeline/piece-labels.ts`). Pieces with no covered room are listed in the README, and every sheet is drawn with each piece named in the assembly guide ("Cut the sheets").
+- **Part ids** (`part-labels.ts`): seam pieces already carry their `L03-B2` id from generation. Every other piece gets `L03`, or `L03-2` for an island, engraved as a green ASSEMBLY mark where the layer above hides it. This uses the same placement as generation (`pipeline/piece-labels.ts`). Pieces with no covered room are listed in the README.
+- **Assembly guide:**
+  - **Sheet maps:** "Cut the sheets" draws every sheet. Each piece's own terrain polygon, holes included, is moved and turned exactly as the sheet SVG places it, so the islands of a group and a piece cut from inside another show as they are cut.
+  - **Labels:** each piece is named at a point inside it. Alternate layers are tinted differently, so a piece cut from inside another stands out, and small pieces get smaller labels.
+  - **Layer steps:** each step lists which of its pieces are on which sheet, and the guide explains the engraved ids of unsplit layers.
+  - **Test:** a test parses each map and its sheet SVG and checks that every piece's label lies inside that piece's cut outline.
 - **Manifest:** `result.fabrication.sheetNesting` records the engine, versions, settings, counts, utilization and time. Each `panels[]` entry adds `sheet`, `usedWidthMm`, and `parts[]` with each part's placement. These fields are only added, so `schemaVersion` stays 1.
 - **README:** describes the sheets, rotation and spacing, and credits sparrow and jagua-rs with source links.
 

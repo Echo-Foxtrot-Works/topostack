@@ -8,8 +8,8 @@ import { formatNumber as format } from "../primitives/format.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
-import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, ProjectConfigV1, SheetNestPlanV1 } from "../types.js";
-import { nestableParts } from "./sheet-nest/parts.js";
+import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, Point2D, ProjectConfigV1, SheetNestPlanV1 } from "../types.js";
+import { nestableParts, polygonLabel } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings } from "./sheet-nest/resolve.js";
 import { sheetNestJobKey } from "./sheet-nest/job-key.js";
 import { verifySheetPlan } from "./sheet-nest/verify.js";
@@ -85,12 +85,18 @@ function sheetNestingText(nested: NestedLayout, shownLength: (valueMm: number) =
   return `Sheet nesting laid the ${parts} pieces out on ${nested.sheets.length} stock sheet${nested.sheets.length === 1 ? "" : "s"} of ${shownLength(settings.sheetWidthMm)} x ${shownLength(settings.sheetHeightMm)}, keeping ${shownLength(settings.marginMm)} clear along every edge and at least ${shownLength(settings.spacingMm)} of material between pieces. Pieces were moved and ${rotation}, never mirrored. Pieces from different layers share a sheet, so each carries its id (layer number, plus island number or seam cell) engraved in green where the layer above hides it. ${ids} A smaller piece cut from inside a larger one stays in place inside it. ${solver}\n\n`;
 }
 
-/** Placed part outlines for the guide's drawing of one sheet. */
-function sheetMap(sheet: NestedSheet): GuideSheetMap {
+/** Every piece on one sheet, placed as the sheet SVG places it, for the guide's drawing. */
+function sheetMap(ir: GeometryIRV1, sheet: NestedSheet): GuideSheetMap {
   return {
     widthMm: sheet.panel.maxX - sheet.panel.minX,
     heightMm: sheet.panel.maxY - sheet.panel.minY,
-    parts: sheet.parts.map(({ part, placement }) => ({ label: part.label, points: transformPoints(part.outline, { rotationDeg: placement.rotationDeg, x: placement.xMm, y: placement.yMm }) })),
+    pieces: sheet.parts.flatMap(({ part, placement }) => {
+      const place = (ring: Point2D[]) => transformPoints(ring, { rotationDeg: placement.rotationDeg, x: placement.xMm, y: placement.yMm });
+      return part.members.flatMap(({ layerIndex, polygonIndexes }) => polygonIndexes.flatMap((polygonIndex) => {
+        const polygon = ir.layers[layerIndex]?.polygons[polygonIndex];
+        return polygon ? [{ label: polygonLabel(ir, layerIndex, polygonIndex), layerIndex, polygon: { outer: place(polygon.outer), holes: polygon.holes.map(place) } }] : [];
+      }));
+    }),
   };
 }
 
@@ -252,7 +258,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
       cellName: panel.cellName,
       included: panel.included,
       paintTemplates: paintTemplates.map((template) => ({ kind: template.kind, filename: template.file.filename })),
-      ...(nested ? { map: sheetMap(nested.sheets[panel.sheetIndex!]!) } : {}),
+      ...(nested ? { map: sheetMap(ir, nested.sheets[panel.sheetIndex!]!) } : {}),
     })), options.guideFonts)], { type: "text/html" }) },
     { filename: `${base}-project.json`, blob: new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }) },
     { filename: "README.txt", blob: new Blob([readme], { type: "text/plain" }) },
