@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LayoutGrid, Shapes, StopCircle, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
+  import { base } from "$app/paths";
   import { DEFAULT_SHEET_NESTING, SHEET_NEST_LIMITS, displayLength, type SheetNestRotation, type SheetNestSettingsV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import { getStudio } from "$lib/studio/studio-context";
@@ -47,6 +48,11 @@
       <p>Pack every piece onto as few stock sheets as possible, moved and turned to fit. The export uses the nested sheets once you have nested them.</p>
     </div>
   </header>
+  <p class="sheet-layout-credit">
+    Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noopener noreferrer">sparrow<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> by Jeroen Gardeyn (KU Leuven), built on <a href="https://github.com/JeroenGar/jagua-rs" target="_blank" rel="noopener noreferrer">jagua-rs<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>. Open source (MIT and MPL-2.0) and run in your browser.
+    <a href={`${base}/attribution#software`} target="_blank" rel="noopener noreferrer">Credits<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> ·
+    <a href={`${base}/licenses/third-party.txt`} target="_blank" rel="noopener noreferrer">Licences<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
+  </p>
   <div class="sheet-layout-choice" role="radiogroup" aria-label="Sheet layout">
     <label><input type="radio" name="sheet-layout" checked={!nesting.useSheets} onchange={() => nesting.setUseSheets(false)} /> Original panels</label>
     <label><input type="radio" name="sheet-layout" checked={nesting.useSheets} onchange={() => nesting.setUseSheets(true)} /> Nested sheets</label>
