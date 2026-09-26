@@ -1,6 +1,6 @@
 import polygonClipping, { type Pair } from "polygon-clipping";
 import { insideRing } from "./chart-geometry";
-import { OUTLINE_CHART_KEY_PREFIX, type GeoBounds, type ElevationGrid, type ProjectConfigV1, type WaterAreaV1 } from "@topostack/core";
+import { EARTH_RADIUS_M, OUTLINE_CHART_KEY_PREFIX, type GeoBounds, type ElevationGrid, type ProjectConfigV1, type WaterAreaV1 } from "@topostack/core";
 import { ringIou } from "@topostack/chart-trace/georef";
 import { decodeChartDepths, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import { buildPixelMask, sampleDepth, type PixelMask, type SurveyResult } from "$lib/domain/bathymetry";
@@ -71,8 +71,8 @@ export function sampleChartDepths(chart: UserChartBathymetryV1, bounds: GeoBound
 export function chartSpacingM(chart: UserChartBathymetryV1): number {
   const { bounds, width, height } = chart.grid;
   const midLat = (bounds.north + bounds.south) / 2;
-  const across = ((bounds.east - bounds.west) * Math.PI / 180) * 6_371_008.8 * Math.cos(midLat * Math.PI / 180) / width;
-  const down = ((bounds.north - bounds.south) * Math.PI / 180) * 6_371_008.8 / height;
+  const across = ((bounds.east - bounds.west) * Math.PI / 180) * EARTH_RADIUS_M * Math.cos(midLat * Math.PI / 180) / width;
+  const down = ((bounds.north - bounds.south) * Math.PI / 180) * EARTH_RADIUS_M / height;
   return Math.max(across, down);
 }
 

@@ -2,7 +2,7 @@ import { ARTWORK_CATEGORIES, ASSEMBLY, ASSEMBLY_CATEGORIES, CUT, CUT_LINE, ENGRA
 import { type FabricationPanel, fabricationPanels } from "./panel-layout.js";
 import { formatNumber as format } from "../primitives/format.js";
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, toRing } from "../primitives/geometry2d.js";
+import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, toMultiPolygon, toRing } from "../primitives/geometry2d.js";
 import { labelGeometry } from "../annotate/labels.js";
 import { omittedNestHoles, paintStencil } from "../pipeline/paint-regions.js";
 import type { GeometryIRV1, LayerIR, LineStyleV1, PaintRegionKind, Point2D, ProjectConfigV1 } from "../types.js";
@@ -50,7 +50,7 @@ function panelMarkings(layer: LayerIR, included?: Set<number>): LayerIR["marking
     try {
       const clipped = normalizeMultiPolygon(polygonClipping.intersection(
         [[toRing(mark.points), ...(mark.holes ?? []).map(toRing)]] as MultiPolygon,
-        polygons.map((polygon) => [toRing(polygon.outer), ...polygon.holes.map(toRing)]) as MultiPolygon,
+        toMultiPolygon(polygons),
       ) as MultiPolygon);
       if (clipped.length === 1) return [{ ...mark, points: clipped[0]!.outer, holes: clipped[0]!.holes }];
       return clipped.map((polygon, index) => ({ ...mark, id: `${mark.id}-part-${index + 1}`, points: polygon.outer, holes: polygon.holes }));

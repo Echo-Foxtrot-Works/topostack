@@ -27,10 +27,6 @@ export function artworkToLonLat(bounds: GeoBounds, widthMm: number, heightMm: nu
   ];
 }
 
-export function groundWidthM(bounds: GeoBounds): number {
-  return Math.abs(bounds.east - bounds.west) * Math.PI / 180 * 6_371_008.8 * Math.cos(((bounds.north + bounds.south) / 2) * Math.PI / 180);
-}
-
 export interface DataTile { x: number; worldX: number; y: number; z: number }
 export interface TileWindow { zoom: number; westX: number; eastX: number; northY: number; southY: number; tiles: DataTile[] }
 

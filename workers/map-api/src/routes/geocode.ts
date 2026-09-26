@@ -17,15 +17,23 @@ const GEOCODE_GLOBAL_LIMIT_KEY = "geocode-global";
 
 interface GeoapifyResult { lat?: unknown; lon?: unknown; formatted?: unknown; place_id?: unknown; result_type?: unknown; rank?: { importance?: unknown } }
 
+function geoapifyResults(payload: unknown): GeoapifyResult[] {
+  return payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
+}
+
+/** Geoapify's id, or one made from the position when it sends none; the merge matches places back to results by it. */
+function geoapifyPlaceId(item: GeoapifyResult | undefined, index: number): string {
+  return String(item?.place_id ?? (String(item?.lat) + "," + String(item?.lon) + "," + String(index)));
+}
+
 export function normalizeGeoapify(payload: unknown): Array<{ place_id: string; display_name: string; lat: number; lon: number; type?: string }> {
-  const results = payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
-  return results.flatMap((item, index) => {
+  return geoapifyResults(payload).flatMap((item, index) => {
     if (!item || typeof item !== "object") return [];
     const lat = item.lat;
     const lon = item.lon;
     const label = typeof item.formatted === "string" ? item.formatted.trim() : "";
     if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -85.0511 || lat > 85.0511 || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
-    return [{ place_id: String(item.place_id ?? (String(lat) + "," + String(lon) + "," + String(index))), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
+    return [{ place_id: geoapifyPlaceId(item, index), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
   });
 }
 
@@ -41,10 +49,9 @@ export function mergeGeoapify(payloads: unknown[], limit: number): ReturnType<ty
   const ranked: Array<{ place: ReturnType<typeof normalizeGeoapify>[number]; importance: number; order: number }> = [];
   const seen = new Set<string>();
   for (const payload of payloads) {
-    const raw = payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
     const places = normalizeGeoapify(payload);
     // normalizeGeoapify drops invalid results, so match each place back to its raw result by id.
-    const importanceById = new Map(raw.map((item, index) => [String(item?.place_id ?? (String(item?.lat) + "," + String(item?.lon) + "," + String(index))), typeof item?.rank?.importance === "number" && Number.isFinite(item.rank.importance) ? item.rank.importance : 0]));
+    const importanceById = new Map(geoapifyResults(payload).map((item, index) => [geoapifyPlaceId(item, index), typeof item?.rank?.importance === "number" && Number.isFinite(item.rank.importance) ? item.rank.importance : 0]));
     for (const place of places) {
       const duplicate = [place.place_id, `${place.display_name.toLowerCase()}|${place.lat.toFixed(2)}|${place.lon.toFixed(2)}`];
       if (duplicate.some((key) => seen.has(key))) continue;

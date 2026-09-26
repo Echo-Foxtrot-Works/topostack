@@ -10,4 +10,5 @@ export { AREA_SCHEMA, DETAILS_SCHEMA, PROJECT_REQUEST_PATCH_SCHEMA, PROJECT_REQU
 export { planFromRelief, type ModelPlan, type ReliefSample } from "./plan.js";
 export { validateProject } from "../pipeline/validate.js";
 export { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "../pipeline/stack-plan.js";
+export { EARTH_RADIUS_M } from "../primitives/units.js";
 export { DEFAULT_PROJECT, northArrowMaximumMm, type GeoBounds, type GeoPoint, type ProjectConfigV1 } from "../types.js";

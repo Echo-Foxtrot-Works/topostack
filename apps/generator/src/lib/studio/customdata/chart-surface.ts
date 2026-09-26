@@ -1,3 +1,4 @@
+import { EARTH_RADIUS_M } from "@topostack/core";
 import { decodeChartDepths, type ChartGridV1 } from "@topostack/data-contracts/chart-bathymetry";
 
 /** Cell centres in a local metre frame, normalized uniformly. North is -Z;
@@ -39,7 +40,7 @@ export function automaticDepthExaggeration(deepest: number, scale: number): numb
 
 export function chartFrame(grid: ChartGridV1) {
   const { bounds } = grid;
-  const metresPerDegree = Math.PI * 6371000 / 180;
+  const metresPerDegree = Math.PI * EARTH_RADIUS_M / 180;
   const spanX = (bounds.east - bounds.west) * metresPerDegree * Math.cos((bounds.north + bounds.south) * Math.PI / 360);
   const spanZ = (bounds.north - bounds.south) * metresPerDegree;
   const scale = 2 / Math.max(spanX, spanZ);

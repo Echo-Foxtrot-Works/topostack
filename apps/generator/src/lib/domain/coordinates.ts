@@ -1,5 +1,7 @@
+import { MERCATOR_MAX_LATITUDE } from "@topostack/core";
+
 /** Web Mercator's latitude limit, shared by every coordinate the generator accepts. */
-export const MAX_LATITUDE = 85.0511;
+export const MAX_LATITUDE = MERCATOR_MAX_LATITUDE;
 export const MAX_LONGITUDE = 180;
 
 /** True for a finite latitude/longitude pair inside the supported map area. */
