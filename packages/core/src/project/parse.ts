@@ -35,7 +35,8 @@ function waterFillPatternValue(value: unknown): ProjectConfigV1["waterFillPatter
 function paintTemplatesValue(value: unknown): ProjectConfigV1["paintTemplates"] {
   if (value === undefined) return [...DEFAULT_PROJECT.paintTemplates];
   if (!Array.isArray(value) || value.some((kind) => !PAINT_REGION_KINDS.includes(kind)) || new Set(value).size !== value.length) throw new Error("Paint templates must list each supported region kind at most once.");
-  return value as ProjectConfigV1["paintTemplates"];
+  // A copy, so later edits to the caller's array cannot reach the project.
+  return [...value] as ProjectConfigV1["paintTemplates"];
 }
 /** Sheet nesting is an export setting; out-of-range numbers are clamped when it is used, so only shape is checked here. */
 function sheetNestingValue(value: unknown): SheetNestSettingsV1 {
@@ -183,6 +184,8 @@ function placedGraphicsValue(value: unknown, graphics: CustomGraphicV1[] | undef
     if (!graphics.some(({ id }) => id === record.graphicId)) continue;
     const placement = record.placement && typeof record.placement === "object" ? record.placement as Record<string, unknown> : undefined;
     const offset = placement?.offset && typeof placement.offset === "object" ? placement.offset as Record<string, unknown> : undefined;
+    // Lenient on purpose: a placement that fails the checks below is dropped,
+    // not fatal, and parsing less than before would reject saved projects.
     const offsetX = Number(offset?.x ?? 0); const offsetY = Number(offset?.y ?? 0);
     if (!NORTH_ARROW_ANCHORS.includes(placement?.anchor as NorthArrowAnchor) || ![offsetX, offsetY].every((part) => Number.isFinite(part) && Math.abs(part) <= 1)) continue;
     const sizeMm = Number(record.sizeMm); const rotationDeg = Number(record.rotationDeg ?? 0);

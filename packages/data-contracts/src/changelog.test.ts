@@ -60,6 +60,11 @@ describe("versions and helpers", () => {
     expect(compareVersions("1.0.0", "1.0.0-rc.1")).toBe(1);
     expect(compareVersions("1.0.0-rc.1", "1.0.0-rc.2")).toBe(-1);
     expect(compareVersions("1.0.0-rc.2", "1.0.0-rc.1")).toBe(1);
+    // SemVer 11.4: numeric identifiers compare as numbers, before text, and more identifiers win a tie.
+    expect(compareVersions("1.0.0-rc.2", "1.0.0-rc.10")).toBe(-1);
+    expect(compareVersions("1.0.0-alpha.1", "1.0.0-alpha.beta")).toBe(-1);
+    expect(compareVersions("1.0.0-alpha", "1.0.0-alpha.1")).toBe(-1);
+    expect(compareVersions("1.0.0-beta", "1.0.0-alpha")).toBe(1);
     expect(() => compareVersions("1.0", "1.0.0")).toThrow(/1\.0/);
   });
 

@@ -6,7 +6,7 @@
 // from chart pixels to lon/lat, contours are simplified until they fit the
 // contract, and the grid is interpolated from them.
 
-import { CHART_BATHYMETRY_LIMITS, CHART_BATHYMETRY_SCHEMA, CHART_UNIT_METRES, chartLabelDepthM, encodeChartDepths, isPublishableChart, parseUserChartBathymetry, type ChartAttestation, type ChartLabelsV1, type ChartUnit, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
+import { CHART_BATHYMETRY_LIMITS, CHART_BATHYMETRY_SCHEMA, CHART_UNIT_METRES, chartLabelDepthM, encodeChartDepths, isPublishableChart, parseUserChartBathymetry, type ChartAttestation, type ChartGeorefMethod, type ChartLabelsV1, type ChartUnit, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import { apply, type Matrix3 } from "./georef.ts";
 import { gridDepths, type GridMethod } from "./grid.ts";
 import type { Point2 } from "./local-frame.ts";
@@ -27,7 +27,7 @@ export interface ChartRecordRequest {
   id: string;
   lake: { name?: string; region?: string; hylakId?: number };
   /** Chart pixels or page units to [lon, lat, 1], with how it was found. */
-  georef: { matrix: Matrix3; rmsM: number; method: "control-points" | "snap" | "manual"; controlPoints?: { x: number; y: number; lon: number; lat: number }[]; iou?: number };
+  georef: { matrix: Matrix3; rmsM: number; method: ChartGeorefMethod; controlPoints?: { x: number; y: number; lon: number; lat: number }[]; iou?: number };
   units: ChartUnit;
   labels: ChartLabelsV1;
   /** Contour interval in chart units. */
@@ -83,6 +83,8 @@ function longestContours<T extends { points: readonly unknown[] }>(contours: T[]
  * neither can be guessed and both are choices made earlier in the trace.
  */
 export function buildChartRecord(request: ChartRecordRequest): { record: UserChartBathymetryV1; report: ChartRecordReport } {
+  // The simplification below grows from this; zero or NaN would never grow and never finish.
+  if (!(request.resolutionM > 0) || !Number.isFinite(request.resolutionM)) throw new Error(`Depth chart ${request.id}: the grid resolution must be a positive number of metres.`);
   // Six decimals is about 0.1 m, finer than any chart's line width, and keeps a
   // record with tens of thousands of points to a sane size.
   const toLonLat = ([x, y]: Point2): Point2 => apply(request.georef.matrix, x, y).map((value) => Math.round(value * 1e6) / 1e6) as Point2;
@@ -119,13 +121,16 @@ export function buildChartRecord(request: ChartRecordRequest): { record: UserCha
   if (!waterRings.length) throw new Error(`Depth chart ${request.id}: no water outline; mark the shore before gridding.`);
 
   const intervalM = request.interval === undefined ? undefined : request.interval * unit;
+  // Spots shape the grid, so the record keeps them: the grid can be regenerated from what it stores.
+  const spots = (request.spots ?? []).map((spot) => {
+    const [lon, lat] = toLonLat([spot.x, spot.y]);
+    return { lon: lon!, lat: lat!, depthM: Math.round(chartLabelDepthM(request.labels, spot.value * unit) * 1000) / 1000 };
+  }).filter((spot) => spot.depthM >= 0);
+  if (spots.length > CHART_BATHYMETRY_LIMITS.maxSpots) throw new Error(`Depth chart ${request.id}: ${spots.length} spot depths is more than a record holds (${CHART_BATHYMETRY_LIMITS.maxSpots}).`);
   const grid = gridDepths({
     water: { rings: waterRings },
     contours,
-    spots: (request.spots ?? []).map((spot) => {
-      const [lon, lat] = toLonLat([spot.x, spot.y]);
-      return { lon: lon!, lat: lat!, depthM: chartLabelDepthM(request.labels, spot.value * unit) };
-    }).filter((spot) => spot.depthM >= 0),
+    spots,
     resolutionM: request.resolutionM,
     method: request.method ?? "harmonic",
     ...(intervalM === undefined ? {} : { intervalM }),
@@ -158,7 +163,7 @@ export function buildChartRecord(request: ChartRecordRequest): { record: UserCha
     labels: request.labels,
     ...(intervalM === undefined ? {} : { intervalM }),
     contours,
-    spots: [],
+    spots,
     grid: { bounds: grid.bounds, width: grid.width, height: grid.height, method: grid.method, depthsDm: encodeChartDepths(grid.depthsM) },
     provenance: request.provenance,
     license: request.license,
