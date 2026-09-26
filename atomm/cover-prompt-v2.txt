@@ -1,0 +1,12 @@
+Built-in imagegen edit of the previous workshop cover.
+
+Edit the most recent generated image: the TopoStack Crater Lake terrain model on a forest-green felt mat on a walnut workshop table with a pencil and ruler behind it.
+
+Requested change: Increase the perceived physical scale of the terrain model moderately, assuming each laser-cut plywood sheet is approximately 1/8 inch (3.175 mm) thick. Make the model read as a substantial tabletop piece approximately 16 inches wide by 10.7 inches deep, rather than a small miniature. The terrain has about twelve contour levels, so maximum stack height should read as approximately 1.5 inches. Maintain thin, believable individual plywood sheets; do not turn each sheet into a thick wooden slab.
+
+Use realistic relative sizing: a conventional roughly 7-inch carpenter's pencil in the background should look under half the model's width, and the ruler should reinforce the larger size. Increase the model's presence in the frame slightly, to about 86% of image width, while keeping every edge visible with safe margins. You may reduce the relative size of background tools and adjust the felt mat/table framing to establish the larger scale. Keep the original camera angle and coherent perspective.
+
+Preserve the exact recognizable Crater Lake model, rectangular aspect ratio, contour arrangement, Wizard Island, submerged cone and visible surveyed lake-floor contours, fine engraved paths, muted gray-blue lake, pale birch material, and individual stacked sheet construction. Do not add new contour levels, change geography, fill the lake with opaque resin, or invent labels.
+Keep the successful existing walnut tabletop, forest-green felt, small plant at the upper left, sparse pencil and ruler at upper right, warm natural window light and realistic contact shadow. Keep the background subordinate.
+The result is an AI-assisted presentation of actual app output, not evidence of a manufactured sample.
+Landscape exact 4:3 aspect ratio, ideally 1448 x 1086 or 1600 x 1200. No added titles, logos, captions, watermarks, borders, hands, or machines.

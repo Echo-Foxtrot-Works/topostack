@@ -1,0 +1,13 @@
+Built-in imagegen edit, using the inline Crater Lake screenshot as reference.
+
+Use case: compositing / background replacement.
+Asset type: TopoStack Atomm card cover, landscape EXACT 4:3 aspect ratio, preferably 1600 x 1200.
+Input image: EDIT TARGET and sole authoritative foreground. It is the actual app-rendered Crater Lake layered terrain model with newly surveyed bathymetry, not a general inspiration image.
+Primary request: Replace the flat light-gray background with an attractive, realistic maker-workshop tabletop setting. Retain the terrain model from this screenshot as the hero.
+CRITICAL INVARIANTS: Preserve the exact existing rectangular model, same view angle, same outline, same contour geometry and number of physical layers, same engraved paths and tiny markings, same Wizard Island, same underwater cone and detailed lake-floor contours. Do not invent, simplify, remodel, redraw or embellish the terrain. Do not turn the lake into solid opaque water or resin; the underwater features must remain visible. Do not add text to the model. Keep its pale birch and muted gray-blue lake appearance.
+Background: A sophisticated, believable craft bench. The model rests on a dark muted forest-green felt work mat on a warm walnut tabletop. The mat has very subtle fiber texture and no measurement grid. Some walnut tabletop is visible around the mat, especially toward the top edge. One slim carpenter's pencil and a small metal ruler lie far behind the model near an upper corner, softly out of focus, sparse and subordinate. No clutter. No hands or people, no laser machine or brand.
+Lighting: Soft natural window light from upper left; plausible gentle contact shadow under the bottom wood sheet anchors the exact screenshot element to the mat. Add only subtle environmental lighting integration, preserving all subject details.
+Composition: Keep the complete model visible, large and centered, all edges safely inside the frame, about 80% of image width. Keep enough breathing room for a platform card crop. Perspective of the tabletop must match the original model view. Realistic materials, restrained warm color grade, crisp hero, subtly softer background.
+No titles, logos, watermarks, extra terrain pieces, invented features, decorative mountains, sparkles, graphics, heavy vignette, or borders.
+This is a realistic presentation composite of app output, not evidence of a manufactured sample.
+Use the most recent inline image (the actual Crater Lake app cover) as the edit target; it is the screenshot described above.

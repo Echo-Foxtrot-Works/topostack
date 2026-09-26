@@ -1,0 +1,12 @@
+Use case: compositing / product-mockup.
+Create one polished, photorealistic 4:3 cover image for TopoStack, based on the supplied ACTUAL APP OUTPUT screenshot.
+
+The screenshot is the geometry reference and subject to preserve: Crater Lake, Oregon, as a laser-cut plywood relief with 24 contour sheets. The project is 16 inches wide by approximately 10.67 inches deep, cut from 1/8-inch (3.175 mm) plywood; maximum stack height is 3 inches. Terrain is more vertically dramatic than the prior cover, and the lake is 1.75x exaggerated in the actual generated design. The entire exaggerated lake basin fits within the stack. Preserve these tall proportions exactly from the screenshot.
+
+Replace the flat gray background with an understated real walnut workshop tabletop, a forest-green felt mat under the entire model, a small softly defocused plant in the distant upper left and a conventional carpenter's pencil and short steel ruler in the distant upper right. Warm late-afternoon side lighting, natural contact shadows, subtle fine birch grain and dark laser-cut plywood edges. Realistically sized tools establish a substantial 16-inch-wide tabletop piece. Photographic 50mm product-lens look, sharp model, softly blurred background.
+
+Keep the screenshot's exact rectangular footprint, number and placement of stacked layers, geographic silhouette, Wizard Island at the left of the lake, the submerged cone near center-right, and the complete deep stepped lake-floor basin. Keep the cool muted blue-gray coloration on the lake's submerged terraces. The lake is an open cutaway basin, not an opaque water or resin surface: every visible lake-floor contour and the very bottom must remain visible. Do not flatten, truncate, fill, cover, or clip the lake. Preserve fine existing engraved map paths and labels without inventing additional text. The dramatic height must come from the real supplied geometry, not invented mountains, extra contour sheets, thick slabs, or an artificial plinth.
+
+Camera: a slightly elevated three-quarter view closely matching the screenshot, high enough to see the full lake floor and low enough to show the 24 thin sheets along the front edge. Keep all four outer edges fully inside the frame. Model occupies approximately 84–88% of image width with comfortable margins above and below. Landscape 4:3 composition, ideally 1600x1200. No added titles, logos, captions, watermarks, hands, people, or machines.
+
+This is an AI-assisted presentation of an actual app design, not documentary evidence of a manufactured sample.
