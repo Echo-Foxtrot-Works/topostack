@@ -68,6 +68,24 @@ describe("SheetNesting", () => {
     expect(other.error).toMatch(/larger/);
   });
 
+  it("marks a finished plan stale when the design changed during the search", async () => {
+    let finish: ((plan: SheetNestPlanV1) => void) | undefined;
+    const { load, runner } = fakeRunner({ run: () => new Promise((resolve) => { finish = resolve; }) });
+    const nesting = new SheetNesting(load);
+    const running = nesting.start(geometry, DEFAULT_PROJECT);
+    await vi.waitFor(() => expect(nesting.status).toBe("running"));
+    const edited = { ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm + 10 };
+    await nesting.refresh(geometry, edited);
+    runner.planIsCurrent.mockReturnValue(false);
+    finish!(plan(true));
+    await running;
+    // Checked against the edit made during the search, not the design it started from.
+    expect((runner.planIsCurrent.mock.lastCall as unknown[] | undefined)?.[2]).toBe(edited);
+    expect(nesting.status).toBe("done");
+    expect(nesting.current).toBe(false);
+    expect(nesting.exportPlan).toBeUndefined();
+  });
+
   it("marks a plan stale when the design or settings change, and forgets it on cancel", async () => {
     const { load, runner, client } = fakeRunner();
     const nesting = new SheetNesting(load);

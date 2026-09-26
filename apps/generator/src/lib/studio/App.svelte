@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack, setContext } from "svelte";
+  import { onDestroy, onMount, untrack, setContext } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace } from "@loidolt/theme-svelte";
@@ -7,6 +7,7 @@
   import { assembleWater, boundsForProject, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
+  import { dataZoom } from "$lib/domain/tile-math";
   import { CustomDataActions } from "$lib/studio/customdata/custom-data-actions.svelte";
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
@@ -160,7 +161,7 @@
   const pipeline = new PreviewPipeline();
   // Map-data refresh code loads with the first preview edit, not at startup. A
   // failed load is forgotten, so the next edit retries it.
-  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater }), "Map data refresh");
+  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, dataZoom }), "Map data refresh");
   let sourcePreparation: Promise<SourcePreparationCache> | undefined;
   const preparedSources = () => sourcePreparation = loadSourcePreparation();
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
@@ -578,12 +579,16 @@
     void saveProject(current).catch(() => status = "Local save is unavailable in this browser");
   }
 
+  /** The latest snapshot's write, until it runs; leaving the studio in-app fires no `pagehide`. */
+  let pendingAutosave: (() => void) | undefined;
+  onDestroy(() => pendingAutosave?.());
   $effect(() => {
     const current = project;
     if (!booted) return;
     let written = false;
     let timeout = 0;
     const write = () => { if (written) return; written = true; window.clearTimeout(timeout); persistProject(current); };
+    pendingAutosave = write;
     timeout = window.setTimeout(write, 450);
     // A closing, reloading or backgrounded tab must keep this snapshot, but an
     // unloading page abandons IndexedDB transactions it starts (an edit then
@@ -745,7 +750,7 @@
     loadRealTerrain();
   }
 
-  function undo(): void { if (placement) return; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); }
+  function undo(): boolean { if (placement) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
   function redo(): void { if (placement) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
@@ -861,6 +866,7 @@
       generate: () => generate(),
       undo,
       openExport: () => { exportOpen = true; },
+      editBlockedBy: () => placement ? "The studio is placing an item. Finish or cancel it there first." : undefined,
     };
   }
 
@@ -870,9 +876,11 @@
     // copy) carves as it is now, so the project says so before it is built:
     // otherwise the design's fingerprint would name content that was not carved.
     // This is bookkeeping, not an edit, so it is not an undo step.
-    if (project.userDepthCharts) {
-      const { currentChartReferences } = await import("$lib/storage/user-charts");
-      const current = await currentChartReferences(project.userDepthCharts);
+    // When the chart store cannot be read, the references stay as they are and
+    // loading warns about any chart it cannot find.
+    const charts = project.userDepthCharts;
+    if (charts) {
+      const current = await import("$lib/storage/user-charts").then(({ currentChartReferences }) => currentChartReferences(charts)).catch(() => charts);
       if (current !== project.userDepthCharts) project = { ...project, userDepthCharts: current };
     }
     invalidatePendingPreview();

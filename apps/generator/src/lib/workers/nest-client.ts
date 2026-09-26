@@ -58,6 +58,8 @@ const cancelled = () => new DOMException("Sheet nesting cancelled", "AbortError"
 export class NestClient {
   private worker: Worker | undefined;
   private unavailable: boolean;
+  /** A worker has answered in this session, so a later crash is not a blocked worker. */
+  private proven = false;
   private nextId = 0;
   private job: Job | undefined;
 
@@ -121,8 +123,9 @@ export class NestClient {
       this.unavailable = true;
       return undefined;
     }
-    worker.onmessage = (event: MessageEvent<NestWorkerReply>) => this.receive(event.data);
-    worker.onerror = () => this.fail(new NestJobError("Sheet nesting could not start in this browser."));
+    worker.onmessage = (event: MessageEvent<NestWorkerReply>) => { this.proven = true; this.receive(event.data); };
+    worker.onerror = () => this.fail();
+    worker.onmessageerror = () => this.fail();
     this.worker = worker;
     return worker;
   }
@@ -144,12 +147,17 @@ export class NestClient {
     }
   }
 
-  private fail(error: Error): void {
+  /**
+   * A worker that never answered was most likely blocked from loading, so the
+   * main-thread packer takes over for the session. One that answered and then
+   * crashed fails only this job; the next run starts a fresh worker.
+   */
+  private fail(): void {
     const job = this.job;
     this.job = undefined;
     this.discardWorker();
-    this.unavailable = true;
-    job?.reject(error);
+    if (!this.proven) this.unavailable = true;
+    job?.reject(new NestJobError(this.proven ? "Sheet nesting stopped unexpectedly. Try again." : "Sheet nesting could not start in this browser."));
   }
 
   private discardWorker(): void {
