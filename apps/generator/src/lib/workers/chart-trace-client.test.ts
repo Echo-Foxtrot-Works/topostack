@@ -12,6 +12,7 @@ class FakeWorker {
   terminated = false;
   onmessage: ((event: MessageEvent) => void) | undefined;
   onerror: ((event: unknown) => void) | undefined;
+  onmessageerror: ((event: unknown) => void) | undefined;
   constructor() { FakeWorker.last = this; }
   postMessage(message: Record<string, unknown>): void { this.posted.push(message); }
   terminate(): void { this.terminated = true; }
@@ -80,6 +81,20 @@ describe("ChartTraceClient", () => {
     const client = new ChartTraceClient(() => { throw new Error("Blocked by policy"); }, build);
     await expect(client.build(request)).resolves.toBe(built);
     expect(build).toHaveBeenCalledOnce();
+  });
+
+  it("starts a fresh worker after one that had answered crashes", async () => {
+    const { client, worker } = clientWithWorker();
+    const pending = client.build(request);
+    const first = worker();
+    first.reply({ ready: true });
+    first.onmessageerror?.({});
+    await expect(pending).rejects.toThrow(/stopped unexpectedly/);
+    const next = client.build(request);
+    expect(worker()).not.toBe(first);
+    const id = worker().posted[0]!.id;
+    worker().reply({ id, built });
+    await expect(next).resolves.toBe(built);
   });
 
   it("fails every pending request when the worker itself errors", async () => {

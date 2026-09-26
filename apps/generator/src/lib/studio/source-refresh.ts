@@ -15,6 +15,8 @@ export interface SourceRefreshDependencies {
   applySurveyProvenance: (source: SourceBundleV1, result: SurveyResult) => SourceBundleV1;
   resolveLakeOutlines: (providers: WaterAreaV1[], hydro: WaterAreaV1[], inland: Polygon2D[]) => WaterAreaV1[];
   assembleWater: (source: SourceBundleV1, lakes: WaterAreaV1[], ocean: Polygon2D[], config: ProjectConfigV1) => SourceBundleV1;
+  /** The whole zoom `loadTerrain` gives the same loaders. */
+  dataZoom: (zoom: number) => number;
 }
 
 export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: ProjectConfigV1): SourceBundleV1 {
@@ -57,6 +59,7 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
 export async function refreshRequiredMapData(source: SourceBundleV1, config: ProjectConfigV1, signal: AbortSignal, deps: SourceRefreshDependencies): Promise<SourceBundleV1> {
   if (source.sourceKind !== "real") return source;
   const { loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater } = deps;
+  const zoom = deps.dataZoom(config.location.zoom);
   const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas } = sourceRequirements(config);
   let next = source;
   let inland = source.inlandWaterAreas ?? [];
@@ -65,7 +68,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
   if (needsVectors && source.vectorStatus !== "available") {
     try {
-      const vector = await loadVectorMarkings(source.bounds, config.location.zoom, config, signal);
+      const vector = await loadVectorMarkings(source.bounds, zoom, config, signal);
       ocean = vector.ocean;
       inland = vector.inland;
       next = {
@@ -91,7 +94,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
   if (usesWaterAreas && source.lakeDataStatus !== "available") {
     try {
-      lakes = await loadLakeAreas(source.bounds, config.location.zoom, config, signal);
+      lakes = await loadLakeAreas(source.bounds, zoom, config, signal);
       next = { ...next, lakeDataStatus: "available", bathymetryStatus: undefined };
     } catch (error) {
       if (signal.aborted) throw error;
@@ -101,6 +104,8 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   }
 
   if (usesWaterAreas) {
+    // Re-resolve from the provider and HydroLAKES outlines against the current
+    // inland water; OSM-derived outlines from the last pass are rebuilt, not kept.
     const resolved = resolveLakeOutlines([], lakes.filter((lake) => lake.outlineSource !== "osm"), inland);
     if (resolved.length !== lakes.length || resolved.some((area) => !lakes.some((lake) => lake.id === area.id))) next = { ...next, bathymetryStatus: undefined };
     if (resolved.length && next.lakeDataStatus !== "available") next = { ...next, lakeDataStatus: "available" };
@@ -108,7 +113,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   }
 
   if (usesWaterDepth && (next.bathymetryStatus === undefined || next.bathymetryStatus === "unavailable" || next.bathymetryStatus === "partial")) {
-    const bathymetry = await loadSurveyedLakeDepths(source.bounds, source.elevation, config.location.zoom, lakes, signal, config);
+    const bathymetry = await loadSurveyedLakeDepths(source.bounds, source.elevation, zoom, lakes, signal, config);
     lakes = bathymetry.areas;
     next = applySurveyProvenance(next, bathymetry);
   } else if (!usesWaterDepth) {

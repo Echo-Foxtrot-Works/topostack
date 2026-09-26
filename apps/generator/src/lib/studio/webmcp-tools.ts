@@ -23,8 +23,11 @@ export interface WebMcpHost {
   /** Apply settings through the studio's update path. */
   applyPatch(patch: Partial<ProjectConfigV1>): Promise<void>;
   generate(): Promise<void>;
-  undo(): void;
+  /** Whether there was a change to undo. */
+  undo(): boolean;
   openExport(): void;
+  /** Why the design cannot be edited right now, such as an open placement draft. */
+  editBlockedBy(): string | undefined;
 }
 
 export interface ToolContent { content: Array<{ type: "text"; text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean }
@@ -107,6 +110,8 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
       inputSchema: { type: "object", required: ["area"], properties: { area: AREA_SCHEMA, placeLabel: { type: "string", maxLength: 240 } } },
       annotations: { readOnlyHint: false, destructiveHint: false },
       execute: async (input) => {
+        const blocked = host.editBlockedBy();
+        if (blocked) return failure(blocked);
         const parsed = parseProjectRequestPatch({ area: input.area, ...(input.placeLabel === undefined ? {} : { placeLabel: input.placeLabel }) });
         if (!parsed.ok) return failure(parsed.errors.map(({ path, message }) => `${path}: ${message}`).join("\n"));
         const patch = requestPatch(host.project(), parsed.value);
@@ -123,6 +128,8 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
       annotations: { readOnlyHint: false, destructiveHint: false },
       execute: async (input) => {
         if ("area" in input || "markers" in input) return failure("Use topostack_set_area to move the design; markers are edited in the studio.");
+        const blocked = host.editBlockedBy();
+        if (blocked) return failure(blocked);
         const parsed = parseProjectRequestPatch(input);
         if (!parsed.ok) return failure(parsed.errors.map(({ path, message }) => `${path}: ${message}`).join("\n"));
         const patch = requestPatch(host.project(), parsed.value);
@@ -148,7 +155,11 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
       description: "Undo the last change to the design, as the Undo button does.",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: false, destructiveHint: false },
-      execute: async () => { host.undo(); return reply(`Undone. ${summary(host)}`); },
+      execute: async () => {
+        const blocked = host.editBlockedBy();
+        if (blocked) return failure(blocked);
+        return host.undo() ? reply(`Undone. ${summary(host)}`) : reply("Nothing to undo.");
+      },
     },
     {
       name: "topostack_open_export",

@@ -24,7 +24,8 @@ const attribution = element("attribution");
 const apiOrigin = document.querySelector<HTMLMetaElement>('meta[name="topostack-api-origin"]')?.content ?? "";
 const bridge = new HostBridge(window.parent, window);
 let current: PreviewInput | undefined;
-let run = 0;
+/** The preview being built; a newer result or a cancelled call aborts it. */
+let running: AbortController | undefined;
 
 function applyTheme(context: HostContext | undefined): void {
   if (context?.theme === "light" || context?.theme === "dark") document.documentElement.dataset.theme = context.theme;
@@ -59,19 +60,18 @@ function showDesign(input: PreviewInput): void {
   reportSize();
 }
 
-async function generate(input: PreviewInput): Promise<void> {
-  const mine = ++run;
+async function generate(input: PreviewInput, signal: AbortSignal): Promise<void> {
   const config = previewConfig(input.project);
   figure.replaceChildren();
   setStatus("Loading terrain…");
-  const terrain = await loadTerrain(config);
-  if (mine !== run) return;
+  const terrain = await loadTerrain(config, signal);
+  if (signal.aborted) return;
   if (terrain.fallback) throw new Error("Terrain could not be loaded for this area. Open it in TopoStack to try again.");
   setStatus("Generating the model…");
   // Let the status paint before the synchronous generation starts.
   await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
   const ir = generateGeometry(config, terrain.source);
-  if (mine !== run) return;
+  if (signal.aborted) return;
   // The markup holds numbers and fixed colors only.
   figure.innerHTML = config.outputMode === "engraving" ? renderContours(ir, { indexInterval: config.engravingIndexInterval }) : renderStack(ir);
   if (config.outputMode !== "engraving") stat("Generated", `${ir.layers.length} sheets, ${Math.round(ir.layers.length * config.materialThicknessMm)} mm tall`);
@@ -80,11 +80,16 @@ async function generate(input: PreviewInput): Promise<void> {
 }
 
 async function showResult(result: unknown): Promise<void> {
+  running?.abort();
+  const mine = new AbortController();
+  running = mine;
   try {
     current = previewInput(result);
     showDesign(current);
-    await generate(current);
+    await generate(current, mine.signal);
   } catch (error) {
+    // A superseded or cancelled run keeps quiet; the newer state already shows.
+    if (mine.signal.aborted) return;
     setStatus(error instanceof Error ? error.message : "The preview failed.", true);
     reportSize();
   }
@@ -103,7 +108,7 @@ open.addEventListener("click", () => {
 
 bridge.on("ui/notifications/tool-result", (params) => void showResult(params));
 bridge.on("ui/notifications/host-context-changed", (params) => applyTheme(params as HostContext));
-bridge.on("ui/notifications/tool-cancelled", () => { run += 1; setStatus("The request was cancelled.", true); });
+bridge.on("ui/notifications/tool-cancelled", () => { running?.abort(); setStatus("The request was cancelled.", true); });
 
 try {
   configureApiBase(apiOrigin);

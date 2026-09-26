@@ -19,6 +19,7 @@ class FakeWorker {
   terminated = false;
   onmessage: ((event: MessageEvent) => void) | undefined;
   onerror: ((event: unknown) => void) | undefined;
+  onmessageerror: ((event: unknown) => void) | undefined;
   constructor() { FakeWorker.last = this; }
   postMessage(message: Record<string, unknown>): void { this.posted.push(message); }
   terminate(): void { this.terminated = true; }
@@ -94,6 +95,20 @@ describe("NestClient", () => {
     expect(local.engine.name).toBe("rectangles");
     expect(local.sheets).toHaveLength(1);
     expect(onFallback).toHaveBeenCalled();
+  });
+
+  it("keeps using workers after one that had answered crashes mid-search", async () => {
+    const { client, worker } = withWorker();
+    const running = client.run([square], settings, { budgetMs: 5000 });
+    const first = worker();
+    first.reply({ ready: true });
+    first.onerror?.({});
+    await expect(running).rejects.toThrow(/stopped unexpectedly/);
+    expect(first.terminated).toBe(true);
+    const next = client.run([square], settings, { budgetMs: 5000 });
+    expect(worker()).not.toBe(first);
+    worker().onmessageerror?.({});
+    await expect(next).rejects.toThrow(NestJobError);
   });
 
   it("packs on the main thread where workers do not exist", async () => {

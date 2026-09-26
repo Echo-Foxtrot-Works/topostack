@@ -11,7 +11,7 @@ import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { applyPreferredTerrain } from "$lib/domain/terrain-sources";
 import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
-import { fittingTileWindow, groundWidthM, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
+import { dataZoom, fittingTileWindow, groundWidthM, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { assembleWater } from "$lib/domain/water-assembly";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
@@ -411,7 +411,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
     return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available" } };
   }
-  const zoom = Math.max(0, Math.min(15, Math.round(config.location.zoom)));
+  const zoom = dataZoom(config.location.zoom);
   const userSignal = signal;
   const operation = new AbortController();
   signal = userSignal ? AbortSignal.any([userSignal, operation.signal]) : operation.signal;
