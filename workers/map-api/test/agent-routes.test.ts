@@ -178,6 +178,19 @@ describe("GET /v1/openapi.json", () => {
     expect(conforms("Error", invalid).errors).toEqual([]);
   });
 
+  it("lists the 429 every route answers once its budget is spent", async () => {
+    const limited = { ...env, REQUEST_LIMITER: deny(), AGENT_LIMITER: deny() } as unknown as Env;
+    for (const [path, operations] of Object.entries(document.paths)) {
+      const [method, operation] = Object.entries(operations as Record<string, { responses: Record<string, unknown> }>)[0]!;
+      const post = method === "post";
+      const query = path === "/v1/geocode" ? "?q=Lake%20Tahoe" : path === "/v1/coverage" ? "?bbox=-78.96,46.45,-78.92,46.48" : "";
+      const answer = await worker.fetch(new Request(`https://api.topostack.test${path}${query}`, { method: method.toUpperCase(), ...(post ? { headers: { "content-type": "application/json" }, body: JSON.stringify(rainier) } : {}) }), limited, context);
+      expect(answer.status, path).toBe(429);
+      await answer.body?.cancel();
+      expect(Object.keys(operation.responses), path).toContain("429");
+    }
+  });
+
   it("lists every status the routes are tested to return", () => {
     const statuses = (path: string) => Object.keys(Object.values(document.paths[path as keyof typeof document.paths])[0]!.responses);
     for (const path of ["/v1/projects/resolve", "/v1/projects/plan", "/v1/projects/link"]) expect(statuses(path), path).toEqual(expect.arrayContaining(["200", "400", "413", "415", "422", "429"]));

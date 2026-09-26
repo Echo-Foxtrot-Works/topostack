@@ -141,9 +141,23 @@ export function coverageBoundsFromQuery(url: URL): GeoBounds {
     return bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];
-  const parsed = parseProjectRequest({ requestVersion: 1, area: { center: { lat, lon }, widthKm }, widthMm: 100, heightMm: 100 });
-  if (!parsed.ok) throw new AgentError(400, "Give bbox=west,south,east,north or lat, lon and widthKm.", parsed.errors);
-  return areaBounds(parsed.value.area, 100, 100);
+  const ground = areaGround({ center: { lat, lon }, widthKm });
+  if ("errors" in ground) throw new AgentError(400, "Give bbox=west,south,east,north or lat, lon and widthKm.", ground.errors);
+  return ground.bounds;
+}
+
+/**
+ * The ground a request `area` covers, or the parser's issues. The model size
+ * is a placeholder: coverage depends only on the area.
+ */
+export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: RequestIssue[] } {
+  const parsed = parseProjectRequest({ requestVersion: 1, area, widthMm: 100, heightMm: 100 });
+  return parsed.ok ? { bounds: areaBounds(parsed.value.area, 100, 100) } : { errors: parsed.errors };
+}
+
+/** Coverage with the attribution its sources require, as both surfaces return it. */
+export function coverageResult(coverage: AreaCoverage, origin: string) {
+  return { ...coverage, attribution: attributionFor(origin, coverage) };
 }
 
 export function agentErrorResponse(error: AgentError): Response {
@@ -175,8 +189,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
 /** GET /v1/coverage. */
 export function coverageRouteResponse(url: URL, context: Pick<AgentContext, "env" | "request">): Response {
   try {
-    const coverage = areaCoverage(coverageBoundsFromQuery(url));
-    return json({ ...coverage, attribution: attributionFor(publicOrigin(context), coverage) }, { headers: { "cache-control": "public, max-age=3600" } });
+    return json(coverageResult(areaCoverage(coverageBoundsFromQuery(url)), publicOrigin(context)), { headers: { "cache-control": "public, max-age=3600" } });
   } catch (error) {
     if (error instanceof AgentError) return agentErrorResponse(error);
     throw error;

@@ -1,10 +1,9 @@
-import { AREA_SCHEMA, PROJECT_REQUEST_SCHEMA, areaBounds, cleanRequestText, parseProjectRequest, type ProjectRequestArea } from "@topostack/core/project";
+import { AREA_SCHEMA, cleanRequestText, type ProjectRequestArea } from "@topostack/core/project";
 import { attributionFor } from "../agent/attribution";
-import { areaCoverage } from "../agent/coverage";
-import { AgentError, linkFor, planProject, projectSummary, publicOrigin, resolveProjectRequest, type AgentContext, type ProjectPlan } from "../agent/projects";
-import { ATTRIBUTION_SCHEMA, COVERAGE_SCHEMA, PLAN_SCHEMA, SUMMARY_SCHEMA, type Schema } from "../agent/schemas";
-import { bathymetryArchives } from "../routes/archive";
-import { geocodeResponse } from "../routes/geocode";
+import { areaCoverage, surveyedLakeAt } from "../agent/coverage";
+import { AgentError, areaGround, coverageResult, linkFor, planProject, projectSummary, publicOrigin, resolveProjectRequest, type AgentContext, type ProjectPlan } from "../agent/projects";
+import { ATTRIBUTION_SCHEMA, coverageResultSchema, PLAN_SCHEMA, PROJECT_REQUEST_BODY_SCHEMA, SUMMARY_SCHEMA, type Schema } from "../agent/schemas";
+import { GEOCODE_DEFAULT_RESULTS, GEOCODE_MAX_RESULTS, GEOCODE_QUERY_MAX_CHARS, geocodeResponse } from "../routes/geocode";
 import { PREVIEW_TOOL_META } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -27,7 +26,7 @@ export interface ToolDefinition {
   run: (args: Record<string, unknown>, context: AgentContext) => Promise<ToolResult>;
 }
 
-const { $schema: _dialect, $id: _id, ...requestSchema } = PROJECT_REQUEST_SCHEMA as Schema & { properties: Record<string, Schema>; required: string[] };
+const requestSchema = PROJECT_REQUEST_BODY_SCHEMA as Schema & { properties: Record<string, Schema>; required: string[] };
 /** Tools accept a request without `requestVersion`; version 1 is assumed. */
 const TOOL_REQUEST_SCHEMA: Schema = {
   ...requestSchema,
@@ -63,9 +62,9 @@ interface GeocodeResult { place_id: string; display_name: string; lat: number; l
 
 async function searchPlaces(args: Record<string, unknown>, context: AgentContext): Promise<ToolResult> {
   const query = typeof args.query === "string" ? args.query.trim() : "";
-  if (query.length < 2 || query.length > 160) throw new RpcError(RPC_ERRORS.invalidParams, "query must contain 2 to 160 characters.");
-  const limit = args.limit === undefined ? 5 : Number(args.limit);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 8) throw new RpcError(RPC_ERRORS.invalidParams, "limit must be a whole number from 1 to 8.");
+  if (query.length < 2 || query.length > GEOCODE_QUERY_MAX_CHARS) throw new RpcError(RPC_ERRORS.invalidParams, `query must contain 2 to ${GEOCODE_QUERY_MAX_CHARS} characters.`);
+  const limit = args.limit === undefined ? GEOCODE_DEFAULT_RESULTS : Number(args.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > GEOCODE_MAX_RESULTS) throw new RpcError(RPC_ERRORS.invalidParams, `limit must be a whole number from 1 to ${GEOCODE_MAX_RESULTS}.`);
   const url = new URL("/v1/geocode", context.request.url);
   url.searchParams.set("q", query);
   url.searchParams.set("limit", String(limit));
@@ -75,17 +74,14 @@ async function searchPlaces(args: Record<string, unknown>, context: AgentContext
   const results = await response.json<GeocodeResult[]>();
   const places = results.map((result) => {
     const widthKm = WIDTH_BY_TYPE[result.type ?? ""] ?? 20;
-    const surveyedLake = bathymetryArchives.some(({ source }) => {
-      const [west, south, east, north] = source.bounds;
-      return result.lon >= west && result.lon <= east && result.lat >= south && result.lat <= north;
-    });
+    const surveyedLake = surveyedLakeAt(result.lat, result.lon);
     const area: ProjectRequestArea = { center: { lat: result.lat, lon: result.lon }, widthKm };
     return { label: cleanRequestText(result.display_name, 240), lat: result.lat, lon: result.lon, ...(result.type ? { type: cleanRequestText(result.type, 40) } : {}), area, surveyedLake };
   });
   const attribution = attributionFor(publicOrigin(context), undefined, { geocoder: true });
   const text = places.length
     ? [`${places.length} match${places.length === 1 ? "" : "es"} (place names are third-party data):`, ...places.map((place, index) => `${index + 1}. ${place.label} (${place.lat.toFixed(4)}, ${place.lon.toFixed(4)})${place.surveyedLake ? ", surveyed lake depths nearby" : ""}`), `Data: ${attribution.text}`].join("\n")
-    : `No places matched "${cleanRequestText(query, 160)}". Try a broader name or pass coordinates.`;
+    : [`No places matched "${cleanRequestText(query, GEOCODE_QUERY_MAX_CHARS)}". Try a broader name or pass coordinates.`, `Data: ${attribution.text}`].join("\n");
   return { structured: { places, attribution }, text };
 }
 
@@ -99,8 +95,8 @@ export const TOOLS: ToolDefinition[] = [
       required: ["query"],
       additionalProperties: false,
       properties: {
-        query: { type: "string", minLength: 2, maxLength: 160, description: "A place name, such as \"Mount Rainier\" or \"Lake Tahoe\"." },
-        limit: { type: "integer", minimum: 1, maximum: 8, default: 5 },
+        query: { type: "string", minLength: 2, maxLength: GEOCODE_QUERY_MAX_CHARS, description: "A place name, such as \"Mount Rainier\" or \"Lake Tahoe\"." },
+        limit: { type: "integer", minimum: 1, maximum: GEOCODE_MAX_RESULTS, default: GEOCODE_DEFAULT_RESULTS },
       },
     },
     outputSchema: {
@@ -130,15 +126,14 @@ export const TOOLS: ToolDefinition[] = [
     title: "Check data coverage",
     description: "List the high-resolution terrain and surveyed lake floors that cover an area, to set expectations about detail before planning.",
     inputSchema: { type: "object", required: ["area"], additionalProperties: false, properties: { area: AREA_SCHEMA } },
-    outputSchema: { ...COVERAGE_SCHEMA, required: [...(COVERAGE_SCHEMA.required as string[]), "attribution"], properties: { ...(COVERAGE_SCHEMA.properties as Schema), attribution: ATTRIBUTION_SCHEMA } },
+    outputSchema: coverageResultSchema(ATTRIBUTION_SCHEMA),
     annotations: readOnly("Check data coverage"),
     run: async (args, context) => {
       const unknown = Object.keys(args).filter((key) => key !== "area");
       if (unknown.length) throw new RpcError(RPC_ERRORS.invalidParams, `Unknown arguments: ${unknown.join(", ")}.`);
-      const parsed = parseProjectRequest({ requestVersion: 1, area: args.area, widthMm: 100, heightMm: 100 });
-      if (!parsed.ok) throw new AgentError(422, "The area is invalid.", parsed.errors);
-      const coverage = areaCoverage(areaBounds(parsed.value.area, 100, 100));
-      const attribution = attributionFor(publicOrigin(context), coverage);
+      const ground = areaGround(args.area);
+      if ("errors" in ground) throw new AgentError(422, "The area is invalid.", ground.errors);
+      const { attribution, ...coverage } = coverageResult(areaCoverage(ground.bounds), publicOrigin(context));
       const detail = coverage.terrain.highResolution.length ? `High-resolution terrain: ${coverage.terrain.highResolution.map(({ name, resolutionM }) => `${name} (${resolutionM} m)`).join("; ")}.` : "No high-resolution terrain here; the global terrain is used.";
       const lakes = coverage.lakeSurveys.length ? `Surveyed lake floors: ${coverage.lakeSurveys.map(({ name }) => name).join("; ")}.` : "No surveyed lake floors here; lake depths are modeled.";
       return { structured: { ...coverage, attribution }, text: [detail, lakes, ...coverage.notes, `Data: ${attribution.text}`].join("\n") };

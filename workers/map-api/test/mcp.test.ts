@@ -107,6 +107,16 @@ describe("MCP server through the SDK client", () => {
     await client.close();
   });
 
+  it("keeps attribution on a search with no matches", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ results: [] })));
+    const client = await connect();
+    const result = await client.callTool({ name: "search_places", arguments: { query: "Nowhere Particular" } });
+    const text = (result.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/^No places matched/);
+    expect(text).toMatch(/\nData: .*Geoapify/);
+    await client.close();
+  });
+
   it("checks coverage for an area", async () => {
     const client = await connect();
     const result = await client.callTool({ name: "check_coverage", arguments: { area: { bounds: { west: -78.96, south: 46.45, east: -78.92, north: 46.48 } } } });
