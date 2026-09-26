@@ -25,7 +25,17 @@ export const INSTRUCTIONS = [
   "Read topostack://guide/making-a-model for material and sizing advice.",
 ].join(" ");
 
-interface ServerContext extends AgentContext { siteOrigin: string; apiOrigin: string }
+/** Batch entries run concurrently, so a batch is kept short. */
+export const MAX_BATCH_MESSAGES = 8;
+
+const AGENT_BUDGET_SPENT = { content: [{ type: "text", text: "The agent budget for this client is used up. Try again in a minute." }], isError: true };
+
+interface ServerContext extends AgentContext {
+  siteOrigin: string;
+  apiOrigin: string;
+  /** Whether a tool call may run: the request paid for its first one, and each further call in a batch charges the agent budget. */
+  admitToolCall: () => Promise<boolean>;
+}
 
 async function dispatch(message: JsonRpcMessage & { method: string }, context: ServerContext): Promise<unknown> {
   const params = paramsRecord(message.params);
@@ -49,6 +59,7 @@ async function dispatch(message: JsonRpcMessage & { method: string }, context: S
       return { tools: TOOLS.map(toolListing) };
     case "tools/call": {
       if (typeof params.name !== "string") throw new RpcError(RPC_ERRORS.invalidParams, "tools/call needs a tool name.");
+      if (!(await context.admitToolCall())) return AGENT_BUDGET_SPENT;
       return callTool(params.name, paramsRecord(params.arguments), context);
     }
     case "resources/list":
@@ -103,9 +114,16 @@ export async function mcpResponse(context: AgentContext): Promise<Response> {
     if (error instanceof AgentError) return agentErrorResponse(error);
     throw error;
   }
-  const serverContext: ServerContext = { ...context, siteOrigin: publicOrigin(context), apiOrigin: new URL(request.url).origin };
+  let toolCalls = 0;
+  const serverContext: ServerContext = {
+    ...context,
+    siteOrigin: publicOrigin(context),
+    apiOrigin: new URL(request.url).origin,
+    admitToolCall: async () => toolCalls++ === 0 || context.admitAgentCall(),
+  };
   if (Array.isArray(body)) {
     if (!body.length) return json(rpcError(null, new RpcError(RPC_ERRORS.invalidRequest, "Empty batch.")), { status: 400 });
+    if (body.length > MAX_BATCH_MESSAGES) return json(rpcError(null, new RpcError(RPC_ERRORS.invalidRequest, `A batch holds at most ${MAX_BATCH_MESSAGES} messages.`)), { status: 400 });
     const replies = (await Promise.all(body.map((message) => answer(message, serverContext)))).filter((reply) => reply !== undefined);
     return replies.length ? json(replies) : new Response(null, { status: 202 });
   }

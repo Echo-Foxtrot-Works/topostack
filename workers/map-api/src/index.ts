@@ -57,7 +57,7 @@ async function withinAgentBudget(request: Request, env: Env): Promise<boolean> {
 }
 
 function agentContext(request: Request, env: Env, ctx: ExecutionContext): AgentContext {
-  return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env) };
+  return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env), admitAgentCall: () => withinAgentBudget(request, env) };
 }
 
 /** POST routes for agents, answered before the read-only method check. */

@@ -56,7 +56,7 @@ The server speaks stateless Streamable HTTP. It has no runtime dependencies. `@m
 - **POST only.** Other methods answer `405` with `allow: POST,OPTIONS` and a message explaining that the server has no session and no event stream. The server never issues an `Mcp-Session-Id`, and never answers with `text/event-stream`.
 - **Protocol versions.** The supported versions are `SUPPORTED_PROTOCOL_VERSIONS` in `protocol.ts`, newest first. `initialize` echoes the client's version when it is supported and otherwise answers with the newest. An `MCP-Protocol-Version` header is checked only when present: an unsupported value answers HTTP `400` with JSON-RPC `-32600`.
 - **Bodies.** `readJsonBody` (shared with REST) wants `content-type: application/json`, or it answers `415`. It caps the body at 128,000 bytes, or it answers `413`. Both of these are plain `{ "error": … }` bodies, not JSON-RPC. Invalid JSON answers `400` with JSON-RPC `-32700`. The `Accept` header is not checked.
-- **Batches.** An array of messages is answered with an array of replies. An empty batch answers `400` with `-32600`.
+- **Batches.** An array of messages is answered with an array of replies. An empty batch, or one holding more than `MAX_BATCH_MESSAGES` (8), answers `400` with `-32600`. The entries run concurrently. The request's own agent token pays for the first `tools/call`. Each further `tools/call` charges `withinAgentBudget` again, through `AgentContext.admitAgentCall`. A refused call is a tool result with `isError: true` ("The agent budget for this client is used up"), so one POST cannot run more tool calls than the budget allows.
 - **Notifications.** A notification, or a batch that holds only notifications and client responses, answers `202` with no body.
 - **Methods.** The server handles `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/templates/list` (always empty), `resources/read`, `prompts/list` and `prompts/get`. Anything else is `-32601`.
 - **Errors.**
@@ -151,14 +151,14 @@ Limits are counted per Cloudflare location (`wrangler.jsonc`). A chat platform c
 
 | Limiter | Limit | Charged by |
 | --- | --- | --- |
-| `AGENT_LIMITER` | 120 a minute per client | Every `/mcp` POST and every `/v1/projects/*` POST |
+| `AGENT_LIMITER` | 120 a minute per client | Every `/mcp` POST, each `tools/call` after the first in a batch, and every `/v1/projects/*` POST |
 | `AGENT_GLOBAL_LIMITER` | 1,200 a minute, shared | The same, after the per-client check passes |
 | `GEOCODE_LIMITER` / `GEOCODE_GLOBAL_LIMITER` | 30 / 300 a minute | `search_places`, on geocoder cache misses only |
 | `REQUEST_LIMITER` `terrain` bucket + `TERRAIN_GLOBAL_LIMITER` | 240 / 2,400 a minute | Plan tile reads that miss the terrain caches |
 
 - **Client key.** `clientKey` in `src/http.ts` derives it from `cf-connecting-ip`. IPv6 addresses are grouped by `/64`.
 - **Log lines.** Watch for `agent_global_budget_exceeded` (the shared ceiling was hit), `mcp_failed` (an unexpected exception inside a method), and the existing `geocode_global_budget_exceeded` and `terrain_global_budget_exceeded`.
-- **Messages to the caller.** A refused plan tile becomes "The terrain budget for this client is used up". A geocoder refusal becomes "Place search is busy". Both reach the model as tool errors it can read.
+- **Messages to the caller.** A refused plan tile becomes "The terrain budget for this client is used up". A refused extra tool call in a batch becomes "The agent budget for this client is used up". A geocoder refusal becomes "Place search is busy". All three reach the model as tool errors it can read.
 
 ## Running it locally
 
@@ -215,7 +215,7 @@ Behaviour that is deliberate for now or waiting on a follow-up; clients should n
 
 - **Text length.** `parseProjectRequest` truncates text up to four times its limit and rejects only longer strings, while the schema's `maxLength` rejects anything over the limit.
 - **Schema `$id`.** `https://topostack.app/schemas/project-request-v1.json` is an identifier; nothing is served there.
-- **Batches.** `/mcp` accepts JSON-RPC batches for every protocol version, although MCP removed them in 2025-06-18.
+- **Batches.** `/mcp` accepts JSON-RPC batches of up to 8 messages for every protocol version, although MCP removed them in 2025-06-18.
 - **Headers.** `/mcp` does not check `Accept`, and accepts requests without `MCP-Protocol-Version`.
 - **Error shape.** A 413 or 415 from `readJsonBody` on `/mcp` uses the REST `{ error }` shape, not JSON-RPC.
 - **Coverage errors.** `/v1/coverage` error paths name request fields (`area.center.lat`), not the query parameters.

@@ -26,6 +26,8 @@ export interface AgentContext {
   ctx: ExecutionContext;
   /** Charges the caller's terrain budget before a tile has to come from the origin. */
   admitTerrainUpstream: () => Promise<boolean>;
+  /** Charges the caller's agent budget once more, for work past what the request itself paid for. */
+  admitAgentCall: () => Promise<boolean>;
 }
 
 export function publicOrigin(context: Pick<AgentContext, "env" | "request">): string {
