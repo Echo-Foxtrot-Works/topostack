@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, validateProject, type GeometryIRV1, type LayerIR, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
+import { describe, expect, it, vi } from "vitest";
+import polygonClipping from "polygon-clipping";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, validateProject, type GeometryIRV1, type GeometryWarning, type LayerIR, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
 import { distanceToSegment, pointInPolygon, pointInPreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
 import { PAINT_BLEED_MM, PAINT_LOOSE_SHEET_MIN_MM, PAINT_PAPER_MIN_MM, paintRegions, paintStencil } from "./paint-regions.js";
 import { sourceRequirements } from "./source-requirements.js";
@@ -158,6 +159,19 @@ describe("paint regions", () => {
     expect(paintRegions(base, clips, { waterSurfaces: [], flatWater: [], cellPitchMm: 1 })).toEqual([]);
     // Water far from the piece never reaches the clipper.
     expect(paintRegions(base, clips, { ...sources, waterSurfaces: [{ ...sources.waterSurfaces[0]!, polygons: [{ outer: circleRing(500, 500, 30), holes: [] }] }] })).toEqual([]);
+  });
+
+  it("says which layers lost paint windows the clipper refused", () => {
+    const layer: LayerIR = { id: "layer-02", index: 1, elevationM: 0, materialThicknessMm: 3, polygons: [{ outer: square(-50, -50, 50, 50), holes: [] }], markings: [], pieces: [] };
+    const sources = { waterSurfaces: [{ id: "lake", kind: "lake" as const, polygons: [{ outer: circleRing(0, 0, 30), holes: [] }], surfaceElevationM: 0, bedElevationM: 0, layerIndex: 1, depthSource: "modeled" as const }], flatWater: [], cellPitchMm: 1 };
+    const refuse = vi.spyOn(polygonClipping, "intersection").mockImplementation(() => { throw new Error("degenerate ring"); });
+    const warnings: GeometryWarning[] = [];
+    try {
+      expect(paintRegions(base, [{ layer, covering: preparePolygons([]) }], sources, [], warnings)).toEqual([]);
+    } finally {
+      refuse.mockRestore();
+    }
+    expect(warnings).toEqual([{ code: "PAINT_WINDOWS_OMITTED", message: expect.stringContaining("layer 2 could not be cut") }]);
   });
 
   it("survives a degenerate piece and drops windows thinner than the minimum feature", () => {

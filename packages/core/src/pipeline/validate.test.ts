@@ -11,6 +11,12 @@ describe("project validation", () => {
     expect(() => validateProject({ ...DEFAULT_PROJECT, customLines: [{ id: "long", kind: "trail", points: Array.from({ length: 2_001 }, () => point) }] })).toThrow(/2000 points/i);
   });
 
+  it("checks the same switches the project reader does", () => {
+    for (const key of ["seamTabs", "showAssemblyLabels"] as const) {
+      expect(() => validateProject({ ...DEFAULT_PROJECT, [key]: "yes" } as unknown as ProjectConfigV1), key).toThrow(`${key} must be true or false.`);
+    }
+  });
+
   it("takes a name on a marker or a path, or none at all", () => {
     const marker = { id: "marker", lat: DEFAULT_PROJECT.location.lat, lon: DEFAULT_PROJECT.location.lon, symbol: "pin" as const };
     const point = { lat: DEFAULT_PROJECT.location.lat, lon: DEFAULT_PROJECT.location.lon };
