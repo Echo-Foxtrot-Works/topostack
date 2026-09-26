@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildEngravingPackage, buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, engravingToSvg, generateGeometry, layerToSvg, masterToSvg, type ProjectConfigV1 } from "../index.js";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, type ProjectConfigV1 } from "../index.js";
+import { engravingToSvg } from "./engraving-svg.js";
+import { buildEngravingPackage } from "./packages.js";
+import { masterToSvg } from "./svg.js";
 import { gridSource, realSource } from "../test-support/sources.js";
 import { EXPORT_CREDIT } from "./svg-primitives.js";
 

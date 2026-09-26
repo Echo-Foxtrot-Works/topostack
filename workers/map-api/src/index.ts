@@ -7,9 +7,9 @@ import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
 import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
-import { ARCHIVE_ROUTES, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, parseRangeHeader, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { ARCHIVE_ROUTES, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
 import { FEEDBACK_PATH, feedbackResponse } from "./routes/feedback";
-import { geocodeLimit, geocodeResponse, isGeocoderConfigured, normalizeGeoapify } from "./routes/geocode";
+import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
 import { isHighVolumeCacheHit, REQUEST_LOG_SAMPLE_RATE, shouldLogRequest } from "./request-log";
 import { terrainResponse, validTile } from "./routes/terrain";
@@ -188,4 +188,3 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-export { geocodeLimit, isAllowedOrigin, isGeocoderConfigured, normalizeGeoapify, parseRangeHeader, shouldLogRequest, validTile };

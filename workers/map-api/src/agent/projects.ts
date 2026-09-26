@@ -12,7 +12,7 @@ import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type Relie
  * The agent-facing project operations. REST routes and MCP tools both call
  * these functions, so a request means the same thing on either surface.
  */
-export const MAX_AGENT_BODY_BYTES = 128_000;
+const MAX_AGENT_BODY_BYTES = 128_000;
 /** Plans past this many sheets get a note suggesting thicker material or less exaggeration. */
 const MANY_SHEETS = 60;
 
@@ -131,7 +131,7 @@ export async function planProject(project: ProjectConfigV1, context: AgentContex
 }
 
 /** Coverage for `?bbox=west,south,east,north` or `?lat=&lon=&widthKm=`. */
-export function coverageBoundsFromQuery(url: URL): GeoBounds {
+function coverageBoundsFromQuery(url: URL): GeoBounds {
   const bbox = url.searchParams.get("bbox");
   if (bbox !== null) {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));

@@ -2,18 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import polygonClipping from "polygon-clipping";
 import {
   buildFabricationPackage,
-  cellEdges,
   clearRegisteredFonts,
   createSyntheticSource,
   DEFAULT_PROJECT,
   generateGeometry,
   labelDimensions,
   MAX_SEAM_DIVISIONS,
-  masterToSvg,
   planSeamGrid,
   projectFingerprint,
-  seamShift,
-  splitLayersForWorkArea,
   validateProject,
   type GeometryIRV1,
   type GeometryWarning,
@@ -23,6 +19,8 @@ import {
   type ProjectConfigV1,
   type SourceBundleV1,
 } from "../index.js";
+import { masterToSvg } from "../export/svg.js";
+import { cellEdges, seamShift, splitLayersForWorkArea } from "./split.js";
 import { registerFixtureFonts } from "../test-support/fonts.js";
 
 const EARTH_RADIUS_M = 6_371_008.8;

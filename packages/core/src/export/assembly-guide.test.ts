@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { assemblyGuideToHtml, buildFabricationPackage, DEFAULT_PROJECT, generateGeometry } from "../index.js";
+import { buildFabricationPackage, DEFAULT_PROJECT, generateGeometry } from "../index.js";
+import { assemblyGuideToHtml } from "./assembly-guide.js";
 import { realSource } from "../test-support/sources.js";
 
 async function guideFor(config = DEFAULT_PROJECT) {

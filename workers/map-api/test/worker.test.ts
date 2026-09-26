@@ -2,7 +2,11 @@ import outlineRelease from "../../../scripts/data/lake-outlines-release.json";
 import { terrainPng } from "./terrain-fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv, exports } from "cloudflare:workers";
-import mapWorker, { geocodeLimit, isAllowedOrigin, isGeocoderConfigured, normalizeGeoapify, parseRangeHeader, validTile } from "../src/index";
+import mapWorker from "../src/index";
+import { isAllowedOrigin } from "../src/http";
+import { parseRangeHeader } from "../src/routes/archive";
+import { geocodeLimit, isGeocoderConfigured, normalizeGeoapify } from "../src/routes/geocode";
+import { validTile } from "../src/routes/terrain";
 import { resetArchiveHeadCache } from "../src/archive-head";
 import { mergeGeoapify } from "../src/routes/geocode";
 

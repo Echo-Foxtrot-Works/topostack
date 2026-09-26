@@ -1,6 +1,7 @@
 {
   "name": "@topostack/core",
   "version": "0.7.0",
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

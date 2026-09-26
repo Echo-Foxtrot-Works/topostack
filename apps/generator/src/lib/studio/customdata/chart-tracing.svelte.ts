@@ -10,8 +10,8 @@ import { ChartTraceClient } from "$lib/workers/chart-trace-client";
 import { draft, draftRevision, resetChartImage } from "$lib/studio/customdata/chart-draft.svelte";
 
 /**
- * Tracing one depth chart: reading the picture, placing the depths printed on
- * it, and asking the worker for the lake bed they give.
+ * Tracing one depth chart: reading the picture, reviewing its contours, and
+ * asking the worker for the lake bed they give.
  *
  * The controls sit in the sidebar and the chart being clicked fills the
  * viewport, so neither component can own this. It lives here with the draft,
@@ -47,12 +47,10 @@ function chartTitle(): string {
 }
 
 /** What is happening to the draft right now, as opposed to what it holds. */
-export interface PendingChartPoint { x: number; y: number; reach: number; index?: number }
-export const session = $state({ pendingDepth: "" as string | number, point: undefined as PendingChartPoint | undefined, busy: false, keeping: false, error: "" });
+export const session = $state({ busy: false, keeping: false, error: "" });
 
-/** The guided flow needs three confirmed samples before tracing. */
+/** Why the chart cannot be traced yet, or an empty string when it can. */
 export function traceHint(): string {
-  if (session.point) return "Confirm or cancel the selected point before tracing.";
   if (draft.reads === "elevation" && !Number.isFinite(typedNumber(draft.surface))) return "Enter the water surface elevation in the same units as the chart.";
   return "";
 }
@@ -116,7 +114,6 @@ export async function chooseChartFile(file: File | undefined, page = 1): Promise
   const revision = draftRevision();
   const current = () => mine === operation && revision === draftRevision();
   disposeTracer();
-  cancelDepthPoint();
   session.error = "";
   session.busy = true;
   try {
@@ -219,69 +216,6 @@ export function paintDepthPreview(canvas: HTMLCanvasElement): void {
     pixels.data[at + 3] = 255;
   }
   context.putImageData(pixels, 0, 0);
-}
-
-/**
- * Records the typed depth at a point of the chart, in image pixels. `reach` is
- * how far off the line the click may be, also in image pixels; the canvas
- * works it out from a fixed distance on screen, however large the chart.
- */
-export function placeDepth(x: number, y: number, reach: number): void {
-  if (!draft.image) return;
-  // An empty box is not a depth of zero: it means no depth was typed yet.
-  const typed = String(session.pendingDepth).trim();
-  const value = typed === "" ? Number.NaN : Number(typed);
-  if (!Number.isFinite(value) || (draft.reads === "depth" && value < 0)) {
-    session.error = "Type the depth printed on the contour, then click that contour.";
-    return;
-  }
-  draft.depths = [...draft.depths, { x, y, value, reach }];
-  session.error = "";
-}
-
-/** Select first, then ask for the value beside that location. Clicking an existing point edits it. */
-export function selectDepthPoint(x: number, y: number, reach: number): void {
-  if (!draft.image || session.busy || session.keeping) return;
-  const index = draft.depths.findIndex((point) => Math.hypot(point.x - x, point.y - y) <= reach);
-  if (index >= 0) { editDepthPoint(index); return; }
-  session.point = { x, y, reach };
-  session.pendingDepth = "";
-  session.error = "";
-}
-
-export function editDepthPoint(index: number): void {
-  const point = draft.depths[index];
-  if (!point || session.busy || session.keeping) return;
-  session.point = { x: point.x, y: point.y, reach: point.reach, index };
-  session.pendingDepth = String(point.value);
-  session.error = "";
-}
-
-export function cancelDepthPoint(): void {
-  session.point = undefined;
-  session.pendingDepth = "";
-  session.error = "";
-}
-
-export function confirmDepthPoint(): boolean {
-  const point = session.point;
-  if (!point || session.busy || session.keeping) return false;
-  const value = String(session.pendingDepth).trim() === "" ? Number.NaN : Number(session.pendingDepth);
-  if (!Number.isFinite(value) || (draft.reads === "depth" && value < 0)) {
-    session.error = draft.reads === "depth" ? "Enter a depth of zero or more." : "Enter the elevation printed on this contour.";
-    return false;
-  }
-  const confirmed = { x: point.x, y: point.y, reach: point.reach, value };
-  if (point.index === undefined) draft.depths = [...draft.depths, confirmed];
-  else draft.depths = draft.depths.map((depth, index) => index === point.index ? confirmed : depth);
-  cancelDepthPoint();
-  return true;
-}
-
-export function removeDepth(index: number): void {
-  if (session.busy || session.keeping) return;
-  cancelDepthPoint();
-  draft.depths = draft.depths.filter((_, at) => at !== index);
 }
 
 /**
@@ -410,8 +344,6 @@ export async function tryNextPlacement(): Promise<void> {
 export function resetSession(): void {
   operation += 1;
   disposeTracer();
-  session.point = undefined;
-  session.pendingDepth = "";
   session.busy = false;
   session.keeping = false;
   session.error = "";

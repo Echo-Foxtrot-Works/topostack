@@ -109,9 +109,6 @@ async function loadRaster(apiBase: string, bounds: GeoBounds, width: number, hei
 }
 
 const intersects = (bounds: GeoBounds, extent: number[]) => bounds.east > extent[0]! && bounds.west < extent[2]! && bounds.north > extent[1]! && bounds.south < extent[3]!;
-export function hasSurveyCoverage(bounds: GeoBounds, area: WaterAreaV1): boolean {
-  return area.kind === "lake" && registry.sources.some((source) => intersects(bounds, source.bounds) && (source.id !== NOAA_DATASET_VERSION || hasNoaaCoverage(area)));
-}
 
 /**
  * Cells a scanline pass may visit before it hands the main thread back. A whole

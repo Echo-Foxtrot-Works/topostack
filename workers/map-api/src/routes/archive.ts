@@ -5,7 +5,7 @@ import { cachedArchiveHead, evictArchiveHead } from "../archive-head";
 import { edgeCacheKey, matchEdge, teeToEdge } from "../edge-cache";
 import { etagMatches, json } from "../http";
 
-export const MAX_ARCHIVE_RANGE_BYTES = 16 * 1024 * 1024;
+const MAX_ARCHIVE_RANGE_BYTES = 16 * 1024 * 1024;
 // The vector archive key is overwritten in place on dataset updates, so client
 // and edge caching must stay short and revalidate by etag; a long `immutable`
 // TTL would let PMTiles readers mix byte ranges from different archive

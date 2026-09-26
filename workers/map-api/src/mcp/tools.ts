@@ -191,7 +191,7 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
-export const TOOLS_BY_NAME = new Map(TOOLS.map((tool) => [tool.name, tool]));
+const TOOLS_BY_NAME = new Map(TOOLS.map((tool) => [tool.name, tool]));
 
 /** A tool's public description, as `tools/list` returns it. */
 export function toolListing({ run: _run, ...tool }: ToolDefinition) {

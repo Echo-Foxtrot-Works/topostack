@@ -16,7 +16,7 @@ import { callTool, toolListing, TOOLS } from "./tools";
  */
 export const MCP_PATH = "/mcp";
 
-export const INSTRUCTIONS = [
+const INSTRUCTIONS = [
   "TopoStack plans laser-cut terrain models: layered stacks of sheets or flat engravings.",
   "Workflow: search_places (unless you have coordinates) → plan_model to check sheets, height and scale → adjust and re-plan if impractical → preview_model to show the user the model → create_studio_link, and give the user that link.",
   "Opening the link generates the model in the user's browser, where they review it and export SVG files. Nothing is generated or stored on the server.",

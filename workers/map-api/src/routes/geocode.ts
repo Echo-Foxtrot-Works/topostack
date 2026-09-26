@@ -13,7 +13,7 @@ const EMPTY_GEOCODE_CACHE_SECONDS = 5 * 60;
 // Ratelimit bindings count per Cloudflare location, not account-wide: this is
 // a per-colo ceiling, and the provider-side daily cap configured in the
 // Geoapify dashboard remains the real spend limit.
-export const GEOCODE_GLOBAL_LIMIT_KEY = "geocode-global";
+const GEOCODE_GLOBAL_LIMIT_KEY = "geocode-global";
 
 interface GeoapifyResult { lat?: unknown; lon?: unknown; formatted?: unknown; place_id?: unknown; result_type?: unknown; rank?: { importance?: unknown } }
 
@@ -72,7 +72,7 @@ export function isGeocoderConfigured(env: Pick<Env, "GEOCODER_API_KEY">): boolea
 }
 
 /** Case and whitespace variants of one query share a cache entry. */
-export function normalizeGeocodeQuery(query: string): string {
+function normalizeGeocodeQuery(query: string): string {
   return query.trim().replace(/\s+/g, " ").toLowerCase();
 }
 

@@ -260,24 +260,6 @@
   opacity: 0;
 }
 
-.chart-depths {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--panel-space-1, 6px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chart-depths li {
-  display: flex;
-  align-items: center;
-  gap: var(--panel-space-1, 6px);
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--loidolt-border);
-  border-radius: 999px;
-}
-
 .chart-plain-action,
 .chart-chosen button {
   justify-self: start;
@@ -355,7 +337,7 @@
   line-height: 1.5;
 }
 
-.section-content :is(.chart-chosen, .chart-depths, .chart-lakes, .chart-places, .chart-saved, .chart-upload) {
+.section-content :is(.chart-chosen, .chart-lakes, .chart-places, .chart-saved, .chart-upload) {
   font-size: var(--panel-font-body, 13px);
 }
 
@@ -410,56 +392,6 @@
   .chart-report { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* The guide stays near the work; the value card floats beside the selected point. */
-.chart-depth-guide {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  flex-shrink: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px 16px;
-  width: min(100%, 560px);
-  padding: 14px 16px;
-  border: 1px solid var(--loidolt-border);
-  border-radius: 0;
-  background: var(--loidolt-surface);
-  box-shadow: var(--loidolt-shadow-popover);
-  font-size: 12px;
-}
-.chart-depth-guide__heading { display: grid; gap: 4px; }
-.chart-depth-guide__heading strong { font-size: 14px; color: var(--loidolt-text); }
-.chart-depth-guide__heading > span { color: var(--loidolt-text-muted); line-height: 1.45; }
-.chart-wizard-progress { display: flex; align-items: start; gap: 5px; list-style: none; margin: 0; padding: 0; }
-.chart-wizard-progress li > span:first-child {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--loidolt-border);
-  border-radius: 50%;
-  color: var(--loidolt-text-muted);
-}
-.chart-wizard-progress li[aria-current="step"] > span:first-child { border-color: var(--loidolt-accent); color: var(--loidolt-accent); }
-.chart-wizard-progress .complete > span:first-child { background: var(--loidolt-accent); border-color: var(--loidolt-accent); color: var(--loidolt-on-accent); }
-.chart-wizard-points { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; max-height: 76px; overflow: auto; }
-.chart-depth-guide__actions { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
-/* Shared theme classes own dialog surfaces, typography, fields and actions.
-   Only the floating placement and compact chart layout are specific to this view. */
-.chart-point-card {
-  width: min(320px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
-  overflow: auto;
-  margin: 0;
-  padding: 0;
-  transform: none;
-  font-size: var(--loidolt-font-size-sm);
-}
-.chart-point-card form { display: grid; }
-.chart-point-card__body { display: grid; gap: var(--loidolt-space-4, 16px); }
-.chart-point-card .ldt-dialog__description { margin: 0; line-height: 1.5; }
-.chart-point-card .ldt-input { min-width: 0; font-size: 16px; }
-
 .chart-lake-map { position: relative; width: 100%; height: 100%; min-height: 360px; }
 .chart-lake-map__guide { position: absolute; z-index: 3; top: 16px; left: 16px; right: 56px; width: fit-content; max-width: 460px; padding: 12px 16px; display: grid; gap: 4px; border: 1px solid var(--loidolt-border); background: var(--loidolt-surface); box-shadow: var(--loidolt-shadow-popover); font-size: 13px; }
 .chart-lake-map__guide span { color: var(--loidolt-text-muted); line-height: 1.5; }
@@ -494,16 +426,6 @@
   font-size: 12px;
 }
 .chart-result__title small { font-size: 10px; font-weight: normal; color: var(--loidolt-text-muted); }
-.chart-editor .chart-depth-guide {
-  position: static; width: 100%; box-shadow: none; border: 0;
-  border-bottom: 1px solid var(--loidolt-border);
-  padding: 6px 10px; gap: 6px; font-size: 11px;
-}
-.chart-editor .chart-depth-guide__heading strong { font-size: 12px; }
-.chart-editor .chart-depth-guide__heading > span { display: none; }
-.chart-editor .chart-wizard-progress li > span:first-child { width: 20px; height: 20px; }
-.chart-editor .chart-wizard-points { max-height: 52px; }
-.chart-editor .chart-depth-guide :is(button) { min-height: 26px; padding: 3px 8px; font-size: 10px; }
 .chart-editor .chart-figure { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 0; }
 .chart-image-area { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; container-type: size; overflow: hidden; background: var(--loidolt-surface-alt); }
 .chart-image-area { --svg-canvas-width: 100%; --svg-canvas-height: 100%; }
@@ -524,9 +446,6 @@
   .chart-workspace { grid-template-columns: minmax(0, 1fr); height: auto; }
   .chart-editor { height: clamp(400px, 70dvh, 700px); }
   .chart-result { grid-template-rows: 360px 400px; }
-}
-@container (max-width: 420px) {
-  .chart-depth-guide { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
 .custom-data-notice {
