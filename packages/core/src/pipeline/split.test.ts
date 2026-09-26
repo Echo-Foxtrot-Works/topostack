@@ -1,19 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFabricationPackage,
-  cellEdges,
   clearRegisteredFonts,
   createSyntheticSource,
   DEFAULT_PROJECT,
   generateGeometry,
   labelDimensions,
   MAX_SEAM_DIVISIONS,
-  masterToSvg,
   planSeamGrid,
   projectFingerprint,
-  seamShift,
   validateProject,
-  splitLayersForWorkArea,
   type GeometryIRV1,
   type LayerIR,
   type Point2D,
@@ -21,6 +17,8 @@ import {
   type ProjectConfigV1,
   type SourceBundleV1,
 } from "../index.js";
+import { masterToSvg } from "../export/svg.js";
+import { cellEdges, seamShift, splitLayersForWorkArea } from "./split.js";
 import { registerFixtureFonts } from "../test-support/fonts.js";
 
 const EARTH_RADIUS_M = 6_371_008.8;

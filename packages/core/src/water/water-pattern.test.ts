@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, engravingToSvg, generateGeometry, waterPatternStrokes, type ProjectConfigV1 } from "../index.js";
+import { DEFAULT_PROJECT, generateGeometry, waterPatternStrokes, type ProjectConfigV1 } from "../index.js";
+import { engravingToSvg } from "../export/engraving-svg.js";
 import { pointInRing, realSource } from "../test-support/sources.js";
 
 describe("water fill patterns", () => {

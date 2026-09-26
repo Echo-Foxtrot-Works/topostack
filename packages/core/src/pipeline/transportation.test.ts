@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, labelDimensions, labelLineSegments, layerToSvg, masterToSvg } from "../index.js";
+import { DEFAULT_PROJECT, generateGeometry, labelDimensions, labelLineSegments, layerToSvg } from "../index.js";
+import { masterToSvg } from "../export/svg.js";
 import { placeLinearLabel } from "../annotate/label-placement.js";
 import { distanceToSegment, gridSource, realSource, scaledForLayers } from "../test-support/sources.js";
 

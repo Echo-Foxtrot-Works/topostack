@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
 import { markerLayerPolygons } from "./marker-placement.js";
 import { pointInPolygon, preparePolygons, signedArea } from "../primitives/geometry2d.js";
-import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, markerCenterForAnchor, markerPolygons, markerSymbolPaths, geoPointToMapPoint, markerSymbolCenterForAnchor, MARKER_SYMBOLS, projectFingerprint, exportBlockReason, type Polygon2D, type Point2D } from "../index.js";
+import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, markerCenterForAnchor, markerPolygons, markerSymbolPaths, MARKER_SYMBOLS, projectFingerprint, exportBlockReason, type Polygon2D, type Point2D } from "../index.js";
+import { geoPointToMapPoint, markerSymbolCenterForAnchor } from "./markers.js";
 
 const box = (left: number, bottom: number, right: number, top: number): Polygon2D => ({ outer: [[left,bottom],[right,bottom],[right,top],[left,top],[left,bottom]].map(([x,y]) => ({ x: x!, y: y! })), holes: [] });
 const poly = (polygon: Polygon2D): MultiPolygon => [[polygon.outer, ...polygon.holes].map(ring => ring.map(({ x,y }): Pair => [x,y]))];

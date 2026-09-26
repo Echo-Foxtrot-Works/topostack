@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { coordinateGridInterval, DEFAULT_PROJECT, engravingToSvg, generateGeometry, type ProjectConfigV1 } from "../index.js";
+import { DEFAULT_PROJECT, generateGeometry, type ProjectConfigV1 } from "../index.js";
+import { engravingToSvg } from "../export/engraving-svg.js";
+import { coordinateGridInterval } from "./coordinate-grid.js";
 import { realSource } from "../test-support/sources.js";
 
 describe("coordinate grid", () => {

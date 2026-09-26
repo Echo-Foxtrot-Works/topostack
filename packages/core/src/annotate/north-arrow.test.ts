@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, labelLineSegments, layerToSvg, masterToSvg, northArrowMarkings } from "../index.js";
+import { DEFAULT_PROJECT, generateGeometry, labelLineSegments, layerToSvg, northArrowMarkings } from "../index.js";
+import { masterToSvg } from "../export/svg.js";
 import { pointInPreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
 import { distanceToSegment, gridSource, realSource, scaledForLayers } from "../test-support/sources.js";
 

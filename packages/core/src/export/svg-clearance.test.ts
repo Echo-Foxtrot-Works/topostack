@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createSyntheticSource, DEFAULT_PROJECT, engravingToSvg, generateGeometry, layerToSvg, masterToSvg, type OperationPath, type Point2D } from "../index.js";
+import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, type OperationPath, type Point2D } from "../index.js";
+import { engravingToSvg } from "./engraving-svg.js";
+import { masterToSvg } from "./svg.js";
 
 const square = (r: number): Point2D[] => [{ x: -r, y: -r }, { x: r, y: -r }, { x: r, y: r }, { x: -r, y: r }, { x: -r, y: -r }];
 const config = { ...DEFAULT_PROJECT, showWaterDepth: false, showRoads: false, showTrails: false, showWater: false, showNorthArrow: false, showScaleBar: false, showAlignmentGuides: false, showElevationLabels: false, optimizeMaterialUse: false };
