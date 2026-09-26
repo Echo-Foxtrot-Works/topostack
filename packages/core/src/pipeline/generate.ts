@@ -979,6 +979,8 @@ const TERRAIN_INDEPENDENT_FIELDS = [
   "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "showElevationLabels",
   "elevationLabelPosition", "textStyle", "showNorthArrow", "northArrowStyle", "northArrowSizeMm",
   "northArrowPlacement", "showScaleBar", "markers", "customLines", "explodedPreview",
+  // Placed, engraved or arranged after the cached layers: graphics cut clones of them.
+  "sheetNesting", "plaque", "scaleBarPlacement", "markerIcons", "customGraphics", "placedGraphics",
 ] satisfies Array<keyof ProjectConfigV1>;
 
 function terrainKey(config: ProjectConfigV1): string {
@@ -1108,7 +1110,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Sparse maps and flat engravings keep the cheap original covering sets.
   const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + config.customLines.length;
   const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= 1_000);
-  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm: config.widthMm / Math.max(1, grid.width - 1) }, fabricationNests);
+  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm: config.widthMm / Math.max(1, grid.width - 1) }, fabricationNests, context.warnings);
   stage("fabrication");
   const transportationLabels = routeMarkings(context, clips, ladder);
   stage("routing");

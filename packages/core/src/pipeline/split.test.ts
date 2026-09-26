@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import polygonClipping from "polygon-clipping";
 import {
   buildFabricationPackage,
   cellEdges,
@@ -12,9 +13,10 @@ import {
   planSeamGrid,
   projectFingerprint,
   seamShift,
-  validateProject,
   splitLayersForWorkArea,
+  validateProject,
   type GeometryIRV1,
+  type GeometryWarning,
   type LayerIR,
   type Point2D,
   type Polygon2D,
@@ -309,6 +311,25 @@ describe("machine work-area splitting", () => {
     }
     // Both layers 1 and 2 cover a seam; the narrow cell swaps between them.
     expect(keyed).toBeGreaterThanOrEqual(2);
+  });
+
+  it("says which layers lost tabs the clipper refused", () => {
+    const [config, source] = conicalProject({ workAreaWidthMm: 160, workAreaHeightMm: 120 });
+    const whole = generateGeometry({ ...config, workAreaWidthMm: 0, workAreaHeightMm: 0 }, source);
+    const cut = () => whole.layers.map((layer) => ({ ...layer, polygons: [...layer.polygons] }));
+    const clean: GeometryWarning[] = [];
+    splitLayersForWorkArea(config, cut(), clean);
+    expect(clean.some(({ code }) => code === "SEAM_TABS_OMITTED")).toBe(false);
+
+    // The first intersection is the bottom layer's covered material, which the tabs need.
+    const refuse = vi.spyOn(polygonClipping, "intersection").mockImplementationOnce(() => { throw new Error("degenerate ring"); });
+    const warnings: GeometryWarning[] = [];
+    try {
+      splitLayersForWorkArea(config, cut(), warnings);
+    } finally {
+      refuse.mockRestore();
+    }
+    expect(warnings.filter(({ code }) => code === "SEAM_TABS_OMITTED")).toEqual([{ code: "SEAM_TABS_OMITTED", message: expect.stringMatching(/on layer 1;/) }]);
   });
 
   it("leaves seams that nothing covers straight", () => {

@@ -1,7 +1,7 @@
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
 import { boundsOverlap, normalizeMultiPolygon, preparePolygons, ringBounds, signedArea, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
-import type { FabricationNest, LayerIR, PaintRegionIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterSurfaceIR } from "../types.js";
+import type { FabricationNest, GeometryWarning, LayerIR, PaintRegionIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterSurfaceIR } from "../types.js";
 
 /**
  * How far a paint window reaches under the layer stacked above it. A stencil
@@ -130,9 +130,10 @@ export function paintStencil(piece: Polygon2D, windows: Polygon2D[], minimumFeat
  * throw on degenerate rings; one sliver of water must not cost the whole
  * generation, so each piece is its own attempt.
  */
-export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], sources: PaintRegionSources, nests: FabricationNest[] = []): PaintRegionIR[] {
+export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], sources: PaintRegionSources, nests: FabricationNest[] = [], warnings: GeometryWarning[] = []): PaintRegionIR[] {
   if (config.outputMode !== "stack" || !config.paintTemplates.length) return [];
   const regions: PaintRegionIR[] = [];
+  const skippedLayers = new Set<number>();
   const refine = (ring: Point2D[]) => (tinyRing(ring, config.minimumFeatureMm) ? undefined : ring);
   // Outlines grow the same way for every layer below their surface, so grow each set once.
   const grown = new Map<string, Polygon2D[]>();
@@ -178,10 +179,18 @@ export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], s
           const sheet = omittedHoles.size ? { outer: polygon.outer, holes: polygon.holes.filter((_, holeIndex) => !omittedHoles.has(holeIndex)) } : polygon;
           regions.push({ kind, layerIndex: layer.index, polygonIndex, polygons, paper: paintStencil(sheet, polygons, config.minimumFeatureMm) });
         } catch {
-          // A degenerate ring the clipper refuses: skip this piece's windows.
+          // A degenerate ring the clipper refuses: skip this piece's windows, and say so.
+          skippedLayers.add(layer.index);
         }
       });
     }
+  }
+  if (skippedLayers.size) {
+    const numbers = [...skippedLayers].sort((a, b) => a - b).map((index) => index + 1);
+    warnings.push({
+      code: "PAINT_WINDOWS_OMITTED",
+      message: `Some paint windows on layer${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")} could not be cut, so those areas are left off the stencils. Paint them by hand, or nudge the design and generate again.`,
+    });
   }
   return regions;
 }
