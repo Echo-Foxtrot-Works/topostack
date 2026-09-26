@@ -19,6 +19,14 @@ const intersects = (source: Pick<SurveySource, "bounds">, bounds: GeoBounds) => 
   return west < bounds.east && east > bounds.west && south < bounds.north && north > bounds.south;
 };
 
+/** Whether a lake survey's box holds this point, to flag search results with surveyed depths nearby. */
+export function surveyedLakeAt(lat: number, lon: number, surveys: ReadonlyArray<{ source: Pick<SurveySource, "bounds"> }> = bathymetryArchives): boolean {
+  return surveys.some(({ source }) => {
+    const [west, south, east, north] = source.bounds;
+    return lon >= west && lon <= east && lat >= south && lat <= north;
+  });
+}
+
 export function areaCoverage(bounds: GeoBounds, sources: {
   terrain?: ReadonlyArray<{ source: TerrainSource }>;
   surveys?: ReadonlyArray<{ source: SurveySource }>;

@@ -55,10 +55,16 @@ export function mergeGeoapify(payloads: unknown[], limit: number): ReturnType<ty
   return ranked.sort((a, b) => b.importance - a.importance || a.order - b.order).slice(0, limit).map(({ place }) => place);
 }
 
+/** Longer queries are cut to this many characters. */
+export const GEOCODE_QUERY_MAX_CHARS = 160;
+/** Results per search; the REST route clamps `limit` to 1 through this. */
+export const GEOCODE_MAX_RESULTS = 8;
+export const GEOCODE_DEFAULT_RESULTS = 5;
+
 export function geocodeLimit(value: string | null): number {
-  if (value === null || value.trim() === "") return 5;
+  if (value === null || value.trim() === "") return GEOCODE_DEFAULT_RESULTS;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(8, Math.trunc(parsed))) : 5;
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(GEOCODE_MAX_RESULTS, Math.trunc(parsed))) : GEOCODE_DEFAULT_RESULTS;
 }
 
 export function isGeocoderConfigured(env: Pick<Env, "GEOCODER_API_KEY">): boolean {
@@ -147,7 +153,7 @@ async function searchGeoapify(request: Request, env: Env, apiKey: string, query:
 
 export async function geocodeResponse(request: Request, env: Env, ctx: ExecutionContext, url: URL, options: GeocodeOptions = {}): Promise<Response> {
   const { bypassCache = false, bypassLimits = false } = options;
-  const query = normalizeGeocodeQuery(url.searchParams.get("q") ?? "").slice(0, 160).trim();
+  const query = normalizeGeocodeQuery(url.searchParams.get("q") ?? "").slice(0, GEOCODE_QUERY_MAX_CHARS).trim();
   const limit = geocodeLimit(url.searchParams.get("limit"));
   if (query.length < 2) return json({ error: "Query must contain at least two characters." }, { status: 400 });
   const key = await cacheKey(env, query, limit);

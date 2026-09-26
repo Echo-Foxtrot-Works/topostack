@@ -42,7 +42,7 @@ This page is for people who change the code.
 `route()` in `workers/map-api/src/index.ts` handles `/mcp` in this order:
 
 1. **`OPTIONS`** answers `204` with CORS headers for every path, before any budget is charged.
-2. **The agent budget.** `withinAgentBudget` charges `AGENT_LIMITER` under the key `<client>:agent`, then `AGENT_GLOBAL_LIMITER`. A refusal answers `429` with `retry-after: 60`.
+2. **The agent budget.** `withinAgentBudget` charges `AGENT_LIMITER` under the key `<client>:agent`, then `AGENT_GLOBAL_LIMITER`. A refusal answers `429` with `retry-after: 60`. That header is in `access-control-expose-headers`, so browser clients can read it.
 3. **`mcpResponse`** (`src/mcp/server.ts`) handles the request.
 
 The method check happens inside `mcpResponse`, so a stray `GET` still spends one agent token before it gets `405`.
@@ -76,8 +76,8 @@ Every tool is read-only and idempotent. `readOnly()` in `tools.ts` builds the an
 
 | Tool | Runs |
 | --- | --- |
-| `search_places` | `geocodeResponse` in process, so the geocoder cache and `GEOCODE_LIMITER` apply. It suggests a `widthKm` from the result type (`WIDTH_BY_TYPE`) and flags points inside a lake-survey box. |
-| `check_coverage` | `areaCoverage` for the area, validated through `parseProjectRequest` with a placeholder 100 × 100 mm size |
+| `search_places` | `geocodeResponse` in process, so the geocoder cache and `GEOCODE_LIMITER` apply. It suggests a `widthKm` from the result type (`WIDTH_BY_TYPE`) and flags points inside a lake-survey box (`surveyedLakeAt`). Query and limit bounds are the route's constants (`GEOCODE_QUERY_MAX_CHARS`, `GEOCODE_MAX_RESULTS`). The REST route truncates and clamps out-of-range values, while the tool rejects them so the model can correct its call. |
+| `check_coverage` | `areaGround` then `coverageResult`, the same code as the `lat`/`lon`/`widthKm` form of `GET /v1/coverage` |
 | `plan_model` | `resolveProjectRequest` then `planProject`, the same code as `POST /v1/projects/plan` |
 | `preview_model` | The same as `plan_model`, plus `_meta.ui.resourceUri`, which opens the MCP App |
 | `create_studio_link` | `linkFor`, the same code as `POST /v1/projects/link` |

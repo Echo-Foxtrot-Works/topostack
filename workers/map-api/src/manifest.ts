@@ -1,4 +1,4 @@
-import { PROTOMAPS_BASEMAP_VERSION, PROTOMAPS_SNAPSHOT } from "./dataset";
+import { PROTOMAPS_BASEMAP_VERSION, PROTOMAPS_SNAPSHOT, VECTOR_MAX_ZOOM } from "./dataset";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
 
 interface ManifestSource {
@@ -40,7 +40,7 @@ export function buildManifest(datasetVersion: string, terrainSources: ReadonlyAr
     schemaVersion: 1,
     capabilities: { archiveReleases: 1, upstreamProbes: 1 },
     datasetVersion,
-    coverage: { projection: "Web Mercator", minLatitude: -85.0511, maxLatitude: 85.0511, landOnly: true, vectorMaxZoom: 12 },
+    coverage: { projection: "Web Mercator", minLatitude: -85.0511, maxLatitude: 85.0511, landOnly: true, vectorMaxZoom: VECTOR_MAX_ZOOM },
     sources: [
       { name: "Mapzen Terrain Tiles", url: "https://registry.opendata.aws/terrain-tiles/", attribution: "See Mapzen source attribution" },
       { name: "HydroLAKES v1.0", url: "https://www.hydrosheds.org/products/hydrolakes", attribution: "CC BY 4.0 — Messager et al. (2016)" },
