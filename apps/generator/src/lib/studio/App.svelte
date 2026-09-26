@@ -3,7 +3,7 @@
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace } from "@loidolt/theme-svelte";
-  import { sourceRequirements, DEFAULT_PROJECT, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
+  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
   import { assembleWater, boundsForProject, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
@@ -385,7 +385,7 @@
 
   function setLakeDepth(hylakId: number, shown: number): Promise<void> | undefined {
     if (!Number.isFinite(shown) || shown <= 0) return undefined;
-    const depthM = project.units === "imperial" ? shown / 3.280839895 : shown;
+    const depthM = project.units === "imperial" ? shown / FEET_PER_METER : shown;
     return updateFabrication({ waterDepthOverrides: { ...project.waterDepthOverrides, [String(hylakId)]: depthM } });
   }
 
@@ -1134,6 +1134,8 @@
   <meta name="theme-color" content={themeColor} />
 </svelte:head>
 
+{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
+
 {#snippet locationSearch()}
   <!-- One dialog for both shells: the embedded and standalone branches rendered
        identical copies, so a prop or handler change had to be made twice. -->
@@ -1143,7 +1145,7 @@
 {#if embeddedInPlatform}
   {#if AtommWorkbench}<AtommWorkbench ready={atommReady} blockedReason={previewBusy ? undefined : activeSource.sourceKind !== "real" || terrainDataStale ? "Export is available once the terrain for this area has loaded." : exportBlockedBy} preparing={exportPhase === "preparing"} {exportPhase} {exportTitle} {exportDetail}>
     {#snippet leadHeader()}<ProjectControls />{/snippet}
-    {#snippet lead()}<OutputSwitch />{#if mode === "custom"}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{:else}<SetupSection /><CustomDataSection />{/if}{/snippet}
+    {#snippet lead()}<OutputSwitch />{#if mode === "custom"}{@render customDataTools()}{:else}<SetupSection /><CustomDataSection />{/if}{/snippet}
     {#snippet generate()}{#if mode !== "custom"}<GenerationDock />{/if}{/snippet}
     {#snippet parameterHeader()}
       <UnitSwitch />
@@ -1189,7 +1191,7 @@
             <h1>Bring your own data.</h1>
             <p>Charts you trace, points you place, routes you import. Markers and paths join the project as you add them; a chart carves a lake only when you say so.</p>
           </div>
-          {#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}
+          {@render customDataTools()}
         {:else}
           <div class="panel-intro">
             <span class="section-kicker panel-eyebrow">Project controls</span>

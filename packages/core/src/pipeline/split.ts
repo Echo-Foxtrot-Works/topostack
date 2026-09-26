@@ -4,6 +4,7 @@ import {
   boundsOverlap,
   normalizeMultiPolygon,
   ringBounds,
+  toClipPolygon,
   toRing,
 } from "../primitives/geometry2d.js";
 import { MAX_SEAM_DIVISIONS, MAX_WORK_AREA_PIECES } from "../types.js";
@@ -240,10 +241,6 @@ function closedRect(minX: number, minY: number, maxX: number, maxY: number): Poi
   ];
 }
 
-function polygonRings(polygon: Polygon2D): Polygon {
-  return [toRing(polygon.outer), ...polygon.holes.map(toRing)];
-}
-
 function polygonBounds(polygon: Polygon2D): Bounds2D {
   return ringBounds(polygon.outer);
 }
@@ -307,7 +304,7 @@ function mergeSlivers(pieces: CellPiece[], minimumFeatureMm: number, grid: SeamP
       .sort((left, right) => right.shared - left.shared);
     for (const { piece: target } of candidates) {
       const merged = normalizeMultiPolygon(
-        polygonClipping.union(polygonRings(sliver.polygon), polygonRings(target.polygon)) as MultiPolygon,
+        polygonClipping.union(toClipPolygon(sliver.polygon), toClipPolygon(target.polygon)) as MultiPolygon,
       );
       // Corner-touching pieces union into two polygons: that is not one piece.
       if (merged.length !== 1) continue;
@@ -419,13 +416,13 @@ function splitLayer(config: ProjectConfigV1, layer: LayerIR, grid: SeamPlanV1, c
   const pieces: CellPiece[] = [];
   const splittableBounds = unionBounds(splittable.map(polygonBounds));
   if (splittableBounds) {
-    const splittableRings = splittable.map(polygonRings) as MultiPolygon;
+    const splittableRings = splittable.map(toClipPolygon) as MultiPolygon;
     // Tabs only go where the next layer hides them. An island kept whole is
     // never crossed by a seam, so only splittable material can carry one.
     let solid: MultiPolygon | undefined;
     if (config.seamTabs && covering.length) {
       try {
-        solid = polygonClipping.intersection(splittableRings, covering.map(polygonRings) as MultiPolygon) as MultiPolygon;
+        solid = polygonClipping.intersection(splittableRings, covering.map(toClipPolygon) as MultiPolygon) as MultiPolygon;
       } catch {
         solid = undefined;
       }

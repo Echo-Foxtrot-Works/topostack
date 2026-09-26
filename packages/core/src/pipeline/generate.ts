@@ -1,7 +1,7 @@
 import { alignmentGuideMarkings } from "./alignment.js";
 import { executeGeometryTask, type GeometryBatch, type GeometryTaskResult } from "./generation-tasks.js";
 import { addMaterialNests } from "./nesting.js";
-import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToMm, layerForElevation, roundContourRing, sampleElevation, simplify } from "./contours.js";
+import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToMm, layerForElevation, roundContourRing, sampleElevation } from "./contours.js";
 import { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "./stack-plan.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
 import { fabricationLabel, junctionRing, longestPath, polylineLength, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
@@ -20,8 +20,9 @@ import {
   pointInRing,
   type PreparedPolygons,
   preparePolygons,
+  simplify,
+  toMultiPolygon,
   toPoint,
-  toRing,
 } from "../primitives/geometry2d.js";
 import { labelDimensions, labelGeometry } from "../annotate/labels.js";
 import { addLabelObstacles, indexLabelLayer, placeElevationLabelStack, selectElevationLabels, type CoordinatedElevationLabel, placeLinearLabel } from "../annotate/label-placement.js";
@@ -84,9 +85,8 @@ function concatPrepared(upper: PreparedPolygons, lower: PreparedPolygons): Prepa
 function unionPrepared(upper: PreparedPolygons, lower: PreparedPolygons): PreparedPolygons {
   if (!upper.polygons.length) return lower;
   if (!lower.polygons.length) return upper;
-  const multi = (polygons: Polygon2D[]): MultiPolygon => polygons.map(({ outer, holes }) => [toRing(outer), ...holes.map(toRing)]);
   try {
-    return preparePolygons(normalizeMultiPolygon(polygonClipping.union(multi(upper.polygons), multi(lower.polygons))));
+    return preparePolygons(normalizeMultiPolygon(polygonClipping.union(toMultiPolygon(upper.polygons), toMultiPolygon(lower.polygons))));
   } catch {
     // This is only an acceleration structure. The original rings remain a
     // complete, exact covering set if a union cannot resolve coincident edges.
@@ -427,7 +427,7 @@ function contourLayers({ config, flatEngraving, clip, warnings }: GenerationCont
 }
 
 function clipToCrop(polygon: Polygon2D, clip: Point2D[], minimumFeatureMm: number): Polygon2D[] {
-  return clipContours([[toRing(polygon.outer), ...polygon.holes.map(toRing)]] as MultiPolygon, clip, minimumFeatureMm);
+  return clipContours(toMultiPolygon([polygon]), clip, minimumFeatureMm);
 }
 
 /**
@@ -873,9 +873,8 @@ function cutPlacedGraphics(context: GenerationContext, layers: LayerIR[]): void 
     }
     for (const [layerIndex, cuts] of cutsByLayer) {
       const layer = cutLayers[layerIndex]!;
-      const multi = (polygons: Polygon2D[]): MultiPolygon => polygons.map(({ outer, holes }) => [toRing(outer), ...holes.map(toRing)]);
       layer.polygons = normalizeMultiPolygon(
-        polygonClipping.difference(multi(layer.polygons), multi(cuts)) as MultiPolygon,
+        polygonClipping.difference(toMultiPolygon(layer.polygons), toMultiPolygon(cuts)) as MultiPolygon,
         (ring) => (removeTinyRing(ring, config.minimumFeatureMm) ? undefined : ring),
       );
     }

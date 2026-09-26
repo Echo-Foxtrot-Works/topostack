@@ -1,5 +1,5 @@
 import { mapTiles } from "$lib/domain/tile-requests";
-import type { ElevationGrid, GeoBounds, ProjectConfigV1, SourceAttribution, SourceBundleV1, WaterAreaV1 } from "@topostack/core";
+import { EARTH_RADIUS_M, type ElevationGrid, type GeoBounds, type ProjectConfigV1, type SourceAttribution, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { createArchive } from "$lib/domain/archive";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { latToWorldY, lonToWorldX } from "$lib/domain/tile-math";
@@ -99,7 +99,7 @@ async function loadRaster(apiBase: string, bounds: GeoBounds, width: number, hei
       }
     }
     if (!covered) return { areas, status: "not-covered" };
-    const sampleSpacingM = 2 * Math.PI * 6_371_008.8 * Math.cos((bounds.north + bounds.south) / 2 * Math.PI / 180) / (256 * 2 ** z);
+    const sampleSpacingM = 2 * Math.PI * EARTH_RADIUS_M * Math.cos((bounds.north + bounds.south) / 2 * Math.PI / 180) / (256 * 2 ** z);
     const bathymetry = { width, height, depthsM, sampleSpacingM };
     return { areas: areas.map((area) => ({ ...area, bathymetry })), status: "available" };
   } catch (error) {

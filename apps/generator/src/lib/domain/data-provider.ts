@@ -2,7 +2,7 @@ import { loadProviderOutlines, resolveLakeOutlines } from "$lib/domain/lake-outl
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
-import { boundsForProject, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type GeoBounds, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type GeoBounds, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
 import { createArchive, networkSignal } from "$lib/domain/archive";
 import { classifyRings, VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
@@ -11,7 +11,7 @@ import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { applyPreferredTerrain } from "$lib/domain/terrain-sources";
 import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
-import { dataZoom, fittingTileWindow, groundWidthM, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
+import { dataZoom, fittingTileWindow, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { assembleWater } from "$lib/domain/water-assembly";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
@@ -296,7 +296,7 @@ async function loadHydroLakeAreas(bounds: GeoBounds, requestedZoom: number, conf
   // basin can mean anything, and a tile over Finland or northern Canada holds
   // thousands that are not. Filtering on the published area first keeps the
   // dissolve off geometry the model could never show.
-  const mmPerMeter = config.widthMm / Math.max(1, groundWidthM(bounds));
+  const mmPerMeter = config.widthMm / Math.max(1, groundWidthMFor(bounds));
   const minimumAreaKm2 = ((config.minimumFeatureMm * 2 / mmPerMeter) / 1000) ** 2;
 
   // One lake spans many tiles, so its pieces are gathered by id and unioned.
@@ -460,7 +460,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     signal.throwIfAborted();
     onStage?.("preparing");
     const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthM(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth

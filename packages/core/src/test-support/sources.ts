@@ -1,4 +1,5 @@
 import { createSyntheticSource, DEFAULT_PROJECT, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
+import { EARTH_RADIUS_M } from "../primitives/units.js";
 
 export function realSource(project = DEFAULT_PROJECT) {
   return { ...createSyntheticSource(project, 48), sourceKind: "real" as const, imagerySources: ["srtm/N46W122.tif"] };
@@ -56,7 +57,6 @@ export function lakeArea(overrides: Partial<WaterAreaV1> = {}): WaterAreaV1 {
   };
 }
 
-export const EARTH_RADIUS_M = 6_371_008.8;
 
 /**
  * Layer count is derived from map scale, so a test that needs an exact count

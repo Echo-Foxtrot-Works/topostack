@@ -1,5 +1,5 @@
-import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { boundsOverlap, normalizeMultiPolygon, preparePolygons, ringBounds, signedArea, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
+import polygonClipping from "polygon-clipping";
+import { boundsOverlap, normalizeMultiPolygon, preparePolygons, ringBounds, signedArea, toMultiPolygon, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
 import type { FabricationNest, LayerIR, PaintRegionIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterSurfaceIR } from "../types.js";
 
@@ -73,10 +73,6 @@ const REGION_SOURCES: Record<PaintRegionKind, (layerIndex: number, sources: Pain
     ...grow(flatWater.filter((area) => area.layerIndex > layerIndex).flatMap((area) => area.polygons)),
   ],
 };
-
-function toMultiPolygon(polygons: Polygon2D[]): MultiPolygon {
-  return polygons.map((polygon) => [toRing(polygon.outer), ...polygon.holes.map(toRing)]) as MultiPolygon;
-}
 
 function tinyRing(points: Point2D[], minimumFeatureMm: number): boolean {
   if (points.length < 4) return true;
