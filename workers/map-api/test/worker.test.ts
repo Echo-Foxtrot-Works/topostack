@@ -501,4 +501,8 @@ describe("optional HRDEM terrain archive", () => {
     const manifest = await response.json() as { sources: unknown[] };
     expect(manifest.sources).toContainEqual(expect.objectContaining({ id: "nrcan-hrdem-alexander-v1", optional: true, verticalDatum: "CGVD2013" }));
   });
+  it("advertises the pinned FAA aviation cycle as optional", async () => {
+    const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
+    expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^faa-aviation-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/aviation.pmtiles", optional: true }));
+  });
 });

@@ -1,5 +1,6 @@
 import { PROTOMAPS_BASEMAP_VERSION, PROTOMAPS_SNAPSHOT, VECTOR_MAX_ZOOM } from "./dataset";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
+import type { AviationSources } from "@topostack/data-contracts/aviation-tiles";
 
 interface ManifestSource {
   name: string;
@@ -35,7 +36,11 @@ function bathymetryEntry(source: SurveySource, archive: string): ManifestSource 
   return { name: source.name, url: source.url, attribution: source.license, archive };
 }
 
-export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>) {
+function aviationEntry(sources: AviationSources): ManifestSource {
+  return { id: sources.dataset, name: `${sources.name}, NASR cycle ${sources.nasrCycle}`, url: sources.url, license: sources.license, version: sources.nasrCycle, archive: "/v1/aviation.pmtiles", optional: true, maxZoom: sources.maxZoom };
+}
+
+export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>, aviation?: AviationSources) {
   return {
     schemaVersion: 1,
     capabilities: { archiveReleases: 1, upstreamProbes: 1 },
@@ -49,6 +54,7 @@ export function buildManifest(datasetVersion: string, terrainSources: ReadonlyAr
       { name: "GLOBathy", url: "https://doi.org/10.1038/s41597-022-01132-9", attribution: "CC0 1.0 — Khazaei et al. (2022)" },
       { name: `Protomaps Basemap ${PROTOMAPS_SNAPSHOT}`, url: `https://build.protomaps.com/${PROTOMAPS_SNAPSHOT}.pmtiles`, version: PROTOMAPS_BASEMAP_VERSION, license: "ODbL Produced Work" },
       { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright", license: "ODbL" },
+      ...(aviation ? [aviationEntry(aviation)] : []),
     ] satisfies ManifestSource[],
   };
 }

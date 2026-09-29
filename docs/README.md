@@ -40,6 +40,7 @@
 - [NOAA lake depth integration plan](noaa-lake-integration-plan.md) — phased local runbook for adding NBS grids and ENC contours for every NOAA-covered lake.
 - [Depth charts traced into bathymetry](depth-chart-tracing.md) — chart record contract, how traced charts carve, and the staged rollout.
 - [NRCan HRDEM terrain](hrdem-terrain.md)
+- [FAA aviation data](faa-aviation.md) — airspace, airports, runways, navaids, special use airspace and obstacles: sources, archive, and the per-cycle refresh. The phased plan is [plans/aviation-layer.md](plans/aviation-layer.md).
 - [Curated terrain coverage](terrain-coverage.md)
 - [Release acceptance and rollback](release-acceptance.md)
 - [Changelog and releases](changelog.md) — writing fragments, the automated release commit, tags, and the /changelog page.

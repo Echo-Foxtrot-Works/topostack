@@ -1,6 +1,6 @@
 import { PROJECT_REQUEST_LIMITS, PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
 import { buildManifest } from "../manifest";
-import { bathymetryArchives, terrainArchives } from "../routes/archive";
+import { aviationSources, bathymetryArchives, terrainArchives } from "../routes/archive";
 import { PREVIEW_URI, previewListing, readPreview } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -75,7 +75,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "TopoStack data sources and licenses",
     description: "Every terrain, lake and map source TopoStack draws from, with its license and coverage.",
     mimeType: "application/json",
-    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives), null, 2),
+    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives, aviationSources), null, 2),
   },
   {
     uri: "topostack://schema/project-request-v1",

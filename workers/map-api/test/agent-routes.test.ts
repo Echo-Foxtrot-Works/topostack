@@ -139,6 +139,13 @@ describe("GET /v1/coverage", () => {
     expect(body.attribution.sources.length).toBeGreaterThan(4);
   });
 
+  it("reports FAA aviation data only inside US coverage", async () => {
+    const denver = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=39.86&lon=-104.67&widthKm=20"), env, context)).json<{ aviation: { nasrCycle: string } | null }>();
+    expect(denver.aviation?.nasrCycle).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const ontario = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<{ aviation: unknown }>();
+    expect(ontario.aviation).toBeNull();
+  });
+
   it("accepts a center and width, and refuses anything else", async () => {
     expect((await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=46.85&lon=-121.76&widthKm=10"), env, context)).status).toBe(200);
     for (const query of ["", "bbox=1,2,3", "bbox=10,0,5,1", "lat=91&lon=0&widthKm=1"]) {

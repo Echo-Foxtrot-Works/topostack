@@ -33,6 +33,7 @@ export const COVERAGE_SCHEMA: Schema = {
     terrain: { type: "object", required: ["base", "highResolution"], properties: { base: { type: "string" }, highResolution: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, resolutionM: { type: "number" }, license: { type: "string" } } } } } },
     lakeSurveys: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, license: { type: "string" } } } },
     roadsAndWater: { type: "string" },
+    aviation: { type: ["object", "null"], description: "FAA aeronautical data (US only; not for navigation), or null outside FAA coverage.", properties: { name: { type: "string" }, nasrCycle: { type: "string" }, license: { type: "string" } } },
     notes: { type: "array", items: { type: "string" } },
   },
 };
