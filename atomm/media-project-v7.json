@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "id": "topostack-crater-automatic-depth",
+  "name": "Crater Lake",
+  "location": {
+    "lat": 42.9446,
+    "lon": -122.109,
+    "label": "Crater Lake, Oregon",
+    "zoom": 11,
+    "bounds": {
+      "west": -122.2531955566406,
+      "east": -121.96480444335936,
+      "north": 43.01492844108113,
+      "south": 42.87419112307365
+    }
+  },
+  "cropShape": "rectangle",
+  "units": "metric",
+  "outputMode": "stack",
+  "widthMm": 406.4,
+  "heightMm": 270.933,
+  "engravingContourCount": 12,
+  "engravingIndexInterval": 5,
+  "showEngravingBorder": true,
+  "lineStyle": {
+    "contourMm": 0.16,
+    "indexContourMm": 0.32,
+    "majorRoadMm": 0.38,
+    "localRoadMm": 0.26,
+    "trailMm": 0.22,
+    "waterMm": 0.3,
+    "boundaryMm": 0.24,
+    "coordinateGridMm": 0.16,
+    "annotationMm": 0.2,
+    "borderMm": 0.34,
+    "trailPattern": "dashed",
+    "roadStyle": "centerline",
+    "majorRoadSpacingMm": 0.8,
+    "roadCap": "round"
+  },
+  "materialThicknessMm": 3.175,
+  "verticalExaggeration": 4,
+  "minimumFeatureMm": 0.8,
+  "smoothing": 1,
+  "showRoads": true,
+  "showTrails": true,
+  "showTransportationLabels": false,
+  "showWater": true,
+  "waterFillPattern": "none",
+  "showBoundaries": false,
+  "showCoordinateGrid": false,
+  "showWaterDepth": true,
+  "waterDepthExaggeration": 1.75,
+  "fitLakeDepth": false,
+  "waterDepthOverrides": {},
+  "showAlignmentGuides": true,
+  "optimizeMaterialUse": true,
+  "glueMarginMm": 8,
+  "laserKerfMm": 0.15,
+  "showElevationLabels": true,
+  "elevationLabelPosition": {
+    "x": -0.55,
+    "y": 0.55
+  },
+  "textStyle": {
+    "font": "technical",
+    "sizeMm": 3.1
+  },
+  "showNorthArrow": true,
+  "northArrowStyle": "classic",
+  "northArrowSizeMm": 24,
+  "northArrowPlacement": {
+    "anchor": "bottom-right",
+    "offset": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "showScaleBar": true,
+  "markers": [],
+  "customLines": [],
+  "explodedPreview": 0,
+  "sheetNesting": {
+    "sheetWidthMm": 600,
+    "sheetHeightMm": 400,
+    "marginMm": 3,
+    "spacingMm": 2,
+    "rotation": "quarter",
+    "timeBudgetS": 5,
+    "seed": 1
+  }
+}

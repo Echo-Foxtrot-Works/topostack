@@ -672,3 +672,80 @@ test("Atomm shows live nesting progress, keeps the current layout, and remembers
   await expect(studio.getByRole("spinbutton", { name: "Material height", exact: true })).toHaveValue("400");
   await expect(studio.locator(".export-layout-note")).toContainText("700 × 400 mm", { timeout: 20_000 });
 });
+
+test("Atomm nesting material aligns card borders, headings and fields with its neighbors", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.route("**/v1/**", route => route.abort());
+  await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: `window.atomm = { lifecycle: { on() {} }, app: { getLocale: async () => 'en' } };` }));
+  await page.route("**/atomm-alignment", route => route.fulfill({ contentType: "text/html", body: '<body style="margin:0"><iframe src="/studio" style="width:100%;height:100vh;border:0;display:block"></iframe></body>' }));
+  await page.goto("/atomm-alignment");
+  const studio = page.frameLocator("iframe");
+  await expect(studio.locator(".status-line")).toContainText("Real terrain ready", { timeout: 45_000 });
+  await studio.getByRole("radio", { name: "Export", exact: true }).click();
+  await studio.getByRole("button", { name: "Cut size", exact: true }).click();
+  for (const direction of ["ltr", "rtl"]) {
+    await studio.locator("html").evaluate((el, value) => el.setAttribute("dir", value), direction);
+    for (const width of [1600, 1280, 700, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const alignment = await studio.locator(".gen-params-content").evaluate(el => {
+        const rect = (selector: string) => el.querySelector(selector)!.getBoundingClientRect();
+        const material = rect(".atomm-material-size"), size = rect('[aria-labelledby="atomm-size-title"]');
+        const heading = rect(".atomm-material-size h3"), referenceHeading = rect("#atomm-size-title");
+        const field = rect('.atomm-material-size .number-input'), referenceField = rect('#section-size .number-input');
+        const label = rect('.atomm-material-size .ldt-field__label'), referenceLabel = rect('#section-size .ldt-field__label');
+        return [material.left - size.left, material.right - size.right, heading.left - referenceHeading.left,
+          heading.right - referenceHeading.right, field.left - referenceField.left, field.right - referenceField.right,
+          label.left - referenceLabel.left, label.right - referenceLabel.right];
+      });
+      for (const delta of alignment) expect(Math.abs(delta)).toBeLessThan(1);
+      await page.screenshot({ path: testInfo.outputPath(`material-alignment-${direction}-${width}.png`) });
+    }
+  }
+});
+
+test("Atomm expanded parameter labels and control edges align in layered and flat modes", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.route("**/v1/**", route => route.abort());
+  await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: `window.atomm = { lifecycle: { on() {} }, app: { getLocale: async () => 'en' } };` }));
+  await page.route("**/atomm-field-alignment", route => route.fulfill({ contentType: "text/html", body: '<body style="margin:0"><iframe src="/studio" style="width:100%;height:100vh;border:0;display:block"></iframe></body>' }));
+  await page.goto("/atomm-field-alignment");
+  const studio = page.frameLocator("iframe");
+  await expect(studio.locator(".status-line")).toContainText("Real terrain ready", { timeout: 45_000 });
+  for (const mode of ["Layered relief", "Flat engraving"]) {
+    await studio.getByRole("radio", { name: mode, exact: true }).click();
+    await studio.locator(".gen-params-content").evaluate(el => {
+      el.querySelectorAll<HTMLButtonElement>('.section-disclosure[aria-expanded="false"]').forEach(button => button.click());
+    });
+    const customize = studio.locator(".linework-customize");
+    if (await customize.getAttribute("aria-expanded") === "false") await customize.click();
+    await expect(studio.locator(".linework-controls .field-row")).toHaveCount(mode === "Flat engraving" ? 10 : 7);
+    for (const direction of ["ltr", "rtl"]) {
+      await studio.locator("html").evaluate((el, value) => el.setAttribute("dir", value), direction);
+      for (const width of [1600, 1280, 700, 390, 320]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const offsets = await studio.locator(".gen-params-content").evaluate(el => {
+          const rtl = getComputedStyle(el).direction === "rtl";
+          const referenceControl = el.querySelector("#section-size .number-input")!.getBoundingClientRect();
+          const referenceLabel = el.querySelector("#section-size .ldt-field__label")!.getBoundingClientRect();
+          return [...el.querySelectorAll(".field-row, .range-field, .atomm-switch-row")].flatMap(row => {
+            if (!row.getBoundingClientRect().height) return [];
+            const control = row.querySelector(".number-input, select, .switch");
+            const label = row.querySelector(".ldt-field__label, .range-field__label, label, .toggle-label");
+            if (!control || !label) return [];
+            const c = control.getBoundingClientRect(), l = label.getBoundingClientRect();
+            return [{ label: label.textContent?.trim(), labelOffset: rtl ? referenceLabel.right - l.right : l.left - referenceLabel.left,
+              controlOffset: rtl ? c.left - referenceControl.left : referenceControl.right - c.right }];
+          });
+        });
+        expect(offsets.length).toBeGreaterThan(20);
+        for (const row of offsets) {
+          const context = `${mode}, ${direction}, ${width}px: ${row.label}`;
+          expect(Math.abs(row.labelOffset), `${context} label`).toBeLessThan(1);
+          expect(Math.abs(row.controlOffset), `${context} control`).toBeLessThan(1);
+        }
+      }
+    }
+    await page.setViewportSize({ width: 1280, height: 1000 });
+  }
+});

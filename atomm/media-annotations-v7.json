@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "My Crater Lake marker"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.109,
+          42.9446
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Illustrative custom path"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -122.16,
+            42.92
+          ],
+          [
+            -122.14,
+            42.94
+          ],
+          [
+            -122.12,
+            42.95
+          ]
+        ]
+      }
+    }
+  ]
+}

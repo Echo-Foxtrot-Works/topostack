@@ -1,0 +1,1567 @@
+{
+  "artifact": "topostack-atomm-v0.7.1.zip",
+  "sha256": "faaf772af8e4298d730e80cf75068e57cfbd5ac135506461a42410d8897a0c69",
+  "injectedCss": false,
+  "cases": [
+    {
+      "browser": "chromium",
+      "dir": "ltr",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "ltr",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "ltr",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "ltr",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "ltr",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "rtl",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "rtl",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "rtl",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "rtl",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "dir": "rtl",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "ltr",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "ltr",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "ltr",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "ltr",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "ltr",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "rtl",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "rtl",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "rtl",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 3.0517578125e-05
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 3.0517578125e-05
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 1.52587890625e-05
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 1.52587890625e-05
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "rtl",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 1.52587890625e-05
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 1.52587890625e-05
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": -1.52587890625e-05
+        }
+      ]
+    },
+    {
+      "browser": "firefox",
+      "dir": "rtl",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 1.52587890625e-05
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "ltr",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "ltr",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "ltr",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "ltr",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "ltr",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "rtl",
+      "width": 1600,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "rtl",
+      "width": 1280,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "rtl",
+      "width": 700,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "rtl",
+      "width": 390,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    },
+    {
+      "browser": "webkit",
+      "dir": "rtl",
+      "width": 320,
+      "offsets": [
+        {
+          "label": "Limit depth layers",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Engraving font",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Major roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Local roads",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Trails",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Water",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Boundaries",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Lat / long grid",
+          "controlOffset": 0,
+          "labelOffset": 0
+        },
+        {
+          "label": "Labels & guides",
+          "controlOffset": 0,
+          "labelOffset": 0
+        }
+      ]
+    }
+  ]
+}
