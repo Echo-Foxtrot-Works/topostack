@@ -4,6 +4,7 @@ import { addMaterialNests } from "./nesting.js";
 import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToMm, layerForElevation, roundContourRing, sampleElevation } from "./contours.js";
 import { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "./stack-plan.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
+import { aviationFeatures, aviationRequested, aviationSymbolSize, type AviationLabelCandidate } from "./aviation.js";
 import { fabricationLabel, junctionRing, longestPath, polylineLength, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
 import { assertGeographicBounds, validateProject } from "./validate.js";
 import { projectFingerprint } from "./fingerprint.js";
@@ -58,6 +59,9 @@ import type {
 } from "../types.js";
 
 const TRANSPORTATION_LABEL_LIMIT = 80;
+const AVIATION_LABEL_LIMIT = 60;
+/** Space between an aviation symbol and its identifier. */
+const AVIATION_LABEL_GAP_MM = 0.6;
 
 
 /** Each layer's material and the material stacked above it, indexed once for routing many markings. */
@@ -239,6 +243,8 @@ interface GenerationContext {
   /** Closed crop outline in artwork millimeters. */
   clip: Point2D[];
   warnings: GeometryWarning[];
+  /** Enabled aviation detail as line features, and the identifier labels placed after routing. */
+  aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[] };
 }
 
 /** The elevation ladder every layer is contoured from, plus the grid it is cut from. */
@@ -286,6 +292,20 @@ function addSourceWarnings({ config, source, usesWaterDepth, warnings }: Generat
     code: "VECTOR_DATA_UNAVAILABLE",
     message: "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
   });
+  if (aviationRequested(config)) {
+    if (source.aviationStatus === "partial") warnings.push({
+      code: "AVIATION_DATA_PARTIAL",
+      message: "The aviation feature limit was reached, so some airspace, airports, navaids, or obstacles may be missing. Narrow the map area or turn off some aviation details.",
+    });
+    if (source.aviationStatus === "unavailable") warnings.push({
+      code: "AVIATION_DATA_UNAVAILABLE",
+      message: "FAA aviation data is unavailable. This project cannot be exported until the data is restored or aviation details are turned off.",
+    });
+    if (source.aviationStatus === "not-covered") warnings.push({
+      code: "AVIATION_NOT_COVERED",
+      message: "FAA aviation data covers only the United States and its territories, so this area has no aviation detail.",
+    });
+  }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({
     code: "LAKE_DATA_UNAVAILABLE",
     message: "Lake depth data is unavailable. Disable water depth or regenerate after the service is restored before exporting.",
@@ -488,11 +508,14 @@ function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1): boole
     (feature.kind === "water" && config.showWater) ||
     (feature.kind === "boundary" && config.showBoundaries) ||
     (feature.kind === "grid" && config.showCoordinateGrid) ||
+    // Aviation lines are filtered by class when they are built (aviationFeatures).
+    feature.kind === "aviation" ||
     feature.kind === "contour" || feature.kind === "label" || feature.kind === "guide";
 }
 
 /** Source, custom, and graticule features with their ids made unique among repeated source ids. */
-function mapFeatures({ config, source }: GenerationContext, modelGrid: ElevationGrid): Array<{ feature: MarkingFeature; featureId: string }> {
+function mapFeatures(context: GenerationContext, modelGrid: ElevationGrid): Array<{ feature: MarkingFeature; featureId: string }> {
+  const { config, source } = context;
   const customLineMarkings: MarkingFeature[] = config.customLines.map((line, index) => ({
     id: `custom-data-line-${index}`,
     kind: line.kind,
@@ -502,6 +525,7 @@ function mapFeatures({ config, source }: GenerationContext, modelGrid: Elevation
   }));
   const mapMarkings = [
     ...source.markings,
+    ...context.aviation.lines,
     ...customLineMarkings,
     ...(config.showCoordinateGrid ? coordinateGridMarkings(config, source.bounds, modelGrid) : []),
   ];
@@ -543,7 +567,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
   }
   clipPolyline(feature.points, baseMaterial)
     .filter((points) => feature.kind !== "water" || polylineLength(points) >= config.minimumFeatureMm)
-    .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, points }));
+    .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), points }));
 }
 
 function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], ladder: ElevationLadder, labels: TransportationLabelCandidates): void {
@@ -571,12 +595,14 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
   // leaving the score line visibly short of the step edge. Clipping the full
   // path against each exposed layer footprint makes adjacent pieces meet at
   // the exact contour intersection, independent of source vertex spacing.
-  if ((feature.kind === "boundary" || feature.kind === "grid" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
+  // Aviation detail lies on the ground wherever it is, so it takes the same path.
+  if ((feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
     clips.forEach(({ layer, material, covering }) => {
       clipPolyline(feature.points, material, covering).forEach((points, clipIndex) => layer.markings.push({
         id: `${featureId}-${layer.index}-terrain-${clipIndex}`,
         operation: feature.operation,
         kind: feature.kind,
+        ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}),
         points,
       }));
     });
@@ -744,6 +770,39 @@ function placeTransportationLabels(config: ProjectConfigV1, labels: Transportati
     }
   }
   return transportationLabelIndex;
+}
+
+/**
+ * Identifiers beside airport and navaid symbols, most important first. Each
+ * tries the right, then the left of its symbol, and is skipped (quietly: a
+ * busy area simply shows fewer names) when it would leave the crop or overlap
+ * another aviation label or symbol.
+ */
+function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): void {
+  const { config, clip, aviation } = context;
+  if (!aviation.labels.length) return;
+  const placer = annotationPlacer(context, clips);
+  const textStyle = { ...config.textStyle, sizeMm: Math.min(config.textStyle.sizeMm, Math.max(1.6, aviationSymbolSize(config.lineStyle) * 0.7)) };
+  type Box = { left: number; top: number; right: number; bottom: number };
+  const occupied: Box[] = aviation.labels.map(({ anchor, clearanceMm }) => ({ left: anchor.x - clearanceMm, top: anchor.y - clearanceMm, right: anchor.x + clearanceMm, bottom: anchor.y + clearanceMm }));
+  const overlaps = (box: Box, index: number) => occupied.some((other, otherIndex) => otherIndex !== index && box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top);
+  const inset = config.lineStyle.annotationMm / 2;
+  const inside = (box: Box) => [[box.left - inset, box.top - inset], [box.right + inset, box.top - inset], [box.right + inset, box.bottom + inset], [box.left - inset, box.bottom + inset]].every(([x, y]) => pointInRing({ x: x!, y: y! }, clip));
+  let placed = 0;
+  for (const [index, candidate] of aviation.labels.entries()) {
+    if (placed >= AVIATION_LABEL_LIMIT) break;
+    const label = fabricationLabel(candidate.label, textStyle.font);
+    if (!label) continue;
+    const { width, height } = labelDimensions(label, textStyle);
+    const offset = candidate.clearanceMm + AVIATION_LABEL_GAP_MM;
+    const top = candidate.anchor.y - height / 2;
+    const box = [candidate.anchor.x + offset, candidate.anchor.x - offset - width]
+      .map((left): Box => ({ left, top, right: left + width, bottom: top + height }))
+      .find((option) => inside(option) && !overlaps(option, index));
+    if (!box) continue;
+    occupied.push(box);
+    placer.push([{ id: `aviation-label-${placed++}`, operation: "engrave", kind: "label", aviationClass: candidate.aviationClass, points: [{ x: box.left, y: box.top }], label, textStyle }], true);
+  }
 }
 
 function placeElevationLabels({ config, flatEngraving, warnings }: GenerationContext, layers: LayerIR[], parallelPlacements?: Array<CoordinatedElevationLabel | undefined>): void {
@@ -972,7 +1031,7 @@ interface GenerationSession { terrain?: TerrainCache }
 // Everything affects terrain unless explicitly known to be downstream of it.
 // New config fields therefore invalidate safely until their dependency is reviewed.
 const TERRAIN_INDEPENDENT_FIELDS = [
-  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels",
+  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
   "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "showElevationLabels",
@@ -1069,6 +1128,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     usesWaterDepth: !flatEngraving && config.showWaterDepth,
     clip: boundary(config),
     warnings: [],
+    aviation: aviationFeatures(source.aviationMarkings ?? [], config, config.widthMm / groundWidthMFor(source.bounds)),
   };
   addSourceWarnings(context);
   stage("prepare");
@@ -1107,7 +1167,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Nesting has finished carving cavities, so layer material is final for routing.
   // Boolean unions pay off when many paths repeatedly query a tall stack.
   // Sparse maps and flat engravings keep the cheap original covering sets.
-  const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + config.customLines.length;
+  const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + config.customLines.length;
   const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= 1_000);
   const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm: config.widthMm / Math.max(1, grid.width - 1) }, fabricationNests, context.warnings);
   stage("fabrication");
@@ -1138,6 +1198,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     code: "LABEL_OMITTED",
     message: "Transportation labels do not fit the exposed material. Reduce Text size or Vertical exaggeration, or increase the artwork size.",
   });
+  placeAviationLabels(context, clips);
   if (config.showElevationLabels) {
     if (usePool) {
       const results = yield { config, tasks: layers.map((layer, index) => {
@@ -1172,6 +1233,8 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     configFingerprint: projectFingerprint(config),
     sourceKind: source.sourceKind,
     vectorStatus: source.vectorStatus,
+    ...(source.aviationStatus ? { aviationStatus: source.aviationStatus } : {}),
+    ...(source.aviationCycle ? { aviationCycle: source.aviationCycle } : {}),
     lakeDataStatus: source.lakeDataStatus,
     datasetVersion: source.datasetVersion,
     bounds: source.bounds,
@@ -1195,7 +1258,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     paintRegions: paintWindows,
     splitPlan,
     warnings: context.warnings,
-    attribution: source.attribution,
+    attribution: aviationRequested(config) && source.aviationStatus !== "not-covered" ? [...source.attribution, ...(source.aviationAttribution ?? [])] : source.attribution,
     generatedAt: new Date().toISOString(),
   };
 }

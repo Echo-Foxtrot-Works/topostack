@@ -1,4 +1,4 @@
-import { DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
+import { DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
 import { fnv1aHex, stableStringify } from "../pipeline/fingerprint.js";
 import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, zoomForBounds } from "./bounds.js";
 import { parseProject } from "./parse.js";
@@ -27,6 +27,9 @@ export interface ProjectRequestDetails {
   northArrow?: boolean;
   scaleBar?: boolean;
 }
+
+/** FAA aviation detail (US only; decorative, never for navigation). Every switch is off unless set. */
+export type ProjectRequestAviation = Partial<AviationDetailsV1>;
 
 export interface ProjectRequestMarker {
   lat: number;
@@ -57,6 +60,7 @@ export interface ProjectRequestSettings {
   /** Flat output only: how many contour lines to engrave. */
   contourCount?: number;
   details?: ProjectRequestDetails;
+  aviation?: ProjectRequestAviation;
   /** Up to three lines engraved as a title; an empty string removes it. */
   title?: string;
   laser?: ProjectRequestLaser;
@@ -90,6 +94,8 @@ export const PROJECT_REQUEST_LIMITS = {
 
 export const PROJECT_REQUEST_DETAIL_KEYS = ["water", "waterDepth", "roads", "trails", "roadLabels", "boundaries", "coordinateGrid", "elevationLabels", "northArrow", "scaleBar"] as const satisfies readonly (keyof ProjectRequestDetails)[];
 
+export const PROJECT_REQUEST_AVIATION_KEYS = ["airspace", "specialUse", "runways", "airports", "navaids", "obstacles", "labels"] as const satisfies readonly (keyof AviationDetailsV1)[];
+
 const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> = {
   water: "showWater",
   waterDepth: "showWaterDepth",
@@ -103,7 +109,7 @@ const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> 
   scaleBar: "showScaleBar",
 };
 
-const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "title", "laser", "markers"] as const;
+const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "title", "laser", "markers"] as const;
 const DEFAULT_PLACE_LABEL = "Custom coordinates";
 const DEFAULT_NAME = "Terrain model";
 
@@ -202,6 +208,18 @@ function detailsValue(value: unknown, issues: Issues): ProjectRequestDetails | u
   return details;
 }
 
+function aviationValue(value: unknown, issues: Issues): ProjectRequestAviation | undefined {
+  if (!isRecord(value)) return issues.add("aviation", "Must be an object of true/false switches.");
+  unknownKeys(value, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
+  const aviation: ProjectRequestAviation = {};
+  for (const key of PROJECT_REQUEST_AVIATION_KEYS) {
+    if (value[key] === undefined) continue;
+    if (typeof value[key] !== "boolean") issues.add(`aviation.${key}`, "Must be true or false.");
+    else aviation[key] = value[key];
+  }
+  return aviation;
+}
+
 function laserValue(value: unknown, issues: Issues): ProjectRequestLaser | undefined {
   if (!isRecord(value)) return issues.add("laser", "Must be an object.");
   unknownKeys(value, ["kerfMm", "workAreaWidthMm", "workAreaHeightMm"], "laser", issues);
@@ -252,6 +270,7 @@ function settingsValue(record: Record<string, unknown>, issues: Issues): Project
   if (record.verticalExaggeration !== undefined) settings.verticalExaggeration = numberIn(record.verticalExaggeration, "verticalExaggeration", limits.verticalExaggeration, issues);
   if (record.contourCount !== undefined) settings.contourCount = numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
   if (record.details !== undefined) settings.details = detailsValue(record.details, issues);
+  if (record.aviation !== undefined) settings.aviation = aviationValue(record.aviation, issues);
   if (record.title !== undefined) settings.title = titleValue(record.title, issues);
   if (record.laser !== undefined) settings.laser = laserValue(record.laser, issues);
   if (record.markers !== undefined) settings.markers = markersValue(record.markers, issues);
@@ -328,6 +347,11 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
     const enabled = change.details?.[key];
     if (enabled !== undefined) (patch as Record<string, unknown>)[DETAIL_FIELDS[key]] = enabled;
   }
+  if (change.aviation) {
+    const aviation = Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, change.aviation![key] ?? project.aviation?.[key] ?? false])) as unknown as AviationDetailsV1;
+    // All off drops the setting, so the design reads exactly as one without aviation.
+    patch.aviation = PROJECT_REQUEST_AVIATION_KEYS.some((key) => aviation[key]) ? aviation : undefined;
+  }
   if (change.title !== undefined) {
     patch.plaque = change.title
       ? { enabled: true, text: change.title, sizeMm: project.plaque?.sizeMm ?? DEFAULT_PLAQUE_SIZE_MM, placement: project.plaque?.placement ?? { anchor: "bottom-left", offset: { x: 0, y: 0 } }, ...(project.plaque?.font ? { font: project.plaque.font } : {}) }
@@ -382,6 +406,7 @@ export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
     verticalExaggeration: project.verticalExaggeration,
     contourCount: project.engravingContourCount,
     details,
+    ...(project.aviation ? { aviation: { ...project.aviation } } : {}),
     ...(project.plaque?.enabled ? { title: project.plaque.text } : {}),
     laser: { kerfMm: project.laserKerfMm, workAreaWidthMm: project.workAreaWidthMm, workAreaHeightMm: project.workAreaHeightMm },
     markers: project.markers.filter((marker) => marker.symbol !== "custom").map((marker) => ({ lat: marker.lat, lon: marker.lon, symbol: marker.symbol as BuiltInMarkerSymbol, ...(marker.name ? { name: marker.name } : {}) })),

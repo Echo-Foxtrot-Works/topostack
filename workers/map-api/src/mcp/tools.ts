@@ -1,5 +1,5 @@
 import { AREA_SCHEMA, cleanRequestText, type ProjectRequestArea } from "@topostack/core/project";
-import { attributionFor } from "../agent/attribution";
+import { attributionFor, projectDrawsAviation } from "../agent/attribution";
 import { areaCoverage, surveyedLakeAt } from "../agent/coverage";
 import { AgentError, areaGround, coverageResult, linkFor, planProject, projectSummary, publicOrigin, resolveProjectRequest, type AgentContext, type ProjectPlan } from "../agent/projects";
 import { ATTRIBUTION_SCHEMA, coverageResultSchema, PLAN_SCHEMA, PROJECT_REQUEST_BODY_SCHEMA, SUMMARY_SCHEMA, type Schema } from "../agent/schemas";
@@ -136,7 +136,8 @@ export const TOOLS: ToolDefinition[] = [
       const { attribution, ...coverage } = coverageResult(areaCoverage(ground.bounds), publicOrigin(context));
       const detail = coverage.terrain.highResolution.length ? `High-resolution terrain: ${coverage.terrain.highResolution.map(({ name, resolutionM }) => `${name} (${resolutionM} m)`).join("; ")}.` : "No high-resolution terrain here; the global terrain is used.";
       const lakes = coverage.lakeSurveys.length ? `Surveyed lake floors: ${coverage.lakeSurveys.map(({ name }) => name).join("; ")}.` : "No surveyed lake floors here; lake depths are modeled.";
-      return { structured: { ...coverage, attribution }, text: [detail, lakes, ...coverage.notes, `Data: ${attribution.text}`].join("\n") };
+      const aviation = coverage.aviation ? `FAA aviation detail available (NASR cycle ${coverage.aviation.nasrCycle}; decorative, not for navigation).` : "No FAA aviation detail here (US and territories only).";
+      return { structured: { ...coverage, attribution }, text: [detail, lakes, aviation, ...coverage.notes, `Data: ${attribution.text}`].join("\n") };
     },
   },
   {
@@ -182,7 +183,7 @@ export const TOOLS: ToolDefinition[] = [
       const origin = publicOrigin(context);
       const url = linkFor(project, origin);
       const summary = projectSummary(project);
-      const attribution = attributionFor(origin, areaCoverage(summary.bounds));
+      const attribution = attributionFor(origin, areaCoverage(summary.bounds), { aviation: projectDrawsAviation(project) });
       return {
         structured: { url, length: url.length, project: summary, attribution },
         text: [`Open in TopoStack to generate "${summary.name}" and export the files: ${url}`, `Data: ${attribution.text}`].join("\n"),

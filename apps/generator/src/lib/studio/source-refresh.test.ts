@@ -58,6 +58,7 @@ describe("refreshing map data", () => {
       applySurveyProvenance: (source) => source,
       resolveLakeOutlines: (_providers, hydro) => hydro,
       assembleWater: (source) => source,
+      loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
       dataZoom,
     };
     const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: true, showWaterDepth: true, location: { ...DEFAULT_PROJECT.location, zoom: 11.6 } };
@@ -65,5 +66,46 @@ describe("refreshing map data", () => {
     expect(vi.mocked(deps.loadVectorMarkings).mock.calls[0]![1]).toBe(12);
     expect(vi.mocked(deps.loadLakeAreas).mock.calls[0]![1]).toBe(12);
     expect(vi.mocked(deps.loadSurveyedLakeDepths).mock.calls[0]![2]).toBe(12);
+    expect(deps.loadAviation).not.toHaveBeenCalled();
+  });
+
+  it("loads aviation only when the project asks for it and keeps it across road reloads", async () => {
+    const airport = { id: "den", kind: "aviation" as const, operation: "engrave" as const, aviationClass: "airport" as const, aviationSymbol: "airport-towered" as const, points: [{ x: 0, y: 0 }] };
+    const deps: SourceRefreshDependencies = {
+      loadVectorMarkings: vi.fn(async () => ({ markings: [], inland: [], ocean: [], truncated: false })),
+      loadLakeAreas: vi.fn(async () => []),
+      loadSurveyedLakeDepths: vi.fn(async (_bounds, _elevation, _zoom, areas) => ({ areas, status: "not-covered" as const, datasetVersions: [], attribution: [] })),
+      applySurveyProvenance: (source) => source,
+      resolveLakeOutlines: (_providers, hydro) => hydro,
+      assembleWater: (source) => source,
+      loadAviation: vi.fn(async () => ({ aviationMarkings: [airport], aviationStatus: "available" as const, aviationCycle: "2026-09-03" })),
+      dataZoom,
+    };
+    const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, aviation: { airspace: false, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false } };
+    const refreshed = await refreshRequiredMapData(loaded({ vectorStatus: "not-requested" }), config, new AbortController().signal, deps);
+    expect(refreshed).toMatchObject({ aviationStatus: "available", aviationCycle: "2026-09-03", aviationMarkings: [airport] });
+    expect(deps.loadVectorMarkings).toHaveBeenCalledTimes(1);
+    // A loaded aviation source is reused, not fetched again.
+    await refreshRequiredMapData(refreshed, config, new AbortController().signal, deps);
+    expect(deps.loadAviation).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stale aviation data", () => {
+  const none = { airspace: false, specialUse: false, runways: false, airports: false, navaids: false, obstacles: false, labels: false };
+  const withAirspace: ProjectConfigV1 = { ...DEFAULT_PROJECT, aviation: { ...none, airspace: true } };
+
+  it("reloads when a new aviation group is turned on", () => {
+    const source = loaded({ aviationStatus: "available", aviationMarkings: [] });
+    const next = { ...withAirspace, aviation: { ...none, airspace: true, obstacles: true } };
+    expect(markStaleSourceData(source, { aviation: next.aviation }, withAirspace, next).aviationStatus).toBe("not-requested");
+    expect(markStaleSourceData(source, { aviation: withAirspace.aviation }, DEFAULT_PROJECT, withAirspace).aviationStatus).toBe("not-requested");
+  });
+
+  it("keeps loaded aviation when a group or the labels change without new data", () => {
+    const source = loaded({ aviationStatus: "available", aviationMarkings: [] });
+    expect(markStaleSourceData(source, { aviation: none }, withAirspace, { ...withAirspace, aviation: none })).toBe(source);
+    const labelled = { ...withAirspace, aviation: { ...none, airspace: true, labels: true } };
+    expect(markStaleSourceData(source, { aviation: labelled.aviation }, withAirspace, labelled)).toBe(source);
   });
 });

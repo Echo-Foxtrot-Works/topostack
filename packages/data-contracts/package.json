@@ -6,6 +6,7 @@
   "description": "Data-layer contracts shared by the browser, the map-api Worker, and the provisioning scripts: catalog validation, archive release parsing, terrain PNG decoding, usage events, feedback submissions, traced depth charts, share-link encoding, and the changelog. Source-only; every consumer compiles TypeScript itself.",
   "exports": {
     "./archive-release": "./src/archive-release.ts",
+    "./aviation-tiles": "./src/aviation-tiles.ts",
     "./changelog": "./src/changelog.ts",
     "./chart-bathymetry": "./src/chart-bathymetry.ts",
     "./feedback": "./src/feedback.ts",

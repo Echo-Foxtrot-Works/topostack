@@ -6,6 +6,7 @@ Small, dependency-light modules that the browser app, the `map-api` Worker, and 
 | --- | --- |
 | `@topostack/data-contracts/source-catalog` | Terrain and survey catalog validation and ranking (`scripts/data/*.json` is validated against it in every consumer) |
 | `@topostack/data-contracts/archive-release` | The `release.json` shape that names the current PMTiles archive |
+| `@topostack/data-contracts/aviation-tiles` | Layer names, feature properties, and metadata of the FAA aviation PMTiles archive, parsed identically by the offline builder check and the browser |
 | `@topostack/data-contracts/terrain-png` | Decoding of the numeric terrain PNG served by the Worker |
 | `@topostack/data-contracts/usage` | Usage-event names and validation shared by the studio and the Worker |
 | `@topostack/data-contracts/share-link` | The `#p=1.` share-link codec: bounded encoding and decoding of a design in a URL fragment. The studio opens these links, and the Worker mints them for agents; each caller validates the decoded value with `parseProject` |

@@ -7,7 +7,7 @@ import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
 import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
-import { ARCHIVE_ROUTES, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { ARCHIVE_ROUTES, aviationSources, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
 import { FEEDBACK_PATH, feedbackResponse } from "./routes/feedback";
 import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
@@ -93,7 +93,7 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/ready", limited("root", (_request, env) => readinessResponse(env))],
   ["/v1/upstream-health", limited("upstream-health", (_request, env) => upstreamHealth(env))],
   ["/v1/manifest", limited("manifest", (_request, env) => json(
-    buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives),
+    buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives, aviationSources),
     { headers: { "cache-control": "public, max-age=3600" } },
   ))],
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],

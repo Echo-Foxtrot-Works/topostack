@@ -4,7 +4,7 @@
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace } from "@loidolt/theme-svelte";
   import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
-  import { assembleWater, boundsForProject, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
+  import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
   import { dataZoom } from "$lib/domain/tile-math";
@@ -161,7 +161,7 @@
   const pipeline = new PreviewPipeline();
   // Map-data refresh code loads with the first preview edit, not at startup. A
   // failed load is forgotten, so the next edit retries it.
-  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, dataZoom }), "Map data refresh");
+  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, loadAviation, dataZoom }), "Map data refresh");
   let sourcePreparation: Promise<SourcePreparationCache> | undefined;
   const preparedSources = () => sourcePreparation = loadSourcePreparation();
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
@@ -836,7 +836,7 @@
     return refreshPreview(updatesCustomData ? "customData" : "fabrication", delayMs);
   }
 
-  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
+  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "aviation", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
@@ -926,7 +926,8 @@
       trackUsage(exportBlockReason(completedGeometry, completedProject) ? "generation_failed" : "generation_succeeded", completedProject.outputMode);
       const outcome = {
         fallback: loaded.fallback, fallbackReason: loaded.fallbackReason, waterWarning: loaded.waterWarning,
-        vectorUnavailable: next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)),
+        vectorUnavailable: (next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)))
+          || (sourceRequirements(generationProject).aviation && (next.aviationStatus === "unavailable" || next.aviationStatus === "partial")),
         lakeUnavailable: generationProject.outputMode === "stack" && generationProject.showWaterDepth && next.lakeDataStatus !== "available",
       };
       status = generationStatus(outcome, generationProject, next);

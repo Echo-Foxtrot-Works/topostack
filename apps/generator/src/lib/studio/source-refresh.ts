@@ -1,4 +1,4 @@
-import { sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { AVIATION_DATA_DETAILS, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import type { SurveyResult } from "$lib/domain/bathymetry";
 import type { VectorData } from "$lib/domain/data-provider";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
@@ -15,6 +15,8 @@ export interface SourceRefreshDependencies {
   applySurveyProvenance: (source: SourceBundleV1, result: SurveyResult) => SourceBundleV1;
   resolveLakeOutlines: (providers: WaterAreaV1[], hydro: WaterAreaV1[], inland: Polygon2D[]) => WaterAreaV1[];
   assembleWater: (source: SourceBundleV1, lakes: WaterAreaV1[], ocean: Polygon2D[], config: ProjectConfigV1) => SourceBundleV1;
+  /** Never throws: a failed load comes back as status "unavailable". */
+  loadAviation: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "aviationMarkings" | "aviationStatus" | "aviationCycle" | "aviationAttribution">>;
   /** The whole zoom `loadTerrain` gives the same loaders. */
   dataZoom: (zoom: number) => number;
 }
@@ -27,6 +29,7 @@ export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: 
   return {
     ...source,
     markings: source.markings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })),
+    ...(source.aviationMarkings ? { aviationMarkings: source.aviationMarkings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })) } : {}),
     ...(source.waterAreas ? { waterAreas: source.waterAreas.map((area) => ({ ...area, polygon: { outer: scalePoints(area.polygon.outer), holes: area.polygon.holes.map(scalePoints) } })) } : {}),
     ...(source.inlandWaterAreas ? { inlandWaterAreas: source.inlandWaterAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
     ...(source.waterPatternAreas ? { waterPatternAreas: source.waterPatternAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
@@ -50,6 +53,9 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   if (patch.showWaterDepth === true || enablesPaintWater) next = { ...next, lakeDataStatus: "not-requested" };
   const enablesDepthByMode = nextProject.outputMode === "stack" && nextProject.showWaterDepth && sourceProject.outputMode !== "stack";
   if (enablesDepthByMode) next = { ...next, ...(!sourceProject.showWater ? { vectorStatus: "not-requested" as const } : {}), lakeDataStatus: "not-requested" };
+  // Loaded aviation holds only the groups enabled then; turning another on
+  // reloads, turning one off only filters. A truncated load may fit more now.
+  if ("aviation" in patch && AVIATION_DATA_DETAILS.some((detail) => nextProject.aviation?.[detail] && (!sourceProject.aviation?.[detail] || source.aviationStatus === "partial"))) next = { ...next, aviationStatus: "not-requested" };
   // Using or dropping a depth chart changes which depths a lake carves, so the
   // lake depths are loaded again rather than reused from before the change.
   if ("userDepthCharts" in patch) next = { ...next, bathymetryStatus: undefined };
@@ -60,7 +66,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   if (source.sourceKind !== "real") return source;
   const { loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater } = deps;
   const zoom = deps.dataZoom(config.location.zoom);
-  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas } = sourceRequirements(config);
+  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas, aviation: needsAviation } = sourceRequirements(config);
   let next = source;
   let inland = source.inlandWaterAreas ?? [];
   let ocean = (source.waterAreas ?? []).filter((area) => area.kind === "ocean").map((area) => area.polygon);
@@ -90,6 +96,12 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
         vectorStatus: "unavailable",
       };
     }
+  }
+
+  if (needsAviation && (source.aviationStatus === undefined || source.aviationStatus === "not-requested" || source.aviationStatus === "unavailable")) {
+    const aviation = await deps.loadAviation(source.bounds, zoom, config, signal);
+    signal.throwIfAborted();
+    next = { ...next, ...aviation };
   }
 
   if (usesWaterAreas && source.lakeDataStatus !== "available") {
@@ -124,7 +136,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
 /** Only the settings that change what `refreshRequiredMapData` loads or assembles. */
 function preparationKey(config: ProjectConfigV1): string {
-  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showBoundaries, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
+  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showBoundaries, config.aviation ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
 }
 
 /**
@@ -141,7 +153,7 @@ export class SourcePreparationCache {
     const patch = projectPatch(sourceProject, previewProject);
     const key = preparationKey(nextProject);
     // Everything besides `key` that shapes the output for a given input object.
-    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates").sort(), patch.showWaterDepth ?? null]);
+    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null]);
     const entry = this.entry;
     if (entry && entry.key === key) {
       if (entry.input === active && entry.inputSignature === inputSignature) return entry.output;

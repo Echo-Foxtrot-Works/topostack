@@ -4,6 +4,8 @@ import {
   PAINT_REGION_KINDS,
   MAP_MARKER_SIZE_MM,
   MAP_MARKER_MIN_SIZE_MM,
+  MAX_AVIATION_SYMBOL_MM,
+  MIN_AVIATION_SYMBOL_MM,
   MAP_MARKER_MAX_SIZE_MM,
   MARKER_SYMBOLS,
   MARKER_ICON_ID_PATTERN,
@@ -123,6 +125,12 @@ export function validateProject(config: ProjectConfigV1): void {
   const lineWidths = [config.lineStyle.contourMm, config.lineStyle.indexContourMm, config.lineStyle.majorRoadMm, config.lineStyle.localRoadMm, config.lineStyle.trailMm, config.lineStyle.waterMm, config.lineStyle.boundaryMm, config.lineStyle.coordinateGridMm, config.lineStyle.annotationMm, config.lineStyle.borderMm];
   if (![config.widthMm, config.heightMm, config.verticalExaggeration, config.materialThicknessMm, config.engravingContourCount, config.engravingIndexInterval, config.minimumFeatureMm, config.glueMarginMm, config.laserKerfMm, config.smoothing, config.location.lat, config.location.lon, config.location.zoom, config.elevationLabelPosition.x, config.elevationLabelPosition.y, config.textStyle.sizeMm, config.northArrowSizeMm, config.northArrowPlacement.offset.x, config.northArrowPlacement.offset.y, ...lineWidths].every(Number.isFinite)) throw new Error("Project values must be finite numbers.");
   if (lineWidths.some((width) => width < 0.05 || width > 1.5)) throw new Error("Line widths must be between 0.05 and 1.5 mm.");
+  if (config.lineStyle.aviationMm !== undefined && (!Number.isFinite(config.lineStyle.aviationMm) || config.lineStyle.aviationMm < 0.05 || config.lineStyle.aviationMm > 1.5)) throw new Error("Line widths must be between 0.05 and 1.5 mm.");
+  if (config.lineStyle.aviationSymbolMm !== undefined && (!Number.isFinite(config.lineStyle.aviationSymbolMm) || config.lineStyle.aviationSymbolMm < MIN_AVIATION_SYMBOL_MM || config.lineStyle.aviationSymbolMm > MAX_AVIATION_SYMBOL_MM)) throw new Error(`Aviation symbol size must be between ${MIN_AVIATION_SYMBOL_MM} and ${MAX_AVIATION_SYMBOL_MM} mm.`);
+  if (config.aviation !== undefined) {
+    if (!config.aviation || typeof config.aviation !== "object") throw new Error("Aviation settings are invalid.");
+    for (const [key, value] of Object.entries(config.aviation)) if (typeof value !== "boolean") throw new Error(`aviation.${key} must be true or false.`);
+  }
   if (!Number.isFinite(config.lineStyle.majorRoadSpacingMm) || config.lineStyle.majorRoadSpacingMm < 0.2 || config.lineStyle.majorRoadSpacingMm > 4) throw new Error("Major road spacing must be between 0.2 and 4 mm.");
   if (config.lineStyle.roadStyle !== "centerline" && config.lineStyle.roadStyle !== "outlined") throw new Error("Road style must be centerline or outlined.");
   if (config.lineStyle.roadCap !== "round" && config.lineStyle.roadCap !== "square") throw new Error("Road cap must be round or square.");

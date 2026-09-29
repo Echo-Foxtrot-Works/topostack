@@ -5,6 +5,7 @@
   import { REPOSITORY_URL } from "$lib/site/seo";
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { sources as terrainCatalogSources } from "../../../../../scripts/data/terrain-sources.json";
+  import aviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -66,7 +67,7 @@
 <Article title="Sources and attribution" intro="TopoStack is built on shared geographic data and open-source work. Here is where that work comes from, how we use it, and who to credit.">
   <nav class="contents" aria-label="On this page">
     <span>On this page</span>
-    <a href="#terrain">Terrain</a><a href="#features">Map features</a><a href="#lakes">Lake models</a><a href="#surveys">Lake surveys</a><a href="#services">Map and search</a><a href="#artwork">Artwork</a><a href="#software">Software</a><a href="#exports">Export credits</a>
+    <a href="#terrain">Terrain</a><a href="#features">Map features</a><a href="#lakes">Lake models</a><a href="#surveys">Lake surveys</a><a href="#aviation">Aviation</a><a href="#services">Map and search</a><a href="#artwork">Artwork</a><a href="#software">Software</a><a href="#exports">Export credits</a>
   </nav>
 
   {#each sections as section}
@@ -101,6 +102,16 @@
       {/if}
     </section>
   {/each}
+
+  <section id="aviation" aria-labelledby="aviation-title">
+    <h2 id="aviation-title">Aviation</h2>
+    <div class="source">
+      <h3><a href={aviationSources.url}>FAA Aeronautical Information Services</a></h3>
+      <p>When aviation detail is turned on for an area in the United States or its territories, Class B, C and D airspace, airports, runways and navaids come from the FAA's 28-day NASR subscription (cycle effective {aviationSources.nasrCycle}). Obstacles come from the Digital Obstacle File ({aviationSources.obstacleDate}), and special use airspace from the FAA's published service ({aviationSources.suaDate}). TopoStack draws airspace and runways as lines and airports, navaids and obstacles as simplified symbols. It clips them to your area and leaves out Class E airspace and private helipads.</p>
+      <p><strong>Not for navigation.</strong> Aeronautical data is replaced every 28 days, and an engraving is never updated. Use current FAA charts for flight planning.</p>
+      <p class="credit"><strong>Credit / license:</strong> {aviationSources.license}</p>
+    </div>
+  </section>
 
   <section id="surveys" aria-labelledby="surveys-title">
     <h2 id="surveys-title">Surveyed lake depth</h2>
