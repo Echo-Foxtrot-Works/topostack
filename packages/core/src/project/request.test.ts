@@ -127,6 +127,19 @@ describe("request patches", () => {
     expect(requestPatch(project, { title: "New" }).plaque).toEqual({ ...project.plaque, text: "New" });
   });
 
+  it("turns aviation groups on and off, dropping the setting once all are off", () => {
+    const on = parseProjectRequestPatch({ aviation: { airspace: true, labels: true } });
+    expect(on.ok).toBe(true);
+    if (!on.ok) return;
+    const patch = requestPatch(DEFAULT_PROJECT, on.value);
+    expect(patch.aviation).toEqual({ airspace: true, specialUse: false, runways: false, airports: false, navaids: false, obstacles: false, labels: true });
+    const withAirspace: ProjectConfigV1 = { ...DEFAULT_PROJECT, aviation: patch.aviation };
+    expect(requestPatch(withAirspace, { aviation: { runways: true } }).aviation).toMatchObject({ airspace: true, runways: true });
+    expect(requestPatch(withAirspace, { aviation: { airspace: false, labels: false } })).toEqual({ aviation: undefined });
+    const invalid = parseProjectRequestPatch({ aviation: { airspace: "yes", tfr: true } });
+    expect(invalid.ok || invalid.errors.map(({ path }) => path).sort()).toEqual(["aviation.airspace", "aviation.tfr"]);
+  });
+
   it("rejects unknown fields and a version, which only a new request carries", () => {
     const result = parseProjectRequestPatch({ requestVersion: 1, thickness: 3 });
     expect(result.ok || result.errors.map(({ path }) => path)).toEqual(["requestVersion", "thickness"]);
@@ -135,7 +148,7 @@ describe("request patches", () => {
 
 describe("describing a project", () => {
   it("round-trips through a request to the same design", () => {
-    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", markers: [{ lat: 46.85, lon: -121.76 }] }));
+    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", aviation: { airspace: true, airports: true }, markers: [{ lat: 46.85, lon: -121.76 }] }));
     const described = describeProject(original);
     const again = expandProjectRequest(parsed(described));
     // A box's point is its middle latitude, a hair from the Mercator center the request named.

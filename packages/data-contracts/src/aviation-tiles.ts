@@ -4,9 +4,10 @@
  * browser decodes it back through the same parsers, so an unknown value is
  * dropped at the boundary instead of reaching geometry.
  *
- * Boundaries (airspace, special use airspace, runway outlines) are stored as
- * LineStrings, never polygons: tile clipping then only splits lines, which the
- * browser rejoins, and never invents an edge along a tile seam.
+ * Boundaries (airspace, special use airspace) are stored as LineStrings, never
+ * polygons: tile clipping then only splits lines, which the browser rejoins,
+ * and never invents an edge along a tile seam. Runways are centerlines with
+ * their width; the model draws the outline when it is wide enough to read.
  */
 
 export const AVIATION_LAYERS = ["airspace", "sua", "runways", "airports", "navaids", "obstacles"] as const;
@@ -19,9 +20,6 @@ export type AirspaceClass = (typeof AIRSPACE_CLASSES)[number];
 export const SUA_KINDS = ["prohibited", "restricted", "warning", "alert", "moa", "danger"] as const;
 export type SuaKind = (typeof SUA_KINDS)[number];
 
-export const RUNWAY_ROLES = ["outline", "centerline"] as const;
-export type RunwayRole = (typeof RUNWAY_ROLES)[number];
-
 export const AIRPORT_KINDS = ["airport", "heliport", "seaplane-base", "other"] as const;
 export type AirportKind = (typeof AIRPORT_KINDS)[number];
 
@@ -33,7 +31,7 @@ export type NavaidKind = (typeof NAVAID_KINDS)[number];
 
 export interface AirspaceProperties { class: AirspaceClass; name: string; ident?: string; floorFt?: number; ceilingFt?: number }
 export interface SuaProperties { kind: SuaKind; name: string }
-export interface RunwayProperties { airport: string; runway: string; role: RunwayRole; widthFt: number; lengthFt: number }
+export interface RunwayProperties { airport: string; runway: string; widthFt: number; lengthFt: number }
 export interface AirportProperties { ident: string; name: string; kind: AirportKind; use: AirportUse; towered: boolean; longestRunwayFt?: number }
 export interface NavaidProperties { ident: string; name: string; kind: NavaidKind }
 export interface ObstacleProperties { aglFt: number; lit: boolean }
@@ -89,11 +87,10 @@ function parseSua(raw: Raw): SuaProperties | undefined {
 function parseRunway(raw: Raw): RunwayProperties | undefined {
   const airport = text(raw, "airport", 8);
   const runway = text(raw, "runway", 16);
-  const role = member(RUNWAY_ROLES, raw.role);
   const widthFt = feet(raw, "width_ft", 2_000);
   const lengthFt = feet(raw, "length_ft", 30_000);
-  if (!airport || !runway || !role || !widthFt || !lengthFt) return undefined;
-  return { airport, runway, role, widthFt, lengthFt };
+  if (!airport || !runway || !widthFt || !lengthFt) return undefined;
+  return { airport, runway, widthFt, lengthFt };
 }
 
 function parseAirport(raw: Raw): AirportProperties | undefined {

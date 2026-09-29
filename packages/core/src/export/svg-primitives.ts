@@ -2,7 +2,8 @@ import { formatNumber as format } from "../primitives/format.js";
 import { clipPolyline, preparePolygons, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { labelSvgPaths, roundText } from "../annotate/labels.js";
 import { offsetClosedRing } from "../primitives/offset.js";
-import type { LayerIR, LineStyleV1, Point2D } from "../types.js";
+import { aviationStroke } from "../pipeline/aviation.js";
+import type { AviationClass, LayerIR, LineStyleV1, Point2D } from "../types.js";
 
 
 export const CUT = "#FE0002";
@@ -19,7 +20,7 @@ export const ENGRAVE_LINE = `fill="none" stroke="${ENGRAVE}"`;
 export const ASSEMBLY = "#00A651";
 export const MAX_EXPORT_PACKAGE_BYTES = 100_000_000;
 /** Engraving groups in output order; `engravingCategory` maps each marking to one. */
-const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "transport-labels", "water", "boundaries", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
+const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "transport-labels", "water", "boundaries", "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
 type EngravingCategory = (typeof ENGRAVING_CATEGORIES)[number];
 /** Assembly ids ride in their own top-level group, so the artwork categories exclude them. */
 export const ARTWORK_CATEGORIES = ENGRAVING_CATEGORIES.filter((category) => category !== "assembly-labels");
@@ -50,9 +51,20 @@ export function layerCutPaths(layer: LayerIR, laserKerfMm: number, omittedHoles 
   }).join("");
 }
 
+/** Aviation line groups, each with the stroke of the class it holds; symbols share one group. */
+const AVIATION_CATEGORIES: Record<AviationClass, EngravingCategory> = {
+  "class-b": "airspace-b", "class-c": "airspace-c", "class-d": "airspace-d", "special-use": "special-use-airspace",
+  runway: "runways", airport: "aviation-symbols", navaid: "aviation-symbols", obstacle: "aviation-symbols",
+};
+const CATEGORY_AVIATION_CLASS: Partial<Record<EngravingCategory, AviationClass>> = {
+  "airspace-b": "class-b", "airspace-c": "class-c", "airspace-d": "class-d", "special-use-airspace": "special-use", runways: "runway", "aviation-symbols": "airport",
+};
+
 export function engravingCategory(mark: LayerIR["markings"][number]): EngravingCategory {
   if (mark.id.startsWith("piece-")) return "assembly-labels";
   if (mark.id.startsWith("transport-label-")) return "transport-labels";
+  if (mark.id.startsWith("aviation-label-")) return "aviation-labels";
+  if (mark.kind === "aviation" && mark.aviationClass) return AVIATION_CATEGORIES[mark.aviationClass];
   if (mark.transportationClass === "major-road") return "major-roads";
   if (mark.transportationClass === "local-road") return "local-roads";
   if (mark.transportationClass === "trail") return "trails";
@@ -71,6 +83,11 @@ export function categoryStrokeAttributes(category: EngravingCategory, style: Lin
     category === "boundaries" ? style.boundaryMm :
     category === "coordinate-grid" ? style.coordinateGridMm : style.annotationMm;
   if (category === "assembly-labels") return ` stroke-width="${format(width)}"`;
+  const aviationClass = CATEGORY_AVIATION_CLASS[category];
+  if (aviationClass) {
+    const stroke = aviationStroke(aviationClass, style);
+    return ` stroke-width="${format(stroke.widthMm)}"${stroke.dash ? ` stroke-dasharray="${stroke.dash.map(format).join(" ")}" stroke-linecap="round"` : ""} stroke-linejoin="round"`;
+  }
   if (category === "boundaries") return ` stroke-width="${format(width)}" stroke-dasharray="${format(Math.max(width * 8, 1.6))} ${format(Math.max(width * 5, 1))}" stroke-linecap="round"`;
   if (category === "coordinate-grid") return ` stroke-width="${format(width)}" stroke-dasharray="0.01 ${format(Math.max(width * 5, 0.9))}" stroke-linecap="round"`;
   if (category === "major-roads" || category === "local-roads") return ` stroke-width="${format(width)}" stroke-linecap="${style.roadCap}" stroke-linejoin="round"`;

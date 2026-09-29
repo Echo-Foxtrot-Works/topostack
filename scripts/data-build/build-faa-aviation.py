@@ -10,7 +10,8 @@ packages/data-contracts/src/aviation-tiles.ts; every feature is checked
 against that contract in Node before tiling.
 
 Boundaries are written as LineStrings so tile clipping never invents an edge
-along a tile seam. NAD83 coordinates are used as WGS84 (under 2 m apart in the
+along a tile seam. Runways are centerlines with their width; the studio draws
+the outline when it is wide enough to read at the model's scale. NAD83 coordinates are used as WGS84 (under 2 m apart in the
 conterminous US, far below engraving resolution).
 
 Usage:
@@ -37,7 +38,6 @@ from shapely.geometry import shape
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / 'scripts/data/faa-aviation-sources.json'
-FEET_TO_M = 0.3048
 
 AIRSPACE_CLASSES = {'B', 'C', 'D'}
 SUA_KINDS = {'P': 'prohibited', 'R': 'restricted', 'W': 'warning', 'A': 'alert', 'MOA': 'moa', 'D': 'danger'}
@@ -146,24 +146,13 @@ def number(value):
     return result if math.isfinite(result) else None
 
 
-def runway_geometry(start, end, width_ft):
-    """Centerline and closed outline of a runway strip between two (lon, lat) ends."""
+def runway_centerline(start, end):
+    """The centerline between two surveyed (lon, lat) runway ends, or None when they coincide."""
     (lon1, lat1), (lon2, lat2) = start, end
-    latitude = math.radians((lat1 + lat2) / 2)
-    metres_per_lon = 111_320 * math.cos(latitude)
-    metres_per_lat = 110_540
-    dx = (lon2 - lon1) * metres_per_lon
-    dy = (lat2 - lat1) * metres_per_lat
-    length = math.hypot(dx, dy)
-    if length < 1:
+    metres = math.hypot((lon2 - lon1) * 111_320 * math.cos(math.radians((lat1 + lat2) / 2)), (lat2 - lat1) * 110_540)
+    if metres < 1:
         return None
-    half = width_ft * FEET_TO_M / 2
-    nx, ny = -dy / length * half, dx / length * half
-    offset = lambda lon, lat, sign: [round(lon + sign * nx / metres_per_lon, 7), round(lat + sign * ny / metres_per_lat, 7)]
-    outline = [offset(lon1, lat1, 1), offset(lon2, lat2, 1), offset(lon2, lat2, -1), offset(lon1, lat1, -1)]
-    outline.append(outline[0])
-    centerline = [[round(lon1, 7), round(lat1, 7)], [round(lon2, 7), round(lat2, 7)]]
-    return {'type': 'LineString', 'coordinates': centerline}, {'type': 'LineString', 'coordinates': outline}
+    return {'type': 'LineString', 'coordinates': [[round(lon1, 7), round(lat1, 7)], [round(lon2, 7), round(lat2, 7)]]}
 
 
 def operational_airports(base_rows):
@@ -185,13 +174,10 @@ def runway_features(airports, runway_rows, end_rows):
         if (not airport or airport['SITE_TYPE_CODE'] != 'A' or row['RWY_ID'].startswith('H')
                 or row['SURFACE_TYPE_CODE'] in EXCLUDED_RUNWAY_SURFACES or not width or not length or len(ends.get(key, [])) != 2):
             continue
-        geometry = runway_geometry(*ends[key], width)
-        if not geometry:
-            continue
-        centerline, outline = geometry
-        values = {'airport': airport['ARPT_ID'], 'runway': row['RWY_ID'], 'width_ft': int(width), 'length_ft': int(length)}
-        out.append(feature(centerline, {**values, 'role': 'centerline'}, 7))
-        out.append(feature(outline, {**values, 'role': 'outline'}, 9))
+        centerline = runway_centerline(*ends[key])
+        if centerline:
+            values = {'airport': airport['ARPT_ID'], 'runway': row['RWY_ID'], 'width_ft': int(width), 'length_ft': int(length)}
+            out.append(feature(centerline, values, 7))
     return out
 
 
@@ -309,11 +295,11 @@ def write_archive(layers, pins, output, work):
     # below the base zoom); the browser budgets features instead of guessing.
     subprocess.run(['tippecanoe', '--force', f'--output={mbtiles}', '--minimum-zoom=5', f'--maximum-zoom={pins["maxZoom"]}',
                     '--drop-rate=1', '--no-feature-limit', '--no-tile-size-limit', '--quiet', *inputs], check=True)
-    metadata = {'topostack_dataset': pins['dataset'], 'faa_nasr_cycle': pins['nasrCycle'],
+    metadata = {'name': pins['dataset'], 'topostack_dataset': pins['dataset'], 'faa_nasr_cycle': pins['nasrCycle'],
                 'faa_obstacle_date': pins['obstacleDate'], 'faa_sua_date': pins['suaDate'],
                 'attribution': pins['name'], 'description': pins['license']}
     with sqlite3.connect(mbtiles) as db:
-        # generator_options names temporary paths; drop it so rebuilds are byte-identical.
+        # tippecanoe records temporary paths in name and generator_options; replace them so rebuilds are byte-identical.
         db.executemany('DELETE FROM metadata WHERE name = ?', [(key,) for key in [*metadata, 'generator_options']])
         db.executemany('INSERT INTO metadata VALUES (?, ?)', metadata.items())
     partial = output.with_suffix('.partial.pmtiles')

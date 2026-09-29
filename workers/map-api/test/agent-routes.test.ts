@@ -94,6 +94,16 @@ describe("POST /v1/projects/plan", () => {
     expect(body.studioUrl).toMatch(/^https:\/\/topostack\.test\/studio\?generate=1#p=1\./);
   });
 
+  it("credits the FAA cycle and says aviation detail is not for navigation", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng((column) => 1600 + column), { headers: { "content-type": "image/png" } })));
+    const request = { ...rainier, area: { center: { lat: 39.86, lon: -104.67 }, widthKm: 20 }, aviation: { airspace: true, runways: true } };
+    const body = await (await worker.fetch(post("/v1/projects/plan", request), env, context)).json<{ notes: string[]; attribution: { text: string; sources: Array<{ name: string }> } }>();
+    expect(body.notes.some((note) => /never for navigation/.test(note))).toBe(true);
+    expect(body.attribution.sources.some(({ name }) => name.includes("NASR cycle"))).toBe(true);
+    const plain = await (await worker.fetch(post("/v1/projects/plan", { ...request, aviation: undefined }), env, context)).json<{ attribution: { sources: Array<{ name: string }> } }>();
+    expect(plain.attribution.sources.some(({ name }) => name.includes("NASR"))).toBe(false);
+  });
+
   it("reports nearly flat ground and plans flat output as one sheet", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => 12), { headers: { "content-type": "image/png" } })));
     const response = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: 41.9, lon: -93.6 }, widthKm: 5 }, output: "flat" }), env, context);

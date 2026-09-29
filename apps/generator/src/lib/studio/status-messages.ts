@@ -8,9 +8,10 @@ export function previewPendingStatus(kind: PreviewUpdateKind, project: ProjectCo
   return project.outputMode === "engraving" ? "Updating engraving artwork…" : "Updating terrain geometry…";
 }
 
-export function previewUpdatedStatus(kind: PreviewUpdateKind, source: SourceBundleV1, project: ProjectConfigV1, requirements: { vectors: boolean; lakes: boolean }): string {
+export function previewUpdatedStatus(kind: PreviewUpdateKind, source: SourceBundleV1, project: ProjectConfigV1, requirements: { vectors: boolean; lakes: boolean; aviation?: boolean }): string {
   if (kind === "details") {
     if (source.vectorStatus !== "available" && requirements.vectors) return "Map details updated · source data incomplete";
+    if ((source.aviationStatus === "unavailable" || source.aviationStatus === "partial") && requirements.aviation) return "Map details updated · aviation data incomplete";
     if (source.lakeDataStatus === "unavailable" && requirements.lakes) return "Map details updated · lake depth unavailable";
     if (source.sourceKind === "preview") return "Real-data sample preview updated";
     return source.sourceKind === "real" ? "Map details updated" : "Sample preview updated · generate for real map data";

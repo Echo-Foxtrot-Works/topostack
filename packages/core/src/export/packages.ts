@@ -8,6 +8,7 @@ import { formatNumber as format } from "../primitives/format.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
+import { aviationRequested, aviationStroke } from "../pipeline/aviation.js";
 import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, Point2D, ProjectConfigV1, SheetNestPlanV1 } from "../types.js";
 import { nestableParts, polygonLabel } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings } from "./sheet-nest/resolve.js";
@@ -33,6 +34,28 @@ function lineworkSummary(style: LineStyleV1, heading: string, leading: string[],
     ...trailing,
   ];
   return `Road appearance: ${roadAppearance(style)}, ${style.roadCap} endpoints. ${heading}: ${widths.join(", ")}.\n`;
+}
+
+/**
+ * README paragraph for FAA aviation detail: what was drawn, how each class
+ * looks in a single colour, and which cycle it came from. Empty when the
+ * project has none.
+ */
+function aviationSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
+  if (!aviationRequested(config)) return "";
+  const details = config.aviation!;
+  const width = format(aviationStroke("class-c", config.lineStyle).widthMm);
+  const drawn = [
+    details.airspace ? `Class B airspace ${format(aviationStroke("class-b", config.lineStyle).widthMm)} mm (solid), Class C ${width} mm (solid), Class D ${width} mm (dashed)` : "",
+    details.specialUse ? `special use airspace ${width} mm (dash-dot)` : "",
+    details.runways ? `runways ${width} mm (outlined where wide enough at this scale)` : "",
+    details.airports ? "airports" : "", details.navaids ? "navaids" : "", details.obstacles ? "obstacles 200 ft AGL and taller" : "",
+    details.labels && (details.airports || details.navaids) ? "identifiers" : "",
+  ].filter(Boolean);
+  const source = ir.aviationStatus === "not-covered"
+    ? "FAA data covers only the United States and its territories, so this area has none."
+    : `Source: FAA Aeronautical Information Services${ir.aviationCycle ? `, NASR cycle effective ${ir.aviationCycle}` : ""}.`;
+  return `Aviation detail: ${drawn.join(", ")}. ${source} NOT FOR NAVIGATION: aeronautical data is replaced every 28 days and this piece is never updated.\n`;
 }
 
 function attributionText(ir: GeometryIRV1): string {
@@ -206,6 +229,8 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
       datasetVersion: ir.datasetVersion,
       warnings: ir.warnings,
       vectorStatus: ir.vectorStatus,
+      ...(ir.aviationStatus ? { aviationStatus: ir.aviationStatus } : {}),
+      ...(ir.aviationCycle ? { aviationCycle: ir.aviationCycle } : {}),
       lakeDataStatus: ir.lakeDataStatus,
       lakeDepths: ir.waterSurfaces.filter((surface) => surface.kind === "lake").map((surface) => ({
         id: surface.id, name: surface.name, hylakId: surface.hylakId,
@@ -230,7 +255,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   const fittedDepths = ir.waterSurfaces.filter((surface) => surface.depthFitScale !== undefined)
     .map((surface) => `${surface.name ?? "Lake"}: fitted to ${(surface.depthFitScale! * 100).toFixed(1)}% of requested depth; ${surface.appliedDepthExaggeration!.toFixed(3)}x terrain depth scale.\n`).join("");
   const vertical = `Vertical exaggeration: ${ir.verticalExaggeration.toFixed(1)}x${scale}\n`;
-  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]);
+  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config);
   const seams = ir.splitPlan ? (() => {
     const pieces = ir.layers.reduce((total, layer) => total + layer.pieces.length, 0);
     const perLayer = `${ir.splitPlan!.columns} x ${ir.splitPlan!.rows}`;
@@ -296,6 +321,8 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
       datasetVersion: ir.datasetVersion,
       warnings: ir.warnings,
       vectorStatus: ir.vectorStatus,
+      ...(ir.aviationStatus ? { aviationStatus: ir.aviationStatus } : {}),
+      ...(ir.aviationCycle ? { aviationCycle: ir.aviationCycle } : {}),
       lakeDataStatus: ir.lakeDataStatus,
       imagerySources: ir.imagerySources,
       terrainSelection: ir.terrainSelection,
@@ -310,10 +337,11 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
     config.showWater ? `water outlines${config.waterFillPattern !== "none" ? ` with ${config.waterFillPattern} fill` : ""}` : "",
     config.showBoundaries ? "state/province boundaries" : "",
     config.showCoordinateGrid ? "latitude/longitude grid" : "",
+    aviationRequested(config) ? "FAA aviation detail" : "",
   ].filter(Boolean);
   const linework = lineworkSummary(config.lineStyle, "Line widths",
     [`minor contours ${format(config.lineStyle.contourMm)} mm`, `index contours ${format(config.lineStyle.indexContourMm)} mm`],
-    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]);
+    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]) + aviationSummary(ir, config);
   const readme = `${ir.projectName}\n\nFlat topographic engraving\nArtwork size: ${size}\nContour lines: ${config.engravingContourCount}\nIndex contour: every ${config.engravingIndexInterval} lines\nWater fill: ${config.showWater ? config.waterFillPattern : "none"}\n${linework}Map details: ${details.length ? details.join(", ") : "none"}\nBorder: ${config.showEngravingBorder ? "engraved" : "none"}\n\nThe SVG contains one blue ENGRAVE operation group and no CUT or SCORE paths. In xTool Studio, choose Score for blue linework. Engrave fills closed shapes; reserve it for intentionally filled markers. Marker clearances are gaps in the line geometry; there is no white engraving operation. Minor and index contours are separated into named subgroups so their line weights can be assigned independently. Verify physical dimensions, focus, power, speed, and material settings with a small test engraving before processing the final item. Terrain data is decorative and is not survey, navigation, or engineering data.\n\n${EXPORT_CREDIT}\n`;
   const files: ExportFile[] = [
     master,

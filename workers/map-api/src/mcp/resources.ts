@@ -49,7 +49,7 @@ Coverage is Web Mercator (±85° latitude). Areas cannot cross the antimeridian.
 
 ## Details
 
-Water, water depth, roads, trails, elevation labels, a north arrow and a scale bar are on by default; road labels, boundaries and a coordinate grid are off. A \`title\` of up to three lines is engraved on the model; \`markers\` add up to ${PROJECT_REQUEST_LIMITS.markers} engraved points of interest.
+Water, water depth, roads, trails, elevation labels, a north arrow and a scale bar are on by default; road labels, boundaries and a coordinate grid are off. In the United States, \`aviation\` adds FAA detail like a VFR sectional's: \`airspace\` (Class B, C and D), \`specialUse\`, \`runways\`, \`airports\`, \`navaids\`, \`obstacles\` and \`labels\` (identifiers), all off unless set. It is decorative and never for navigation; check_coverage says whether an area has it. A \`title\` of up to three lines is engraved on the model; \`markers\` add up to ${PROJECT_REQUEST_LIMITS.markers} engraved points of interest.
 
 ## Handing over
 

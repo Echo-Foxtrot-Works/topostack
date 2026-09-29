@@ -1,0 +1,136 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROJECT, type AviationDetailsV1, type ProjectConfigV1 } from "@topostack/core";
+import { AVIATION_SOURCES, MAX_AVIATION_POINTS, loadAviationMarkings } from "$lib/domain/aviation-provider";
+import { clearArchiveCache } from "$lib/domain/archive";
+import { fittingTileWindow } from "$lib/domain/tile-math";
+
+/**
+ * Tiles are JSON the mocked VectorTile decodes, so a fixture can say what each
+ * tile of the window holds, including features repeated in tile buffers.
+ */
+interface FixtureFeature { type: 1 | 2; properties: Record<string, unknown>; geometry: Array<Array<{ x: number; y: number }>> }
+type FixtureTile = Record<string, FixtureFeature[]>;
+
+const archive = vi.hoisted(() => ({
+  header: { minZoom: 5, maxZoom: 12 },
+  metadata: {} as Record<string, unknown>,
+  tile: (() => ({})) as (z: number, x: number, y: number) => Record<string, unknown>,
+}));
+vi.mock("pmtiles", async (importOriginal) => ({
+  ...await importOriginal<typeof import("pmtiles")>(),
+  PMTiles: class {
+    getHeader = vi.fn(async () => archive.header);
+    getMetadata = vi.fn(async () => archive.metadata);
+    getZxy = vi.fn(async (z: number, x: number, y: number) => ({ data: new TextEncoder().encode(JSON.stringify(archive.tile(z, x, y))).buffer }));
+  },
+}));
+vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@mapbox/vector-tile")>(),
+  VectorTile: class {
+    layers: Record<string, { length: number; feature: (index: number) => unknown }>;
+    constructor(pbf: { buf: Uint8Array }) {
+      const tile = JSON.parse(new TextDecoder().decode(pbf.buf)) as FixtureTile;
+      this.layers = Object.fromEntries(Object.entries(tile).map(([name, features]) => [name, {
+        length: features.length,
+        feature: (index: number) => ({ ...features[index]!, id: index, extent: 4096, loadGeometry: () => features[index]!.geometry }),
+      }]));
+    }
+  },
+}));
+
+const NONE: AviationDetailsV1 = { airspace: false, specialUse: false, runways: false, airports: false, navaids: false, obstacles: false, labels: false };
+const denver = { west: -104.75, east: -104.55, south: 39.8, north: 39.92 };
+const project = (details: Partial<AviationDetailsV1>): ProjectConfigV1 => ({ ...DEFAULT_PROJECT, aviation: { ...NONE, ...details } });
+const across = (y: number): Array<Array<{ x: number; y: number }>> => [[{ x: -64, y }, { x: 4160, y }]];
+const center = [[{ x: 2048, y: 2048 }]];
+
+beforeEach(() => {
+  clearArchiveCache();
+  archive.header = { minZoom: 5, maxZoom: 12 };
+  archive.metadata = { topostack_dataset: AVIATION_SOURCES.dataset, faa_nasr_cycle: AVIATION_SOURCES.nasrCycle, faa_obstacle_date: AVIATION_SOURCES.obstacleDate, faa_sua_date: AVIATION_SOURCES.suaDate };
+  archive.tile = () => ({});
+});
+
+describe("FAA aviation loading", () => {
+  it("reports areas outside FAA coverage without reading the archive", async () => {
+    const tile = vi.fn(() => ({}));
+    archive.tile = tile;
+    const result = await loadAviationMarkings({ west: 7.4, east: 7.6, south: 46.5, north: 46.6 }, 11, project({ airspace: true }));
+    expect(result).toEqual({ markings: [], status: "not-covered", attribution: [] });
+    expect(tile).not.toHaveBeenCalled();
+  });
+
+  it("joins a boundary across tile seams and keeps one symbol per buffered point", async () => {
+    // A window several tiles wide, each holding the same boundary edge to edge and the same airport.
+    const window = fittingTileWindow(denver, 12, 5);
+    expect(new Set(window.tiles.map((tile) => tile.worldX)).size).toBeGreaterThan(1);
+    archive.tile = () => ({
+      airspace: [{ type: 2, properties: { class: "B", name: "DENVER CLASS B", floor_ft: 8000, ceiling_ft: 12000 }, geometry: across(2048) }],
+      airports: [{ type: 1, properties: { ident: "DEN", name: "DENVER INTL", kind: "airport", use: "public", towered: true }, geometry: center }],
+    });
+    const result = await loadAviationMarkings(denver, 11, project({ airspace: true, airports: true }));
+    expect(result.status).toBe("available");
+    expect(result.cycle).toBe(AVIATION_SOURCES.nasrCycle);
+    expect(result.attribution[0]?.name).toContain(AVIATION_SOURCES.nasrCycle);
+    // Each tile row inside the crop is one line from margin to margin: the tile pieces were joined.
+    const airspace = result.markings.filter((marking) => marking.aviationClass === "class-b");
+    expect(airspace.length).toBeGreaterThan(0);
+    expect(airspace.length).toBeLessThanOrEqual(new Set(window.tiles.map((tile) => tile.y)).size);
+    const halfWidth = (DEFAULT_PROJECT.widthMm + 8) / 2;
+    for (const line of airspace) {
+      expect(line.label).toBe("DENVER CLASS B");
+      expect(Math.min(...line.points.map((point) => point.x))).toBeCloseTo(-halfWidth, 3);
+      expect(Math.max(...line.points.map((point) => point.x))).toBeCloseTo(halfWidth, 3);
+    }
+    expect(result.markings.filter((marking) => marking.aviationClass === "airport")).toEqual([
+      expect.objectContaining({ aviationSymbol: "airport-towered", label: "DEN", points: [expect.any(Object)] }),
+    ]);
+  });
+
+  it("keeps a runway that crosses a tile seam as one straight segment", async () => {
+    const window = fittingTileWindow(denver, 12, 5);
+    const westColumn = Math.min(...window.tiles.map((tile) => tile.x));
+    archive.tile = (_z, x) => ({
+      runways: [{ type: 2, properties: { airport: "DEN", runway: "8/26", width_ft: 150, length_ft: 12000 }, geometry: x === westColumn ? [[{ x: 3000, y: 2048 }, { x: 4160, y: 2048 }]] : x === westColumn + 1 ? [[{ x: -64, y: 2048 }, { x: 1000, y: 2048 }]] : [] }],
+    });
+    const runways = (await loadAviationMarkings(denver, 11, project({ runways: true }))).markings;
+    expect(runways.length).toBeGreaterThan(0);
+    expect(runways.every((runway) => runway.points.length === 2)).toBe(true);
+  });
+
+  it("reads only the layers the project draws and drops features that break the contract", async () => {
+    archive.tile = () => ({
+      airspace: [
+        { type: 2, properties: { class: "E", name: "SURFACE E" }, geometry: across(1000) },
+        { type: 2, properties: { class: "D", name: "BOULDER CLASS D" }, geometry: across(3000) },
+      ],
+      runways: [{ type: 2, properties: { airport: "DEN", runway: "16R/34L", width_ft: 200, length_ft: 16000 }, geometry: [[{ x: 1000, y: 1000 }, { x: 1000, y: 3000 }]] }],
+      obstacles: [{ type: 1, properties: { agl_ft: 400, lit: true }, geometry: center }],
+      airports: [{ type: 1, properties: { ident: "8CO1", name: "HOSPITAL", kind: "heliport", use: "private", towered: false }, geometry: center }],
+    });
+    const result = await loadAviationMarkings(denver, 11, project({ airspace: true, runways: true, airports: true }));
+    expect(new Set(result.markings.map((marking) => marking.aviationClass))).toEqual(new Set(["class-d", "runway"]));
+    expect(result.markings.find((marking) => marking.aviationClass === "runway")?.widthM).toBeCloseTo(60.96);
+  });
+
+  it("reports a partial load when points exceed the budget, keeping airports first", async () => {
+    let tileIndex = 0;
+    archive.tile = () => {
+      tileIndex += 1;
+      return {
+        airports: [{ type: 1, properties: { ident: `A${tileIndex}`, name: "FIELD", kind: "airport", use: "public", towered: false }, geometry: [[{ x: 100, y: 100 }]] }],
+        obstacles: Array.from({ length: MAX_AVIATION_POINTS }, (_, index) => ({ type: 1 as const, properties: { agl_ft: 300, lit: false }, geometry: [[{ x: 40 + (index % 60) * 64, y: 40 + Math.floor(index / 60) * 64 }]] })),
+      };
+    };
+    const result = await loadAviationMarkings(denver, 11, project({ airports: true, obstacles: true }));
+    expect(result.status).toBe("partial");
+    const points = result.markings.filter((marking) => marking.aviationSymbol);
+    expect(points).toHaveLength(MAX_AVIATION_POINTS);
+    expect(points[0]?.aviationClass).toBe("airport");
+  });
+
+  it("refuses an archive whose metadata does not name its cycle", async () => {
+    archive.metadata = { topostack_dataset: "faa-aviation-v1" };
+    await expect(loadAviationMarkings(denver, 11, project({ airspace: true }))).rejects.toThrow(/dataset identity/);
+  });
+});

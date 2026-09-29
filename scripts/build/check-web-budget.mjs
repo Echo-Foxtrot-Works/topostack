@@ -20,7 +20,9 @@ const budgets = {
   // Studio route plus App, the default 3D preview and the geometry worker:
   // everything needed for the first preview. Other routes are not counted.
   // 440,324 when set (the old measure counted every route and read 505,789).
-  startupJavaScriptGzip: 485_000,
+  // 488,122 when raised 2026-09-29: FAA aviation routing, symbols and styling
+  // live in core, which ships in both the studio and the geometry worker.
+  startupJavaScriptGzip: 537_000,
   // Any single chunk; catches an accidental vendor merge. 275,299 when set.
   largestJavaScriptGzip: 300_000,
   studioHtmlBytes: 10_000,

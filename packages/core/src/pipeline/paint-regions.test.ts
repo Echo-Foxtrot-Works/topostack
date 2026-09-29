@@ -256,8 +256,8 @@ describe("paint regions", () => {
 
   it("needs the vector water layer when a water stencil is the only reason", () => {
     const bare: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: false, showWaterDepth: false, showRoads: false, showTrails: false, showBoundaries: false };
-    expect(sourceRequirements(bare)).toEqual({ vectors: false, lakes: false, water: false });
-    expect(sourceRequirements({ ...bare, paintTemplates: ["water"] })).toEqual({ vectors: true, lakes: false, water: true });
+    expect(sourceRequirements(bare)).toEqual({ vectors: false, lakes: false, water: false, aviation: false });
+    expect(sourceRequirements({ ...bare, paintTemplates: ["water"] })).toEqual({ vectors: true, lakes: false, water: true, aviation: false });
     expect(sourceRequirements({ ...bare, paintTemplates: ["water"], outputMode: "engraving" }).water).toBe(false);
   });
 });

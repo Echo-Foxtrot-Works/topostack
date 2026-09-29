@@ -39,6 +39,8 @@ export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
 export { exportBlockReason } from "./export/export-policy.js";
 export { sourceRequirements } from "./pipeline/source-requirements.js";
+export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationFeatures, aviationRequested, aviationStroke, aviationSymbolSize, runwayPaths, type AviationLabelCandidate, type AviationStroke } from "./pipeline/aviation.js";
+export { aviationSymbolPaths } from "./annotate/aviation-symbols.js";
 export { cropRadiusMm } from "./primitives/crop.js";
 
 export { executeGeometryTask, type GeometryTask, type GeometryBatch, type GeometryTaskResult } from "./pipeline/generation-tasks.js";

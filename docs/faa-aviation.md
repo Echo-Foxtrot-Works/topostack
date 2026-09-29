@@ -12,7 +12,7 @@ Every input is pinned by URL and SHA-256 in [`scripts/data/faa-aviation-sources.
 | --- | --- | --- | --- |
 | `airspace` | NASR `class_airspace_shape_files.zip` | 28 days | Class B, C and D rings, with floor and ceiling in feet where the FAA gives them. Class E is left out: its thousands of transition areas would bury a model in lines. |
 | `sua` | AIS Open Data `Special_Use_Airspace` service, snapshotted | as published | Prohibited, restricted, warning, alert, MOA and danger areas |
-| `runways` | NASR `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | A centerline and a true-width outline for each runway with both ends surveyed. Water lanes, rooftop pads and helipads are skipped. |
+| `runways` | NASR `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | The centerline between both surveyed ends, with width and length. The studio draws the true-width outline when it is at least three strokes wide at the model's scale. Water lanes, rooftop pads and helipads are skipped. |
 | `airports` | NASR `APT_BASE.csv` | 28 days | Operational US airports, heliports and seaplane bases, with public/private/military use and tower status |
 | `navaids` | NASR `NAV_BASE.csv` | 28 days | VOR, VORTAC, VOR/DME, TACAN, NDB, NDB/DME and DME. VOTs, fan markers and shut-down aids are skipped. |
 | `obstacles` | Digital Obstacle File `DOF.DAT` | 56 days | US obstacles 200 ft AGL and taller (as charted). Heights over 3,000 ft are data-entry errors and are dropped. |
@@ -26,11 +26,11 @@ NAD83 coordinates are used as WGS84. They are under 2 m apart in the conterminou
 `build-faa-aviation.py` writes one vector PMTiles archive, zoom 5–12. Its layers and properties are the contract in [`@topostack/data-contracts/aviation-tiles`](../packages/data-contracts/src/aviation-tiles.ts). Before tiling, `check-aviation-features.mjs` runs every feature through the browser's own parsers, so the archive cannot carry a value the studio would drop.
 
 - Boundaries are LineStrings, never polygons. Tile clipping then only splits lines, which the browser rejoins, and never draws an edge along a tile seam.
-- Each feature has a minimum zoom. Class B/C airspace, special use airspace and prominent airports appear from zoom 5–6. Class D appears from 7, runway centerlines from 7, obstacles of 1,000 ft or more from 7, and runway outlines, other airports and lower obstacles from 8–9.
+- Each feature has a minimum zoom. Class B/C airspace, special use airspace and prominent airports appear from zoom 5–6. Class D, runways and obstacles of 1,000 ft or more appear from 7, other airports from 8 and lower obstacles from 9.
 - Points are never thinned (`--drop-rate=1`); the studio budgets features instead.
-- Metadata carries `topostack_dataset`, `faa_nasr_cycle`, `faa_obstacle_date` and `faa_sua_date`. `generator_options` is removed so a rebuild from the same pins is byte-identical.
+- Metadata carries `topostack_dataset`, `faa_nasr_cycle`, `faa_obstacle_date` and `faa_sua_date`. tippecanoe's `name` and `generator_options` record temporary paths, so the builder replaces them and a rebuild from the same pins is byte-identical.
 
-The 2026-09-03 cycle built to 35 MB with 1,289 airspace rings, 1,544 special use rings, 16,944 runway lines, 18,811 airports, 1,523 navaids and 184,123 obstacles.
+The 2026-09-03 cycle builds to 34 MB (SHA-256 `6cfc0b8d89b67cc4de5cb69abae6e975da0ba3b118fd551f29460a8a4360c45c`, byte-identical across rebuilds) with 1,289 airspace rings, 1,544 special use rings, 8,472 runways, 18,811 airports, 1,523 navaids and 184,123 obstacles.
 
 The Worker serves it by range at `/v1/aviation.pmtiles` from the logical key `aviation/current.pmtiles`. It is optional: `/ready` does not wait for it, and the studio requests it only when a project turns aviation detail on.
 

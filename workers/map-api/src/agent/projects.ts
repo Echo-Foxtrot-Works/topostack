@@ -3,7 +3,7 @@ import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-con
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
 import { terrainResponse } from "../routes/terrain";
-import { attributionFor, type Attribution } from "./attribution";
+import { attributionFor, projectDrawsAviation, type Attribution } from "./attribution";
 import { areaCoverage, type AreaCoverage } from "./coverage";
 import { studioLink } from "./links";
 import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type ReliefTile } from "./relief";
@@ -103,6 +103,9 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   if (plan.output === "layered" && plan.sheetCount > MANY_SHEETS) notes.push(`${plan.sheetCount} sheets is a large stack. Thicker material or less exaggeration makes fewer sheets.`);
   if (relief.coastal) notes.push("The area reaches the sea; the sea is cut flat and the stack is sized from the land.");
   if (coverage.lakeSurveys.length && project.showWaterDepth && plan.output === "layered") notes.push("Lake depth adds sheets below the shoreline; the studio counts them.");
+  if (projectDrawsAviation(project)) notes.push(coverage.aviation
+    ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
+    : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;
   if (project.widthMm > bedWidth || project.heightMm > bedHeight) notes.push("The model is larger than the laser bed, so each sheet is split into pieces with alignment tabs.");
   return notes;
@@ -126,7 +129,7 @@ export async function planProject(project: ProjectConfigV1, context: AgentContex
     coverage,
     notes: planNotes(project, plan, relief, coverage),
     studioUrl: linkFor(project, origin),
-    attribution: attributionFor(origin, coverage),
+    attribution: attributionFor(origin, coverage, { aviation: projectDrawsAviation(project) }),
   };
 }
 
@@ -177,7 +180,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
       return json({ url, length: url.length });
     }
     const { project } = resolveProjectRequest(body);
-    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: attributionFor(origin, areaCoverage(boundsForProject(project))) });
+    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project) }) });
     if (action === "link") { const url = linkFor(project, origin); return json({ url, length: url.length }); }
     return json(await planProject(project, context));
   } catch (error) {

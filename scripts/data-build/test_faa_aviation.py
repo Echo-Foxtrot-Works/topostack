@@ -1,7 +1,6 @@
 """Checks the FAA normalisation against small hand-checked records."""
 import importlib
 import json
-import math
 from pathlib import Path
 import unittest
 
@@ -48,18 +47,15 @@ def base(site, **extra):
 
 
 class Airports(unittest.TestCase):
-    def test_runway_outline_has_the_published_width(self):
+    def test_runway_centerline_joins_its_surveyed_ends(self):
         airports = aviation.operational_airports([base('1')])
         runways = [{'SITE_NO': '1', 'RWY_ID': '18/36', 'RWY_WIDTH': '100', 'RWY_LEN': '6000', 'SURFACE_TYPE_CODE': 'ASPH'}]
         ends = [{'SITE_NO': '1', 'RWY_ID': '18/36', 'LAT_DECIMAL': '40.01', 'LONG_DECIMAL': '-105.0'},
                 {'SITE_NO': '1', 'RWY_ID': '18/36', 'LAT_DECIMAL': '39.99', 'LONG_DECIMAL': '-105.0'}]
-        centerline, outline = aviation.runway_features(airports, runways, ends)
-        self.assertEqual(centerline['properties'], {'airport': 'TST', 'runway': '18/36', 'width_ft': 100, 'length_ft': 6000, 'role': 'centerline'})
-        ring = outline['geometry']['coordinates']
-        self.assertEqual(len(ring), 5)
-        self.assertEqual(ring[0], ring[-1])
-        width_m = abs(ring[0][0] - ring[3][0]) * 111_320 * math.cos(math.radians(40))
-        self.assertAlmostEqual(width_m, 30.48, delta=0.05)
+        [centerline] = aviation.runway_features(airports, runways, ends)
+        self.assertEqual(centerline['properties'], {'airport': 'TST', 'runway': '18/36', 'width_ft': 100, 'length_ft': 6000})
+        self.assertEqual(centerline['geometry']['coordinates'], [[-105.0, 40.01], [-105.0, 39.99]])
+        self.assertIsNone(aviation.runway_centerline((-105.0, 40.0), (-105.0, 40.0)))
 
     def test_skips_water_helipad_and_single_ended_runways(self):
         airports = aviation.operational_airports([base('1')])

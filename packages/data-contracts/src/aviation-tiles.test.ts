@@ -7,7 +7,7 @@ describe("aviation tile properties", () => {
     const airspace = { class: "B", name: "DENVER CLASS B", ident: "DEN", floorFt: 8000, ceilingFt: 12000 } as const;
     expect(aviationTileProperties("airspace", airspace)).toEqual({ class: "B", name: "DENVER CLASS B", ident: "DEN", floor_ft: 8000, ceiling_ft: 12000 });
     expect(parseAviationProperties("airspace", aviationTileProperties("airspace", airspace))).toEqual(airspace);
-    const runway = { airport: "DEN", runway: "16R/34L", role: "outline", widthFt: 150, lengthFt: 16000 } as const;
+    const runway = { airport: "DEN", runway: "16R/34L", widthFt: 150, lengthFt: 16000 } as const;
     expect(parseAviationProperties("runways", aviationTileProperties("runways", runway))).toEqual(runway);
     const airport = { ident: "DEN", name: "DENVER INTL", kind: "airport", use: "public", towered: true, longestRunwayFt: 16000 } as const;
     expect(parseAviationProperties("airports", aviationTileProperties("airports", airport))).toEqual(airport);
@@ -24,8 +24,8 @@ describe("aviation tile properties", () => {
     ["airspace", { class: "E", name: "X" }],
     ["airspace", { class: "B", name: " " }],
     ["sua", { kind: "tfr", name: "X" }],
-    ["runways", { airport: "DEN", runway: "8/26", role: "outline", width_ft: 0, length_ft: 1000 }],
-    ["runways", { airport: "DEN", runway: "8/26", role: "edge", width_ft: 100, length_ft: 1000 }],
+    ["runways", { airport: "DEN", runway: "8/26", width_ft: 0, length_ft: 1000 }],
+    ["runways", { airport: "DEN", runway: " ", width_ft: 100, length_ft: 1000 }],
     ["airports", { ident: "DEN", name: "DENVER", kind: "airport", use: "public", towered: "yes" }],
     ["navaids", { ident: "DEN", name: "DENVER", kind: "vhf" }],
     ["obstacles", { agl_ft: -5, lit: false }],

@@ -1,5 +1,5 @@
 import { MARKER_SYMBOLS } from "../types.js";
-import { PROJECT_REQUEST_DETAIL_KEYS, PROJECT_REQUEST_LIMITS as LIMITS } from "./request.js";
+import { PROJECT_REQUEST_AVIATION_KEYS, PROJECT_REQUEST_DETAIL_KEYS, PROJECT_REQUEST_LIMITS as LIMITS } from "./request.js";
 
 /**
  * JSON Schema (2020-12, also valid OpenAPI 3.1) for `ProjectRequestV1`, built
@@ -53,6 +53,13 @@ export const DETAILS_SCHEMA: Schema = {
   properties: Object.fromEntries(PROJECT_REQUEST_DETAIL_KEYS.map((key) => [key, { type: "boolean" }])),
 };
 
+export const AVIATION_SCHEMA: Schema = {
+  type: "object",
+  additionalProperties: false,
+  description: "FAA aviation detail, US and territories only; decorative, never for navigation. Every switch is off unless set: airspace (Class B, C and D boundaries), specialUse (restricted, MOA, warning and similar areas), runways, airports, navaids, obstacles (200 ft AGL and taller), labels (airport and navaid identifiers).",
+  properties: Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, { type: "boolean" }])),
+};
+
 const SETTINGS_PROPERTIES: Record<string, Schema> = {
   placeLabel: { type: "string", maxLength: LIMITS.placeLabelLength, description: "Human-readable place name, e.g. from search_places." },
   name: { type: "string", maxLength: LIMITS.nameLength, description: "Project name; defaults to the first part of placeLabel." },
@@ -65,6 +72,7 @@ const SETTINGS_PROPERTIES: Record<string, Schema> = {
   verticalExaggeration: range(LIMITS.verticalExaggeration, "How much to stretch the terrain vertically (default 2). The layer count follows from scale, relief, exaggeration and thickness."),
   contourCount: range(LIMITS.contourCount, "Flat output only: number of engraved contour lines (default 12).", true),
   details: DETAILS_SCHEMA,
+  aviation: AVIATION_SCHEMA,
   title: { type: "string", maxLength: LIMITS.titleLines * (LIMITS.titleLineLength + 1), description: `Optional engraved title: up to ${LIMITS.titleLines} lines separated by \\n, ${LIMITS.titleLineLength} characters each.` },
   laser: {
     type: "object",
