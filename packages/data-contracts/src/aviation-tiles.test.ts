@@ -16,6 +16,28 @@ describe("aviation tile properties", () => {
     expect(parseAviationProperties("obstacles", { agl_ft: 1049, lit: true })).toEqual({ aglFt: 1049, lit: true });
   });
 
+  it("round-trips the sectional legend details", () => {
+    const airport = {
+      ident: "DEN", name: "DENVER INTL", kind: "airport", use: "public", towered: true, longestRunwayFt: 16000, hardRunwayFt: 16000,
+      fuel: true, beacon: true, jointUse: false, runwayPattern: [[0, 2000, 0, -2000], [-1500, 30, 1500, -30]] as Array<[number, number, number, number]>,
+    } as const;
+    const written = aviationTileProperties("airports", airport);
+    expect(written.runway_pattern).toBe("0,2000,0,-2000;-1500,30,1500,-30");
+    expect(parseAviationProperties("airports", written)).toEqual(airport);
+    const obstacle = { aglFt: 480, lit: true, highIntensity: true, windTurbine: true, quantity: 12 };
+    expect(parseAviationProperties("obstacles", aviationTileProperties("obstacles", obstacle))).toEqual(obstacle);
+  });
+
+  it("keeps a feature but drops a malformed optional detail", () => {
+    const base = { ident: "X", name: "X", kind: "airport", use: "public", towered: false };
+    for (const runway_pattern of ["1,2,3", "1,2,3,x", "1.5,2,3,4", "0,0,0,99999", ""]) {
+      expect(parseAviationProperties("airports", { ...base, runway_pattern })).toEqual(base);
+    }
+    expect(parseAviationProperties("airports", { ...base, fuel: "Y" })).toEqual(base);
+    expect(parseAviationProperties("obstacles", { agl_ft: 300, lit: false, quantity: 1 })).toEqual({ aglFt: 300, lit: false });
+    expect(() => aviationTileProperties("obstacles", { aglFt: 300, lit: false, quantity: 1 })).toThrow("obstacles contract");
+  });
+
   it("keeps optional airspace altitudes optional", () => {
     expect(parseAviationProperties("airspace", { class: "D", name: "BOULDER" })).toEqual({ class: "D", name: "BOULDER" });
   });

@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, buildProjectPackage, exportBlockReason, generateGeometry, parseProject, projectFingerprint, sourceRequirements, type AviationDetailsV1, type MarkingFeature, type ProjectConfigV1 } from "../index.js";
 import { masterToSvg } from "../export/svg.js";
 import { engravingToSvg } from "../export/engraving-svg.js";
-import { aviationFeatures, aviationStroke, runwayPaths } from "./aviation.js";
+import { aviationFeatures, aviationStroke, runwayPaths, specialUseHatching } from "./aviation.js";
 import { realSource } from "../test-support/sources.js";
 
 const ALL: AviationDetailsV1 = { airspace: true, specialUse: true, runways: true, airports: true, navaids: true, obstacles: true, labels: true };
 const quiet = { showElevationLabels: false, showAlignmentGuides: false, showNorthArrow: false, showScaleBar: false, optimizeMaterialUse: false } satisfies Partial<ProjectConfigV1>;
 
+/** A square ring that runs clockwise on the page (area on its right); `.reverse()` puts the area on the left, as the archive writes rings. */
 const ring = (half: number) => [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }];
 
 function aviationSource(project: ProjectConfigV1) {
@@ -15,9 +16,9 @@ function aviationSource(project: ProjectConfigV1) {
   const markings: MarkingFeature[] = [
     { id: "b", kind: "aviation", operation: "engrave", aviationClass: "class-b", points: ring(80) },
     { id: "d", kind: "aviation", operation: "engrave", aviationClass: "class-d", points: ring(40) },
-    { id: "r-2601", kind: "aviation", operation: "engrave", aviationClass: "special-use", points: ring(60) },
+    { id: "r-2601", kind: "aviation", operation: "engrave", aviationClass: "special-use", points: ring(60).reverse() },
     { id: "rwy", kind: "aviation", operation: "engrave", aviationClass: "runway", widthM: 45, points: [{ x: -20, y: 10 }, { x: 20, y: 10 }] },
-    { id: "den", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-towered", label: "DEN", points: [{ x: 0, y: -20 }] },
+    { id: "den", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-hard", aviationDetail: { towered: true, fuel: true, runways: [[{ x: 0, y: -1 }, { x: 0, y: 1 }]] }, label: "DEN", points: [{ x: 0, y: -20 }] },
     { id: "vor", kind: "aviation", operation: "engrave", aviationClass: "navaid", aviationSymbol: "vortac", label: "DVV", points: [{ x: -30, y: 30 }] },
     { id: "farm", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-private", label: "CO12", points: [{ x: 50, y: -40 }] },
     { id: "mast", kind: "aviation", operation: "engrave", aviationClass: "obstacle", aviationSymbol: "obstacle", points: [{ x: 30, y: 30 }] },
@@ -31,7 +32,7 @@ describe("aviation styling", () => {
     expect(aviationStroke("class-b", style).widthMm).toBeCloseTo(0.3);
     expect(aviationStroke("class-c", style)).toEqual({ widthMm: 0.2 });
     expect(aviationStroke("class-d", style).dash).toHaveLength(2);
-    expect(aviationStroke("special-use", style).dash).toHaveLength(4);
+    expect(aviationStroke("special-use", style)).toEqual({ widthMm: 0.2 });
     expect(aviationStroke("class-c", {}).widthMm).toBe(0.24);
   });
 
@@ -43,6 +44,21 @@ describe("aviation styling", () => {
     expect(Math.abs(outline![0]!.y - outline![3]!.y)).toBeCloseTo(3);
     expect(runwayPaths(centerline, 60, 0.005, { aviationMm: 0.24 })).toEqual([centerline]);
     expect(runwayPaths(centerline, undefined, 1, { aviationMm: 0.24 })).toEqual([centerline]);
+  });
+
+  it("hatches special use airspace on the inside of the boundary, as the sectional does", () => {
+    const boundary = ring(10).reverse();
+    const ticks = specialUseHatching(boundary, { aviationMm: 0.2 });
+    // 80 mm of boundary at 0.6 mm spacing.
+    expect(ticks.length).toBe(Math.floor((80 - 0.3) / 0.6) + 1);
+    for (const [base, tip] of ticks) {
+      expect(Math.max(Math.abs(base!.x), Math.abs(base!.y))).toBeCloseTo(10);
+      expect(Math.hypot(tip!.x - base!.x, tip!.y - base!.y)).toBeCloseTo(1.1);
+      expect(Math.max(Math.abs(tip!.x), Math.abs(tip!.y))).toBeLessThan(10);
+    }
+    // A piece clipped open by the crop keeps its side: the area stays on the left of travel.
+    const [[, tip]] = specialUseHatching([{ x: 0, y: 0 }, { x: 10, y: 0 }], { aviationMm: 0.2 }) as [[unknown, { x: number; y: number }]];
+    expect(tip.y).toBeLessThan(0);
   });
 
   it("builds symbols and labels only for enabled detail", () => {
@@ -67,7 +83,7 @@ describe("aviation generation and export", () => {
     expect(result.aviationCycle).toBe("2026-09-03");
     const svg = engravingToSvg(result, project);
     expect(svg).toMatch(/ENGRAVE-airspace-d"[^>]*stroke-dasharray=/);
-    expect(svg).toMatch(/ENGRAVE-special-use-airspace"[^>]*stroke-dasharray=/);
+    expect(svg).not.toMatch(/ENGRAVE-special-use-airspace"[^>]*stroke-dasharray=/);
     expect(svg).toMatch(/ENGRAVE-airspace-b" stroke-width="0.36"/);
     expect(svg).toContain("ENGRAVE-aviation-symbols");
     expect(svg).toContain("ENGRAVE-aviation-labels");

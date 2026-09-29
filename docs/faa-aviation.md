@@ -13,9 +13,9 @@ Every input is pinned by URL and SHA-256 in [`scripts/data/faa-aviation-sources.
 | `airspace` | NASR `class_airspace_shape_files.zip` | 28 days | Class B, C and D rings, with floor and ceiling in feet where the FAA gives them. Class E is left out: its thousands of transition areas would bury a model in lines. |
 | `sua` | AIS Open Data `Special_Use_Airspace` service, snapshotted | as published | Prohibited, restricted, warning, alert, MOA and danger areas |
 | `runways` | NASR `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | The centerline between both surveyed ends, with width and length. The studio draws the true-width outline when it is at least three strokes wide at the model's scale. Water lanes, rooftop pads and helipads are skipped. |
-| `airports` | NASR `APT_BASE.csv` | 28 days | Operational US airports, heliports and seaplane bases, with public/private/military use and tower status |
+| `airports` | NASR `APT_BASE.csv` + `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | Operational US airports, heliports and seaplane bases, with public/private/military use, tower status, fuel, rotating beacon, civil-military joint use, the longest hard-surfaced runway, and the runway layout of fields with a hard runway of 1,500 ft or more |
 | `navaids` | NASR `NAV_BASE.csv` | 28 days | VOR, VORTAC, VOR/DME, TACAN, NDB, NDB/DME and DME. VOTs, fan markers and shut-down aids are skipped. |
-| `obstacles` | Digital Obstacle File `DOF.DAT` | 56 days | US obstacles 200 ft AGL and taller (as charted). Heights over 3,000 ft are data-entry errors and are dropped. |
+| `obstacles` | Digital Obstacle File `DOF.DAT` | 56 days | US obstacles 200 ft AGL and taller (as charted), with high-intensity white strobes (lighting codes H and S), wind turbines (type `WINDMILL`) and the quantity a record stands for (column 82). Heights over 3,000 ft are data-entry errors and are dropped. |
 
 The FAA publishes special use airspace only as a live service, so the builder reads a snapshot captured with `snapshot-survey-service.py`, which checks every page for missing or duplicate records.
 
@@ -25,16 +25,41 @@ NAD83 coordinates are used as WGS84. They are under 2 m apart in the conterminou
 
 `build-faa-aviation.py` writes one vector PMTiles archive, zoom 5–12. Its layers and properties are the contract in [`@topostack/data-contracts/aviation-tiles`](../packages/data-contracts/src/aviation-tiles.ts). Before tiling, `check-aviation-features.mjs` runs every feature through the browser's own parsers, so the archive cannot carry a value the studio would drop.
 
-- Boundaries are LineStrings, never polygons. Tile clipping then only splits lines, which the browser rejoins, and never draws an edge along a tile seam.
+- Boundaries are LineStrings, never polygons. Tile clipping then only splits lines, which the browser rejoins, and never draws an edge along a tile seam. Every ring (holes included) runs with its area on its left, so the studio knows the inside of a boundary even where the crop cuts it open.
 - Each feature has a minimum zoom. Class B/C airspace, special use airspace and prominent airports appear from zoom 5–6. Class D, runways and obstacles of 1,000 ft or more appear from 7, other airports from 8 and lower obstacles from 9.
 - Points are never thinned (`--drop-rate=1`); the studio budgets features instead.
 - Metadata carries `topostack_dataset`, `faa_nasr_cycle`, `faa_obstacle_date` and `faa_sua_date`. tippecanoe's `name` and `generator_options` record temporary paths, so the builder replaces them and a rebuild from the same pins is byte-identical.
 
-The 2026-09-03 cycle builds to 34 MB (SHA-256 `6cfc0b8d89b67cc4de5cb69abae6e975da0ba3b118fd551f29460a8a4360c45c`, byte-identical across rebuilds) with 1,289 airspace rings, 1,544 special use rings, 8,472 runways, 18,811 airports, 1,523 navaids and 184,123 obstacles.
+The 2026-09-03 cycle (`faa-aviation-2026-09-03-v2`, with the legend properties and oriented rings) builds to 35 MB (SHA-256 `7b0fc290666f319358be909ad120aee5f4df8b2f1aea7454cb1ff88e406cab82`, byte-identical across rebuilds) with 1,289 airspace rings, 1,544 special use rings, 8,472 runways, 18,811 airports, 1,523 navaids and 184,123 obstacles.
 
 The Worker serves it by range at `/v1/aviation.pmtiles` from the logical key `aviation/current.pmtiles`. It is optional: `/ready` does not wait for it, and the studio requests it only when a project turns aviation detail on.
 
 Coverage is a list of boxes in the source registration: the conterminous US split along the border, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa. A crop that touches none of them reports aviation as not covered. Near the border a box can include foreign ground, where the archive simply has no features.
+
+## Symbols
+
+Everything is drawn after the VFR sectional legend in the FAA [Aeronautical Chart Users' Guide](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/aero_guide/) (VFR Sectional and Terminal Area Charts: Airports, Radio Aids to Navigation, Airspace, Obstruction), in one colour. `annotate/aviation-symbols.ts` holds the shapes; `aviation-provider.ts` picks one from the archive properties.
+
+| Feature | Charted as |
+| --- | --- |
+| Public airport, no hard runway of 1,500 ft | Open circle |
+| Hard-surfaced runway 1,500 to 8,069 ft | Filled disc with the runways knocked out (hatched fill) |
+| Hard-surfaced runway over 8,069 ft | The runway layout, in outline once each strip can be three strokes wide, as centerlines at smaller symbol sizes |
+| Private field without such a runway | Circle with R |
+| Military field / civil-military field | Double circle |
+| Heliport, seaplane base | Circle with H, anchor |
+| Fuel available | Ticks at the four compass points (never on military fields) |
+| Rotating beacon | Star above the symbol |
+| VOR, VORTAC, VOR-DME, TACAN, DME | Hexagon; hexagon with solid tabs on the bottom and upper sides; hexagon in a rectangle it touches; the VORTAC silhouette alone; square |
+| NDB, NDB/DME | Ringed dot inside concentric dotted rings; with a square around the dot |
+| Obstacle under / at least 1,000 ft AGL | Λ over a dot; a mast flaring into two legs over a dot, standing on the position |
+| Several obstacles in one record | Group symbol (two Λ, or Λ and mast) |
+| Wind turbine | Mast, hub and three blades, alone or as a group |
+| High-intensity lights | Rays and lightning strokes above the top |
+| Class B, C, D | Heavy solid, solid, dashed |
+| Special use airspace | Solid line hatched on the inside edge |
+
+Where the chart uses colour alone, the engraving cannot follow. Towered airports (blue) look like the others and only take the first label places; prohibited, restricted and warning areas (blue) are hatched like alert areas and MOAs (magenta). Hatched fills are spaced a little under one stroke apart so they engrave solid, and NDB dots are kept at least 2.6 strokes apart so they stay dots.
 
 ## Refreshing for a new cycle
 

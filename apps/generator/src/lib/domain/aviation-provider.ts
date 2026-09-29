@@ -1,5 +1,5 @@
 import rawAviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
-import { aviationClassEnabled, type AviationClass, type AviationStatus, type AviationSymbol, type GeoBounds, type MarkingFeature, type Point2D, type ProjectConfigV1, type SourceAttribution } from "@topostack/core";
+import { aviationClassEnabled, type AviationClass, type AviationStatus, type AviationSymbol, type AviationSymbolDetail, type GeoBounds, type MarkingFeature, type Point2D, type ProjectConfigV1, type SourceAttribution } from "@topostack/core";
 import { aviationCovers, isAviationLayer, parseAviationArchiveMetadata, parseAviationProperties, validateAviationSources, type AviationLayer, type AviationPropertiesByLayer } from "@topostack/data-contracts/aviation-tiles";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
@@ -26,6 +26,9 @@ export const MAX_AVIATION_POINTS = 1_500;
 const FEET_TO_METERS = 0.3048;
 /** Obstacles this tall get the larger sectional symbol. */
 const TALL_OBSTACLE_FT = 1_000;
+/** The sectional's runway thresholds: a hard runway this long fills the airport disc, and one longer than the next is charted as its layout. */
+const HARD_SYMBOL_FT = 1_500;
+const PATTERN_SYMBOL_FT = 8_069;
 /** Lines keep a margin past the crop so dashes and outlines never end short of the edge. */
 const LINE_MARGIN_MM = 8;
 
@@ -39,14 +42,49 @@ const LAYER_CLASSES: Record<AviationLayer, (properties: never) => AviationClass>
 };
 
 const NAVAID_SYMBOLS: Record<AviationPropertiesByLayer["navaids"]["kind"], AviationSymbol> = {
-  vor: "vor", vortac: "vortac", "vor-dme": "vor-dme", tacan: "tacan", ndb: "ndb", "ndb-dme": "ndb", dme: "dme",
+  vor: "vor", vortac: "vortac", "vor-dme": "vor-dme", tacan: "tacan", ndb: "ndb", "ndb-dme": "ndb-dme", dme: "dme",
 };
 
-function airportSymbol(airport: AviationPropertiesByLayer["airports"]): AviationSymbol | undefined {
+type Airport = AviationPropertiesByLayer["airports"];
+type Obstacle = AviationPropertiesByLayer["obstacles"];
+
+/**
+ * The sectional legend's airport symbol (FAA Chart Users' Guide, VFR Airports).
+ * A hard-surfaced runway picks the symbol whoever uses the field: 1,500 ft fills
+ * the disc, beyond 8,069 ft the runway layout is drawn. Otherwise a private
+ * field is the R circle, a military one the double circle. Tower status is the
+ * chart's blue, which one colour cannot show, so it does not change the shape.
+ */
+export function airportSymbol(airport: Airport): AviationSymbol | undefined {
   // Private helipads (hospitals, rooftops) are thousands of dots a sectional leaves off.
   if (airport.kind === "heliport") return airport.use === "private" ? undefined : "heliport";
+  if (airport.kind === "seaplane-base") return airport.use === "private" ? "airport-private" : "seaplane-base";
+  const hard = airport.hardRunwayFt ?? 0;
+  if (hard > PATTERN_SYMBOL_FT && airport.runwayPattern) return "airport-pattern";
+  if (hard >= HARD_SYMBOL_FT) return "airport-hard";
   if (airport.use === "private") return "airport-private";
-  return airport.towered ? "airport-towered" : "airport";
+  if (airport.use === "military") return airport.jointUse ? "airport-joint" : "airport-military";
+  return "airport";
+}
+
+export function airportDetail(airport: Airport): AviationSymbolDetail {
+  // Military fields chart no fuel: "refueling and repair facilities not indicated".
+  const fuel = airport.fuel && (airport.use !== "military" || airport.jointUse);
+  return {
+    ...(fuel ? { fuel: true } : {}),
+    ...(airport.beacon ? { beacon: true } : {}),
+    ...(airport.towered ? { towered: true } : {}),
+    // Meters east and north become x east, y south, as the model draws.
+    ...(airport.runwayPattern ? { runways: airport.runwayPattern.map(([x1, y1, x2, y2]) => [{ x: x1, y: 0 - y1 }, { x: x2, y: 0 - y2 }]) } : {}),
+  };
+}
+
+export function obstacleSymbol(obstacle: Obstacle): AviationSymbol {
+  const group = (obstacle.quantity ?? 1) > 1;
+  if (obstacle.windTurbine) return group ? "wind-turbine-group" : "wind-turbine";
+  const tall = obstacle.aglFt >= TALL_OBSTACLE_FT;
+  if (group) return tall ? "obstacle-group-tall" : "obstacle-group";
+  return tall ? "obstacle-tall" : "obstacle";
 }
 
 export interface AviationData {
@@ -105,16 +143,21 @@ export async function loadAviationMarkings(bounds: GeoBounds, requestedZoom: num
         const geometry = feature.loadGeometry();
         consumeGeometry(geometry);
         if (feature.type === 1) {
-          const symbol = layerName === "airports" ? airportSymbol(properties as AviationPropertiesByLayer["airports"])
+          const symbol = layerName === "airports" ? airportSymbol(properties as Airport)
             : layerName === "navaids" ? NAVAID_SYMBOLS[(properties as AviationPropertiesByLayer["navaids"]).kind]
-            : layerName === "obstacles" ? ((properties as AviationPropertiesByLayer["obstacles"]).aglFt >= TALL_OBSTACLE_FT ? "obstacle-tall" : "obstacle")
+            : layerName === "obstacles" ? obstacleSymbol(properties as Obstacle)
             : undefined;
           const anchor = geometry[0]?.[0];
           if (!symbol || !anchor) continue;
           const point = projectPoint(tile, feature.extent, anchor);
           if (Math.abs(point.x) > config.widthMm / 2 || Math.abs(point.y) > config.heightMm / 2) continue;
           const label = "ident" in properties ? properties.ident : undefined;
-          points.push({ id: `${layerName}-${label ?? `${Math.round(point.x * 100)}-${Math.round(point.y * 100)}`}`, kind: "aviation", operation: "engrave", aviationClass, aviationSymbol: symbol, ...(label ? { label } : {}), points: [point] });
+          const detail = layerName === "airports" ? airportDetail(properties as Airport)
+            : layerName === "obstacles" && (properties as Obstacle).highIntensity ? { highIntensity: true } : {};
+          points.push({
+            id: `${layerName}-${label ?? `${Math.round(point.x * 100)}-${Math.round(point.y * 100)}`}`, kind: "aviation", operation: "engrave", aviationClass, aviationSymbol: symbol,
+            ...(Object.keys(detail).length ? { aviationDetail: detail } : {}), ...(label ? { label } : {}), points: [point],
+          });
           continue;
         }
         if (feature.type !== 2) continue;

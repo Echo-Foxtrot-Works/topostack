@@ -17,8 +17,31 @@ export type TextFont = typeof TEXT_FONTS[number];
 export type TransportationClass = "major-road" | "local-road" | "trail";
 /** FAA aviation detail, each drawn and grouped separately in exports. */
 export type AviationClass = "class-b" | "class-c" | "class-d" | "special-use" | "runway" | "airport" | "navaid" | "obstacle";
-/** The symbol an aviation point is drawn with (see annotate/aviation-symbols.ts). */
-export type AviationSymbol = "airport" | "airport-towered" | "airport-private" | "heliport" | "vor" | "vortac" | "vor-dme" | "tacan" | "ndb" | "dme" | "obstacle" | "obstacle-tall";
+/**
+ * The VFR sectional legend symbol an aviation point is drawn with (see
+ * annotate/aviation-symbols.ts). Airports: `airport` other than hard-surfaced,
+ * `airport-hard` a hard runway of 1,500 to 8,069 ft, `airport-pattern` the
+ * runway layout of a longer one, then private, military and civil-military
+ * fields, heliports and seaplane bases.
+ */
+export type AviationSymbol =
+  | "airport" | "airport-hard" | "airport-pattern" | "airport-private" | "airport-military" | "airport-joint" | "heliport" | "seaplane-base"
+  | "vor" | "vortac" | "vor-dme" | "tacan" | "ndb" | "ndb-dme" | "dme"
+  | "obstacle" | "obstacle-tall" | "obstacle-group" | "obstacle-group-tall" | "wind-turbine" | "wind-turbine-group";
+
+/** Legend details drawn onto an aviation symbol. */
+export interface AviationSymbolDetail {
+  /** Fuel available: ticks around an airport or seaplane base. */
+  fuel?: boolean;
+  /** A rotating beacon: a star above the airport. */
+  beacon?: boolean;
+  /** High-intensity obstruction lights: rays from the top of an obstacle. */
+  highIntensity?: boolean;
+  /** A control tower: the sectional shows it in blue, so the shape is unchanged and it only ranks the label first. */
+  towered?: boolean;
+  /** Runway centerlines around the airport, x east and y south in any unit; the symbol scales them to fit. */
+  runways?: Point2D[][];
+}
 export type AviationStatus = "available" | "partial" | "unavailable" | "not-covered" | "not-requested";
 export type NorthArrowStyle = "minimal" | "classic" | "mariner";
 export type BuiltInMarkerSymbol = "pin" | "circle" | "triangle" | "star" | "cross";
@@ -488,6 +511,7 @@ export interface MarkingFeature {
   aviationClass?: AviationClass;
   /** Aviation points only: one point, drawn as this symbol at a fixed size. */
   aviationSymbol?: AviationSymbol;
+  aviationDetail?: AviationSymbolDetail;
   /** Runways only: ground width in meters, drawn as an outline when it is wide enough at the model's scale. */
   widthM?: number;
   elevationM?: number;

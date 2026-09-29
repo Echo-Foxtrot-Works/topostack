@@ -1,5 +1,5 @@
 import { aviationSymbolPaths, aviationSymbolRadius } from "../annotate/aviation-symbols.js";
-import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationClass, type AviationDetailsV1, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
+import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationClass, type AviationDetailsV1, type AviationSymbol, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
 
 /**
  * FAA aviation detail: which classes a project draws, how each is stroked, and
@@ -36,17 +36,14 @@ export interface AviationStroke {
 
 /**
  * The single-colour stand-in for the sectional's blue and magenta: Class B is
- * the heaviest solid line, Class C solid, Class D dashed, special use
- * dash-dot. Shared by the machine SVG and every studio preview.
+ * the heaviest solid line, Class C solid, Class D dashed. Special use airspace
+ * is a solid line whose inside hatching is drawn as geometry (see
+ * `specialUseHatching`). Shared by the machine SVG and every studio preview.
  */
 export function aviationStroke(aviationClass: AviationClass, style: Pick<LineStyleV1, "aviationMm">): AviationStroke {
   const width = style.aviationMm ?? DEFAULT_AVIATION_MM;
   if (aviationClass === "class-b") return { widthMm: width * 1.5 };
   if (aviationClass === "class-d") return { widthMm: width, dash: [Math.max(width * 8, 1.6), Math.max(width * 5, 1)] };
-  if (aviationClass === "special-use") {
-    const gap = Math.max(width * 3, 0.6);
-    return { widthMm: width, dash: [Math.max(width * 10, 2), gap, 0.01, gap] };
-  }
   return { widthMm: width };
 }
 
@@ -72,6 +69,37 @@ export function runwayPaths(points: Point2D[], widthM: number | undefined, mmPer
   return [[...outline, { ...outline[0]! }]];
 }
 
+/**
+ * The sectional's special use airspace border: short ticks at right angles to
+ * the boundary, on its inside. The archive writes every ring with its area on
+ * the left (holes included) and tile stitching keeps that direction, so the
+ * ticks go to the left of travel, even on a piece clipped open by the crop.
+ */
+export function specialUseHatching(points: Point2D[], style: Pick<LineStyleV1, "aviationMm">): Point2D[][] {
+  const width = style.aviationMm ?? DEFAULT_AVIATION_MM;
+  const spacing = Math.max(width * 3, 0.6);
+  const length = Math.max(width * 5, 1.1);
+  const ticks: Point2D[][] = [];
+  let next = spacing / 2;
+  let travelled = 0;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const a = points[index]!;
+    const b = points[index + 1]!;
+    const segment = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segment <= 0) continue;
+    // Left of travel on a y-down page is (dy, -dx).
+    const normal = { x: (b.y - a.y) / segment * length, y: -(b.x - a.x) / segment * length };
+    while (next <= travelled + segment) {
+      const t = (next - travelled) / segment;
+      const base = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      ticks.push([base, { x: base.x + normal.x, y: base.y + normal.y }]);
+      next += spacing;
+    }
+    travelled += segment;
+  }
+  return ticks;
+}
+
 export interface AviationLabelCandidate {
   id: string;
   label: string;
@@ -83,7 +111,11 @@ export interface AviationLabelCandidate {
   priority: number;
 }
 
-const LABEL_PRIORITY: Record<string, number> = { "airport-towered": 0, airport: 1, vortac: 2, "vor-dme": 2, vor: 2, tacan: 3, ndb: 4, dme: 4, heliport: 5 };
+/** Label order by symbol; a towered field also outranks every untowered one. */
+const LABEL_PRIORITY: Partial<Record<AviationSymbol, number>> = {
+  "airport-pattern": 1, "airport-hard": 1, "airport-joint": 1, "airport-military": 1, airport: 2, "seaplane-base": 3,
+  vortac: 3, "vor-dme": 3, vor: 3, tacan: 4, ndb: 5, "ndb-dme": 5, dme: 5, heliport: 6,
+};
 
 /**
  * Enabled aviation features as engraving line features, plus the identifier
@@ -94,6 +126,7 @@ export function aviationFeatures(features: readonly MarkingFeature[], config: Pi
   const lines: MarkingFeature[] = [];
   const labels: AviationLabelCandidate[] = [];
   const symbolMm = aviationSymbolSize(config.lineStyle);
+  const strokeMm = config.lineStyle.aviationMm ?? DEFAULT_AVIATION_MM;
   for (const feature of features) {
     const aviationClass = feature.aviationClass;
     if (feature.kind !== "aviation" || !aviationClass || !aviationClassEnabled(aviationClass, config)) continue;
@@ -101,16 +134,19 @@ export function aviationFeatures(features: readonly MarkingFeature[], config: Pi
     if (feature.aviationSymbol) {
       const anchor = feature.points[0];
       if (!anchor) continue;
-      aviationSymbolPaths(feature.aviationSymbol, anchor, symbolMm).forEach((points, index) => lines.push(line(points, index)));
+      aviationSymbolPaths(feature.aviationSymbol, anchor, symbolMm, feature.aviationDetail, strokeMm).forEach((points, index) => lines.push(line(points, index)));
       // Private fields are symbols only: their identifiers crowd out the ones a reader looks for.
-      if (config.aviation?.labels && feature.label && feature.aviationSymbol in LABEL_PRIORITY) labels.push({
+      const priority = LABEL_PRIORITY[feature.aviationSymbol];
+      if (config.aviation?.labels && feature.label && priority !== undefined) labels.push({
         id: feature.id, label: feature.label, aviationClass, anchor,
         clearanceMm: aviationSymbolRadius(feature.aviationSymbol, symbolMm),
-        priority: LABEL_PRIORITY[feature.aviationSymbol]!,
+        priority: feature.aviationDetail?.towered ? 0 : priority,
       });
       continue;
     }
-    const paths = aviationClass === "runway" ? runwayPaths(feature.points, feature.widthM, mmPerMeter, config.lineStyle) : [feature.points];
+    const paths = aviationClass === "runway" ? runwayPaths(feature.points, feature.widthM, mmPerMeter, config.lineStyle)
+      : aviationClass === "special-use" ? [feature.points, ...specialUseHatching(feature.points, config.lineStyle)]
+      : [feature.points];
     paths.forEach((points, index) => lines.push(line(points, index)));
   }
   labels.sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label) || left.id.localeCompare(right.id));

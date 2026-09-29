@@ -47,7 +47,7 @@ function aviationSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
   const width = format(aviationStroke("class-c", config.lineStyle).widthMm);
   const drawn = [
     details.airspace ? `Class B airspace ${format(aviationStroke("class-b", config.lineStyle).widthMm)} mm (solid), Class C ${width} mm (solid), Class D ${width} mm (dashed)` : "",
-    details.specialUse ? `special use airspace ${width} mm (dash-dot)` : "",
+    details.specialUse ? `special use airspace ${width} mm (solid, hatched on the inside)` : "",
     details.runways ? `runways ${width} mm (outlined where wide enough at this scale)` : "",
     details.airports ? "airports" : "", details.navaids ? "navaids" : "", details.obstacles ? "obstacles 200 ft AGL and taller" : "",
     details.labels && (details.airports || details.navaids) ? "identifiers" : "",
@@ -55,7 +55,10 @@ function aviationSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
   const source = ir.aviationStatus === "not-covered"
     ? "FAA data covers only the United States and its territories, so this area has none."
     : `Source: FAA Aeronautical Information Services${ir.aviationCycle ? `, NASR cycle effective ${ir.aviationCycle}` : ""}.`;
-  return `Aviation detail: ${drawn.join(", ")}. ${source} NOT FOR NAVIGATION: aeronautical data is replaced every 28 days and this piece is never updated.\n`;
+  const symbols = details.airports || details.navaids || details.obstacles
+    ? " Symbols follow the FAA VFR sectional legend in one colour, so towered airports, which the chart shows in blue, look like the rest."
+    : "";
+  return `Aviation detail: ${drawn.join(", ")}.${symbols} ${source} NOT FOR NAVIGATION: aeronautical data is replaced every 28 days and this piece is never updated.\n`;
 }
 
 function attributionText(ir: GeometryIRV1): string {

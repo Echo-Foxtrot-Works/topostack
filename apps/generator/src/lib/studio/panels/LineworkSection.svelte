@@ -62,7 +62,7 @@
         <Field label="Airspace & runways" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Aviation line width" value={shownLineWidth(studio.project.lineStyle.aviationMm ?? DEFAULT_AVIATION_MM)} min={displayLength(0.05, studio.project.units)} max={displayLength(1.5, studio.project.units)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onValueChange={(value) => void setLineWidth("aviationMm", value)} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
         <Field label="Symbol size" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Aviation symbol size" value={shownLineWidth(studio.project.lineStyle.aviationSymbolMm ?? DEFAULT_AVIATION_SYMBOL_MM)} min={displayLength(MIN_AVIATION_SYMBOL_MM, studio.project.units)} max={displayLength(MAX_AVIATION_SYMBOL_MM, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 0.1} onValueChange={(value) => void setLineWidth("aviationSymbolMm", value)} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
       </div>
-      <small class="depth-note">Class B is drawn heavier, Class D dashed and special use airspace dash-dot, each in its own SVG group.</small>
+      <small class="depth-note">Class B is drawn heavier, Class D dashed and special use airspace hatched on the inside, each in its own SVG group. Symbols follow the VFR sectional legend.</small>
       </div>
       {/if}
       <div class="linework-group">

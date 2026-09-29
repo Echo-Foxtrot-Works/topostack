@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROJECT, type AviationDetailsV1, type ProjectConfigV1 } from "@topostack/core";
-import { AVIATION_SOURCES, MAX_AVIATION_POINTS, loadAviationMarkings } from "$lib/domain/aviation-provider";
+import { AVIATION_SOURCES, MAX_AVIATION_POINTS, airportDetail, airportSymbol, loadAviationMarkings, obstacleSymbol } from "$lib/domain/aviation-provider";
 import { clearArchiveCache } from "$lib/domain/archive";
 import { fittingTileWindow } from "$lib/domain/tile-math";
 
@@ -66,7 +66,7 @@ describe("FAA aviation loading", () => {
     expect(new Set(window.tiles.map((tile) => tile.worldX)).size).toBeGreaterThan(1);
     archive.tile = () => ({
       airspace: [{ type: 2, properties: { class: "B", name: "DENVER CLASS B", floor_ft: 8000, ceiling_ft: 12000 }, geometry: across(2048) }],
-      airports: [{ type: 1, properties: { ident: "DEN", name: "DENVER INTL", kind: "airport", use: "public", towered: true }, geometry: center }],
+      airports: [{ type: 1, properties: { ident: "DEN", name: "DENVER INTL", kind: "airport", use: "public", towered: true, hard_runway_ft: 16000, fuel: true, beacon: true, runway_pattern: "0,2000,0,-2000;-1500,0,1500,0" }, geometry: center }],
     });
     const result = await loadAviationMarkings(denver, 11, project({ airspace: true, airports: true }));
     expect(result.status).toBe("available");
@@ -83,7 +83,10 @@ describe("FAA aviation loading", () => {
       expect(Math.max(...line.points.map((point) => point.x))).toBeCloseTo(halfWidth, 3);
     }
     expect(result.markings.filter((marking) => marking.aviationClass === "airport")).toEqual([
-      expect.objectContaining({ aviationSymbol: "airport-towered", label: "DEN", points: [expect.any(Object)] }),
+      expect.objectContaining({
+        aviationSymbol: "airport-pattern", label: "DEN", points: [expect.any(Object)],
+        aviationDetail: { fuel: true, beacon: true, towered: true, runways: [[{ x: 0, y: -2000 }, { x: 0, y: 2000 }], [{ x: -1500, y: 0 }, { x: 1500, y: 0 }]] },
+      }),
     ]);
   });
 
@@ -132,5 +135,46 @@ describe("FAA aviation loading", () => {
   it("refuses an archive whose metadata does not name its cycle", async () => {
     archive.metadata = { topostack_dataset: "faa-aviation-v1" };
     await expect(loadAviationMarkings(denver, 11, project({ airspace: true }))).rejects.toThrow(/dataset identity/);
+  });
+});
+
+describe("sectional legend symbols", () => {
+  const field = { ident: "TST", name: "TEST", kind: "airport", use: "public", towered: false } as const;
+  const pattern: Array<[number, number, number, number]> = [[0, 1500, 0, -1500]];
+
+  it.each([
+    [{}, "airport"],
+    [{ hardRunwayFt: 1400 }, "airport"],
+    [{ hardRunwayFt: 1500 }, "airport-hard"],
+    [{ hardRunwayFt: 8069, runwayPattern: pattern }, "airport-hard"],
+    [{ hardRunwayFt: 8070, runwayPattern: pattern }, "airport-pattern"],
+    [{ hardRunwayFt: 9000 }, "airport-hard"],
+    [{ use: "private" }, "airport-private"],
+    [{ use: "private", hardRunwayFt: 3000 }, "airport-hard"],
+    [{ use: "military" }, "airport-military"],
+    [{ use: "military", jointUse: true }, "airport-joint"],
+    [{ kind: "seaplane-base" }, "seaplane-base"],
+    [{ kind: "heliport" }, "heliport"],
+    [{ kind: "heliport", use: "private" }, undefined],
+    [{ towered: true }, "airport"],
+  ] as const)("charts %j as %s", (patch, symbol) => {
+    expect(airportSymbol({ ...field, ...patch })).toBe(symbol);
+  });
+
+  it("draws fuel ticks only where the sectional does", () => {
+    expect(airportDetail({ ...field, fuel: true })).toEqual({ fuel: true });
+    expect(airportDetail({ ...field, use: "military", fuel: true })).toEqual({});
+    expect(airportDetail({ ...field, use: "military", jointUse: true, fuel: true })).toEqual({ fuel: true });
+  });
+
+  it.each([
+    [{ aglFt: 400 }, "obstacle"],
+    [{ aglFt: 1000 }, "obstacle-tall"],
+    [{ aglFt: 400, quantity: 3 }, "obstacle-group"],
+    [{ aglFt: 1200, quantity: 2 }, "obstacle-group-tall"],
+    [{ aglFt: 450, windTurbine: true }, "wind-turbine"],
+    [{ aglFt: 450, windTurbine: true, quantity: 4 }, "wind-turbine-group"],
+  ] as const)("charts obstacle %j as %s", (patch, symbol) => {
+    expect(obstacleSymbol({ lit: false, ...patch })).toBe(symbol);
   });
 });

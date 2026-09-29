@@ -10,7 +10,8 @@ packages/data-contracts/src/aviation-tiles.ts; every feature is checked
 against that contract in Node before tiling.
 
 Boundaries are written as LineStrings so tile clipping never invents an edge
-along a tile seam. Runways are centerlines with their width; the studio draws
+along a tile seam, each ring running with its area on the left so the studio
+can hatch special use airspace on the inside, as the sectional does. Runways are centerlines with their width; the studio draws
 the outline when it is wide enough to read at the model's scale. NAD83 coordinates are used as WGS84 (under 2 m apart in the
 conterminous US, far below engraving resolution).
 
@@ -35,6 +36,7 @@ import zipfile
 
 import fiona
 from shapely.geometry import shape
+from shapely.geometry.polygon import orient
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / 'scripts/data/faa-aviation-sources.json'
@@ -46,6 +48,13 @@ MILITARY_OWNERSHIP = {'MA', 'MN', 'MR', 'CG'}
 NAVAID_KINDS = {'VOR': 'vor', 'VORTAC': 'vortac', 'VOR/DME': 'vor-dme', 'TACAN': 'tacan', 'NDB': 'ndb', 'NDB/DME': 'ndb-dme', 'DME': 'dme'}
 # Surfaces a laser can meaningfully draw as a strip; water lanes and rooftop pads are not.
 EXCLUDED_RUNWAY_SURFACES = {'WATER', 'ROOF-TOP'}
+# The sectional's hard surfaces; a composite code such as ASPH-TURF is named for its main surface.
+HARD_SURFACES = {'ASPH', 'CONC', 'PEM'}
+# Airports with a hard runway this long are charted with their runway layout.
+PATTERN_MIN_HARD_FT = 1500
+MAX_PATTERN_RUNWAYS = 12
+# DOF lighting codes for high-intensity white strobes, which the sectional charts with rays.
+HIGH_INTENSITY_LIGHTING = {'H', 'S'}
 MIN_OBSTACLE_AGL_FT = 200
 # Taller than any US structure (the tallest mast is about 2,060 ft): a data-entry error.
 MAX_OBSTACLE_AGL_FT = 3000
@@ -79,11 +88,12 @@ def feature(geometry, properties, minzoom):
 
 
 def rings_as_lines(geometry):
-    """Every exterior and interior ring of a (multi)polygon as a 2D LineString."""
+    """Every ring of a (multi)polygon as a 2D LineString, oriented so the area lies to its left."""
     polygon = shape(geometry)
     polygons = getattr(polygon, 'geoms', [polygon])
     lines = []
     for part in polygons:
+        part = orient(part, sign=1.0)
         for ring in [part.exterior, *part.interiors]:
             coordinates = [[round(x, 6), round(y, 6)] for x, y, *_ in ring.coords]
             if len(coordinates) >= 4:
@@ -155,24 +165,52 @@ def runway_centerline(start, end):
     return {'type': 'LineString', 'coordinates': [[round(lon1, 7), round(lat1, 7)], [round(lon2, 7), round(lat2, 7)]]}
 
 
+def is_hard(surface):
+    return surface.replace('/', '-').split('-')[0] in HARD_SURFACES
+
+
+def is_land_runway(row):
+    return not row.get('RWY_ID', '').startswith('H') and row.get('SURFACE_TYPE_CODE', '') not in EXCLUDED_RUNWAY_SURFACES
+
+
+def runway_ends(end_rows):
+    ends = {}
+    for row in end_rows:
+        lat, lon = number(row['LAT_DECIMAL']), number(row['LONG_DECIMAL'])
+        if lat is not None and lon is not None:
+            ends.setdefault((row['SITE_NO'], row['RWY_ID']), []).append((lon, lat))
+    return ends
+
+
+def runway_pattern(airport, runways, ends):
+    """Land runway centerlines in whole meters east and north of the airport reference point, as `x1,y1,x2,y2;...`."""
+    lon0, lat0 = number(airport['LONG_DECIMAL']), number(airport['LAT_DECIMAL'])
+    east = 111_320 * math.cos(math.radians(lat0))
+    segments = []
+    for row in sorted(runways, key=lambda item: -(number(item['RWY_LEN']) or 0))[:MAX_PATTERN_RUNWAYS]:
+        pair = ends.get((row['SITE_NO'], row['RWY_ID']), [])
+        if len(pair) != 2:
+            continue
+        coordinates = [round(value) for lon, lat in pair for value in ((lon - lon0) * east, (lat - lat0) * 110_540)]
+        if all(abs(value) <= 20_000 for value in coordinates) and coordinates[:2] != coordinates[2:]:
+            segments.append(','.join(str(value) for value in coordinates))
+    return ';'.join(segments) or None
+
+
 def operational_airports(base_rows):
     return {row['SITE_NO']: row for row in base_rows
             if row['ARPT_STATUS'] == 'O' and row['COUNTRY_CODE'] == 'US' and row['SITE_TYPE_CODE'] in AIRPORT_KINDS}
 
 
 def runway_features(airports, runway_rows, end_rows):
-    ends = {}
-    for row in end_rows:
-        lat, lon = number(row['LAT_DECIMAL']), number(row['LONG_DECIMAL'])
-        if lat is not None and lon is not None:
-            ends.setdefault((row['SITE_NO'], row['RWY_ID']), []).append((lon, lat))
+    ends = runway_ends(end_rows)
     out = []
     for row in runway_rows:
         airport = airports.get(row['SITE_NO'])
         key = (row['SITE_NO'], row['RWY_ID'])
         width, length = number(row['RWY_WIDTH']), number(row['RWY_LEN'])
-        if (not airport or airport['SITE_TYPE_CODE'] != 'A' or row['RWY_ID'].startswith('H')
-                or row['SURFACE_TYPE_CODE'] in EXCLUDED_RUNWAY_SURFACES or not width or not length or len(ends.get(key, [])) != 2):
+        if (not airport or airport['SITE_TYPE_CODE'] != 'A' or not is_land_runway(row)
+                or not width or not length or len(ends.get(key, [])) != 2):
             continue
         centerline = runway_centerline(*ends[key])
         if centerline:
@@ -181,12 +219,17 @@ def runway_features(airports, runway_rows, end_rows):
     return out
 
 
-def airport_features(airports, runway_rows):
-    longest = {}
+def airport_features(airports, runway_rows, end_rows=()):
+    longest, hard, land = {}, {}, {}
     for row in runway_rows:
         length = number(row['RWY_LEN'])
         if length:
             longest[row['SITE_NO']] = max(longest.get(row['SITE_NO'], 0), int(length))
+        if is_land_runway(row):
+            land.setdefault(row['SITE_NO'], []).append(row)
+            if length and is_hard(row.get('SURFACE_TYPE_CODE', '')):
+                hard[row['SITE_NO']] = max(hard.get(row['SITE_NO'], 0), int(length))
+    ends = runway_ends(end_rows)
     out = []
     for site, row in airports.items():
         lat, lon = number(row['LAT_DECIMAL']), number(row['LONG_DECIMAL'])
@@ -198,6 +241,17 @@ def airport_features(airports, runway_rows):
         values = {'ident': row['ARPT_ID'].strip(), 'name': name, 'kind': AIRPORT_KINDS[row['SITE_TYPE_CODE']], 'use': use, 'towered': towered}
         if site in longest:
             values['longest_runway_ft'] = longest[site]
+        if site in hard:
+            values['hard_runway_ft'] = hard[site]
+        if row.get('FUEL_TYPES', '').strip():
+            values['fuel'] = True
+        if row.get('BCN_LGT_SKED', '').strip():
+            values['beacon'] = True
+        if row.get('JOINT_USE_FLAG') == 'Y':
+            values['joint_use'] = True
+        pattern = runway_pattern(row, land.get(site, []), ends) if row['SITE_TYPE_CODE'] == 'A' and hard.get(site, 0) >= PATTERN_MIN_HARD_FT else None
+        if pattern:
+            values['runway_pattern'] = pattern
         prominent = towered or (use != 'private' and longest.get(site, 0) >= 3000)
         out.append(feature({'type': 'Point', 'coordinates': [round(lon, 7), round(lat, 7)]}, values, 6 if prominent else 8))
     return out
@@ -230,7 +284,8 @@ def parse_obstacle(line):
         agl = int(line[83:88])
     except ValueError:
         return None
-    return {'country': line[12:14], 'lat': lat, 'lon': lon, 'agl_ft': agl, 'lighting': line[95]}
+    quantity = int(line[81]) if line[81].isdigit() else 1
+    return {'country': line[12:14], 'lat': lat, 'lon': lon, 'type': line[62:80].strip(), 'quantity': quantity, 'agl_ft': agl, 'lighting': line[95]}
 
 
 def obstacle_features(lines):
@@ -240,6 +295,12 @@ def obstacle_features(lines):
         if not record or record['country'] != 'US' or not MIN_OBSTACLE_AGL_FT <= record['agl_ft'] <= MAX_OBSTACLE_AGL_FT:
             continue
         values = {'agl_ft': record['agl_ft'], 'lit': record['lighting'] not in ('N', 'U', ' ')}
+        if record['lighting'] in HIGH_INTENSITY_LIGHTING:
+            values['high_intensity'] = True
+        if record['type'] == 'WINDMILL':
+            values['wind_turbine'] = True
+        if record['quantity'] > 1:
+            values['quantity'] = record['quantity']
         out.append(feature({'type': 'Point', 'coordinates': [round(record['lon'], 7), round(record['lat'], 7)]}, values, 7 if record['agl_ft'] >= 1000 else 9))
     return out
 
@@ -274,7 +335,7 @@ def build_layers(pins, cache):
         'airspace': airspace_features(read_airspace(fetch(files['classAirspace'], cache), files['classAirspace']['member'])),
         'sua': sua_features(sua),
         'runways': runway_features(airports, runways, ends),
-        'airports': airport_features(airports, runways),
+        'airports': airport_features(airports, runways, ends),
         'navaids': navaid_features(read_csv(fetch(files['navaids'], cache), 'NAV_BASE.csv')),
         'obstacles': obstacle_features(read_obstacle_lines(fetch(files['obstacles'], cache))),
     }
