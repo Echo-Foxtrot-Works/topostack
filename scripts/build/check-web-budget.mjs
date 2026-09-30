@@ -16,7 +16,9 @@ const budgets = {
   // Prerendered homepage HTML. 9,579 when set.
   landingHtmlGzip: 10_500,
   // JavaScript studio.html preloads before the studio can render. 130,547 when set.
-  initialJavaScriptGzip: 145_000,
+  // 145,307 when raised 2026-09-29 (from 143,137): the VFR sectional legend
+  // symbols are geometry in core, whose chunk studio.html preloads.
+  initialJavaScriptGzip: 160_000,
   // Studio route plus App, the default 3D preview and the geometry worker:
   // everything needed for the first preview. Other routes are not counted.
   // 440,324 when set (the old measure counted every route and read 505,789).

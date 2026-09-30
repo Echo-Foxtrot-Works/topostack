@@ -507,7 +507,7 @@ function e2eAviationFixture(config: ProjectConfigV1): MarkingFeature[] {
   return [
     { id: "e2e-class-b", kind: "aviation", operation: "engrave", aviationClass: "class-b", label: "E2E CLASS B", points: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }] },
     { id: "e2e-runway", kind: "aviation", operation: "engrave", aviationClass: "runway", label: "9/27", widthM: 45, points: [{ x: -half / 2, y: 0 }, { x: half / 2, y: 0 }] },
-    { id: "e2e-airport", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-towered", label: "E2E", points: [{ x: 0, y: half / 2 }] },
+    { id: "e2e-airport", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-pattern", aviationDetail: { towered: true, beacon: true, runways: [[{ x: -1, y: 0 }, { x: 1, y: 0 }], [{ x: -0.6, y: -0.6 }, { x: 0.6, y: 0.6 }]] }, label: "E2E", points: [{ x: 0, y: half / 2 }] },
   ];
 }
 

@@ -70,7 +70,7 @@ describe("refreshing map data", () => {
   });
 
   it("loads aviation only when the project asks for it and keeps it across road reloads", async () => {
-    const airport = { id: "den", kind: "aviation" as const, operation: "engrave" as const, aviationClass: "airport" as const, aviationSymbol: "airport-towered" as const, points: [{ x: 0, y: 0 }] };
+    const airport = { id: "den", kind: "aviation" as const, operation: "engrave" as const, aviationClass: "airport" as const, aviationSymbol: "airport-pattern" as const, points: [{ x: 0, y: 0 }] };
     const deps: SourceRefreshDependencies = {
       loadVectorMarkings: vi.fn(async () => ({ markings: [], inland: [], ocean: [], truncated: false })),
       loadLakeAreas: vi.fn(async () => []),

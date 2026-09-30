@@ -502,9 +502,8 @@
       const aviationMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.aviation, linewidth: aviationStroke("class-c", style).widthMm });
       const [classDDash = 1.6, classDGap = 1] = aviationStroke("class-d", style).dash ?? [];
       const aviationDashedMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["aviation-dashed"], linewidth: aviationStroke("class-d", style).widthMm, dashSize: classDDash, gapSize: classDGap });
-      // WebGL has no dash-dot; a long dash with a short gap still reads apart from Class D.
-      const [specialUseDash = 2, specialUseGap = 0.6] = aviationStroke("special-use", style).dash ?? [];
-      const specialUseMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm, dashSize: specialUseDash, gapSize: specialUseGap });
+      // Special use airspace is solid; its inside hatching arrives as geometry.
+      const specialUseMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial,
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,

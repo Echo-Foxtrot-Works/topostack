@@ -6,8 +6,14 @@
  *
  * Boundaries (airspace, special use airspace) are stored as LineStrings, never
  * polygons: tile clipping then only splits lines, which the browser rejoins,
- * and never invents an edge along a tile seam. Runways are centerlines with
- * their width; the model draws the outline when it is wide enough to read.
+ * and never invents an edge along a tile seam. Every ring runs with its area on
+ * the left, so a boundary's inside survives clipping. Runways are centerlines
+ * with their width; the model draws the outline when it is wide enough to read.
+ *
+ * Airport and obstacle properties carry what the sectional legend draws from:
+ * fuel (ticks), rotating beacon (star), hard surface and runway layout (filled
+ * or patterned symbols), high-intensity lights, wind turbines and groups. They
+ * are optional, so an archive written before them still parses.
  */
 
 export const AVIATION_LAYERS = ["airspace", "sua", "runways", "airports", "navaids", "obstacles"] as const;
@@ -32,9 +38,37 @@ export type NavaidKind = (typeof NAVAID_KINDS)[number];
 export interface AirspaceProperties { class: AirspaceClass; name: string; ident?: string; floorFt?: number; ceilingFt?: number }
 export interface SuaProperties { kind: SuaKind; name: string }
 export interface RunwayProperties { airport: string; runway: string; widthFt: number; lengthFt: number }
-export interface AirportProperties { ident: string; name: string; kind: AirportKind; use: AirportUse; towered: boolean; longestRunwayFt?: number }
+/** One runway centerline, `[x1, y1, x2, y2]` in meters east and north of the airport reference point. */
+export type RunwayPatternSegment = [number, number, number, number];
+
+export interface AirportProperties {
+  ident: string;
+  name: string;
+  kind: AirportKind;
+  use: AirportUse;
+  towered: boolean;
+  longestRunwayFt?: number;
+  /** Longest hard-surfaced (asphalt, concrete) runway, which picks the sectional symbol. */
+  hardRunwayFt?: number;
+  /** Fuel is sold on the field. */
+  fuel?: boolean;
+  /** A rotating beacon operates sunset to sunrise. */
+  beacon?: boolean;
+  /** A military field with civil operations (the civil-military symbol). */
+  jointUse?: boolean;
+  /** Every land runway, for airports charted with their runway layout. */
+  runwayPattern?: RunwayPatternSegment[];
+}
 export interface NavaidProperties { ident: string; name: string; kind: NavaidKind }
-export interface ObstacleProperties { aglFt: number; lit: boolean }
+export interface ObstacleProperties {
+  aglFt: number;
+  lit: boolean;
+  /** High-intensity white strobes, which the sectional marks with rays. */
+  highIntensity?: boolean;
+  windTurbine?: boolean;
+  /** Obstacles charted as this one record, when more than one. */
+  quantity?: number;
+}
 
 export interface AviationPropertiesByLayer {
   airspace: AirspaceProperties;
@@ -64,6 +98,21 @@ const feet = (raw: Raw, key: string, max = 100_000): number | undefined => {
   const value = raw[key];
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max ? Math.round(value) : undefined;
 };
+
+const flag = (raw: Raw, key: string): boolean | undefined => typeof raw[key] === "boolean" ? raw[key] as boolean : undefined;
+
+/** Longest runway pattern accepted: a dozen runways of 40 characters. */
+const MAX_PATTERN_LENGTH = 480;
+const PATTERN_EXTENT_M = 20_000;
+
+/** The builder writes a pattern as `x1,y1,x2,y2;...` in whole meters. */
+function runwayPattern(raw: Raw): RunwayPatternSegment[] | undefined {
+  const value = raw.runway_pattern;
+  if (typeof value !== "string" || !value || value.length > MAX_PATTERN_LENGTH) return undefined;
+  const segments = value.split(";").map((segment) => segment.split(",").map(Number));
+  return segments.every((segment) => segment.length === 4 && segment.every((n) => Number.isInteger(n) && Math.abs(n) <= PATTERN_EXTENT_M))
+    ? segments as RunwayPatternSegment[] : undefined;
+}
 
 const member = <T extends string>(values: readonly T[], value: unknown): T | undefined =>
   typeof value === "string" && (values as readonly string[]).includes(value) ? value as T : undefined;
@@ -99,7 +148,11 @@ function parseAirport(raw: Raw): AirportProperties | undefined {
   const kind = member(AIRPORT_KINDS, raw.kind);
   const use = member(AIRPORT_USES, raw.use);
   if (!ident || !name || !kind || !use || typeof raw.towered !== "boolean") return undefined;
-  return compact({ ident, name, kind, use, towered: raw.towered, longestRunwayFt: feet(raw, "longest_runway_ft", 30_000) });
+  return compact({
+    ident, name, kind, use, towered: raw.towered,
+    longestRunwayFt: feet(raw, "longest_runway_ft", 30_000), hardRunwayFt: feet(raw, "hard_runway_ft", 30_000),
+    fuel: flag(raw, "fuel"), beacon: flag(raw, "beacon"), jointUse: flag(raw, "joint_use"), runwayPattern: runwayPattern(raw),
+  });
 }
 
 function parseNavaid(raw: Raw): NavaidProperties | undefined {
@@ -112,7 +165,11 @@ function parseNavaid(raw: Raw): NavaidProperties | undefined {
 function parseObstacle(raw: Raw): ObstacleProperties | undefined {
   const aglFt = feet(raw, "agl_ft", 5_000);
   if (!aglFt || typeof raw.lit !== "boolean") return undefined;
-  return { aglFt, lit: raw.lit };
+  const quantity = raw.quantity;
+  return compact({
+    aglFt, lit: raw.lit, highIntensity: flag(raw, "high_intensity"), windTurbine: flag(raw, "wind_turbine"),
+    quantity: typeof quantity === "number" && Number.isInteger(quantity) && quantity >= 2 && quantity <= 99 ? quantity : undefined,
+  });
 }
 
 const PARSERS: { [L in AviationLayer]: (raw: Raw) => AviationPropertiesByLayer[L] | undefined } = {
@@ -132,8 +189,10 @@ export function parseAviationProperties<L extends AviationLayer>(layer: L, raw: 
 /** The exact snake_case properties the builder writes for a feature. */
 export function aviationTileProperties<L extends AviationLayer>(layer: L, value: AviationPropertiesByLayer[L]): Record<string, string | number | boolean> {
   const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-  const properties = Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined).map(([key, entry]) => [snake(key), entry as string | number | boolean]));
-  if (!parseAviationProperties(layer, properties)) throw new Error(`Feature does not satisfy the ${layer} contract.`);
+  const encode = (entry: unknown) => Array.isArray(entry) ? entry.map((segment: number[]) => segment.join(",")).join(";") : entry as string | number | boolean;
+  const properties = Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined).map(([key, entry]) => [snake(key), encode(entry)]));
+  const parsed = parseAviationProperties(layer, properties);
+  if (!parsed || Object.keys(parsed).length !== Object.keys(properties).length) throw new Error(`Feature does not satisfy the ${layer} contract.`);
   return properties;
 }
 

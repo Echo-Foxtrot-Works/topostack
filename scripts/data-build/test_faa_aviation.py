@@ -26,6 +26,13 @@ class Airspace(unittest.TestCase):
         self.assertEqual(features[0]['properties'], {'class': 'B', 'name': 'TEST CLASS B', 'ident': 'TST', 'floor_ft': 0, 'ceiling_ft': 12000})
         self.assertEqual(features[0]['tippecanoe'], {'minzoom': 5})
 
+    def test_rings_run_with_their_area_on_the_left(self):
+        clockwise = {'type': 'Polygon', 'coordinates': [list(reversed(SQUARE['coordinates'][0])), SQUARE['coordinates'][1]]}
+        exterior, hole = aviation.rings_as_lines(clockwise)
+        signed = lambda points: sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(points, points[1:]))
+        self.assertGreater(signed(exterior['coordinates']), 0)  # counterclockwise: the area is on the left
+        self.assertLess(signed(hole['coordinates']), 0)  # clockwise: the surrounding area is on the left
+
     def test_omits_sentinel_altitudes(self):
         [first, _] = aviation.airspace_features([(airspace('D', UPPER_VAL='-9998', UPPER_UOM=None, UPPER_CODE=None, LOWER_CODE='MSL', LOWER_VAL='1000'), SQUARE)])
         self.assertEqual(first['properties'].get('floor_ft'), 1000)
@@ -73,6 +80,25 @@ class Airports(unittest.TestCase):
         self.assertEqual(features['TSTpublic']['tippecanoe'], {'minzoom': 6})
         self.assertEqual(features['PVTprivate']['tippecanoe'], {'minzoom': 8})
 
+    def test_airport_symbol_details(self):
+        airports = aviation.operational_airports([
+            base('1', FUEL_TYPES='100LL,A', BCN_LGT_SKED='SS-SR', JOINT_USE_FLAG='Y'),
+            base('2', ARPT_ID='GRS', FUEL_TYPES='', BCN_LGT_SKED='', JOINT_USE_FLAG='N'),
+        ])
+        runways = [
+            {'SITE_NO': '1', 'RWY_ID': '18/36', 'RWY_LEN': '6000', 'SURFACE_TYPE_CODE': 'ASPH-G'},
+            {'SITE_NO': '1', 'RWY_ID': '9/27', 'RWY_LEN': '2500', 'SURFACE_TYPE_CODE': 'TURF'},
+            {'SITE_NO': '1', 'RWY_ID': 'H1', 'RWY_LEN': '9000', 'SURFACE_TYPE_CODE': 'CONC'},
+            {'SITE_NO': '2', 'RWY_ID': '4/22', 'RWY_LEN': '3000', 'SURFACE_TYPE_CODE': 'TURF-GRVL'},
+        ]
+        end = lambda rwy, lat, lon: {'SITE_NO': '1', 'RWY_ID': rwy, 'LAT_DECIMAL': str(lat), 'LONG_DECIMAL': str(lon)}
+        ends = [end('18/36', 40.01, -105.0), end('18/36', 39.99, -105.0), end('9/27', 40.0, -105.005), end('9/27', 40.0, -104.995)]
+        features = {item['properties']['ident']: item['properties'] for item in aviation.airport_features(airports, runways, ends)}
+        paved = features['TST']
+        self.assertEqual((paved['hard_runway_ft'], paved['fuel'], paved['beacon'], paved['joint_use']), (6000, True, True, True))
+        self.assertEqual(paved['runway_pattern'], '0,1105,0,-1105;-426,0,426,0')
+        self.assertEqual(features['GRS'], {'ident': 'GRS', 'name': 'TEST FIELD', 'kind': 'airport', 'use': 'public', 'towered': True, 'longest_runway_ft': 3000})
+
     def test_navaids_keep_radio_aids_only(self):
         row = {'NAV_ID': 'DEN', 'NAME': 'DENVER', 'NAV_STATUS': 'OPERATIONAL IFR', 'LAT_DECIMAL': '39.8', 'LONG_DECIMAL': '-104.6'}
         features = aviation.navaid_features([{**row, 'NAV_TYPE': 'VORTAC'}, {**row, 'NAV_TYPE': 'VOT'}, {**row, 'NAV_TYPE': 'NDB', 'NAV_STATUS': 'SHUTDOWN'}])
@@ -97,6 +123,11 @@ class Obstacles(unittest.TestCase):
         features = aviation.obstacle_features([DOF_TOWER, DOF_SHORT, implausible])
         self.assertEqual([item['properties'] for item in features], [{'agl_ft': 256, 'lit': True}])
         self.assertEqual(features[0]['tippecanoe'], {'minzoom': 9})
+
+    def test_reads_lighting_type_and_quantity(self):
+        strobe_group = DOF_TOWER[:62] + 'WINDMILL          ' + DOF_TOWER[80] + '3' + DOF_TOWER[82:95] + 'H' + DOF_TOWER[96:]
+        [feature] = aviation.obstacle_features([strobe_group])
+        self.assertEqual(feature['properties'], {'agl_ft': 256, 'lit': True, 'high_intensity': True, 'wind_turbine': True, 'quantity': 3})
 
 
 class Registration(unittest.TestCase):
