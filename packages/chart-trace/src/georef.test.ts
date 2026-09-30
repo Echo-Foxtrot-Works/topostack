@@ -100,7 +100,10 @@ describe("fitControlPoints", () => {
   });
 });
 
-describe("snapToOutline", () => {
+// Each case searches rotations, mirrorings and offsets over full outlines: 2-4 s
+// on a CI runner, and slower under coverage on a busy one. The default 5 s
+// timed out on dev (run 463) with nothing wrong.
+describe("snapToOutline", { timeout: 30_000 }, () => {
   it.each([
     ["north-up", 0, false],
     ["rotated like the Lake Margrethe sheet", 2.4, false],
