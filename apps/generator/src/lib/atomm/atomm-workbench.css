@@ -766,7 +766,9 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .section-content .subsection-label { font: var(--font-12-medium); }
   .detail-group > .subgroup-heading { margin-inline: 16px; }
   .toggle-settings { margin-inline: 16px; padding-inline: 0; border: 0; }
-  .toggle-settings .range-field, .toggle-settings .field-row { padding-inline: 0; }
+  /* These groups already supply the card gutter; their rows must not add it again. */
+  .toggle-settings .range-field, .toggle-settings .field-row, .toggle-settings .atomm-switch-row,
+  .atomm-font-picker .field-row, .linework-controls .field-row { padding-inline: 0; }
   .swatch-options { margin-inline: 16px; }
   .toggle-settings .swatch-options { margin-inline: 0; }
   .depth-note { margin-inline: 16px; }
@@ -1009,9 +1011,9 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
 
 .atomm-workbench.atomm-workbench .export-layout-note, .atomm-workbench.atomm-workbench .export-layout-credit { margin: 0; font: var(--font-12-regular); color: var(--color-text-secondary); }
 
-.atomm-workbench.atomm-workbench .atomm-material-size { padding: var(--space-200); }
-.atomm-workbench .atomm-material-size h3 { margin: 0 0 var(--space-150); font: var(--font-14-medium); }
-.atomm-workbench .atomm-material-size p { margin: var(--space-100) 0 0; font: var(--font-12-regular); color: var(--color-text-secondary); }
+/* LengthField supplies the same horizontal inset as the other attribute cards. */
+.atomm-workbench .atomm-material-size h3 { display: flex; align-items: center; min-height: 40px; margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--color-stroke-divider); font: var(--font-12-medium); }
+.atomm-workbench .atomm-material-size p { margin: var(--space-100) var(--space-200) var(--space-200); font: var(--font-12-regular); color: var(--color-text-secondary); }
 .atomm-workbench .atomm-nesting-drafts { position: absolute; inset: 56px 16px 250px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); align-content: start; gap: var(--space-200); }
 .atomm-workbench .atomm-nesting-drafts figure { margin: 0; min-width: 0; }
 .atomm-workbench .atomm-nesting-drafts svg { display: block; width: 100%; max-height: 260px; }
