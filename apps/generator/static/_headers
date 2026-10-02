@@ -11,6 +11,10 @@
 /*.html
   Cache-Control: no-cache
 
+/*.md
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
+
 /mcp-app/*
   Cache-Control: no-cache
   X-Robots-Tag: noindex

@@ -8,9 +8,11 @@ import { measureBucket } from "./data-metrics";
 import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
 import { ARCHIVE_ROUTES, aviationSources, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { API_CATALOG_PATH, apiCatalogResponse, ARD_PATHS, ardResponse, SKILL_PATH, skillResponse, SKILLS_INDEX_PATH, skillsIndexResponse } from "./routes/discovery";
 import { FEEDBACK_PATH, feedbackResponse } from "./routes/feedback";
 import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
+import { isSitePage, sitePageResponse } from "./routes/pages";
 import { isHighVolumeCacheHit, REQUEST_LOG_SAMPLE_RATE, shouldLogRequest } from "./request-log";
 import { terrainResponse, validTile } from "./routes/terrain";
 import { isTerrainRefused, recordTerrainRefusal } from "./terrain-refusal";
@@ -99,6 +101,10 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],
   ["/v1/coverage", limited("coverage", (request, env, _ctx, url) => coverageRouteResponse(url, { request, env }))],
   ["/.well-known/mcp/server-card.json", limited("mcp-card", (request, env) => json(serverCard({ request, env }), { headers: { "cache-control": "public, max-age=3600" } }))],
+  [API_CATALOG_PATH, limited("discovery", (request, env) => apiCatalogResponse({ request, env }))],
+  [SKILLS_INDEX_PATH, limited("discovery", (request, env) => skillsIndexResponse({ request, env }))],
+  [SKILL_PATH, limited("discovery", (request, env) => skillResponse({ request, env }))],
+  ...ARD_PATHS.map((path): [string, Handler] => [path, limited("discovery", (request, env) => ardResponse({ request, env }))]),
   ["/v1/openapi.json", limited("openapi", (request, env) => json(openApiDocument(new URL(request.url).origin, publicOrigin({ request, env }), packageJson.version), { headers: { "cache-control": "public, max-age=3600" } }))],
 ]);
 
@@ -163,6 +169,16 @@ export default {
   },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // Site pages are static assets with their own headers; they skip the API's
+    // routing, budgets and CORS. If negotiation fails, the page is still served.
+    if (isSitePage(url.pathname)) {
+      try {
+        return await sitePageResponse(request, env);
+      } catch (error) {
+        console.error(JSON.stringify({ message: "page_negotiation_failed", path: url.pathname, error: error instanceof Error ? error.message : String(error) }));
+        return env.ASSETS.fetch(request);
+      }
+    }
     try {
       const startedAt = Date.now();
       const metrics = { r2Reads: 0, r2Writes: 0 };
