@@ -17,7 +17,8 @@ interface ResourceDefinition {
   read: (context: { siteOrigin: string; datasetVersion: string }) => string;
 }
 
-const guide = (siteOrigin: string) => `# Making a TopoStack model
+/** The material and sizing guide, also the body of the published agent skill (routes/discovery.ts). */
+export const makingAModelGuide = (siteOrigin: string) => `# Making a TopoStack model
 
 TopoStack turns real terrain into laser-cutter files. Files are generated and exported in the TopoStack studio in the browser; these tools plan a model and hand it over as a studio link.
 
@@ -67,7 +68,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "Making a TopoStack model",
     description: "Layered vs flat output, what sets the number of sheets, materials, laser bed size, choosing an area, and handing over to the studio.",
     mimeType: "text/markdown",
-    read: ({ siteOrigin }) => guide(siteOrigin),
+    read: ({ siteOrigin }) => makingAModelGuide(siteOrigin),
   },
   {
     uri: "topostack://data/sources",

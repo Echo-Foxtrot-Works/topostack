@@ -23,6 +23,9 @@ This page is for people who change the code.
 | `packages/data-contracts/src/share-link.ts` | The `#p=1.` share-link codec and the 8,000-character limit |
 | `workers/map-api/src/agent/` | Operations that REST and MCP share. `projects.ts` covers resolve, plan, link and body reading. `relief.ts` samples at most four Terrarium tiles. The other files are `coverage.ts`, `links.ts`, `attribution.ts`, `schemas.ts` (the response JSON Schemas) and `openapi.ts` (the OpenAPI 3.1 document). |
 | `workers/map-api/src/mcp/server.ts` | Transport, method dispatch, server `INSTRUCTIONS` and the server card |
+| `workers/map-api/src/routes/discovery.ts` | The other well-known documents: the API catalog, the agent skill and its index, the ARD manifest, and the `Link` header site pages carry |
+| `workers/map-api/src/routes/pages.ts` | `Accept: text/markdown` negotiation for site pages |
+| `scripts/lib/markdown-pages.mjs` | Turning a prerendered page's `<main>` into its Markdown twin, run by `scripts/build/write-markdown-pages.mjs` |
 | `workers/map-api/src/mcp/protocol.ts` | Supported protocol versions, JSON-RPC error codes and message helpers |
 | `workers/map-api/src/mcp/tools.ts` | The five tools, their input and output schemas, and their text summaries |
 | `workers/map-api/src/mcp/resources.ts`, `prompts.ts` | The text resources and the two prompts |
@@ -47,7 +50,7 @@ This page is for people who change the code.
 
 The method check happens inside `mcpResponse`, so a stray `GET` still spends one agent token before it gets `405`.
 
-`/.well-known/mcp/server-card.json` has its own `mcp-card` bucket on `REQUEST_LIMITER` and is cached for an hour. `wrangler.jsonc` lists both paths in `assets.run_worker_first`, so the static-asset handler never answers them.
+`/.well-known/mcp/server-card.json` has its own `mcp-card` bucket on `REQUEST_LIMITER` and is cached for an hour. `wrangler.jsonc` lists `/mcp` and `/.well-known/*` in `assets.run_worker_first`, so the static-asset handler never answers them.
 
 ### Transport
 
@@ -97,6 +100,34 @@ Resources: `topostack://guide/making-a-model` (Markdown advice on materials and 
 ### Untrusted text
 
 Geocoder labels and anything a client sends are data. `cleanRequestText` (core) strips control and bidirectional characters, removes zero-width marks, and caps lengths. Labels travel only as structured fields or quoted list items. The `search_places` description tells the model to treat them as names, never as instructions.
+
+## Discovery and Markdown pages
+
+Agents that start from the domain rather than a configured MCP URL find the server and API through well-known documents. Each is built from the request like the server card, so the development Worker describes itself. They share the `discovery` bucket on `REQUEST_LIMITER` and are cached for an hour.
+
+| Path | Holds |
+| --- | --- |
+| `/.well-known/api-catalog` | RFC 9727 linkset (`application/linkset+json`): one entry for the HTTP API (`/v1/projects`) and one for `/mcp`, each with `service-desc`, `service-doc` and `status` |
+| `/.well-known/agent-skills/index.json` | Agent Skills discovery index v0.2.0 with one skill, `plan-topostack-model`. Its `digest` is the SHA-256 of the exact `SKILL.md` served beside it, computed per request |
+| `/.well-known/agent-skills/plan-topostack-model/SKILL.md` | Connection details and the tool workflow, then `makingAModelGuide` from `mcp/resources.ts`, the same text as `topostack://guide/making-a-model` |
+| `/.well-known/ard.json`, `/.well-known/ai-catalog.json` | One manifest for both: ARD reads `entries`, the AI Catalog also reads `specVersion` and `host`. Entries point at the server card, the OpenAPI document and the skill, with `urn:air:<site host>:…` identifiers |
+
+`robots.txt` declares `Content-Signal: search=yes, ai-input=yes, ai-train=no` inside its `User-agent: *` group.
+
+**Not published, on purpose.** There is no OAuth authorization-server or protected-resource metadata, no `auth.md`, no A2A agent card, no Web Bot Auth key directory and no DNS-AID records. The API takes no credentials, TopoStack runs no agent of its own, and the Worker sends no bot traffic, so each would describe something that does not exist. Protected-resource metadata would also be harmful: MCP clients that find it start an OAuth flow before calling a tool. Revisit them with phase 2's sign-in ([the plan](plans/agent-api.md)).
+
+### Markdown pages
+
+The generator build writes a Markdown twin beside every prerendered page (`index.md`, `guides/agent-api.md`, `lake/<slug>.md`) from its `<main>`, with front matter holding the title, description and canonical URL. Links and images are made absolute; navigation, buttons, SVG and the guides menu are dropped; a table of `<th scope="row">` facts becomes a `**Label:** value` list. The studio, `404.html` and redirect stubs get none.
+
+The site's page paths (`/`, `/guides*`, `/examples*`, `/lakes*`, `/lake/*`, `/attribution`, `/changelog`, `/privacy`) are in `run_worker_first`, and `isSitePage` in `routes/pages.ts` matches the same set; change both together. For those paths `fetch` calls `sitePageResponse` before any API routing:
+
+- When `Accept` names `text/markdown` with at least the weight of `text/html`, it reads the twin through `env.ASSETS` and answers it as `text/markdown; charset=utf-8`. Wildcards never select Markdown, so browsers always get HTML. A page with no twin falls back to its HTML.
+- Otherwise it returns the asset unchanged, adding `Vary: Accept` and the discovery `Link` header (API catalog, OpenAPI, guide, `llms.txt`, ARD manifest and the page's `rel="alternate"` Markdown) to HTML responses.
+- Both variants come from `env.ASSETS`, which applies `_headers`, so each page keeps its own Content Security Policy. They never pass through `withCors`, whose API policy (`default-src 'none'`, `X-Frame-Options: DENY`) would stop the pages from running. `_headers` marks `/*.md` `noindex`.
+- If negotiation throws, the page is served straight from `env.ASSETS`.
+
+Every page view on those paths now runs the Worker, which counts toward Workers requests; the studio and all built scripts, styles and data still bypass it.
 
 ## The in-chat preview (MCP App)
 
@@ -200,6 +231,8 @@ Limits are counted per Cloudflare location (`wrangler.jsonc`). A chat platform c
 | File | Covers | Run with |
 | --- | --- | --- |
 | `workers/map-api/test/mcp.test.ts` | The official SDK client against `worker.fetch`: tool listing, schemas and annotations; every tool's structured and text output; `isError` handling; resources, including the preview's CSP and placeholder; prompts; version negotiation, batches, notifications, error codes, `405`, preflight, `429`, and the server card | `npm test -w @topostack/map-api` |
+| `workers/map-api/test/discovery.test.ts` | Markdown negotiation (weights, twins, fallbacks, HEAD, header preservation, API paths untouched) and the well-known documents, including the skill digest | same |
+| `scripts/test/markdown-pages.test.mjs` | Page-to-Markdown conversion: front matter, absolute links, dropped chrome, fact tables | `npm run test:scripts` |
 | `workers/map-api/test/agent-routes.test.ts` | The REST routes, their errors and budgets, and OpenAPI agreement: the documented paths, real plan, coverage and error bodies validated against the document's schemas, and every status the route tests provoke being listed | same |
 | `packages/core/src/project/*.test.ts` | Request parsing, expansion, schemas and planning | `npm test -w @topostack/core` |
 | `apps/generator/src/lib/studio/webmcp*.test.ts` | Tool definitions and registration lifecycle | `npm run test -w @topostack/generator` |

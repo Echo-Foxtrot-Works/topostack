@@ -131,6 +131,12 @@ const robots = await readFile(new URL("robots.txt", dist), "utf8");
 assert.ok(robots.startsWith("User-agent: *\nAllow: /\n"));
 assert.equal(robots.includes("Sitemap: " + origin + "/sitemap.xml"), production);
 assert.ok(!robots.includes("<html"));
+assert.match(robots, /^Content-Signal: search=yes, ai-input=yes, ai-train=no$/m, "robots.txt declares content signals inside the User-agent group");
+// Every page with reading content has a Markdown twin for agents (routes/pages.ts in the Worker).
+if (environment !== "atomm") for (const file of htmlFiles) {
+  if (file === "404.html" || file === "studio.html" || file === "about.html") continue;
+  assert.ok(builtPaths.has(file.replace(/\.html$/, ".md")), file + ": Markdown twin");
+}
 const headers = await readFile(new URL("_headers", dist), "utf8");
 assert.ok(headers.includes("https://static.cloudflareinsights.com"), "Analytics allowed by CSP");
 assert.ok(headers.includes("X-Robots-Tag: noindex, follow"));

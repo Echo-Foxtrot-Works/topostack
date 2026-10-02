@@ -8,9 +8,9 @@ const pages = expectedPages();
 
 // Deployment assets can become available shortly after the Worker itself.
 // Only callers verifying a fresh deployment opt into a shared retry window.
-export async function fetchSeoResponse(url, { expectedStatus = 200, deadline = 0, retryDelayMs = 3_000 } = {}) {
+export async function fetchSeoResponse(url, { expectedStatus = 200, deadline = 0, retryDelayMs = 3_000, headers = {} } = {}) {
   while (true) {
-    const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(url, { redirect: "manual", headers, signal: AbortSignal.timeout(10_000) });
     const retryable = response.status === 429 || response.status >= 500
       || (response.status === 404 && expectedStatus === 200);
     if (response.status === expectedStatus || !retryable || Date.now() + retryDelayMs >= deadline) return response;
@@ -102,11 +102,20 @@ export async function verifyHttpSeo(origin, environment, { propagationTimeoutMs 
   assert.ok(["production", "development"].includes(environment));
   const production = environment === "production";
   const deadline = Date.now() + propagationTimeoutMs;
-  const get = (path, expectedStatus = 200) => fetchSeoResponse(new URL(path, origin), { expectedStatus, deadline });
+  const get = (path, expectedStatus = 200, headers = {}) => fetchSeoResponse(new URL(path, origin), { expectedStatus, deadline, headers });
   const robots = await get("/robots.txt");
   assert.equal(robots.status, 200);
   assert.match(robots.headers.get("content-type"), /^text\/plain/);
-  assert.match(await robots.text(), /^User-agent: \*\nAllow: \//);
+  const robotsBody = await robots.text();
+  assert.match(robotsBody, /^User-agent: \*\nAllow: \//);
+  assert.match(robotsBody, /^Content-Signal: search=yes, ai-input=yes, ai-train=no$/m);
+  // Agents asking for Markdown get the page's twin; browsers keep the HTML.
+  for (const path of ["/", "/guides/mcp-server"]) {
+    const markdown = await get(path, 200, { accept: "text/markdown" });
+    assert.match(markdown.headers.get("content-type"), /^text\/markdown/, path + " Markdown negotiation");
+    assert.match(markdown.headers.get("vary") ?? "", /accept/i, path + " Markdown varies on Accept");
+    assert.match(await markdown.text(), /^---\ntitle: /, path + " Markdown front matter");
+  }
   const recorded = [...pages].map(([path, page]) => [path, page.updated]);
   const expectedUrls = production ? recorded.map(([path]) => SITE_ORIGIN + path).sort() : [];
   const recordedDates = Object.fromEntries(recorded.map(([path, updated]) => [SITE_ORIGIN + path, updated]));
@@ -127,6 +136,7 @@ export async function verifyHttpSeo(origin, environment, { propagationTimeoutMs 
     assert.equal(Boolean(response.headers.get("x-robots-tag")?.includes("noindex")), noindex, path + " header");
     assert.equal(document.querySelector('link[rel="canonical"]')?.href, "https://topostack.app" + path, path);
     assert.ok(response.headers.get("content-security-policy")?.includes("https://static.cloudflareinsights.com"));
+    if (path !== "/studio") assert.match(response.headers.get("link") ?? "", /rel="api-catalog"/, path + " discovery Link header");
   }
   const llms = await get("/llms.txt");
   assert.equal(llms.status, 200);

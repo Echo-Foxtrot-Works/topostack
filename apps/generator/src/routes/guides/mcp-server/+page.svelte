@@ -33,6 +33,9 @@
       <tr><th scope="row">Protocol versions</th><td><code>2025-11-25</code>, <code>2025-06-18</code>, <code>2025-03-26</code> and <code>2024-11-05</code></td></tr>
       <tr><th scope="row">Server card</th><td><code>https://topostack.app/.well-known/mcp/server-card.json</code> (draft format)</td></tr>
       <tr><th scope="row">Plain-text index</th><td><code>https://topostack.app/llms.txt</code></td></tr>
+      <tr><th scope="row">API catalog</th><td><code>https://topostack.app/.well-known/api-catalog</code> (RFC 9727), listing this server and the HTTP API</td></tr>
+      <tr><th scope="row">Agent skill</th><td><code>plan-topostack-model</code>, indexed at <code>https://topostack.app/.well-known/agent-skills/index.json</code></td></tr>
+      <tr><th scope="row">Markdown pages</th><td>Every guide and lake page answers <code>Accept: text/markdown</code> with a Markdown version</td></tr>
     </tbody>
   </table>
 
