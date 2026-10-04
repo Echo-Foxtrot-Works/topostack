@@ -1,5 +1,5 @@
 <script lang="ts">
-  import "@loidolt/theme-svelte/styles.css";
+  import "@loidolt/theme-styles/core";
   import "@loidolt/theme-styles/dark";
   import Seo from "$lib/site/Seo.svelte";
   import { afterNavigate } from "$app/navigation";

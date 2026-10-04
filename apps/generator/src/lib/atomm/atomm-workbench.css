@@ -698,6 +698,10 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   --loidolt-on-accent: var(--color-text-inverse);
   --loidolt-accent-text: var(--color-text-inverse);
   --loidolt-border-radius: var(--radius-medium);
+  /* The theme's radius roles resolve on :root, so a scoped border radius only reaches them when re-declared here. */
+  --loidolt-radius-control: var(--loidolt-border-radius);
+  --loidolt-radius-surface: var(--loidolt-border-radius);
+  --loidolt-radius-overlay: var(--loidolt-border-radius);
   --loidolt-font-body: var(--font-sans);
   --loidolt-font-utility: var(--font-sans);
   --panel-font-title: 14px; --panel-font-body: 12px; --panel-font-label: 12px;
@@ -836,7 +840,6 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .dialog-header { justify-content: space-between; }
   .dialog-header h2 { margin: 0; font: var(--font-16-semibold); }
   .dialog-footer { justify-content: flex-end; }
-  .ldt-dialog__body { overflow-y: auto; min-height: 0; }
   .coordinate-row { display: flex; flex-wrap: wrap; }
   .coordinate-row > .ldt-field { flex: 1 1 calc(50% - 4px); }
   .coordinate-row .atomm-number { width: 100%; }

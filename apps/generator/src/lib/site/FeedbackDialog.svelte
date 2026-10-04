@@ -66,11 +66,11 @@
     </div>
   </form>
   {#if result === 'rate-limited' || result === 'failed'}
-    <p class="send-error" role="alert">{result === 'rate-limited' ? 'Too much feedback at once. Wait a minute and try again, or' : 'Feedback could not be sent. Try again, or'} <a href={link.url} target="_blank" rel="noopener noreferrer">{link.needsPaste ? 'open a GitHub issue and paste the report' : 'continue on GitHub'} ↗<span class="sr-only"> (opens in a new tab)</span></a>. <button type="button" class="link-button" onclick={copyReport}>Copy report</button></p>
+    <p class="send-error" role="alert">{result === 'rate-limited' ? 'Too much feedback at once. Wait a minute and try again, or' : 'Feedback could not be sent. Try again, or'} <a href={link.url} target="_blank" rel="noopener noreferrer">{link.needsPaste ? 'open a GitHub issue and paste the report' : 'continue on GitHub'} ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a>. <button type="button" class="link-button" onclick={copyReport}>Copy report</button></p>
   {/if}
   {#if copyStatus}<p role="status">{copyStatus}</p>{/if}
   <details open={copyStatus.startsWith('Copy is unavailable')}><summary>Review report{includeContext ? ' and shared context' : ''}</summary><textarea class="report-preview" aria-label="Report preview" readonly rows="9" value={body}></textarea></details>
-  <p class="existing">Prefer a public issue? {#if valid}<a href={link.url} target="_blank" rel="noopener noreferrer">Continue on GitHub ↗<span class="sr-only"> (opens in a new tab)</span></a> (account required){:else}Fill in the summary and details to open a prefilled GitHub issue{/if} · <a href={ISSUE_TRACKER} target="_blank" rel="noopener noreferrer">Browse existing feedback ↗<span class="sr-only"> (opens in a new tab)</span></a></p>
+  <p class="existing">Prefer a public issue? {#if valid}<a href={link.url} target="_blank" rel="noopener noreferrer">Continue on GitHub ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a> (account required){:else}Fill in the summary and details to open a prefilled GitHub issue{/if} · <a href={ISSUE_TRACKER} target="_blank" rel="noopener noreferrer">Browse existing feedback ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a></p>
   {/if}
 </dialog>
 
@@ -101,6 +101,5 @@
   summary { cursor: pointer; }
   .report-preview { margin-top: 12px; max-height: 230px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--loidolt-surface); padding: 12px; font-size: 11px; user-select: text; }
   .existing { font-size: 12px; color: var(--loidolt-text-muted); }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   @media (max-width: 450px) { .feedback-dialog { padding: 16px; } }
 </style>

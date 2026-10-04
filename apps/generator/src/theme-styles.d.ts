@@ -1,3 +1,4 @@
-// This package export resolves to CSS, but its extensionless name does not
+// These package exports resolve to CSS, but their extensionless names do not
 // match Vite's built-in *.css declaration for side-effect imports.
+declare module "@loidolt/theme-styles/core";
 declare module "@loidolt/theme-styles/dark";
