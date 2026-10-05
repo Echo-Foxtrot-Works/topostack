@@ -69,9 +69,37 @@ describe("aviation styling", () => {
     const labelled = aviationFeatures(aviationSource(project).aviationMarkings, { ...project, aviation: ALL }, 0.01).labels;
     expect(labelled.map((label) => label.label)).toEqual(["DEN", "DVV"]);
   });
+
+  it("leaves out optional symbols that would print over another, keeping the first listed", () => {
+    const point = (id: string, aviationClass: MarkingFeature["aviationClass"], aviationSymbol: MarkingFeature["aviationSymbol"], x: number, y = 0): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass, aviationSymbol, label: id, points: [{ x, y }] });
+    const project = { ...DEFAULT_PROJECT, aviation: ALL };
+    const drawn = (features: MarkingFeature[]) => new Set(aviationFeatures(features, project, 0.01).lines.map((line) => line.id.replace(/-\d+$/, "")));
+    // Default 3.2 mm symbols: 1 mm apart overlap, 10 mm apart do not.
+    expect(drawn([
+      point("tower-tall", "obstacle", "obstacle-tall", 20), point("tower-short", "obstacle", "obstacle", 21), point("tower-far", "obstacle", "obstacle", 30),
+      point("PVT", "airport", "airport-private", 0), point("PUB", "airport", "airport", 1), point("VOR", "navaid", "vor", 0.5),
+      point("mast", "obstacle", "obstacle", 0.5, 2),
+    ])).toEqual(new Set(["tower-tall", "tower-far", "PUB", "VOR"]));
+    // Public fields and navaids are always drawn, even on top of each other.
+    expect(drawn([point("A", "airport", "airport", 0), point("B", "airport", "airport-hard", 0.5), point("V", "navaid", "vortac", 0)])).toEqual(new Set(["A", "B", "V"]));
+    const labels = aviationFeatures([point("PVT", "airport", "seaplane-base", 0), point("H1", "airport", "heliport", 0.5)], project, 0.01).labels;
+    expect(labels.map((label) => label.label)).toEqual(["PVT"]);
+  });
 });
 
 describe("aviation generation and export", () => {
+  it("places identifiers clear of unlabelled symbols too", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
+    const point = (id: string, aviationSymbol: MarkingFeature["aviationSymbol"], x: number): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol, label: id, points: [{ x, y: 0 }] });
+    // A private field (never labelled) just right of a public one pushes the public label to the left.
+    const result = generateGeometry(project, { ...aviationSource(project), aviationMarkings: [point("PUB", "airport", 0), point("PVT", "airport-private", 4)] });
+    const label = result.layers[0]!.markings.find((marking) => marking.id.startsWith("aviation-label-"));
+    expect(label?.label).toBe("PUB");
+    expect(label!.points[0]!.x).toBeLessThan(0);
+  });
+
   it("engraves every class into its own flat SVG group with the not-for-navigation notice", () => {
     const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
     const result = generateGeometry(project, aviationSource(project));
@@ -102,6 +130,18 @@ describe("aviation generation and export", () => {
     const result = generateGeometry(project, aviationSource(project));
     expect(result.layers[0]!.markings.some((marking) => marking.aviationClass)).toBe(false);
     expect(sourceRequirements(project).aviation).toBe(false);
+  });
+
+  it("warns when symbols are too small for their stroke to stay open", () => {
+    const codes = (lineStyle: Partial<ProjectConfigV1["lineStyle"]>, aviation = ALL) => {
+      const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation, lineStyle: { ...DEFAULT_PROJECT.lineStyle, ...lineStyle } };
+      return generateGeometry(project, aviationSource(project)).warnings.map((warning) => warning.code);
+    };
+    expect(codes({})).not.toContain("AVIATION_SYMBOLS_FILLED");
+    expect(codes({ aviationSymbolMm: 1.5, aviationMm: 0.1 })).not.toContain("AVIATION_SYMBOLS_FILLED");
+    expect(codes({ aviationSymbolMm: 3.2, aviationMm: 0.5 })).toContain("AVIATION_SYMBOLS_FILLED");
+    // Lines alone draw no symbols.
+    expect(codes({ aviationSymbolMm: 3.2, aviationMm: 0.5 }, { ...ALL, airports: false, navaids: false, obstacles: false })).not.toContain("AVIATION_SYMBOLS_FILLED");
   });
 
   it("warns outside FAA coverage but still exports; missing data blocks export", () => {

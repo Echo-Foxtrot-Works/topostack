@@ -115,4 +115,14 @@ describe("aviation source registration", () => {
     expect(aviationCovers(sources, { west: -78.96, south: 46.45, east: -78.92, north: 46.48 })).toBe(false);
     expect(aviationCovers(sources, { west: -71.1, south: 42.3, east: -70.9, north: 42.4 })).toBe(true);
   });
+
+  // Places where the boxes meet: each lies inside one box, not merely touching two.
+  it.each([
+    ["Shreveport, LA", -93.75, 32.45], ["Longview, TX", -94.74, 32.5], ["Fayetteville, AR", -94.16, 36.07], ["Fort Smith, AR", -94.37, 35.34],
+    ["Hogansburg, NY", -74.67, 45.01], ["Northwest Angle, MN", -95.1, 49.35], ["Key West, FL", -81.78, 24.55], ["Brownsville, TX", -97.43, 25.9],
+    ["Midway Atoll", -177.38, 28.2], ["Wake Island", 166.64, 19.28],
+  ])("covers %s", (_name, lon, lat) => {
+    const sources = validateAviationSources(registration);
+    expect(aviationCovers(sources, { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toBe(true);
+  });
 });

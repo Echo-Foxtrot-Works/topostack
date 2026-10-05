@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROJECT, type AviationDetailsV1, type ProjectConfigV1 } from "@topostack/core";
-import { AVIATION_SOURCES, MAX_AVIATION_POINTS, airportDetail, airportSymbol, loadAviationMarkings, obstacleSymbol } from "$lib/domain/aviation-provider";
+import { AVIATION_SOURCES, MAX_AVIATION_OBSTACLES, MAX_AVIATION_POINTS, airportDetail, airportSymbol, loadAviationMarkings, obstacleSymbol } from "$lib/domain/aviation-provider";
 import { clearArchiveCache } from "$lib/domain/archive";
 import { fittingTileWindow } from "$lib/domain/tile-math";
 
@@ -116,20 +116,50 @@ describe("FAA aviation loading", () => {
     expect(result.markings.find((marking) => marking.aviationClass === "runway")?.widthM).toBeCloseTo(60.96);
   });
 
-  it("reports a partial load when points exceed the budget, keeping airports first", async () => {
+  const grid = (index: number) => [[{ x: 40 + (index % 60) * 64, y: 40 + Math.floor(index / 60) * 64 }]];
+
+  it("reports a partial load when airports and navaids exceed the budget, keeping airports first", async () => {
     let tileIndex = 0;
     archive.tile = () => {
       tileIndex += 1;
       return {
         airports: [{ type: 1, properties: { ident: `A${tileIndex}`, name: "FIELD", kind: "airport", use: "public", towered: false }, geometry: [[{ x: 100, y: 100 }]] }],
-        obstacles: Array.from({ length: MAX_AVIATION_POINTS }, (_, index) => ({ type: 1 as const, properties: { agl_ft: 300, lit: false }, geometry: [[{ x: 40 + (index % 60) * 64, y: 40 + Math.floor(index / 60) * 64 }]] })),
+        navaids: Array.from({ length: MAX_AVIATION_POINTS }, (_, index) => ({ type: 1 as const, properties: { ident: `N${tileIndex}-${index}`, name: "AID", kind: "ndb" }, geometry: grid(index) })),
       };
     };
-    const result = await loadAviationMarkings(denver, 11, project({ airports: true, obstacles: true }));
+    const result = await loadAviationMarkings(denver, 11, project({ airports: true, navaids: true }));
     expect(result.status).toBe("partial");
     const points = result.markings.filter((marking) => marking.aviationSymbol);
     expect(points).toHaveLength(MAX_AVIATION_POINTS);
     expect(points[0]?.aviationClass).toBe("airport");
+  });
+
+  it("keeps the tallest obstacles where they crowd, without a partial load", async () => {
+    const tall = Array.from({ length: 5 }, (_, index) => ({ type: 1 as const, properties: { agl_ft: 1500, lit: false }, geometry: [[{ x: 2000 + index * 20, y: 2050 }]] }));
+    const short = Array.from({ length: 2100 }, (_, index) => ({ type: 1 as const, properties: { agl_ft: 300, lit: false }, geometry: grid(index) }));
+    const tallSymbols = (markings: Array<{ aviationSymbol?: string }>) => markings.filter((marking) => marking.aviationSymbol === "obstacle-tall").length;
+    archive.tile = () => ({ obstacles: tall });
+    const tallInCrop = tallSymbols((await loadAviationMarkings(denver, 11, project({ obstacles: true }))).markings);
+    expect(tallInCrop).toBeGreaterThan(0);
+    // Short obstacles listed first in every tile must not crowd out the tall ones.
+    clearArchiveCache();
+    archive.tile = () => ({ obstacles: [...short, ...tall] });
+    const result = await loadAviationMarkings(denver, 11, project({ obstacles: true }));
+    expect(result.status).toBe("available");
+    expect(result.markings).toHaveLength(MAX_AVIATION_OBSTACLES);
+    expect(tallSymbols(result.markings)).toBe(tallInCrop);
+    expect(result.markings.slice(0, tallInCrop).every((marking) => marking.aviationSymbol === "obstacle-tall")).toBe(true);
+  });
+
+  it("keeps navaids that share an identifier but not a kind", async () => {
+    archive.tile = () => ({
+      navaids: [
+        { type: 1, properties: { ident: "MAZ", name: "MAYAGUEZ", kind: "ndb" }, geometry: center },
+        { type: 1, properties: { ident: "MAZ", name: "MAYAGUEZ", kind: "vor-dme" }, geometry: center },
+      ],
+    });
+    const navaids = (await loadAviationMarkings(denver, 11, project({ navaids: true }))).markings;
+    expect(navaids.map((marking) => marking.aviationSymbol).sort()).toEqual(["ndb", "vor-dme"]);
   });
 
   it("refuses an archive whose metadata does not name its cycle", async () => {
@@ -153,6 +183,10 @@ describe("sectional legend symbols", () => {
     [{ use: "private", hardRunwayFt: 3000 }, "airport-hard"],
     [{ use: "military" }, "airport-military"],
     [{ use: "military", jointUse: true }, "airport-joint"],
+    // The legend's military rows have no filled disc: a hard runway draws the layout.
+    [{ use: "military", hardRunwayFt: 5000, runwayPattern: pattern }, "airport-pattern"],
+    [{ use: "military", jointUse: true, hardRunwayFt: 1500, runwayPattern: pattern }, "airport-pattern"],
+    [{ use: "military", hardRunwayFt: 1400, runwayPattern: pattern }, "airport-military"],
     [{ kind: "seaplane-base" }, "seaplane-base"],
     [{ kind: "heliport" }, "heliport"],
     [{ kind: "heliport", use: "private" }, undefined],

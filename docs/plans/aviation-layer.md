@@ -24,6 +24,7 @@ All four phases are built; the archive is not yet provisioned (see the refresh r
 - Class B shelves share edges, so where two shelves meet the boundary is engraved twice. Merging coincident edges across rings is the next improvement.
 - Coverage is a set of boxes; near the border a box includes foreign ground where the archive has no features.
 - Airspace floor and ceiling labels are not drawn yet.
+- Close parallel runways merge in a runway-layout symbol at the default 3.2 mm size; the true-scale runways (the Runways detail) keep them apart wherever they are wide enough to draw.
 
 ## Verification
 

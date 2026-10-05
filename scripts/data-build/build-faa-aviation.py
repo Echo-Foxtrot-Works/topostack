@@ -35,14 +35,22 @@ import urllib.request
 import zipfile
 
 import fiona
-from shapely.geometry import shape
+from shapely.geometry import Polygon, shape
 from shapely.geometry.polygon import orient
+from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / 'scripts/data/faa-aviation-sources.json'
 
 AIRSPACE_CLASSES = {'B', 'C', 'D'}
 SUA_KINDS = {'P': 'prohibited', 'R': 'restricted', 'W': 'warning', 'A': 'alert', 'MOA': 'moa', 'D': 'danger'}
+# LEVEL_CODE U: upper-altitude only (floor at or above 18,000 ft MSL). The sectional shows
+# airspace effective below 18,000 ft, and these usually repeat the boundary of a low part.
+UPPER_ONLY_SUA = 'U'
+# One area's records are dissolved with a closing buffer this wide (about 5 m), which seals the
+# hairline gaps where separately surveyed parts meet; holes left smaller than SUA_MIN_HOLE are such gaps.
+SUA_SEAL_DEGREES = 5e-5
+SUA_MIN_HOLE = 1e-5
 AIRPORT_KINDS = {'A': 'airport', 'H': 'heliport', 'C': 'seaplane-base'}
 MILITARY_OWNERSHIP = {'MA', 'MN', 'MR', 'CG'}
 NAVAID_KINDS = {'VOR': 'vor', 'VORTAC': 'vortac', 'VOR/DME': 'vor-dme', 'TACAN': 'tacan', 'NDB': 'ndb', 'NDB/DME': 'ndb-dme', 'DME': 'dme'}
@@ -88,8 +96,8 @@ def feature(geometry, properties, minzoom):
 
 
 def rings_as_lines(geometry):
-    """Every ring of a (multi)polygon as a 2D LineString, oriented so the area lies to its left."""
-    polygon = shape(geometry)
+    """Every ring of a (multi)polygon (GeoJSON or shapely) as a 2D LineString, oriented so the area lies to its left."""
+    polygon = geometry if hasattr(geometry, 'geom_type') else shape(geometry)
     polygons = getattr(polygon, 'geoms', [polygon])
     lines = []
     for part in polygons:
@@ -135,15 +143,33 @@ def airspace_features(records):
     return out
 
 
+def dissolve(geometries):
+    """One outline for the records of one area, without the seams between them."""
+    sealed = unary_union([geometry.buffer(SUA_SEAL_DEGREES, join_style='mitre') for geometry in geometries]).buffer(-SUA_SEAL_DEGREES, join_style='mitre')
+    parts = [Polygon(part.exterior, [hole for hole in part.interiors if Polygon(hole).area >= SUA_MIN_HOLE]) for part in getattr(sealed, 'geoms', [sealed]) if not part.is_empty]
+    return unary_union(parts)
+
+
 def sua_features(collection):
-    out = []
+    """Special use airspace as charted: one boundary per named area.
+
+    The service splits an area into records where its floor or ceiling changes,
+    as an exclusion ("excludes 1,500 ft AGL and below" around an airport) or a
+    sector, often cutting the main record around them. The sectional draws only
+    the area's lateral limit, so the records of one name are dissolved; drawn
+    apart, every seam would be engraved and hatched as a border of its own.
+    """
+    areas = {}
     for item in collection['features']:
         properties = item.get('properties') or {}
         kind = SUA_KINDS.get(properties.get('TYPE_CODE'))
         name = (properties.get('NAME') or '').strip()
-        if not kind or not name or not item.get('geometry'):
+        if not kind or not name or not item.get('geometry') or properties.get('LEVEL_CODE') == UPPER_ONLY_SUA:
             continue
-        for line in rings_as_lines(item['geometry']):
+        areas.setdefault((kind, name), []).append(shape(item['geometry']).buffer(0))
+    out = []
+    for (kind, name), geometries in areas.items():
+        for line in rings_as_lines(dissolve(geometries)):
             out.append(feature(line, {'kind': kind, 'name': name}, 5))
     return out
 

@@ -4,7 +4,7 @@ import { addMaterialNests } from "./nesting.js";
 import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToMm, layerForElevation, roundContourRing, sampleElevation } from "./contours.js";
 import { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "./stack-plan.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
-import { aviationFeatures, aviationRequested, aviationSymbolSize, type AviationLabelCandidate } from "./aviation.js";
+import { aviationFeatures, aviationRequested, aviationSymbolsFillIn, aviationSymbolSize, type AviationLabelCandidate, type AviationSymbolBox } from "./aviation.js";
 import { fabricationLabel, junctionRing, longestPath, polylineLength, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
 import { assertGeographicBounds, validateProject } from "./validate.js";
 import { projectFingerprint } from "./fingerprint.js";
@@ -244,7 +244,7 @@ interface GenerationContext {
   clip: Point2D[];
   warnings: GeometryWarning[];
   /** Enabled aviation detail as line features, and the identifier labels placed after routing. */
-  aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[] };
+  aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; symbols: AviationSymbolBox[] };
 }
 
 /** The elevation ladder every layer is contoured from, plus the grid it is cut from. */
@@ -274,7 +274,7 @@ interface TransportationLabelCandidate {
 /** Every visible clipped run of each distinct road or trail name. */
 type TransportationLabelCandidates = Map<string, TransportationLabelCandidate[]>;
 
-function addSourceWarnings({ config, source, usesWaterDepth, warnings }: GenerationContext): void {
+function addSourceWarnings({ config, source, usesWaterDepth, warnings, aviation }: GenerationContext): void {
   if (source.terrainSourceUnavailable) warnings.push({
     code: "TERRAIN_SOURCE_FALLBACK",
     message: "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
@@ -304,6 +304,10 @@ function addSourceWarnings({ config, source, usesWaterDepth, warnings }: Generat
     if (source.aviationStatus === "not-covered") warnings.push({
       code: "AVIATION_NOT_COVERED",
       message: "FAA aviation data covers only the United States and its territories, so this area has no aviation detail.",
+    });
+    if (aviationSymbolsFillIn(config.lineStyle) && aviation.lines.some((line) => line.aviationClass === "airport" || line.aviationClass === "navaid" || line.aviationClass === "obstacle")) warnings.push({
+      code: "AVIATION_SYMBOLS_FILLED",
+      message: "Aviation symbols are less than ten aviation line widths across, so their inner detail engraves solid and airports, navaids and obstacles look alike. Enlarge the symbol size or thin the aviation line width.",
     });
   }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({
@@ -784,12 +788,13 @@ function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): vo
   const placer = annotationPlacer(context, clips);
   const textStyle = { ...config.textStyle, sizeMm: Math.min(config.textStyle.sizeMm, Math.max(1.6, aviationSymbolSize(config.lineStyle) * 0.7)) };
   type Box = { left: number; top: number; right: number; bottom: number };
-  const occupied: Box[] = aviation.labels.map(({ anchor, clearanceMm }) => ({ left: anchor.x - clearanceMm, top: anchor.y - clearanceMm, right: anchor.x + clearanceMm, bottom: anchor.y + clearanceMm }));
-  const overlaps = (box: Box, index: number) => occupied.some((other, otherIndex) => otherIndex !== index && box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top);
+  // Every drawn symbol, labelled or not (private fields, obstacles), and each label once placed.
+  const occupied: Box[] = [...aviation.symbols];
+  const overlaps = (box: Box) => occupied.some((other) => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top);
   const inset = config.lineStyle.annotationMm / 2;
   const inside = (box: Box) => [[box.left - inset, box.top - inset], [box.right + inset, box.top - inset], [box.right + inset, box.bottom + inset], [box.left - inset, box.bottom + inset]].every(([x, y]) => pointInRing({ x: x!, y: y! }, clip));
   let placed = 0;
-  for (const [index, candidate] of aviation.labels.entries()) {
+  for (const candidate of aviation.labels) {
     if (placed >= AVIATION_LABEL_LIMIT) break;
     const label = fabricationLabel(candidate.label, textStyle.font);
     if (!label) continue;
@@ -798,7 +803,7 @@ function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): vo
     const top = candidate.anchor.y - height / 2;
     const box = [candidate.anchor.x + offset, candidate.anchor.x - offset - width]
       .map((left): Box => ({ left, top, right: left + width, bottom: top + height }))
-      .find((option) => inside(option) && !overlaps(option, index));
+      .find((option) => inside(option) && !overlaps(option));
     if (!box) continue;
     occupied.push(box);
     placer.push([{ id: `aviation-label-${placed++}`, operation: "engrave", kind: "label", aviationClass: candidate.aviationClass, points: [{ x: box.left, y: box.top }], label, textStyle }], true);

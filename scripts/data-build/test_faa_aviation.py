@@ -47,6 +47,29 @@ class Airspace(unittest.TestCase):
         features = aviation.sua_features(collection)
         self.assertEqual({item['properties']['kind'] for item in features}, {'restricted'})
 
+    def test_dissolves_the_records_of_one_area(self):
+        # A main record cut around an exclusion, the exclusion itself, and a neighbour of another name.
+        main = {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]], [[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6], [0.4, 0.4]]]}
+        pocket = {'type': 'Polygon', 'coordinates': [[[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6], [0.4, 0.4]]]}
+        other = {'type': 'Polygon', 'coordinates': [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]]}
+        collection = {'features': [
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'ISABELLA MOA', 'EXCLUSION': '0'}, 'geometry': main},
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'ISABELLA MOA', 'EXCLUSION': '1'}, 'geometry': pocket},
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'OWENS MOA', 'EXCLUSION': '0'}, 'geometry': other},
+        ]}
+        features = aviation.sua_features(collection)
+        self.assertEqual([item['properties']['name'] for item in features], ['ISABELLA MOA', 'OWENS MOA'])
+        xs = sorted({x for x, _ in features[0]['geometry']['coordinates']})
+        self.assertEqual((xs[0], xs[-1]), (0, 1))
+
+    def test_skips_upper_altitude_special_use(self):
+        collection = {'features': [
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601A', 'LEVEL_CODE': 'L'}, 'geometry': SQUARE},
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601B', 'LEVEL_CODE': 'B'}, 'geometry': SQUARE},
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601D', 'LEVEL_CODE': 'U'}, 'geometry': SQUARE},
+        ]}
+        self.assertEqual({item['properties']['name'] for item in aviation.sua_features(collection)}, {'R-2601A', 'R-2601B'})
+
 
 def base(site, **extra):
     return {'SITE_NO': site, 'ARPT_ID': 'TST', 'ARPT_NAME': 'TEST FIELD', 'ARPT_STATUS': 'O', 'COUNTRY_CODE': 'US', 'SITE_TYPE_CODE': 'A',
