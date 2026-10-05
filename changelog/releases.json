@@ -2,6 +2,60 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.8.0",
+      "date": "2026-10-05",
+      "entries": [
+        {
+          "type": "feature",
+          "title": "Engrave airspace, airports and runways from FAA data",
+          "body": "In the United States, **Aviation (US)** under Map details adds what a VFR sectional shows: Class B, C and D airspace, special use airspace, runways, airports, navaids, obstacles and their identifiers, each in its own SVG group. The data is the FAA's own and is decorative only, never for navigation; exports name the cycle it came from.",
+          "pr": 155
+        },
+        {
+          "type": "improvement",
+          "title": "Aviation symbols drawn as the VFR sectional legend draws them",
+          "body": "Airports show fuel ticks, beacon stars, filled hard-surface discs, runway layouts, and the private, military and seaplane symbols. Navaids and obstacles use the chart's own shapes, including high-intensity lights, wind turbines and obstacle groups. Special use airspace is hatched on its inside edge.",
+          "pr": 159
+        },
+        {
+          "type": "improvement",
+          "title": "AI assistants find TopoStack's tools and read its guides as Markdown",
+          "body": "Assistants and agents that visit topostack.app can now discover the MCP server, HTTP API and a ready-made planning skill on their own, and every guide and lake page has a Markdown version for them. The site also states that its pages may be used in AI answers but not for training. See [the MCP server reference](/guides/mcp-server).",
+          "pr": 160
+        },
+        {
+          "type": "improvement",
+          "title": "Aviation detail reads like the sectional at every scale",
+          "body": "With identifiers on, Class B and C areas print their ceiling and floor and Class D its ceiling, as the chart does, and shared airspace edges are engraved once. Where symbols crowd, private fields, heliports and shorter obstacles give way, so dense obstacle areas no longer block export. Special use areas get one outline each, military fields show their runway layout, close parallel runways stay apart, and east Texas, Shreveport and northwest Arkansas now have aviation data.",
+          "pr": 163
+        },
+        {
+          "type": "fix",
+          "title": "MCP batches are capped and each tool call counts against the agent budget",
+          "body": "A JSON-RPC batch sent to the MCP server now holds at most 8 messages. Every tool call in a batch after the first now counts against the same budget as a separate request. A call over budget comes back as a tool error that the model can read.",
+          "pr": 144
+        },
+        {
+          "type": "fix",
+          "title": "Sheet layouts and autosave keep up with late edits",
+          "body": "A sheet layout that finishes after you changed the design is now marked out of date, so the export uses the original panels until you nest again. Your last edit is saved when you leave the studio for another page on the site. If sheet nesting or chart tracing crashes once, you can simply try again.",
+          "pr": 145
+        },
+        {
+          "type": "fix",
+          "title": "Warnings for skipped seam tabs and paint windows, and faster edits to titles and graphics",
+          "body": "When the studio cannot place alignment tabs along a seam, or cut a paint window, it now says so and names the layers instead of silently leaving them out. Changing the title, scale bar position, sheet nesting settings or placed graphics no longer recalculates the terrain, so those edits preview sooner.",
+          "pr": 146
+        },
+        {
+          "type": "fix",
+          "title": "Atomm sidebar controls line up with their neighbors",
+          "body": "In the Atomm workbench, the depth-limit switches, the engraving font picker, custom line widths and the Export view's **Nesting material** card no longer sit indented from the other settings. Labels and controls now share the same edges in layered and flat modes, at every panel width and in right-to-left layouts.",
+          "pr": 158
+        }
+      ]
+    },
+    {
       "version": "0.7.0",
       "date": "2026-09-26",
       "entries": [
