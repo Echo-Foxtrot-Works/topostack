@@ -36,7 +36,7 @@
     { key: "airports", label: "Airports" },
     { key: "navaids", label: "Navaids" },
     { key: "obstacles", label: "Obstacles" },
-    { key: "labels", label: "Airport and navaid identifiers" },
+    { key: "labels", label: "Identifiers and airspace altitudes" },
   ] as const;
   const { startPlacement, getFeedbackContext, navigateChoice, previewMarkingPath, sectionSummary, setLakeDepth, shownDepth, shownLength, shownTextSize, storedLength, toggleSection, updateDepthLayerLimit, updateFabrication, updateMapDetails } = studio;
 </script>

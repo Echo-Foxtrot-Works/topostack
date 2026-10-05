@@ -1,5 +1,5 @@
 {
- "dataset": "faa-aviation-2026-09-03-v2",
+ "dataset": "faa-aviation-2026-09-03-v3",
  "nasrCycle": "2026-09-03",
  "obstacleDate": "2026-09-27",
  "suaDate": "2026-09-29",
@@ -38,8 +38,8 @@
  "coverage": [
   { "id": "conus-west", "bounds": [-125.0, 31.3, -95.2, 49.1] },
   { "id": "conus-south-central", "bounds": [-106.7, 25.8, -93.5, 31.4] },
-  { "id": "conus-southeast", "bounds": [-93.5, 24.4, -75.0, 36.6] },
-  { "id": "conus-central-east", "bounds": [-95.2, 36.5, -66.9, 45.0] },
+  { "id": "conus-southeast", "bounds": [-95.2, 24.4, -75.0, 36.6] },
+  { "id": "conus-central-east", "bounds": [-95.2, 36.5, -66.9, 45.1] },
   { "id": "conus-upper-midwest", "bounds": [-95.2, 45.0, -82.4, 49.4] },
   { "id": "conus-new-england", "bounds": [-73.5, 45.0, -66.9, 47.5] },
   { "id": "alaska", "bounds": [-180.0, 51.0, -129.5, 71.5] },
@@ -47,6 +47,8 @@
   { "id": "hawaii", "bounds": [-160.5, 18.5, -154.5, 22.5] },
   { "id": "puerto-rico-virgin-islands", "bounds": [-67.5, 17.5, -64.5, 18.8] },
   { "id": "guam-northern-marianas", "bounds": [144.5, 13.0, 146.2, 20.7] },
-  { "id": "american-samoa", "bounds": [-171.2, -14.6, -168.1, -11.0] }
+  { "id": "american-samoa", "bounds": [-171.2, -14.6, -168.1, -11.0] },
+  { "id": "midway", "bounds": [-177.5, 28.1, -177.3, 28.3] },
+  { "id": "wake", "bounds": [166.5, 19.2, 166.7, 19.4] }
  ]
 }

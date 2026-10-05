@@ -4,7 +4,7 @@ import { addMaterialNests } from "./nesting.js";
 import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToMm, layerForElevation, roundContourRing, sampleElevation } from "./contours.js";
 import { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "./stack-plan.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
-import { aviationFeatures, aviationRequested, aviationSymbolSize, type AviationLabelCandidate } from "./aviation.js";
+import { aviationFeatures, aviationRequested, aviationSymbolsFillIn, aviationSymbolSize, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationSymbolBox } from "./aviation.js";
 import { fabricationLabel, junctionRing, longestPath, polylineLength, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
 import { assertGeographicBounds, validateProject } from "./validate.js";
 import { projectFingerprint } from "./fingerprint.js";
@@ -53,6 +53,7 @@ import type {
   ProjectConfigV1,
   SourceBundleV1,
   TerrainStackPlan,
+  TextStyleV1,
   TransportationClass,
   WaterAreaV1,
   WaterSurfaceIR,
@@ -60,6 +61,8 @@ import type {
 
 const TRANSPORTATION_LABEL_LIMIT = 80;
 const AVIATION_LABEL_LIMIT = 60;
+/** Airspace altitude labels placed at most, one per area. */
+const AVIATION_ALTITUDE_LIMIT = 40;
 /** Space between an aviation symbol and its identifier. */
 const AVIATION_LABEL_GAP_MM = 0.6;
 
@@ -244,7 +247,7 @@ interface GenerationContext {
   clip: Point2D[];
   warnings: GeometryWarning[];
   /** Enabled aviation detail as line features, and the identifier labels placed after routing. */
-  aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[] };
+  aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; altitudes: AviationAltitudeCandidate[]; symbols: AviationSymbolBox[] };
 }
 
 /** The elevation ladder every layer is contoured from, plus the grid it is cut from. */
@@ -274,7 +277,7 @@ interface TransportationLabelCandidate {
 /** Every visible clipped run of each distinct road or trail name. */
 type TransportationLabelCandidates = Map<string, TransportationLabelCandidate[]>;
 
-function addSourceWarnings({ config, source, usesWaterDepth, warnings }: GenerationContext): void {
+function addSourceWarnings({ config, source, usesWaterDepth, warnings, aviation }: GenerationContext): void {
   if (source.terrainSourceUnavailable) warnings.push({
     code: "TERRAIN_SOURCE_FALLBACK",
     message: "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
@@ -304,6 +307,10 @@ function addSourceWarnings({ config, source, usesWaterDepth, warnings }: Generat
     if (source.aviationStatus === "not-covered") warnings.push({
       code: "AVIATION_NOT_COVERED",
       message: "FAA aviation data covers only the United States and its territories, so this area has no aviation detail.",
+    });
+    if (aviationSymbolsFillIn(config.lineStyle) && aviation.lines.some((line) => line.aviationClass === "airport" || line.aviationClass === "navaid" || line.aviationClass === "obstacle")) warnings.push({
+      code: "AVIATION_SYMBOLS_FILLED",
+      message: "Aviation symbols are less than ten aviation line widths across, so their inner detail engraves solid and airports, navaids and obstacles look alike. Enlarge the symbol size or thin the aviation line width.",
     });
   }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({
@@ -773,23 +780,26 @@ function placeTransportationLabels(config: ProjectConfigV1, labels: Transportati
 }
 
 /**
- * Identifiers beside airport and navaid symbols, most important first. Each
- * tries the right, then the left of its symbol, and is skipped (quietly: a
- * busy area simply shows fewer names) when it would leave the crop or overlap
- * another aviation label or symbol.
+ * Identifiers beside airport and navaid symbols, most important first, then
+ * airspace altitudes inside their areas. An identifier tries the right, then
+ * the left of its symbol; an altitude label takes the roomiest place in its
+ * area where it fits inside the area. Either is skipped (quietly: a busy area
+ * simply shows fewer) when it would leave the crop or overlap another aviation
+ * label or symbol.
  */
 function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): void {
   const { config, clip, aviation } = context;
-  if (!aviation.labels.length) return;
+  if (!aviation.labels.length && !aviation.altitudes.length) return;
   const placer = annotationPlacer(context, clips);
   const textStyle = { ...config.textStyle, sizeMm: Math.min(config.textStyle.sizeMm, Math.max(1.6, aviationSymbolSize(config.lineStyle) * 0.7)) };
   type Box = { left: number; top: number; right: number; bottom: number };
-  const occupied: Box[] = aviation.labels.map(({ anchor, clearanceMm }) => ({ left: anchor.x - clearanceMm, top: anchor.y - clearanceMm, right: anchor.x + clearanceMm, bottom: anchor.y + clearanceMm }));
-  const overlaps = (box: Box, index: number) => occupied.some((other, otherIndex) => otherIndex !== index && box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top);
+  // Every drawn symbol, labelled or not (private fields, obstacles), and each label once placed.
+  const occupied: Box[] = [...aviation.symbols];
+  const overlaps = (box: Box) => occupied.some((other) => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top);
   const inset = config.lineStyle.annotationMm / 2;
   const inside = (box: Box) => [[box.left - inset, box.top - inset], [box.right + inset, box.top - inset], [box.right + inset, box.bottom + inset], [box.left - inset, box.bottom + inset]].every(([x, y]) => pointInRing({ x: x!, y: y! }, clip));
   let placed = 0;
-  for (const [index, candidate] of aviation.labels.entries()) {
+  for (const candidate of aviation.labels) {
     if (placed >= AVIATION_LABEL_LIMIT) break;
     const label = fabricationLabel(candidate.label, textStyle.font);
     if (!label) continue;
@@ -798,11 +808,92 @@ function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): vo
     const top = candidate.anchor.y - height / 2;
     const box = [candidate.anchor.x + offset, candidate.anchor.x - offset - width]
       .map((left): Box => ({ left, top, right: left + width, bottom: top + height }))
-      .find((option) => inside(option) && !overlaps(option, index));
+      .find((option) => inside(option) && !overlaps(option));
     if (!box) continue;
     occupied.push(box);
     placer.push([{ id: `aviation-label-${placed++}`, operation: "engrave", kind: "label", aviationClass: candidate.aviationClass, points: [{ x: box.left, y: box.top }], label, textStyle }], true);
   }
+  const printed = new Set<string>();
+  for (const candidate of aviation.altitudes) {
+    if (printed.size >= AVIATION_ALTITUDE_LIMIT) break;
+    if (printed.has(candidate.area)) continue;
+    const layout = altitudeLabel(candidate, textStyle, `aviation-label-${placed}`);
+    if (!layout) continue;
+    const { box } = layout;
+    // Inside the area: the label's corners lie no farther from the anchor than the area's nearest edge.
+    const reach = Math.hypot(Math.max(candidate.anchor.x - box.left, box.right - candidate.anchor.x), Math.max(candidate.anchor.y - box.top, box.bottom - candidate.anchor.y));
+    if (reach > candidate.clearanceMm || !inside(box) || overlaps(box)) continue;
+    occupied.push(box);
+    printed.add(candidate.area);
+    placed += 1;
+    placer.push(layout.markings, true);
+  }
+}
+
+/**
+ * An airspace altitude label centred on its anchor, as the sectional prints it:
+ * Class B and C ceiling over floor with a bar between, Class D its ceiling in a
+ * dashed box. Undefined when the font cannot print the text.
+ */
+function altitudeLabel(candidate: AviationAltitudeCandidate, textStyle: TextStyleV1, id: string): { box: { left: number; top: number; right: number; bottom: number }; markings: OperationPath[] } | undefined {
+  const { anchor: { x, y }, aviationClass } = candidate;
+  const text = (value: string) => {
+    const label = fabricationLabel(value, textStyle.font);
+    return label ? { label, ...labelDimensions(label, textStyle) } : undefined;
+  };
+  const ceiling = text(candidate.ceiling);
+  if (!ceiling) return undefined;
+  const line = (points: Point2D[], suffix: string): OperationPath => ({ id: `${id}-${suffix}`, operation: "engrave", kind: "label", aviationClass, points });
+  const word = (value: { label: string; width: number }, top: number, suffix: string): OperationPath =>
+    ({ id: `${id}-${suffix}`, operation: "engrave", kind: "label", aviationClass, points: [{ x: x - value.width / 2, y: top }], label: value.label, textStyle });
+  if (candidate.floor === undefined) {
+    const margin = ceiling.height * 0.4;
+    const [left, right, top, bottom] = [x - ceiling.width / 2 - margin, x + ceiling.width / 2 + margin, y - ceiling.height / 2 - margin, y + ceiling.height / 2 + margin];
+    const dash = Math.max(ceiling.height * 0.3, 0.5);
+    const dashes = dashedRing([{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }, { x: left, y: top }], dash, dash * 0.7);
+    return { box: { left, top, right, bottom }, markings: [word(ceiling, y - ceiling.height / 2, "ceiling"), ...dashes.map((points, index) => line(points, `box-${index}`))] };
+  }
+  const floor = text(candidate.floor);
+  if (!floor) return undefined;
+  const gap = Math.max(ceiling.height * 0.35, 0.4);
+  const half = Math.max(ceiling.width, floor.width) / 2 + ceiling.height * 0.15;
+  return {
+    box: { left: x - half, top: y - gap / 2 - ceiling.height, right: x + half, bottom: y + gap / 2 + floor.height },
+    markings: [word(ceiling, y - gap / 2 - ceiling.height, "ceiling"), line([{ x: x - half, y }, { x: x + half, y }], "bar"), word(floor, y + gap / 2, "floor")],
+  };
+}
+
+/** A closed outline as dashes `dash` long with `gap` between, each its own open path, starting with a dash at the first corner. */
+function dashedRing(ring: Point2D[], dash: number, gap: number): Point2D[][] {
+  const lengths = ring.slice(1).map((point, index) => Math.hypot(point.x - ring[index]!.x, point.y - ring[index]!.y));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  // The point `distance` along the outline, and every corner passed between two distances.
+  const pointAt = (distance: number): Point2D => {
+    let rest = distance;
+    for (let index = 0; index < lengths.length; index += 1) {
+      const length = lengths[index]!;
+      if (rest <= length || index === lengths.length - 1) {
+        const [a, b] = [ring[index]!, ring[index + 1]!];
+        const t = length > 0 ? Math.min(1, rest / length) : 0;
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      }
+      rest -= length;
+    }
+    return ring[0]!;
+  };
+  const corners = (from: number, to: number) => {
+    const inside: Point2D[] = [];
+    let at = 0;
+    lengths.forEach((length, index) => { at += length; if (at > from && at < to) inside.push(ring[index + 1]!); });
+    return inside;
+  };
+  const dashes: Point2D[][] = [];
+  for (let index = 0; index * (dash + gap) < total; index += 1) {
+    const from = index * (dash + gap);
+    const to = Math.min(total, from + dash);
+    dashes.push([pointAt(from), ...corners(from, to), pointAt(to)]);
+  }
+  return dashes;
 }
 
 function placeElevationLabels({ config, flatEngraving, warnings }: GenerationContext, layers: LayerIR[], parallelPlacements?: Array<CoordinatedElevationLabel | undefined>): void {

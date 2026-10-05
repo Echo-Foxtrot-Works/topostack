@@ -203,8 +203,11 @@ test("an example opens in the studio with one click and Undo returns to the prev
 test("an example link that names no example leaves the studio on its current project", async ({ page, baseURL }) => {
   await page.route("https://static-res.makextool.com/**", (route) => route.abort());
   await page.goto("/studio?example=atlantis");
-  await expect(page).toHaveURL(baseURL + "/studio");
-  await expect(page.getByText("Example not found · your project is unchanged")).toBeVisible();
+  // The link is resolved once startup restore finishes, which headless Chromium delays
+  // past the default five seconds while it compiles the 3D preview's shaders in software.
+  const startup = { timeout: 30_000 };
+  await expect(page).toHaveURL(baseURL + "/studio", startup);
+  await expect(page.getByText("Example not found · your project is unchanged")).toBeVisible(startup);
   await expect(page.getByRole("textbox", { name: "Project name", exact: true })).toHaveValue("Crater Lake");
 });
 

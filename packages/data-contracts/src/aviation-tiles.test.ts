@@ -38,6 +38,14 @@ describe("aviation tile properties", () => {
     expect(() => aviationTileProperties("obstacles", { aglFt: 300, lit: false, quantity: 1 })).toThrow("obstacles contract");
   });
 
+  it("round-trips airspace label candidates", () => {
+    const shelf = { class: "B", area: 3, ceilingFt: 12000, floorFt: 8000, clearanceM: 4200 } as const;
+    expect(aviationTileProperties("airspace_labels", shelf)).toEqual({ class: "B", area: 3, ceiling_ft: 12000, floor_ft: 8000, clearance_m: 4200 });
+    expect(parseAviationProperties("airspace_labels", aviationTileProperties("airspace_labels", shelf))).toEqual(shelf);
+    const tower = { class: "D", area: 9, ceilingFt: 2500, ceilingBelow: true, clearanceM: 7000 } as const;
+    expect(parseAviationProperties("airspace_labels", aviationTileProperties("airspace_labels", tower))).toEqual(tower);
+  });
+
   it("keeps optional airspace altitudes optional", () => {
     expect(parseAviationProperties("airspace", { class: "D", name: "BOULDER" })).toEqual({ class: "D", name: "BOULDER" });
   });
@@ -46,6 +54,9 @@ describe("aviation tile properties", () => {
     ["airspace", { class: "E", name: "X" }],
     ["airspace", { class: "B", name: " " }],
     ["sua", { kind: "tfr", name: "X" }],
+    ["airspace_labels", { class: "C", area: 1, ceiling_ft: 4800, clearance_m: 900 }],
+    ["airspace_labels", { class: "D", area: -1, ceiling_ft: 2500, clearance_m: 900 }],
+    ["airspace_labels", { class: "D", area: 1, ceiling_ft: 2500, clearance_m: 0 }],
     ["runways", { airport: "DEN", runway: "8/26", width_ft: 0, length_ft: 1000 }],
     ["runways", { airport: "DEN", runway: " ", width_ft: 100, length_ft: 1000 }],
     ["airports", { ident: "DEN", name: "DENVER", kind: "airport", use: "public", towered: "yes" }],
@@ -114,5 +125,15 @@ describe("aviation source registration", () => {
     // Algonquin Park, Ontario: north of the Great Lakes, between the US boxes.
     expect(aviationCovers(sources, { west: -78.96, south: 46.45, east: -78.92, north: 46.48 })).toBe(false);
     expect(aviationCovers(sources, { west: -71.1, south: 42.3, east: -70.9, north: 42.4 })).toBe(true);
+  });
+
+  // Places where the boxes meet: each lies inside one box, not merely touching two.
+  it.each([
+    ["Shreveport, LA", -93.75, 32.45], ["Longview, TX", -94.74, 32.5], ["Fayetteville, AR", -94.16, 36.07], ["Fort Smith, AR", -94.37, 35.34],
+    ["Hogansburg, NY", -74.67, 45.01], ["Northwest Angle, MN", -95.1, 49.35], ["Key West, FL", -81.78, 24.55], ["Brownsville, TX", -97.43, 25.9],
+    ["Midway Atoll", -177.38, 28.2], ["Wake Island", 166.64, 19.28],
+  ])("covers %s", (_name, lon, lat) => {
+    const sources = validateAviationSources(registration);
+    expect(aviationCovers(sources, { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toBe(true);
   });
 });

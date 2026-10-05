@@ -1,5 +1,5 @@
-import { aviationSymbolPaths, aviationSymbolRadius } from "../annotate/aviation-symbols.js";
-import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationClass, type AviationDetailsV1, type AviationSymbol, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
+import { aviationSymbolPaths, aviationSymbolRadius, aviationSymbolStandsOnAnchor } from "../annotate/aviation-symbols.js";
+import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationAltitudeLabel, type AviationClass, type AviationDetailsV1, type AviationSymbol, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
 
 /**
  * FAA aviation detail: which classes a project draws, how each is stroked, and
@@ -49,6 +49,14 @@ export function aviationStroke(aviationClass: AviationClass, style: Pick<LineSty
 
 export function aviationSymbolSize(style: Pick<LineStyleV1, "aviationSymbolMm">): number {
   return style.aviationSymbolMm ?? DEFAULT_AVIATION_SYMBOL_MM;
+}
+
+/** Symbol widths per stroke below which rings, letters and knockouts close up (the defaults give 13). */
+const MIN_SYMBOL_STROKES = 10;
+
+/** True when symbols are too small for their stroke to keep their inner detail open. */
+export function aviationSymbolsFillIn(style: Pick<LineStyleV1, "aviationMm" | "aviationSymbolMm">): boolean {
+  return aviationSymbolSize(style) < MIN_SYMBOL_STROKES * (style.aviationMm ?? DEFAULT_AVIATION_MM);
 }
 
 /**
@@ -111,6 +119,33 @@ export interface AviationLabelCandidate {
   priority: number;
 }
 
+/** One place an airspace's altitudes may be printed, at this model's scale. */
+export interface AviationAltitudeCandidate {
+  area: string;
+  aviationClass: AviationClass;
+  anchor: Point2D;
+  /** Distance from the anchor to the area's nearest edge; the printed label must fit within it. */
+  clearanceMm: number;
+  /** Class B and C print the ceiling over the floor; Class D prints its ceiling alone, boxed. */
+  ceiling: string;
+  floor?: string;
+}
+
+const hundreds = (feet: number) => String(Math.round(feet / 100));
+
+/**
+ * Altitudes as the sectional prints them, in hundreds of feet MSL: Class B and
+ * C as ceiling over floor (SFC for the surface; T for a Class C ceiling that
+ * runs up to, not into, the Class B above), Class D its ceiling alone, with a
+ * minus for "up to but not including".
+ */
+export function airspaceAltitudeText(aviationClass: AviationClass, altitude: Pick<AviationAltitudeLabel, "ceilingFt" | "floorFt" | "ceilingBelow">): { ceiling: string; floor?: string } {
+  if (aviationClass === "class-d") return { ceiling: `${altitude.ceilingBelow ? "-" : ""}${hundreds(altitude.ceilingFt)}` };
+  return { ceiling: altitude.ceilingBelow ? "T" : hundreds(altitude.ceilingFt), floor: altitude.floorFt ? hundreds(altitude.floorFt) : "SFC" };
+}
+
+const ALTITUDE_CLASS_ORDER: Partial<Record<AviationClass, number>> = { "class-b": 0, "class-c": 1, "class-d": 2 };
+
 /** Label order by symbol; a towered field also outranks every untowered one. */
 const LABEL_PRIORITY: Partial<Record<AviationSymbol, number>> = {
   "airport-pattern": 1, "airport-hard": 1, "airport-joint": 1, "airport-military": 1, airport: 2, "seaplane-base": 3,
@@ -118,22 +153,82 @@ const LABEL_PRIORITY: Partial<Record<AviationSymbol, number>> = {
 };
 
 /**
- * Enabled aviation features as engraving line features, plus the identifier
- * labels to place once every line is routed. Points become their symbols;
- * runways become outlines or centerlines.
+ * Symbols a crowded area may leave out, first left out last: the sectional
+ * charts every public field and navaid, but only selected private fields,
+ * heliports and obstacles where they would overlap. Symbols not listed are
+ * always drawn.
  */
-export function aviationFeatures(features: readonly MarkingFeature[], config: Pick<ProjectConfigV1, "aviation" | "lineStyle">, mmPerMeter: number): { lines: MarkingFeature[]; labels: AviationLabelCandidate[] } {
+const OPTIONAL_SYMBOL_RANK: Partial<Record<AviationSymbol, number>> = {
+  "airport-private": 0, heliport: 1, "obstacle-tall": 2, "obstacle-group-tall": 2,
+  obstacle: 3, "obstacle-group": 3, "wind-turbine": 3, "wind-turbine-group": 3,
+};
+
+/** Millimetre bounds on the page, y down. */
+export interface AviationSymbolBox { left: number; top: number; right: number; bottom: number }
+type Box = AviationSymbolBox;
+
+/** The area a symbol covers; obstacles stand on their position, everything else centers on it. */
+function symbolBox(symbol: AviationSymbol, anchor: Point2D, sizeMm: number): Box {
+  if (aviationSymbolStandsOnAnchor(symbol)) return { left: anchor.x - sizeMm * 0.35, right: anchor.x + sizeMm * 0.35, top: anchor.y - sizeMm, bottom: anchor.y };
+  const radius = sizeMm * 0.4;
+  return { left: anchor.x - radius, right: anchor.x + radius, top: anchor.y - radius, bottom: anchor.y + radius };
+}
+
+/**
+ * The point features to leave out so optional symbols never print over another
+ * symbol. Every always-drawn symbol is placed first; then optional ones in rank
+ * order, keeping the source order within a rank (the loader lists the tallest
+ * obstacles first), each kept only where it overlaps nothing already kept.
+ */
+function crowdedSymbols(points: readonly MarkingFeature[], sizeMm: number): Set<MarkingFeature> {
+  const cell = Math.max(sizeMm, 0.5);
+  const grid = new Map<string, Box[]>();
+  const cells = (box: Box) => {
+    const keys: string[] = [];
+    for (let x = Math.floor(box.left / cell); x <= Math.floor(box.right / cell); x += 1) for (let y = Math.floor(box.top / cell); y <= Math.floor(box.bottom / cell); y += 1) keys.push(`${x},${y}`);
+    return keys;
+  };
+  const overlaps = (box: Box) => cells(box).some((key) => grid.get(key)?.some((other) => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top));
+  const keep = (box: Box) => cells(box).forEach((key) => { const boxes = grid.get(key); if (boxes) boxes.push(box); else grid.set(key, [box]); });
+  const rank = (point: MarkingFeature) => OPTIONAL_SYMBOL_RANK[point.aviationSymbol!] ?? -1;
+  const crowded = new Set<MarkingFeature>();
+  for (const point of points.map((point, index) => ({ point, index })).sort((left, right) => rank(left.point) - rank(right.point) || left.index - right.index).map(({ point }) => point)) {
+    const box = symbolBox(point.aviationSymbol!, point.points[0]!, sizeMm);
+    if (rank(point) >= 0 && overlaps(box)) crowded.add(point);
+    else keep(box);
+  }
+  return crowded;
+}
+
+/**
+ * Enabled aviation features as engraving line features, plus the identifier
+ * and airspace altitude labels to place once every line is routed, and the
+ * area each drawn symbol covers, which labels keep clear of. Points become their symbols, less
+ * optional ones that would print over another (see `crowdedSymbols`); runways
+ * become outlines or centerlines.
+ */
+export function aviationFeatures(features: readonly MarkingFeature[], config: Pick<ProjectConfigV1, "aviation" | "lineStyle">, mmPerMeter: number): { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; altitudes: AviationAltitudeCandidate[]; symbols: AviationSymbolBox[] } {
   const lines: MarkingFeature[] = [];
   const labels: AviationLabelCandidate[] = [];
+  const altitudes: AviationAltitudeCandidate[] = [];
+  const symbols: AviationSymbolBox[] = [];
   const symbolMm = aviationSymbolSize(config.lineStyle);
   const strokeMm = config.lineStyle.aviationMm ?? DEFAULT_AVIATION_MM;
-  for (const feature of features) {
-    const aviationClass = feature.aviationClass;
-    if (feature.kind !== "aviation" || !aviationClass || !aviationClassEnabled(aviationClass, config)) continue;
+  const enabled = features.filter((feature) => feature.kind === "aviation" && feature.aviationClass && aviationClassEnabled(feature.aviationClass, config));
+  const crowded = crowdedSymbols(enabled.filter((feature) => feature.aviationSymbol && feature.points[0]), symbolMm);
+  for (const feature of enabled) {
+    const aviationClass = feature.aviationClass!;
     const line = (points: Point2D[], index: number): MarkingFeature => ({ id: `${feature.id}-${index}`, kind: "aviation", operation: "engrave", aviationClass, points });
+    if (feature.aviationAltitude) {
+      const anchor = feature.points[0];
+      const { area, clearanceM } = feature.aviationAltitude;
+      if (anchor && config.aviation?.labels) altitudes.push({ area, aviationClass, anchor, clearanceMm: clearanceM * mmPerMeter, ...airspaceAltitudeText(aviationClass, feature.aviationAltitude) });
+      continue;
+    }
     if (feature.aviationSymbol) {
       const anchor = feature.points[0];
-      if (!anchor) continue;
+      if (!anchor || crowded.has(feature)) continue;
+      symbols.push(symbolBox(feature.aviationSymbol, anchor, symbolMm));
       aviationSymbolPaths(feature.aviationSymbol, anchor, symbolMm, feature.aviationDetail, strokeMm).forEach((points, index) => lines.push(line(points, index)));
       // Private fields are symbols only: their identifiers crowd out the ones a reader looks for.
       const priority = LABEL_PRIORITY[feature.aviationSymbol];
@@ -150,5 +245,7 @@ export function aviationFeatures(features: readonly MarkingFeature[], config: Pi
     paths.forEach((points, index) => lines.push(line(points, index)));
   }
   labels.sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label) || left.id.localeCompare(right.id));
-  return { lines, labels };
+  // Class B before C before D, then the roomiest place first; each area prints once.
+  altitudes.sort((left, right) => (ALTITUDE_CLASS_ORDER[left.aviationClass] ?? 3) - (ALTITUDE_CLASS_ORDER[right.aviationClass] ?? 3) || right.clearanceMm - left.clearanceMm || left.area.localeCompare(right.area));
+  return { lines, labels, altitudes, symbols };
 }

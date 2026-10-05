@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import unittest
 
+from shapely.geometry import LineString
+
 aviation = importlib.import_module('build-faa-aviation')
 
 SQUARE = {'type': 'Polygon', 'coordinates': [
@@ -22,9 +24,51 @@ class Airspace(unittest.TestCase):
         features = aviation.airspace_features([(airspace('B'), SQUARE), (airspace('E'), SQUARE), (airspace('D'), None)])
         self.assertEqual(len(features), 2)  # exterior and the excluded hole, class E dropped
         self.assertTrue(all(item['geometry']['type'] == 'LineString' for item in features))
-        self.assertEqual(features[0]['geometry']['coordinates'][0], [-105.0, 39.0])
-        self.assertEqual(features[0]['properties'], {'class': 'B', 'name': 'TEST CLASS B', 'ident': 'TST', 'floor_ft': 0, 'ceiling_ft': 12000})
+        self.assertEqual(features[0]['properties'], {'class': 'B', 'name': 'TEST CLASS B', 'ident': 'TST'})
         self.assertEqual(features[0]['tippecanoe'], {'minzoom': 5})
+
+    def test_writes_an_edge_two_areas_share_once(self):
+        # A surface area and a shelf around it: the shelf's inner edge is the surface area's outer edge,
+        # surveyed a metre apart. The ring of a Class C at the same place is another class and stays.
+        core = {'type': 'Polygon', 'coordinates': [[[-105, 39], [-104, 39], [-104, 40], [-105, 40], [-105, 39]]]}
+        shelf = {'type': 'Polygon', 'coordinates': [
+            [[-106, 38], [-103, 38], [-103, 41], [-106, 41], [-106, 38]],
+            [[-105.00001, 39.00001], [-105.00001, 40.00001], [-104.00001, 40.00001], [-104.00001, 39.00001], [-105.00001, 39.00001]],
+        ]}
+        features = aviation.airspace_features([(airspace('B'), core), (airspace('B', LOWER_CODE='MSL', LOWER_VAL='8000'), shelf), (airspace('C'), core)])
+        length = lambda cls: sum(LineString(item['geometry']['coordinates']).length for item in features if item['properties']['class'] == cls)
+        self.assertAlmostEqual(length('B'), 4 + 12, places=3)  # the core's edge once, then only the shelf's outer edge
+        self.assertAlmostEqual(length('C'), 4, places=3)
+
+    def test_label_candidates_carry_the_charted_altitudes(self):
+        shelf = {'type': 'Polygon', 'coordinates': [[[-105, 39], [-104, 39], [-104, 39.2], [-105, 39.2], [-105, 39]]]}
+        labels = aviation.airspace_label_features([
+            (airspace('B', LOWER_CODE='MSL', LOWER_VAL='8000'), shelf),
+            (airspace('D', UPPER_VAL='2500', UPPER_DESC='TNI'), shelf),
+            (airspace('D', UPPER_VAL='-9998', UPPER_UOM=None, UPPER_CODE=None), shelf),
+        ])
+        first = labels[0]
+        self.assertEqual({key: first['properties'][key] for key in ('class', 'floor_ft', 'ceiling_ft', 'area')}, {'class': 'B', 'floor_ft': 8000, 'ceiling_ft': 12000, 'area': 0})
+        self.assertEqual(first['tippecanoe'], {'minzoom': 5})
+        # The roomiest point of a strip 0.2 degrees tall lies on its middle line, about 11 km from the long sides.
+        self.assertAlmostEqual(first['geometry']['coordinates'][1], 39.1, places=2)
+        self.assertAlmostEqual(first['properties']['clearance_m'], 11_054, delta=60)
+        b = [item for item in labels if item['properties']['area'] == 0]
+        self.assertGreater(len(b), 1)  # spread along the strip for crops that show part of it
+        self.assertTrue(all(item['tippecanoe'] == {'minzoom': 9} for item in b[1:]))
+        d = [item['properties'] for item in labels if item['properties']['class'] == 'D']
+        self.assertTrue(d and all(item['ceiling_below'] and 'floor_ft' not in item and item['area'] == 1 for item in d))  # sentinel ceiling: no label
+
+    def test_a_class_d_in_pieces_prints_its_ceiling_once(self):
+        west = {'type': 'Polygon', 'coordinates': [[[-105, 39], [-104.9, 39], [-104.9, 39.1], [-105, 39.1], [-105, 39]]]}
+        east = {'type': 'Polygon', 'coordinates': [[[-104.9, 39], [-104.8, 39], [-104.8, 39.1], [-104.9, 39.1], [-104.9, 39]]]}
+        labels = aviation.airspace_label_features([
+            (airspace('D', UPPER_VAL='2500'), west), (airspace('D', UPPER_VAL='2500'), east),
+            (airspace('B'), west), (airspace('B'), east),
+        ])
+        areas = lambda cls: {item['properties']['area'] for item in labels if item['properties']['class'] == cls}
+        self.assertEqual(len(areas('D')), 1)
+        self.assertEqual(len(areas('B')), 2)
 
     def test_rings_run_with_their_area_on_the_left(self):
         clockwise = {'type': 'Polygon', 'coordinates': [list(reversed(SQUARE['coordinates'][0])), SQUARE['coordinates'][1]]}
@@ -33,12 +77,6 @@ class Airspace(unittest.TestCase):
         self.assertGreater(signed(exterior['coordinates']), 0)  # counterclockwise: the area is on the left
         self.assertLess(signed(hole['coordinates']), 0)  # clockwise: the surrounding area is on the left
 
-    def test_omits_sentinel_altitudes(self):
-        [first, _] = aviation.airspace_features([(airspace('D', UPPER_VAL='-9998', UPPER_UOM=None, UPPER_CODE=None, LOWER_CODE='MSL', LOWER_VAL='1000'), SQUARE)])
-        self.assertEqual(first['properties'].get('floor_ft'), 1000)
-        self.assertNotIn('ceiling_ft', first['properties'])
-        self.assertEqual(first['tippecanoe'], {'minzoom': 7})
-
     def test_special_use_types_are_spelled_out(self):
         collection = {'features': [
             {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601'}, 'geometry': SQUARE},
@@ -46,6 +84,29 @@ class Airspace(unittest.TestCase):
         ]}
         features = aviation.sua_features(collection)
         self.assertEqual({item['properties']['kind'] for item in features}, {'restricted'})
+
+    def test_dissolves_the_records_of_one_area(self):
+        # A main record cut around an exclusion, the exclusion itself, and a neighbour of another name.
+        main = {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]], [[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6], [0.4, 0.4]]]}
+        pocket = {'type': 'Polygon', 'coordinates': [[[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6], [0.4, 0.4]]]}
+        other = {'type': 'Polygon', 'coordinates': [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]]}
+        collection = {'features': [
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'ISABELLA MOA', 'EXCLUSION': '0'}, 'geometry': main},
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'ISABELLA MOA', 'EXCLUSION': '1'}, 'geometry': pocket},
+            {'properties': {'TYPE_CODE': 'MOA', 'NAME': 'OWENS MOA', 'EXCLUSION': '0'}, 'geometry': other},
+        ]}
+        features = aviation.sua_features(collection)
+        self.assertEqual([item['properties']['name'] for item in features], ['ISABELLA MOA', 'OWENS MOA'])
+        xs = sorted({x for x, _ in features[0]['geometry']['coordinates']})
+        self.assertEqual((xs[0], xs[-1]), (0, 1))
+
+    def test_skips_upper_altitude_special_use(self):
+        collection = {'features': [
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601A', 'LEVEL_CODE': 'L'}, 'geometry': SQUARE},
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601B', 'LEVEL_CODE': 'B'}, 'geometry': SQUARE},
+            {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601D', 'LEVEL_CODE': 'U'}, 'geometry': SQUARE},
+        ]}
+        self.assertEqual({item['properties']['name'] for item in aviation.sua_features(collection)}, {'R-2601A', 'R-2601B'})
 
 
 def base(site, **extra):

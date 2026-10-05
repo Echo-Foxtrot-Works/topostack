@@ -69,9 +69,73 @@ describe("aviation styling", () => {
     const labelled = aviationFeatures(aviationSource(project).aviationMarkings, { ...project, aviation: ALL }, 0.01).labels;
     expect(labelled.map((label) => label.label)).toEqual(["DEN", "DVV"]);
   });
+
+  it("leaves out optional symbols that would print over another, keeping the first listed", () => {
+    const point = (id: string, aviationClass: MarkingFeature["aviationClass"], aviationSymbol: MarkingFeature["aviationSymbol"], x: number, y = 0): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass, aviationSymbol, label: id, points: [{ x, y }] });
+    const project = { ...DEFAULT_PROJECT, aviation: ALL };
+    const drawn = (features: MarkingFeature[]) => new Set(aviationFeatures(features, project, 0.01).lines.map((line) => line.id.replace(/-\d+$/, "")));
+    // Default 3.2 mm symbols: 1 mm apart overlap, 10 mm apart do not.
+    expect(drawn([
+      point("tower-tall", "obstacle", "obstacle-tall", 20), point("tower-short", "obstacle", "obstacle", 21), point("tower-far", "obstacle", "obstacle", 30),
+      point("PVT", "airport", "airport-private", 0), point("PUB", "airport", "airport", 1), point("VOR", "navaid", "vor", 0.5),
+      point("mast", "obstacle", "obstacle", 0.5, 2),
+    ])).toEqual(new Set(["tower-tall", "tower-far", "PUB", "VOR"]));
+    // Public fields and navaids are always drawn, even on top of each other.
+    expect(drawn([point("A", "airport", "airport", 0), point("B", "airport", "airport-hard", 0.5), point("V", "navaid", "vortac", 0)])).toEqual(new Set(["A", "B", "V"]));
+    const labels = aviationFeatures([point("PVT", "airport", "seaplane-base", 0), point("H1", "airport", "heliport", 0.5)], project, 0.01).labels;
+    expect(labels.map((label) => label.label)).toEqual(["PVT"]);
+  });
 });
 
 describe("aviation generation and export", () => {
+  it("prints airspace altitudes inside their areas as the sectional does, once per area", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
+    const place = (id: string, aviationClass: MarkingFeature["aviationClass"], x: number, y: number, aviationAltitude: NonNullable<MarkingFeature["aviationAltitude"]>): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass, aviationAltitude, points: [{ x, y }] });
+    const roomy = 100_000;
+    const candidates = [
+      place("b-1", "class-b", -60, 0, { area: "1", ceilingFt: 12_000, floorFt: 8_000, clearanceM: roomy }),
+      place("b-2", "class-b", 60, 0, { area: "1", ceilingFt: 12_000, floorFt: 8_000, clearanceM: roomy / 2 }),
+      place("c-core", "class-c", 0, 60, { area: "2", ceilingFt: 4_800, floorFt: 0, clearanceM: roomy }),
+      place("c-under-b", "class-c", 0, -60, { area: "3", ceilingFt: 4_800, floorFt: 2_100, ceilingBelow: true, clearanceM: roomy }),
+      place("d", "class-d", 100, 60, { area: "4", ceilingFt: 2_500, ceilingBelow: true, clearanceM: roomy }),
+      // A sliver of an area too narrow for its label at this scale.
+      place("thin", "class-b", -100, -60, { area: "5", ceilingFt: 10_000, floorFt: 7_000, clearanceM: 1 }),
+    ];
+    const labels = (aviation: AviationDetailsV1) => generateGeometry({ ...project, aviation }, { ...aviationSource(project), aviationMarkings: candidates }).layers[0]!.markings
+      .filter((marking) => marking.id.startsWith("aviation-label-"));
+    const printed = labels(ALL);
+    const words = printed.filter((marking) => marking.label).map((marking) => marking.label);
+    expect(words.sort()).toEqual(["-25", "120", "21", "48", "80", "SFC", "T"].sort());
+    // Area 1 took its roomiest place, left of centre; ceiling above the bar, floor below.
+    const ceiling = printed.find((marking) => marking.label === "120")!;
+    const floor = printed.find((marking) => marking.label === "80")!;
+    expect(ceiling.points[0]!.x).toBeLessThan(0);
+    expect(ceiling.points[0]!.y).toBeLessThan(floor.points[0]!.y);
+    expect(printed.filter((marking) => marking.id.endsWith("-bar"))).toHaveLength(3);
+    // Class D: the ceiling in a dashed box of several open strokes.
+    expect(printed.filter((marking) => marking.id.includes("-box-")).length).toBeGreaterThan(4);
+    expect(labels({ ...ALL, labels: false })).toEqual([]);
+    expect(labels({ ...ALL, airspace: false })).toEqual([]);
+    // A stack routes them onto whichever sheets show at each place, like identifiers.
+    const stack: ProjectConfigV1 = { ...project, outputMode: "stack" };
+    const stacked = generateGeometry(stack, { ...aviationSource(stack), aviationMarkings: candidates }).layers.flatMap((layer) => layer.markings)
+      .filter((marking) => marking.id.startsWith("aviation-label-"));
+    expect(stacked.length).toBeGreaterThan(0);
+  });
+
+  it("places identifiers clear of unlabelled symbols too", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
+    const point = (id: string, aviationSymbol: MarkingFeature["aviationSymbol"], x: number): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol, label: id, points: [{ x, y: 0 }] });
+    // A private field (never labelled) just right of a public one pushes the public label to the left.
+    const result = generateGeometry(project, { ...aviationSource(project), aviationMarkings: [point("PUB", "airport", 0), point("PVT", "airport-private", 4)] });
+    const label = result.layers[0]!.markings.find((marking) => marking.id.startsWith("aviation-label-"));
+    expect(label?.label).toBe("PUB");
+    expect(label!.points[0]!.x).toBeLessThan(0);
+  });
+
   it("engraves every class into its own flat SVG group with the not-for-navigation notice", () => {
     const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
     const result = generateGeometry(project, aviationSource(project));
@@ -102,6 +166,18 @@ describe("aviation generation and export", () => {
     const result = generateGeometry(project, aviationSource(project));
     expect(result.layers[0]!.markings.some((marking) => marking.aviationClass)).toBe(false);
     expect(sourceRequirements(project).aviation).toBe(false);
+  });
+
+  it("warns when symbols are too small for their stroke to stay open", () => {
+    const codes = (lineStyle: Partial<ProjectConfigV1["lineStyle"]>, aviation = ALL) => {
+      const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation, lineStyle: { ...DEFAULT_PROJECT.lineStyle, ...lineStyle } };
+      return generateGeometry(project, aviationSource(project)).warnings.map((warning) => warning.code);
+    };
+    expect(codes({})).not.toContain("AVIATION_SYMBOLS_FILLED");
+    expect(codes({ aviationSymbolMm: 1.5, aviationMm: 0.1 })).not.toContain("AVIATION_SYMBOLS_FILLED");
+    expect(codes({ aviationSymbolMm: 3.2, aviationMm: 0.5 })).toContain("AVIATION_SYMBOLS_FILLED");
+    // Lines alone draw no symbols.
+    expect(codes({ aviationSymbolMm: 3.2, aviationMm: 0.5 }, { ...ALL, airports: false, navaids: false, obstacles: false })).not.toContain("AVIATION_SYMBOLS_FILLED");
   });
 
   it("warns outside FAA coverage but still exports; missing data blocks export", () => {

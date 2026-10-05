@@ -21,9 +21,8 @@ All four phases are built; the archive is not yet provisioned (see the refresh r
 
 ## Known limits
 
-- Class B shelves share edges, so where two shelves meet the boundary is engraved twice. Merging coincident edges across rings is the next improvement.
+- Two special use areas that share a border each keep their own copy of it, since each is hatched on its own inside; the border line itself is engraved twice there.
 - Coverage is a set of boxes; near the border a box includes foreign ground where the archive has no features.
-- Airspace floor and ceiling labels are not drawn yet.
 
 ## Verification
 
