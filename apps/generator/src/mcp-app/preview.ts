@@ -41,7 +41,8 @@ export function previewInput(toolResult: unknown): PreviewInput {
  * placement is most of the generation time and does not change the stack.
  */
 export function previewConfig(project: ProjectConfigV1): ProjectConfigV1 {
-  const { plaque: _plaque, placedGraphics: _placed, ...rest } = project;
+  // Aviation is engraved detail too, and the preview never loads its archive.
+  const { plaque: _plaque, placedGraphics: _placed, aviation: _aviation, ...rest } = project;
   return {
     ...rest,
     showRoads: false,

@@ -1,3 +1,4 @@
+import type { ProjectConfigV1 } from "@topostack/core/project";
 import type { AreaCoverage } from "./coverage";
 
 export interface AttributionEntry { name: string; license: string; url?: string }
@@ -22,10 +23,17 @@ const BASE: AttributionEntry[] = [
 
 const GEOCODER: AttributionEntry = { name: "Geoapify place search", license: "© OpenStreetMap contributors (ODbL)", url: "https://www.geoapify.com/" };
 
-export function attributionFor(origin: string, coverage?: AreaCoverage, options: { geocoder?: boolean } = {}): Attribution {
+/** True when a project draws any FAA aviation detail (identifiers alone draw nothing). */
+export function projectDrawsAviation(project: Pick<ProjectConfigV1, "aviation">): boolean {
+  return Object.entries(project.aviation ?? {}).some(([key, enabled]) => key !== "labels" && enabled === true);
+}
+
+export function attributionFor(origin: string, coverage?: AreaCoverage, options: { geocoder?: boolean; aviation?: boolean } = {}): Attribution {
+  const aviation = options.aviation && coverage?.aviation;
   const regional: AttributionEntry[] = [
     ...(coverage?.terrain.highResolution ?? []).map(({ name, license }) => ({ name, license })),
     ...(coverage?.lakeSurveys ?? []).map(({ name, license }) => ({ name, license })),
+    ...(aviation ? [{ name: `${aviation.name}, NASR cycle ${aviation.nasrCycle}`, license: aviation.license }] : []),
   ];
   const sources = [...BASE, ...regional, ...(options.geocoder ? [GEOCODER] : [])];
   return {

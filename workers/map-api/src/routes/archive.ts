@@ -1,11 +1,13 @@
 import rawSurveyCatalog from "../../../../scripts/data/lake-bathymetry.json";
 import rawTerrainCatalog from "../../../../scripts/data/terrain-sources.json";
+import rawAviationSources from "../../../../scripts/data/faa-aviation-sources.json";
+import { validateAviationSources } from "@topostack/data-contracts/aviation-tiles";
 import { validateSurveyCatalog, validateTerrainCatalog } from "@topostack/data-contracts/source-catalog";
 import { cachedArchiveHead, evictArchiveHead } from "../archive-head";
 import { edgeCacheKey, matchEdge, teeToEdge } from "../edge-cache";
 import { etagMatches, json } from "../http";
 
-export const MAX_ARCHIVE_RANGE_BYTES = 16 * 1024 * 1024;
+const MAX_ARCHIVE_RANGE_BYTES = 16 * 1024 * 1024;
 // The vector archive key is overwritten in place on dataset updates, so client
 // and edge caching must stay short and revalidate by etag; a long `immutable`
 // TTL would let PMTiles readers mix byte ranges from different archive
@@ -17,6 +19,9 @@ const INVALID_RELEASE_RETRY_SECONDS = 30;
 const ARCHIVE_EDGE_SECONDS = 24 * 60 * 60;
 export const VECTOR_ARCHIVE_KEY = "osm/current.pmtiles";
 export const LAKE_ARCHIVE_KEY = "lakes/current.pmtiles";
+// Optional: studios request it only when a project turns aviation detail on,
+// so /ready does not depend on it.
+export const AVIATION_ARCHIVE_KEY = "aviation/current.pmtiles";
 
 export interface ArchiveRoute { key: string; label: string }
 
@@ -24,12 +29,16 @@ const terrainCatalog = validateTerrainCatalog(rawTerrainCatalog);
 const bathymetryCatalog = validateSurveyCatalog(rawSurveyCatalog);
 
 export const terrainArchives = terrainCatalog.sources.map((source) => ({ source, path: `/v1/terrain-sources/${source.id}.pmtiles`, key: `terrain-sources/${source.id}.pmtiles` }));
+/** The pinned FAA build this deployment advertises; the archive metadata must match it. */
+export const aviationSources = validateAviationSources(rawAviationSources);
+
 export const bathymetryArchives = bathymetryCatalog.sources.map((source) => ({ source, path: `/v1/bathymetry/${source.id}.pmtiles`, key: `bathymetry/${source.id}.pmtiles` }));
 
 /** Every public PMTiles path and the logical R2 key it resolves through. */
 export const ARCHIVE_ROUTES: ReadonlyMap<string, ArchiveRoute> = new Map<string, ArchiveRoute>([
   ["/v1/osm.pmtiles", { key: VECTOR_ARCHIVE_KEY, label: "OSM" }],
   ["/v1/lakes.pmtiles", { key: LAKE_ARCHIVE_KEY, label: "Lake bathymetry" }],
+  ["/v1/aviation.pmtiles", { key: AVIATION_ARCHIVE_KEY, label: "FAA aviation" }],
   ...terrainArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "High-resolution terrain" }]),
   ...bathymetryArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "Lake survey bathymetry" }]),
 ]);

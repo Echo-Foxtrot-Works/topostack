@@ -35,6 +35,8 @@ export class SheetNesting {
   #client: NestClient | undefined;
   #parts: NestPartV1[] = [];
   #previewsOf: Runner["sheetPreviews"] | undefined;
+  /** The design the studio shows now, which a search may outlive. */
+  #latest: { geometry: GeometryIRV1; project: ProjectConfigV1 } | undefined;
 
   constructor(
     private readonly loadRunner: () => Promise<Runner> = () => import("$lib/studio/sheet-nest-runner"),
@@ -48,6 +50,7 @@ export class SheetNesting {
   }
 
   async start(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
+    this.#latest = { geometry, project };
     const runner = await this.#load();
     const job = runner.prepareNestJob(geometry, project);
     if (!job.ok) {
@@ -70,6 +73,9 @@ export class SheetNesting {
         onFallback: (reason) => { this.fallback = reason; },
       });
       this.#show(plan);
+      // The design may have changed while the search ran; refresh() waited for it.
+      const latest = this.#latest;
+      if (latest) this.current = runner.planIsCurrent(plan, latest.geometry, latest.project);
       this.useSheets = true;
       this.status = "done";
       void this.#storage().then((cache) => cache.saveNestPlan(plan, true));
@@ -130,6 +136,7 @@ export class SheetNesting {
 
   /** Re-check the plan after the geometry or the sheet settings change. */
   async refresh(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
+    this.#latest = { geometry, project };
     const plan = this.plan;
     if (!plan || this.status === "running") return;
     const runner = await this.#load();

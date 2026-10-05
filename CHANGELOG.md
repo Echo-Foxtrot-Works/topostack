@@ -4,6 +4,25 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.8.0 (2026-10-05)
+
+### New
+
+- **Engrave airspace, airports and runways from FAA data**: In the United States, **Aviation (US)** under Map details adds what a VFR sectional shows: Class B, C and D airspace, special use airspace, runways, airports, navaids, obstacles and their identifiers, each in its own SVG group. The data is the FAA's own and is decorative only, never for navigation; exports name the cycle it came from. ([#155](https://github.com/Echo-Foxtrot-Works/topostack/pull/155))
+
+### Improved
+
+- **Aviation symbols drawn as the VFR sectional legend draws them**: Airports show fuel ticks, beacon stars, filled hard-surface discs, runway layouts, and the private, military and seaplane symbols. Navaids and obstacles use the chart's own shapes, including high-intensity lights, wind turbines and obstacle groups. Special use airspace is hatched on its inside edge. ([#159](https://github.com/Echo-Foxtrot-Works/topostack/pull/159))
+- **AI assistants find TopoStack's tools and read its guides as Markdown**: Assistants and agents that visit topostack.app can now discover the MCP server, HTTP API and a ready-made planning skill on their own, and every guide and lake page has a Markdown version for them. The site also states that its pages may be used in AI answers but not for training. See [the MCP server reference](https://topostack.app/guides/mcp-server). ([#160](https://github.com/Echo-Foxtrot-Works/topostack/pull/160))
+- **Aviation detail reads like the sectional at every scale**: With identifiers on, Class B and C areas print their ceiling and floor and Class D its ceiling, as the chart does, and shared airspace edges are engraved once. Where symbols crowd, private fields, heliports and shorter obstacles give way, so dense obstacle areas no longer block export. Special use areas get one outline each, military fields show their runway layout, close parallel runways stay apart, and east Texas, Shreveport and northwest Arkansas now have aviation data. ([#163](https://github.com/Echo-Foxtrot-Works/topostack/pull/163))
+
+### Fixed
+
+- **MCP batches are capped and each tool call counts against the agent budget**: A JSON-RPC batch sent to the MCP server now holds at most 8 messages. Every tool call in a batch after the first now counts against the same budget as a separate request. A call over budget comes back as a tool error that the model can read. ([#144](https://github.com/Echo-Foxtrot-Works/topostack/pull/144))
+- **Sheet layouts and autosave keep up with late edits**: A sheet layout that finishes after you changed the design is now marked out of date, so the export uses the original panels until you nest again. Your last edit is saved when you leave the studio for another page on the site. If sheet nesting or chart tracing crashes once, you can simply try again. ([#145](https://github.com/Echo-Foxtrot-Works/topostack/pull/145))
+- **Warnings for skipped seam tabs and paint windows, and faster edits to titles and graphics**: When the studio cannot place alignment tabs along a seam, or cut a paint window, it now says so and names the layers instead of silently leaving them out. Changing the title, scale bar position, sheet nesting settings or placed graphics no longer recalculates the terrain, so those edits preview sooner. ([#146](https://github.com/Echo-Foxtrot-Works/topostack/pull/146))
+- **Atomm sidebar controls line up with their neighbors**: In the Atomm workbench, the depth-limit switches, the engraving font picker, custom line widths and the Export view's **Nesting material** card no longer sit indented from the other settings. Labels and controls now share the same edges in layered and flat modes, at every panel width and in right-to-left layouts. ([#158](https://github.com/Echo-Foxtrot-Works/topostack/pull/158))
+
 ## 0.7.0 (2026-09-26)
 
 ### New

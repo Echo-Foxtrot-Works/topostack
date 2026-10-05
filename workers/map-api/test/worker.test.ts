@@ -2,7 +2,11 @@ import outlineRelease from "../../../scripts/data/lake-outlines-release.json";
 import { terrainPng } from "./terrain-fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv, exports } from "cloudflare:workers";
-import mapWorker, { geocodeLimit, isAllowedOrigin, isGeocoderConfigured, normalizeGeoapify, parseRangeHeader, validTile } from "../src/index";
+import mapWorker from "../src/index";
+import { isAllowedOrigin } from "../src/http";
+import { parseRangeHeader } from "../src/routes/archive";
+import { geocodeLimit, isGeocoderConfigured, normalizeGeoapify } from "../src/routes/geocode";
+import { validTile } from "../src/routes/terrain";
 import { resetArchiveHeadCache } from "../src/archive-head";
 import { mergeGeoapify } from "../src/routes/geocode";
 
@@ -496,5 +500,9 @@ describe("optional HRDEM terrain archive", () => {
     const response = await exports.default.fetch("http://example.com/v1/manifest");
     const manifest = await response.json() as { sources: unknown[] };
     expect(manifest.sources).toContainEqual(expect.objectContaining({ id: "nrcan-hrdem-alexander-v1", optional: true, verticalDatum: "CGVD2013" }));
+  });
+  it("advertises the pinned FAA aviation cycle as optional", async () => {
+    const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
+    expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^faa-aviation-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/aviation.pmtiles", optional: true }));
   });
 });

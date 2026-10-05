@@ -1,7 +1,7 @@
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
 import { placeLabel, type LabelLayerIndex } from "../annotate/label-placement.js";
 import { labelDimensions } from "../annotate/labels.js";
-import { boundsOverlap, normalizeMultiPolygon, ringBounds, signedArea, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
+import { boundsOverlap, normalizeMultiPolygon, ringBounds, signedArea, toMultiPolygon, type PreparedPolygons } from "../primitives/geometry2d.js";
 import type { Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
 import { polygonCenter } from "./nesting.js";
 
@@ -13,8 +13,8 @@ export function coveredParts(polygon: Polygon2D, covering: PreparedPolygons): Po
   const near = covering.polygons.filter((_, index) => boundsOverlap(box, covering.outerBounds[index]!));
   if (!near.length) return [];
   return normalizeMultiPolygon(polygonClipping.intersection(
-    [[toRing(polygon.outer), ...polygon.holes.map(toRing)]] as MultiPolygon,
-    near.map((part) => [toRing(part.outer), ...part.holes.map(toRing)]) as MultiPolygon,
+    toMultiPolygon([polygon]),
+    toMultiPolygon(near),
   ) as MultiPolygon);
 }
 

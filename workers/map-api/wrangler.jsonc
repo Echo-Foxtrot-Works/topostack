@@ -15,7 +15,13 @@
     // The MCP server reads the in-chat preview page (mcp-app/) through it.
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/health", "/ready", "/v1", "/v1/*", "/data/lake-outlines/*", "/mcp", "/.well-known/mcp/*"]
+    // The API, then the site pages that answer `Accept: text/markdown`
+    // (src/routes/pages.ts matches the same paths). The studio and the build's
+    // scripts, styles and data never reach the Worker.
+    "run_worker_first": [
+      "/health", "/ready", "/v1", "/v1/*", "/data/lake-outlines/*", "/mcp", "/.well-known/*",
+      "/", "/guides", "/guides/*", "/examples", "/examples/*", "/lakes", "/lakes/*", "/lake/*", "/attribution", "/changelog", "/privacy"
+    ]
   },
   "vars": {
     "ENVIRONMENT": "development",

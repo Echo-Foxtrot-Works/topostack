@@ -1,6 +1,5 @@
 import { filledPolygons, clipPolygons, strokePolylines, type StrokeCap, type StrokeJoin } from "../primitives/offset.js";
-import { ringBounds, signedArea } from "../primitives/geometry2d.js";
-import { simplify } from "../pipeline/contours.js";
+import { ringBounds, signedArea, simplify } from "../primitives/geometry2d.js";
 import { MARKER_ICON_UNITS, MAX_MARKER_ICON_POINTS, type MarkerIconShapeV1, type MarkerIconV1, type Point2D, type Polygon2D } from "../types.js";
 import type { PathPolyline } from "./svg-path-data.js";
 

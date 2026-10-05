@@ -62,6 +62,10 @@ test("old About links redirect to the homepage", async ({ page, baseURL }) => {
 });
 
 test("direct studio visits restore saved project settings", async ({ page }) => {
+  // Autosave starts once startup restore finishes, and headless Chromium then spends
+  // seconds compiling the 3D preview's shaders in software, which delays the first
+  // write well past the default five-second wait.
+  const startup = { timeout: 30_000 };
   await page.route("https://static-res.makextool.com/**", (route) => route.abort());
   await page.goto("/studio");
   const name = page.getByRole("textbox", { name: "Project name", exact: true });
@@ -75,12 +79,12 @@ test("direct studio visits restore saved project settings", async ({ page }) => 
       read.onsuccess = () => { db.close(); resolve(read.result?.name); };
       read.onerror = () => { db.close(); reject(read.error); };
     };
-  }))).toBe("My saved landscape");
+  })), startup).toBe("My saved landscape");
   await page.goto("/");
   await page.getByRole("link", { name: "Start creating", exact: true }).first().click();
-  await expect(name).toHaveValue("My saved landscape");
+  await expect(name).toHaveValue("My saved landscape", startup);
   await page.reload();
-  await expect(name).toHaveValue("My saved landscape");
+  await expect(name).toHaveValue("My saved landscape", startup);
 });
 
 test("mobile readers can navigate guides, examples and the studio with correct metadata", async ({ page, baseURL }) => {
@@ -199,8 +203,11 @@ test("an example opens in the studio with one click and Undo returns to the prev
 test("an example link that names no example leaves the studio on its current project", async ({ page, baseURL }) => {
   await page.route("https://static-res.makextool.com/**", (route) => route.abort());
   await page.goto("/studio?example=atlantis");
-  await expect(page).toHaveURL(baseURL + "/studio");
-  await expect(page.getByText("Example not found · your project is unchanged")).toBeVisible();
+  // The link is resolved once startup restore finishes, which headless Chromium delays
+  // past the default five seconds while it compiles the 3D preview's shaders in software.
+  const startup = { timeout: 30_000 };
+  await expect(page).toHaveURL(baseURL + "/studio", startup);
+  await expect(page.getByText("Example not found · your project is unchanged")).toBeVisible(startup);
   await expect(page.getByRole("textbox", { name: "Project name", exact: true })).toHaveValue("Crater Lake");
 });
 

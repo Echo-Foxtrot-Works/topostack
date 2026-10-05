@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, engravingToSvg, generateGeometry, geoPointToMapPoint, labelDimensions, layerToSvg, longitudeInBounds, validateProject, type ProjectConfigV1 } from "../index.js";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, labelDimensions, layerToSvg, validateProject, type ProjectConfigV1 } from "../index.js";
+import { geoPointToMapPoint, longitudeInBounds } from "../annotate/markers.js";
+import { engravingToSvg } from "../export/engraving-svg.js";
 import { gridSource, parsePathPoints, pointInRing, realSource, scaledForLayers } from "../test-support/sources.js";
 
 describe("geometry generation", () => {

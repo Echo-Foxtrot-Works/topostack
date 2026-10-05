@@ -11,7 +11,7 @@ const MAX_PROVENANCE_HEADER_CHARS = 1900;
 // Bump when the metadata stored with a cached tile changes meaning. Entries
 // without the current marker are refetched lazily and overwritten; v2 marks
 // tiles whose provenance includes the S3 `x-amz-meta-*` fallback.
-export const TERRAIN_PROVENANCE_VERSION = "v2";
+const TERRAIN_PROVENANCE_VERSION = "v2";
 
 export interface Tile { z: number; x: number; y: number }
 

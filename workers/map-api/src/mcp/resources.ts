@@ -1,6 +1,6 @@
 import { PROJECT_REQUEST_LIMITS, PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
 import { buildManifest } from "../manifest";
-import { bathymetryArchives, terrainArchives } from "../routes/archive";
+import { aviationSources, bathymetryArchives, terrainArchives } from "../routes/archive";
 import { PREVIEW_URI, previewListing, readPreview } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -17,7 +17,8 @@ interface ResourceDefinition {
   read: (context: { siteOrigin: string; datasetVersion: string }) => string;
 }
 
-const guide = (siteOrigin: string) => `# Making a TopoStack model
+/** The material and sizing guide, also the body of the published agent skill (routes/discovery.ts). */
+export const makingAModelGuide = (siteOrigin: string) => `# Making a TopoStack model
 
 TopoStack turns real terrain into laser-cutter files. Files are generated and exported in the TopoStack studio in the browser; these tools plan a model and hand it over as a studio link.
 
@@ -49,7 +50,7 @@ Coverage is Web Mercator (±85° latitude). Areas cannot cross the antimeridian.
 
 ## Details
 
-Water, water depth, roads, trails, elevation labels, a north arrow and a scale bar are on by default; road labels, boundaries and a coordinate grid are off. A \`title\` of up to three lines is engraved on the model; \`markers\` add up to ${PROJECT_REQUEST_LIMITS.markers} engraved points of interest.
+Water, water depth, roads, trails, elevation labels, a north arrow and a scale bar are on by default; road labels, boundaries and a coordinate grid are off. In the United States, \`aviation\` adds FAA detail like a VFR sectional's: \`airspace\` (Class B, C and D), \`specialUse\`, \`runways\`, \`airports\`, \`navaids\`, \`obstacles\` and \`labels\` (identifiers and airspace altitudes), all off unless set. It is decorative and never for navigation; check_coverage says whether an area has it. A \`title\` of up to three lines is engraved on the model; \`markers\` add up to ${PROJECT_REQUEST_LIMITS.markers} engraved points of interest.
 
 ## Handing over
 
@@ -67,7 +68,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "Making a TopoStack model",
     description: "Layered vs flat output, what sets the number of sheets, materials, laser bed size, choosing an area, and handing over to the studio.",
     mimeType: "text/markdown",
-    read: ({ siteOrigin }) => guide(siteOrigin),
+    read: ({ siteOrigin }) => makingAModelGuide(siteOrigin),
   },
   {
     uri: "topostack://data/sources",
@@ -75,7 +76,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "TopoStack data sources and licenses",
     description: "Every terrain, lake and map source TopoStack draws from, with its license and coverage.",
     mimeType: "application/json",
-    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives), null, 2),
+    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives, aviationSources), null, 2),
   },
   {
     uri: "topostack://schema/project-request-v1",

@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { onMount, untrack, setContext } from "svelte";
+  import { onDestroy, onMount, untrack, setContext } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
-  import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace } from "@loidolt/theme-svelte";
-  import { sourceRequirements, DEFAULT_PROJECT, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
-  import { assembleWater, boundsForProject, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
+  import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
+  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
+  import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
+  import { dataZoom } from "$lib/domain/tile-math";
   import { CustomDataActions } from "$lib/studio/customdata/custom-data-actions.svelte";
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
@@ -160,7 +161,7 @@
   const pipeline = new PreviewPipeline();
   // Map-data refresh code loads with the first preview edit, not at startup. A
   // failed load is forgotten, so the next edit retries it.
-  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater }), "Map data refresh");
+  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, loadAviation, dataZoom }), "Map data refresh");
   let sourcePreparation: Promise<SourcePreparationCache> | undefined;
   const preparedSources = () => sourcePreparation = loadSourcePreparation();
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
@@ -296,7 +297,7 @@
 
   $effect(() => {
     void theme.resolved;
-    themeColor = getComputedStyle(document.documentElement).getPropertyValue("--loidolt-background").trim();
+    themeColor = readRoleColor(document.documentElement, "background") ?? "";
   });
 
   // Opening place search, the map, or 3D again retries a failed load: their
@@ -384,7 +385,7 @@
 
   function setLakeDepth(hylakId: number, shown: number): Promise<void> | undefined {
     if (!Number.isFinite(shown) || shown <= 0) return undefined;
-    const depthM = project.units === "imperial" ? shown / 3.280839895 : shown;
+    const depthM = project.units === "imperial" ? shown / FEET_PER_METER : shown;
     return updateFabrication({ waterDepthOverrides: { ...project.waterDepthOverrides, [String(hylakId)]: depthM } });
   }
 
@@ -578,12 +579,16 @@
     void saveProject(current).catch(() => status = "Local save is unavailable in this browser");
   }
 
+  /** The latest snapshot's write, until it runs; leaving the studio in-app fires no `pagehide`. */
+  let pendingAutosave: (() => void) | undefined;
+  onDestroy(() => pendingAutosave?.());
   $effect(() => {
     const current = project;
     if (!booted) return;
     let written = false;
     let timeout = 0;
     const write = () => { if (written) return; written = true; window.clearTimeout(timeout); persistProject(current); };
+    pendingAutosave = write;
     timeout = window.setTimeout(write, 450);
     // A closing, reloading or backgrounded tab must keep this snapshot, but an
     // unloading page abandons IndexedDB transactions it starts (an edit then
@@ -745,7 +750,7 @@
     loadRealTerrain();
   }
 
-  function undo(): void { if (placement) return; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); }
+  function undo(): boolean { if (placement) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
   function redo(): void { if (placement) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
@@ -831,7 +836,7 @@
     return refreshPreview(updatesCustomData ? "customData" : "fabrication", delayMs);
   }
 
-  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
+  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "aviation", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
@@ -861,6 +866,7 @@
       generate: () => generate(),
       undo,
       openExport: () => { exportOpen = true; },
+      editBlockedBy: () => placement ? "The studio is placing an item. Finish or cancel it there first." : undefined,
     };
   }
 
@@ -870,9 +876,11 @@
     // copy) carves as it is now, so the project says so before it is built:
     // otherwise the design's fingerprint would name content that was not carved.
     // This is bookkeeping, not an edit, so it is not an undo step.
-    if (project.userDepthCharts) {
-      const { currentChartReferences } = await import("$lib/storage/user-charts");
-      const current = await currentChartReferences(project.userDepthCharts);
+    // When the chart store cannot be read, the references stay as they are and
+    // loading warns about any chart it cannot find.
+    const charts = project.userDepthCharts;
+    if (charts) {
+      const current = await import("$lib/storage/user-charts").then(({ currentChartReferences }) => currentChartReferences(charts)).catch(() => charts);
       if (current !== project.userDepthCharts) project = { ...project, userDepthCharts: current };
     }
     invalidatePendingPreview();
@@ -918,7 +926,8 @@
       trackUsage(exportBlockReason(completedGeometry, completedProject) ? "generation_failed" : "generation_succeeded", completedProject.outputMode);
       const outcome = {
         fallback: loaded.fallback, fallbackReason: loaded.fallbackReason, waterWarning: loaded.waterWarning,
-        vectorUnavailable: next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)),
+        vectorUnavailable: (next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)))
+          || (sourceRequirements(generationProject).aviation && (next.aviationStatus === "unavailable" || next.aviationStatus === "partial")),
         lakeUnavailable: generationProject.outputMode === "stack" && generationProject.showWaterDepth && next.lakeDataStatus !== "available",
       };
       status = generationStatus(outcome, generationProject, next);
@@ -1126,6 +1135,8 @@
   <meta name="theme-color" content={themeColor} />
 </svelte:head>
 
+{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
+
 {#snippet locationSearch()}
   <!-- One dialog for both shells: the embedded and standalone branches rendered
        identical copies, so a prop or handler change had to be made twice. -->
@@ -1135,7 +1146,7 @@
 {#if embeddedInPlatform}
   {#if AtommWorkbench}<AtommWorkbench ready={atommReady} blockedReason={previewBusy ? undefined : activeSource.sourceKind !== "real" || terrainDataStale ? "Export is available once the terrain for this area has loaded." : exportBlockedBy} preparing={exportPhase === "preparing"} {exportPhase} {exportTitle} {exportDetail}>
     {#snippet leadHeader()}<ProjectControls />{/snippet}
-    {#snippet lead()}<OutputSwitch />{#if mode === "custom"}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{:else}<SetupSection /><CustomDataSection />{/if}{/snippet}
+    {#snippet lead()}<OutputSwitch />{#if mode === "custom"}{@render customDataTools()}{:else}<SetupSection /><CustomDataSection />{/if}{/snippet}
     {#snippet generate()}{#if mode !== "custom"}<GenerationDock />{/if}{/snippet}
     {#snippet parameterHeader()}
       <UnitSwitch />
@@ -1181,7 +1192,7 @@
             <h1>Bring your own data.</h1>
             <p>Charts you trace, points you place, routes you import. Markers and paths join the project as you add them; a chart carves a lake only when you say so.</p>
           </div>
-          {#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}
+          {@render customDataTools()}
         {:else}
           <div class="panel-intro">
             <span class="section-kicker panel-eyebrow">Project controls</span>

@@ -13,8 +13,7 @@ import type { PageSeo } from "./seo.ts";
  * verification scripts; it must not reach the browser bundle of other pages.
  */
 export { LAKES_HOME };
-/** First publication and last significant change of the page templates; the directory date also counts. */
-export const LAKE_PAGES_PUBLISHED = "2026-09-21";
+/** Last significant change of the page templates; the directory date also counts. */
 const LAKE_PAGES_UPDATED = "2026-09-21";
 const MAX_LAKES_PER_PAGE = 400;
 /** Counties with fewer lakes are listed on the Minnesota page instead of a page of their own. */

@@ -94,6 +94,16 @@ describe("POST /v1/projects/plan", () => {
     expect(body.studioUrl).toMatch(/^https:\/\/topostack\.test\/studio\?generate=1#p=1\./);
   });
 
+  it("credits the FAA cycle and says aviation detail is not for navigation", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng((column) => 1600 + column), { headers: { "content-type": "image/png" } })));
+    const request = { ...rainier, area: { center: { lat: 39.86, lon: -104.67 }, widthKm: 20 }, aviation: { airspace: true, runways: true } };
+    const body = await (await worker.fetch(post("/v1/projects/plan", request), env, context)).json<{ notes: string[]; attribution: { text: string; sources: Array<{ name: string }> } }>();
+    expect(body.notes.some((note) => /never for navigation/.test(note))).toBe(true);
+    expect(body.attribution.sources.some(({ name }) => name.includes("NASR cycle"))).toBe(true);
+    const plain = await (await worker.fetch(post("/v1/projects/plan", { ...request, aviation: undefined }), env, context)).json<{ attribution: { sources: Array<{ name: string }> } }>();
+    expect(plain.attribution.sources.some(({ name }) => name.includes("NASR"))).toBe(false);
+  });
+
   it("reports nearly flat ground and plans flat output as one sheet", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => 12), { headers: { "content-type": "image/png" } })));
     const response = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: 41.9, lon: -93.6 }, widthKm: 5 }, output: "flat" }), env, context);
@@ -139,6 +149,13 @@ describe("GET /v1/coverage", () => {
     expect(body.attribution.sources.length).toBeGreaterThan(4);
   });
 
+  it("reports FAA aviation data only inside US coverage", async () => {
+    const denver = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=39.86&lon=-104.67&widthKm=20"), env, context)).json<{ aviation: { nasrCycle: string } | null }>();
+    expect(denver.aviation?.nasrCycle).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const ontario = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<{ aviation: unknown }>();
+    expect(ontario.aviation).toBeNull();
+  });
+
   it("accepts a center and width, and refuses anything else", async () => {
     expect((await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=46.85&lon=-121.76&widthKm=10"), env, context)).status).toBe(200);
     for (const query of ["", "bbox=1,2,3", "bbox=10,0,5,1", "lat=91&lon=0&widthKm=1"]) {
@@ -176,6 +193,19 @@ describe("GET /v1/openapi.json", () => {
     expect(conforms("CoverageResult", coverage).errors).toEqual([]);
     const invalid = await (await worker.fetch(post("/v1/projects/resolve", { requestVersion: 1 }), env, context)).json();
     expect(conforms("Error", invalid).errors).toEqual([]);
+  });
+
+  it("lists the 429 every route answers once its budget is spent", async () => {
+    const limited = { ...env, REQUEST_LIMITER: deny(), AGENT_LIMITER: deny() } as unknown as Env;
+    for (const [path, operations] of Object.entries(document.paths)) {
+      const [method, operation] = Object.entries(operations as Record<string, { responses: Record<string, unknown> }>)[0]!;
+      const post = method === "post";
+      const query = path === "/v1/geocode" ? "?q=Lake%20Tahoe" : path === "/v1/coverage" ? "?bbox=-78.96,46.45,-78.92,46.48" : "";
+      const answer = await worker.fetch(new Request(`https://api.topostack.test${path}${query}`, { method: method.toUpperCase(), ...(post ? { headers: { "content-type": "application/json" }, body: JSON.stringify(rainier) } : {}) }), limited, context);
+      expect(answer.status, path).toBe(429);
+      await answer.body?.cancel();
+      expect(Object.keys(operation.responses), path).toContain("429");
+    }
   });
 
   it("lists every status the routes are tested to return", () => {

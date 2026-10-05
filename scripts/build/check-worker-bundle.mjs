@@ -9,8 +9,9 @@ import { gzipSync } from "node:zlib";
 const bundle = new URL("../../workers/map-api/dist/index.js", import.meta.url);
 
 // Gzipped Worker script. 62,815 when set (2026-09-25, agent REST routes and
-// the MCP server).
-const BUDGET_GZIP = 69_000;
+// the MCP server); 69,056 when raised 2026-09-29 (the FAA aviation archive
+// route, its registration and coverage, and the aviation request contract).
+const BUDGET_GZIP = 76_000;
 
 // Identifiers that only exist in the geometry engine and its dependencies.
 const FORBIDDEN = ["ClipperLib", "contourDensity", "polygon-clipping", "generateGeometry", "buildFabricationPackage", "planSheets"];

@@ -9,7 +9,7 @@ import { RPC_ERRORS, RpcError } from "./protocol";
  * hosts drop it.
  */
 export const PREVIEW_URI = "ui://topostack/terrain-preview.html";
-export const APP_MIME_TYPE = "text/html;profile=mcp-app";
+const APP_MIME_TYPE = "text/html;profile=mcp-app";
 const ASSET_PATH = "/mcp-app/terrain-preview.html";
 const API_ORIGIN_PLACEHOLDER = "%TOPOSTACK_API_ORIGIN%";
 
@@ -17,7 +17,7 @@ const API_ORIGIN_PLACEHOLDER = "%TOPOSTACK_API_ORIGIN%";
 export const PREVIEW_TOOL_META = { ui: { resourceUri: PREVIEW_URI }, "ui/resourceUri": PREVIEW_URI };
 
 /** The preview may fetch terrain, archives and lake outlines from the map API, and nothing else. */
-export function previewResourceMeta(apiOrigin: string) {
+function previewResourceMeta(apiOrigin: string) {
   return { ui: { csp: { connectDomains: [apiOrigin], resourceDomains: [] }, prefersBorder: true } };
 }
 

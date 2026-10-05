@@ -1,5 +1,5 @@
 import polygonClipping, { type MultiPolygon, type Pair, type Ring } from "polygon-clipping";
-import { clamp, close, distanceToSegment, normalizeMultiPolygon, ringBounds, toRing } from "../primitives/geometry2d.js";
+import { clamp, normalizeMultiPolygon, ringBounds, simplify, toRing } from "../primitives/geometry2d.js";
 import { sampleIndexAt, sampleOffset } from "../primitives/grid.js";
 import type { ElevationGrid, Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
 
@@ -11,34 +11,6 @@ export function removeTinyRing(points: Point2D[], minimumFeatureMm: number): boo
   if (points.length < 4) return true;
   const bounds = ringBounds(points);
   return bounds.maxX - bounds.minX < minimumFeatureMm || bounds.maxY - bounds.minY < minimumFeatureMm;
-}
-
-// Douglas–Peucker: keeps every vertex that deviates from the simplified shape
-// by more than tolerance. The previous distance-bucket thinning kept collinear
-// stair-step vertices while dropping genuine curvature, which read as chunky.
-export function simplify(points: Point2D[], tolerance: number): Point2D[] {
-  if (points.length <= 5 || tolerance <= 0) return points;
-  const keep = new Uint8Array(points.length);
-  keep[0] = 1;
-  keep[points.length - 1] = 1;
-  const stack: Array<[number, number]> = [[0, points.length - 1]];
-  while (stack.length) {
-    const [start, end] = stack.pop()!;
-    let maxDistance = tolerance;
-    let maxIndex = -1;
-    for (let index = start + 1; index < end; index += 1) {
-      const distance = distanceToSegment(points[index]!, points[start]!, points[end]!);
-      if (distance > maxDistance) {
-        maxDistance = distance;
-        maxIndex = index;
-      }
-    }
-    if (maxIndex > 0) {
-      keep[maxIndex] = 1;
-      stack.push([start, maxIndex], [maxIndex, end]);
-    }
-  }
-  return close(points.filter((_, index) => keep[index] === 1));
 }
 
 // Replace only visibly sharp turns with a short quadratic arc. Both smoothing

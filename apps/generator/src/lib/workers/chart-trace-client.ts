@@ -39,6 +39,8 @@ const CANCELLED = () => new DOMException("Chart tracing cancelled", "AbortError"
 export class ChartTraceClient {
   private worker: Worker | undefined;
   private unavailable: boolean;
+  /** A worker has answered in this session, so a later crash is not a blocked worker. */
+  private proven = false;
   private nextId = 0;
   private pending = new Map<number, Pending>();
 
@@ -107,8 +109,9 @@ export class ChartTraceClient {
       this.unavailable = true;
       return undefined;
     }
-    worker.onmessage = (event: MessageEvent<WorkerReply>) => this.receive(event.data);
-    worker.onerror = () => this.fail(new Error("Chart tracing could not start in this browser."));
+    worker.onmessage = (event: MessageEvent<WorkerReply>) => { this.proven = true; this.receive(event.data); };
+    worker.onerror = () => this.fail();
+    worker.onmessageerror = () => this.fail();
     this.worker = worker;
     return worker;
   }
@@ -123,10 +126,12 @@ export class ChartTraceClient {
     else pending.resolve((reply.built ?? reply.swatches ?? reply.contours ?? reply.review) as never);
   }
 
-  private fail(error: Error): void {
+  /** As in NestClient: only a worker that never answered sends later work to the main thread. */
+  private fail(): void {
+    const error = new Error(this.proven ? "Chart tracing stopped unexpectedly. Try again." : "Chart tracing could not start in this browser.");
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
     if (this.worker) { this.worker.terminate(); this.worker = undefined; }
-    this.unavailable = true;
+    if (!this.proven) this.unavailable = true;
   }
 }

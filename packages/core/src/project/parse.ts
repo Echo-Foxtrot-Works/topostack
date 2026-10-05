@@ -1,4 +1,4 @@
-import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1 } from "../types.js";
+import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
 import { SHEET_NEST_ROTATIONS } from "../export/sheet-nest/resolve.js";
@@ -35,7 +35,8 @@ function waterFillPatternValue(value: unknown): ProjectConfigV1["waterFillPatter
 function paintTemplatesValue(value: unknown): ProjectConfigV1["paintTemplates"] {
   if (value === undefined) return [...DEFAULT_PROJECT.paintTemplates];
   if (!Array.isArray(value) || value.some((kind) => !PAINT_REGION_KINDS.includes(kind)) || new Set(value).size !== value.length) throw new Error("Paint templates must list each supported region kind at most once.");
-  return value as ProjectConfigV1["paintTemplates"];
+  // A copy, so later edits to the caller's array cannot reach the project.
+  return [...value] as ProjectConfigV1["paintTemplates"];
 }
 /** Sheet nesting is an export setting; out-of-range numbers are clamped when it is used, so only shape is checked here. */
 function sheetNestingValue(value: unknown): SheetNestSettingsV1 {
@@ -114,6 +115,15 @@ function plaqueValue(value: unknown): PlaqueV1 | undefined {
   };
 }
 
+const AVIATION_DETAIL_KEYS = ["airspace", "specialUse", "runways", "airports", "navaids", "obstacles", "labels"] as const satisfies ReadonlyArray<keyof AviationDetailsV1>;
+
+function aviationValue(value: unknown): AviationDetailsV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Aviation settings are invalid.");
+  const record = value as Record<string, unknown>;
+  // A missing switch is off, so details added later never change an older project.
+  return Object.fromEntries(AVIATION_DETAIL_KEYS.map((key) => [key, record[key] === undefined ? false : booleanValue(record[key], `aviation.${key}`)])) as unknown as AviationDetailsV1;
+}
+
 function markerSymbolValue(value: unknown): MarkerSymbol {
   if (value === "custom" || (MARKER_SYMBOLS as readonly unknown[]).includes(value)) return value as MarkerSymbol;
   throw new Error("Marker symbol is invalid.");
@@ -183,6 +193,8 @@ function placedGraphicsValue(value: unknown, graphics: CustomGraphicV1[] | undef
     if (!graphics.some(({ id }) => id === record.graphicId)) continue;
     const placement = record.placement && typeof record.placement === "object" ? record.placement as Record<string, unknown> : undefined;
     const offset = placement?.offset && typeof placement.offset === "object" ? placement.offset as Record<string, unknown> : undefined;
+    // Lenient on purpose: a placement that fails the checks below is dropped,
+    // not fatal, and parsing less than before would reject saved projects.
     const offsetX = Number(offset?.x ?? 0); const offsetY = Number(offset?.y ?? 0);
     if (!NORTH_ARROW_ANCHORS.includes(placement?.anchor as NorthArrowAnchor) || ![offsetX, offsetY].every((part) => Number.isFinite(part) && Math.abs(part) <= 1)) continue;
     const sizeMm = Number(record.sizeMm); const rotationDeg = Number(record.rotationDeg ?? 0);
@@ -346,6 +358,8 @@ export function parseProject(value: unknown): ProjectConfigV1 {
       roadStyle: roadStyleValue(lineStyleRecord.roadStyle),
       majorRoadSpacingMm: lineStyleRecord.majorRoadSpacingMm === undefined ? DEFAULT_PROJECT.lineStyle.majorRoadSpacingMm : numberValue(lineStyleRecord.majorRoadSpacingMm),
       roadCap: roadCapValue(lineStyleRecord.roadCap),
+      ...(lineStyleRecord.aviationMm === undefined ? {} : { aviationMm: numberValue(lineStyleRecord.aviationMm) }),
+      ...(lineStyleRecord.aviationSymbolMm === undefined ? {} : { aviationSymbolMm: numberValue(lineStyleRecord.aviationSymbolMm) }),
     } : { ...DEFAULT_PROJECT.lineStyle },
     verticalExaggeration: savedVerticalExaggeration(record.verticalExaggeration),
     minimumFeatureMm: record.minimumFeatureMm === undefined ? DEFAULT_PROJECT.minimumFeatureMm : numberValue(record.minimumFeatureMm),
@@ -356,6 +370,8 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     showWater: booleanValue(record.showWater, "showWater"),
     waterFillPattern: waterFillPatternValue(record.waterFillPattern),
     showBoundaries: record.showBoundaries === undefined ? DEFAULT_PROJECT.showBoundaries : booleanValue(record.showBoundaries, "showBoundaries"),
+    // Absent keeps every project saved before aviation detail, and its fingerprint.
+    ...(record.aviation === undefined ? {} : { aviation: aviationValue(record.aviation) }),
     showCoordinateGrid: record.showCoordinateGrid === undefined ? DEFAULT_PROJECT.showCoordinateGrid : booleanValue(record.showCoordinateGrid, "showCoordinateGrid"),
     showWaterDepth: record.showWaterDepth === undefined ? DEFAULT_PROJECT.showWaterDepth : booleanValue(record.showWaterDepth, "showWaterDepth"),
     waterDepthExaggeration: record.waterDepthExaggeration === undefined ? DEFAULT_PROJECT.waterDepthExaggeration : numberValue(record.waterDepthExaggeration),

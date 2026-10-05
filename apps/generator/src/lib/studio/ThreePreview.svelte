@@ -13,7 +13,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1 } from "@topostack/core";
+  import { aviationStroke, labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -499,9 +499,15 @@
       // WebGL line dashes have no round caps: SVG-style near-zero dots
       // disappear at fitted zoom. Give the preview marks visible length.
       const coordinateGridMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS.grid, toneMapped: false, linewidth: style.coordinateGridMm, dashSize: Math.max(style.coordinateGridMm * 2, 0.5), gapSize: Math.max(style.coordinateGridMm * 4, 0.7) });
+      const aviationMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.aviation, linewidth: aviationStroke("class-c", style).widthMm });
+      const [classDDash = 1.6, classDGap = 1] = aviationStroke("class-d", style).dash ?? [];
+      const aviationDashedMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["aviation-dashed"], linewidth: aviationStroke("class-d", style).widthMm, dashSize: classDDash, gapSize: classDGap });
+      // Special use airspace is solid; its inside hatching arrives as geometry.
+      const specialUseMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial,
-        boundary: boundaryMaterial, grid: coordinateGridMaterial, engrave: engraveMaterial,
+        boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
+        "special-use": specialUseMaterial, engrave: engraveMaterial,
       };
       const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
@@ -515,7 +521,7 @@
         color: 0x14536e, transparent: true, opacity: 0.52, roughness: 0.28, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial);
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);

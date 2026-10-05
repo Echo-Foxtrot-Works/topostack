@@ -2,7 +2,7 @@ import { loadProviderOutlines, resolveLakeOutlines } from "$lib/domain/lake-outl
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
-import { boundsForProject, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type GeoBounds, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AviationStatus, type GeoBounds, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
 import { createArchive, networkSignal } from "$lib/domain/archive";
 import { classifyRings, VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
@@ -11,7 +11,7 @@ import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { applyPreferredTerrain } from "$lib/domain/terrain-sources";
 import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
-import { fittingTileWindow, groundWidthM, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
+import { dataZoom, fittingTileWindow, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { assembleWater } from "$lib/domain/water-assembly";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
@@ -27,6 +27,21 @@ const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk
 const LOCAL_ROAD_DETAILS = new Set(["tertiary", "tertiary_link", "residential", "service", "unclassified", "road", "raceway", "driveway", "parking_aisle", "alley", "drive-through", "emergency_access"]);
 const TRAIL_DETAILS = new Set(["pedestrian", "track", "path", "cycleway", "bridleway", "steps", "corridor", "sidewalk", "crossing"]);
 const EXCLUDED_TRANSPORT_KINDS = new Set(["rail", "aerialway", "ferry", "pier", "aeroway"]);
+
+/**
+ * FAA aviation detail for the crop. The loader is imported only here, on
+ * demand, so projects without aviation never download it.
+ */
+export async function loadAviation(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "aviationMarkings" | "aviationCycle" | "aviationAttribution"> & { aviationStatus: AviationStatus }> {
+  try {
+    const { loadAviationMarkings } = await import("$lib/domain/aviation-provider");
+    const { markings, status, cycle, attribution } = await loadAviationMarkings(bounds, zoom, config, signal);
+    return { aviationMarkings: markings, aviationStatus: status, ...(cycle ? { aviationCycle: cycle } : {}), aviationAttribution: attribution };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return { aviationMarkings: [], aviationStatus: "unavailable", aviationAttribution: [] };
+  }
+}
 
 /** The crop is computed in core so the studio and the Worker agree on it. */
 export { boundsForProject };
@@ -296,7 +311,7 @@ async function loadHydroLakeAreas(bounds: GeoBounds, requestedZoom: number, conf
   // basin can mean anything, and a tile over Finland or northern Canada holds
   // thousands that are not. Filtering on the published area first keeps the
   // dissolve off geometry the model could never show.
-  const mmPerMeter = config.widthMm / Math.max(1, groundWidthM(bounds));
+  const mmPerMeter = config.widthMm / Math.max(1, groundWidthMFor(bounds));
   const minimumAreaKm2 = ((config.minimumFeatureMm * 2 / mmPerMeter) / 1000) ** 2;
 
   // One lake spans many tiles, so its pieces are gathered by id and unioned.
@@ -409,16 +424,17 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     signal?.throwIfAborted();
     onStage?.("preparing");
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
-    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available" } };
+    const aviation = sourceRequirements(config).aviation ? { aviationMarkings: e2eAviationFixture(config), aviationStatus: "available" as const, aviationCycle: "2026-01-01" } : {};
+    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation } };
   }
-  const zoom = Math.max(0, Math.min(15, Math.round(config.location.zoom)));
+  const zoom = dataZoom(config.location.zoom);
   const userSignal = signal;
   const operation = new AbortController();
   signal = userSignal ? AbortSignal.any([userSignal, operation.signal]) : operation.signal;
   try {
     // Ocean polygons are how geometry separates bathymetry from land relief,
     // so depth modeling needs vectors even when shoreline scoring is hidden.
-    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas } = sourceRequirements(config);
+    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas, aviation: aviationRequested } = sourceRequirements(config);
     let loaded;
     try {
       // Choose elevation detail from the crop, independently of the camera zoom.
@@ -444,6 +460,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
               return { areas: [] as WaterAreaV1[], status: "unavailable" as const };
             })
           : Promise.resolve({ areas: [] as WaterAreaV1[], status: "not-requested" as const }),
+        aviationRequested ? loadAviation(bounds, zoom, config, signal) : Promise.resolve(undefined),
       ]);
     } catch (error) {
       if (userSignal?.aborted) throw error;
@@ -452,15 +469,15 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
       onStage?.("preparing");
       const source = createSyntheticSource({ ...config, location: { ...config.location, bounds } });
       return {
-        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested" },
+        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested", ...(aviationRequested ? { aviationMarkings: [], aviationStatus: "unavailable" as const } : {}) },
         fallback: true,
         fallbackReason: errorMessage(error, "The terrain service could not be reached."),
       };
     }
     signal.throwIfAborted();
     onStage?.("preparing");
-    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthM(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation] = loaded;
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth
@@ -482,6 +499,16 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
   } finally {
     operation.abort();
   }
+}
+
+/** A Class B ring, a runway and an airport for the Playwright build, which never reaches the map API. */
+function e2eAviationFixture(config: ProjectConfigV1): MarkingFeature[] {
+  const half = Math.min(config.widthMm, config.heightMm) * 0.3;
+  return [
+    { id: "e2e-class-b", kind: "aviation", operation: "engrave", aviationClass: "class-b", label: "E2E CLASS B", points: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }] },
+    { id: "e2e-runway", kind: "aviation", operation: "engrave", aviationClass: "runway", label: "9/27", widthM: 45, points: [{ x: -half / 2, y: 0 }, { x: half / 2, y: 0 }] },
+    { id: "e2e-airport", kind: "aviation", operation: "engrave", aviationClass: "airport", aviationSymbol: "airport-pattern", aviationDetail: { towered: true, beacon: true, runways: [[{ x: -1, y: 0 }, { x: 1, y: 0 }], [{ x: -0.6, y: -0.6 }, { x: 0.6, y: 0.6 }]] }, label: "E2E", points: [{ x: 0, y: half / 2 }] },
+  ];
 }
 
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {

@@ -71,6 +71,19 @@ describe("PMTiles archive releases", () => {
     }
   });
 
+  it("serves the promoted FAA aviation archive by range", async () => {
+    const aviationKey = "aviation/current.pmtiles";
+    await seedRelease(aviationKey, 9);
+    try {
+      const ranged = await worker.fetch(request("/v1/aviation.pmtiles", { headers: { range: "bytes=0-3" } }), env, context);
+      expect(ranged.status).toBe(206);
+      expect(new Uint8Array(await ranged.arrayBuffer())).toEqual(new Uint8Array(4).fill(9));
+      expectCors(ranged);
+    } finally {
+      await env.VECTOR_DATA.delete(`releases/${aviationKey}.json`);
+    }
+  });
+
   it("memoizes release resolution so repeated range reads cost one R2 read", async () => {
     await seedRelease(logicalKey, 3);
     const reads = [];
@@ -298,9 +311,13 @@ describe("request budgets", () => {
     expect(limiter.limit.mock.calls.map(([options]) => options.key)).toEqual(["2001:db8:1:2::/64:manifest", "2001:db8:1:2::/64:manifest", "198.51.100.7:manifest"]);
   });
 
-  it("no longer routes / through the Worker (static assets own it)", async () => {
-    const response = await worker.fetch(request("/"), { ...env, REQUEST_LIMITER: allowAll() } as unknown as Env, context);
-    expect(response.status).toBe(404);
+  it("hands / to the static assets without spending an API budget", async () => {
+    const limiter = allowAll();
+    const assets = { fetch: vi.fn(async () => new Response("<!doctype html>", { headers: { "content-type": "text/html" } })) };
+    const response = await worker.fetch(request("/"), { ...env, REQUEST_LIMITER: limiter, ASSETS: assets } as unknown as Env, context);
+    expect(response.status).toBe(200);
+    expect(assets.fetch).toHaveBeenCalledOnce();
+    expect(limiter.limit).not.toHaveBeenCalled();
   });
 
   it("caps geocoder cache misses with a dedicated shared budget across clients", async () => {

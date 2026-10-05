@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { connectWebMcp, type ModelContextLike } from "$lib/studio/webmcp";
 import type { WebMcpHost } from "$lib/studio/webmcp-tools";
 
-const host = { project: vi.fn(), geometry: vi.fn() } as unknown as WebMcpHost;
+const host = { project: vi.fn(), geometry: vi.fn(), editBlockedBy: () => undefined } as unknown as WebMcpHost;
 
 describe("WebMCP registration", () => {
   it("registers every tool with a lifetime signal and removes them on disconnect", () => {

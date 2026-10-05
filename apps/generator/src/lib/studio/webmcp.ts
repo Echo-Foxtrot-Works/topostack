@@ -13,11 +13,6 @@ export interface ModelContextLike {
   unregisterTool?: (name: string) => unknown;
 }
 
-export function modelContext(): ModelContextLike | undefined {
-  const candidate = (document as unknown as { modelContext?: ModelContextLike }).modelContext ?? (navigator as unknown as { modelContext?: ModelContextLike }).modelContext;
-  return typeof candidate?.registerTool === "function" ? candidate : undefined;
-}
-
 /** Register every tool and return the function that removes them. */
 export function connectWebMcp(context: ModelContextLike, host: WebMcpHost): () => void {
   const lifetime = new AbortController();

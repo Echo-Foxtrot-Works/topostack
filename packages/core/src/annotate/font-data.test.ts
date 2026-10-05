@@ -2,21 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_PROJECT,
   FONT_CATALOG,
-  FontNotLoadedError,
   TEXT_FONTS,
   clearRegisteredFonts,
   decodeFontGlyphs,
   generateGeometry,
   isFontLoaded,
   labelDimensions,
-  labelGeometry,
   labelLineSegments,
   labelPathData,
   labelSvgPaths,
   layerToSvg,
-  engravingToSvg,
-  masterToSvg,
-  plaqueLines,
   plaqueMarkings,
   projectFingerprint,
   projectFonts,
@@ -24,6 +19,11 @@ import {
   validateProject,
   type ProjectConfigV1,
 } from "../index.js";
+import { engravingToSvg } from "../export/engraving-svg.js";
+import { masterToSvg } from "../export/svg.js";
+import { FontNotLoadedError } from "./font-data.js";
+import { labelGeometry } from "./labels.js";
+import { plaqueLines } from "./plaque.js";
 import { fabricationLabel } from "../pipeline/transportation.js";
 import { OUTLINE_FIXTURE, registerFixtureFonts } from "../test-support/fonts.js";
 import { realSource } from "../test-support/sources.js";

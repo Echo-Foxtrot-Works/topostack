@@ -17,8 +17,7 @@ import type { PageSeo } from "./seo.ts";
  * scripts only; it must not reach the browser bundle.
  */
 export const LAKE_PLACE_HOME = "/lake";
-/** First publication and last significant change of the page template; the directory date also counts. */
-export const LAKE_PLACES_PUBLISHED = "2026-09-25";
+/** Last significant change of the page template; the directory date also counts. */
 const LAKE_PLACES_UPDATED = "2026-09-25";
 /**
  * The survey area a contour-only lake needs before it gets a page of its own. Smaller lakes stay

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { ChevronDown, Compass, Grid3X3, Layers3, Map as MapIcon, Minus, Mountain, Move, Square, Type, Waves } from "@lucide/svelte";
+  import { ChevronDown, Compass, Grid3X3, Layers3, Map as MapIcon, Minus, Mountain, Move, Plane, Square, Type, Waves } from "@lucide/svelte";
   import { Field, Section } from "@loidolt/theme-svelte";
-  import { DEFAULT_PROJECT, displayElevation, displayLength, fontEntry, isBitmapFont, MAX_WATER_DEPTH_EXAGGERATION, MIN_WATER_DEPTH_EXAGGERATION, NORTH_ARROW_MIN_SIZE_MM, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, plaqueFont, unsupportedLabelCharacters } from "@topostack/core";
+  import { AVIATION_DATA_DETAILS, NO_AVIATION, DEFAULT_PROJECT, displayElevation, displayLength, fontEntry, isBitmapFont, MAX_WATER_DEPTH_EXAGGERATION, MIN_WATER_DEPTH_EXAGGERATION, NORTH_ARROW_MIN_SIZE_MM, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, plaqueFont, unsupportedLabelCharacters } from "@topostack/core";
   import FeedbackButton from "$lib/site/FeedbackButton.svelte";
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import FontPicker from "$lib/studio/panels/FontPicker.svelte";
@@ -23,6 +23,21 @@
   });
   /** A lake carved from the maker's own chart; its modeled maximum no longer applies. */
   const charted = (hylakId: number): boolean => studio.project.userDepthCharts?.[String(hylakId)] !== undefined;
+  const aviation = $derived(studio.project.aviation ?? NO_AVIATION);
+  /** Turning every group off drops the setting, so the project reads as it did before aviation existed. */
+  function updateAviation(patch: Partial<typeof NO_AVIATION>): void {
+    const next = { ...aviation, ...patch };
+    void studio.updateMapDetails({ aviation: AVIATION_DATA_DETAILS.some((detail) => next[detail]) || next.labels ? next : undefined });
+  }
+  const AVIATION_TOGGLES = [
+    { key: "airspace", label: "Class B, C and D airspace" },
+    { key: "specialUse", label: "Special use airspace" },
+    { key: "runways", label: "Runways" },
+    { key: "airports", label: "Airports" },
+    { key: "navaids", label: "Navaids" },
+    { key: "obstacles", label: "Obstacles" },
+    { key: "labels", label: "Identifiers and airspace altitudes" },
+  ] as const;
   const { startPlacement, getFeedbackContext, navigateChoice, previewMarkingPath, sectionSummary, setLakeDepth, shownDepth, shownLength, shownTextSize, storedLength, toggleSection, updateDepthLayerLimit, updateFabrication, updateMapDetails } = studio;
 </script>
 
@@ -117,6 +132,20 @@
       </div>
       {/if}
     </div>
+  </div>
+
+  <div class="detail-group">
+    <p class="subgroup-heading">Aviation (US)</p>
+    <div class="toggle-stack">
+      {#each AVIATION_TOGGLES as toggle (toggle.key)}
+        <Switch checked={aviation[toggle.key]} onCheckedChange={(checked) => updateAviation({ [toggle.key]: checked })} aria-label={toggle.label}><span class="toggle-label"><Plane size={16} />{toggle.label}</span></Switch>
+      {/each}
+    </div>
+    {#if studio.activeSource.aviationStatus === "not-covered" && AVIATION_DATA_DETAILS.some((detail) => aviation[detail])}
+      <small class="depth-note">FAA data covers only the United States and its territories, so this area has no aviation detail.</small>
+    {:else}
+      <small class="depth-note">FAA aeronautical data{studio.activeSource.aviationCycle ? `, cycle ${studio.activeSource.aviationCycle}` : ""}. Decorative only: not for navigation.</small>
+    {/if}
   </div>
 
   {#if studio.project.outputMode === "stack"}<div class="detail-group">

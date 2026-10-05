@@ -15,7 +15,7 @@ For layered projects, set your material width and height and let automatic nesti
 
 Open in Studio sends one editable SVG containing the entire layout. Download provides the complete project bundle, including artwork, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
 
-Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated Crater Lake terrain in the 0.6.0 release candidate, including real survey data where available. Images and videos are software previews, not physical builds or machine runs.
+Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated Crater Lake terrain prepared for the 0.7.1 review, including real survey data where available. Images and videos are software previews, not physical builds or machine runs.
 
 Craft
 Laser, Cutting, Engraving, Relief

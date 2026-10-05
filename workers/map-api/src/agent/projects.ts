@@ -3,7 +3,7 @@ import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-con
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
 import { terrainResponse } from "../routes/terrain";
-import { attributionFor, type Attribution } from "./attribution";
+import { attributionFor, projectDrawsAviation, type Attribution } from "./attribution";
 import { areaCoverage, type AreaCoverage } from "./coverage";
 import { studioLink } from "./links";
 import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type ReliefTile } from "./relief";
@@ -12,7 +12,7 @@ import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type Relie
  * The agent-facing project operations. REST routes and MCP tools both call
  * these functions, so a request means the same thing on either surface.
  */
-export const MAX_AGENT_BODY_BYTES = 128_000;
+const MAX_AGENT_BODY_BYTES = 128_000;
 /** Plans past this many sheets get a note suggesting thicker material or less exaggeration. */
 const MANY_SHEETS = 60;
 
@@ -26,6 +26,8 @@ export interface AgentContext {
   ctx: ExecutionContext;
   /** Charges the caller's terrain budget before a tile has to come from the origin. */
   admitTerrainUpstream: () => Promise<boolean>;
+  /** Charges the caller's agent budget once more, for work past what the request itself paid for. */
+  admitAgentCall: () => Promise<boolean>;
 }
 
 export function publicOrigin(context: Pick<AgentContext, "env" | "request">): string {
@@ -101,6 +103,9 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   if (plan.output === "layered" && plan.sheetCount > MANY_SHEETS) notes.push(`${plan.sheetCount} sheets is a large stack. Thicker material or less exaggeration makes fewer sheets.`);
   if (relief.coastal) notes.push("The area reaches the sea; the sea is cut flat and the stack is sized from the land.");
   if (coverage.lakeSurveys.length && project.showWaterDepth && plan.output === "layered") notes.push("Lake depth adds sheets below the shoreline; the studio counts them.");
+  if (projectDrawsAviation(project)) notes.push(coverage.aviation
+    ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
+    : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;
   if (project.widthMm > bedWidth || project.heightMm > bedHeight) notes.push("The model is larger than the laser bed, so each sheet is split into pieces with alignment tabs.");
   return notes;
@@ -124,12 +129,12 @@ export async function planProject(project: ProjectConfigV1, context: AgentContex
     coverage,
     notes: planNotes(project, plan, relief, coverage),
     studioUrl: linkFor(project, origin),
-    attribution: attributionFor(origin, coverage),
+    attribution: attributionFor(origin, coverage, { aviation: projectDrawsAviation(project) }),
   };
 }
 
 /** Coverage for `?bbox=west,south,east,north` or `?lat=&lon=&widthKm=`. */
-export function coverageBoundsFromQuery(url: URL): GeoBounds {
+function coverageBoundsFromQuery(url: URL): GeoBounds {
   const bbox = url.searchParams.get("bbox");
   if (bbox !== null) {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));
@@ -139,9 +144,23 @@ export function coverageBoundsFromQuery(url: URL): GeoBounds {
     return bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];
-  const parsed = parseProjectRequest({ requestVersion: 1, area: { center: { lat, lon }, widthKm }, widthMm: 100, heightMm: 100 });
-  if (!parsed.ok) throw new AgentError(400, "Give bbox=west,south,east,north or lat, lon and widthKm.", parsed.errors);
-  return areaBounds(parsed.value.area, 100, 100);
+  const ground = areaGround({ center: { lat, lon }, widthKm });
+  if ("errors" in ground) throw new AgentError(400, "Give bbox=west,south,east,north or lat, lon and widthKm.", ground.errors);
+  return ground.bounds;
+}
+
+/**
+ * The ground a request `area` covers, or the parser's issues. The model size
+ * is a placeholder: coverage depends only on the area.
+ */
+export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: RequestIssue[] } {
+  const parsed = parseProjectRequest({ requestVersion: 1, area, widthMm: 100, heightMm: 100 });
+  return parsed.ok ? { bounds: areaBounds(parsed.value.area, 100, 100) } : { errors: parsed.errors };
+}
+
+/** Coverage with the attribution its sources require, as both surfaces return it. */
+export function coverageResult(coverage: AreaCoverage, origin: string) {
+  return { ...coverage, attribution: attributionFor(origin, coverage) };
 }
 
 export function agentErrorResponse(error: AgentError): Response {
@@ -161,7 +180,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
       return json({ url, length: url.length });
     }
     const { project } = resolveProjectRequest(body);
-    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: attributionFor(origin, areaCoverage(boundsForProject(project))) });
+    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project) }) });
     if (action === "link") { const url = linkFor(project, origin); return json({ url, length: url.length }); }
     return json(await planProject(project, context));
   } catch (error) {
@@ -173,8 +192,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
 /** GET /v1/coverage. */
 export function coverageRouteResponse(url: URL, context: Pick<AgentContext, "env" | "request">): Response {
   try {
-    const coverage = areaCoverage(coverageBoundsFromQuery(url));
-    return json({ ...coverage, attribution: attributionFor(publicOrigin(context), coverage) }, { headers: { "cache-control": "public, max-age=3600" } });
+    return json(coverageResult(areaCoverage(coverageBoundsFromQuery(url)), publicOrigin(context)), { headers: { "cache-control": "public, max-age=3600" } });
   } catch (error) {
     if (error instanceof AgentError) return agentErrorResponse(error);
     throw error;

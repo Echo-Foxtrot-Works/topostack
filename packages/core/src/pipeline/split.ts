@@ -4,6 +4,7 @@ import {
   boundsOverlap,
   normalizeMultiPolygon,
   ringBounds,
+  toClipPolygon,
   toRing,
 } from "../primitives/geometry2d.js";
 import { MAX_SEAM_DIVISIONS, MAX_WORK_AREA_PIECES } from "../types.js";
@@ -189,7 +190,7 @@ function tabOwnership(edges: number[], spanMm: number, usableMm: number, nominal
  * projection is an interval, and the band spans the full `u` range - so the
  * free stretches are just the gaps between those spans.
  */
-function tabCentres(axis: SeamAxis, seam: number, low: number, high: number, depth: number, solid: MultiPolygon): number[] {
+function tabCentres(axis: SeamAxis, seam: number, low: number, high: number, depth: number, solid: MultiPolygon, onFailure: () => void): number[] {
   const margin = depth * TAB_HEAD_RATIO + TAB_CLEARANCE_MM;
   if (high - low < 2 * margin) return [];
   const reach = depth + TAB_CLEARANCE_MM;
@@ -197,6 +198,7 @@ function tabCentres(axis: SeamAxis, seam: number, low: number, high: number, dep
   try {
     missing = polygonClipping.difference(seamRect(axis, seam - reach, low, seam + reach, high), solid) as MultiPolygon;
   } catch {
+    onFailure();
     return [];
   }
   const blocked = missing.map((polygon) => {
@@ -238,10 +240,6 @@ function closedRect(minX: number, minY: number, maxX: number, maxY: number): Poi
     { x: minX, y: maxY },
     { x: minX, y: minY },
   ];
-}
-
-function polygonRings(polygon: Polygon2D): Polygon {
-  return [toRing(polygon.outer), ...polygon.holes.map(toRing)];
 }
 
 function polygonBounds(polygon: Polygon2D): Bounds2D {
@@ -307,7 +305,7 @@ function mergeSlivers(pieces: CellPiece[], minimumFeatureMm: number, grid: SeamP
       .sort((left, right) => right.shared - left.shared);
     for (const { piece: target } of candidates) {
       const merged = normalizeMultiPolygon(
-        polygonClipping.union(polygonRings(sliver.polygon), polygonRings(target.polygon)) as MultiPolygon,
+        polygonClipping.union(toClipPolygon(sliver.polygon), toClipPolygon(target.polygon)) as MultiPolygon,
       );
       // Corner-touching pieces union into two polygons: that is not one piece.
       if (merged.length !== 1) continue;
@@ -350,6 +348,7 @@ function cellRegions(
   xEdges: number[],
   yEdges: number[],
   solid: MultiPolygon | undefined,
+  onTabFailure: () => void,
 ): Map<string, { adds: Polygon[]; subtracts: Polygon[] }> {
   const regions = new Map<string, { adds: Polygon[]; subtracts: Polygon[] }>();
   if (!solid?.length) return regions;
@@ -376,10 +375,10 @@ function cellRegions(
         const high = Math.min(crossHalf, crossEdges[cross + 1]!) - (cross < crossEdges.length - 2 ? crossingClearance : 0);
         // The bed allows `depth`; a narrow covered band may only take less.
         let fitted = depth;
-        let centres = tabCentres(axis, seam, low, high, fitted, solid);
+        let centres = tabCentres(axis, seam, low, high, fitted, solid, onTabFailure);
         while (!centres.length && fitted - TAB_DEPTH_STEP_MM >= minimum - 1e-9) {
           fitted -= TAB_DEPTH_STEP_MM;
-          centres = tabCentres(axis, seam, low, high, fitted, solid);
+          centres = tabCentres(axis, seam, low, high, fitted, solid, onTabFailure);
         }
         for (const centre of centres) {
           const tab = seamTab(axis, seam, centre, direction, fitted);
@@ -401,7 +400,8 @@ function cellRegions(
   return regions;
 }
 
-function splitLayer(config: ProjectConfigV1, layer: LayerIR, grid: SeamPlanV1, covering: Polygon2D[]): CellPiece[] {
+/** `onTabFailure` hears of seams the clipper could not place tabs along, so the maker is told. */
+function splitLayer(config: ProjectConfigV1, layer: LayerIR, grid: SeamPlanV1, covering: Polygon2D[], onTabFailure: () => void): CellPiece[] {
   const xEdges = cellEdges(config.widthMm, grid.columns, seamShift(layer.index, grid.seamOffsetXMm));
   const yEdges = cellEdges(config.heightMm, grid.rows, seamShift(layer.index, grid.seamOffsetYMm));
 
@@ -419,18 +419,19 @@ function splitLayer(config: ProjectConfigV1, layer: LayerIR, grid: SeamPlanV1, c
   const pieces: CellPiece[] = [];
   const splittableBounds = unionBounds(splittable.map(polygonBounds));
   if (splittableBounds) {
-    const splittableRings = splittable.map(polygonRings) as MultiPolygon;
+    const splittableRings = splittable.map(toClipPolygon) as MultiPolygon;
     // Tabs only go where the next layer hides them. An island kept whole is
     // never crossed by a seam, so only splittable material can carry one.
     let solid: MultiPolygon | undefined;
     if (config.seamTabs && covering.length) {
       try {
-        solid = polygonClipping.intersection(splittableRings, covering.map(polygonRings) as MultiPolygon) as MultiPolygon;
+        solid = polygonClipping.intersection(splittableRings, covering.map(toClipPolygon) as MultiPolygon) as MultiPolygon;
       } catch {
         solid = undefined;
+        onTabFailure();
       }
     }
-    const regions = cellRegions(config, grid, xEdges, yEdges, solid);
+    const regions = cellRegions(config, grid, xEdges, yEdges, solid, onTabFailure);
     for (let row = 0; row < yEdges.length - 1; row += 1) {
       for (let column = 0; column < xEdges.length - 1; column += 1) {
         const rect = closedRect(xEdges[column]!, yEdges[row]!, xEdges[column + 1]!, yEdges[row + 1]!);
@@ -484,11 +485,12 @@ export function splitLayersForWorkArea(config: ProjectConfigV1, layers: LayerIR[
 
   let slivers = 0;
   const oversize: string[] = [];
+  const tablessLayers = new Set<number>();
   // Covering is read before any layer is cut; splitting keeps each layer's
   // union, but not its polygon list.
   const coverings = layers.map((layer) => layers.find((other) => other.index === layer.index + 1)?.polygons ?? []);
   for (const [layerPosition, layer] of layers.entries()) {
-    const merged = mergeSlivers(splitLayer(config, layer, grid, coverings[layerPosition]!), config.minimumFeatureMm, grid);
+    const merged = mergeSlivers(splitLayer(config, layer, grid, coverings[layerPosition]!, () => tablessLayers.add(layer.index)), config.minimumFeatureMm, grid);
     slivers += merged.slivers;
     const ordered = merged.pieces.sort((left, right) =>
       left.row - right.row || left.column - right.column || left.bounds.minY - right.bounds.minY || left.bounds.minX - right.bounds.minX);
@@ -502,6 +504,13 @@ export function splitLayersForWorkArea(config: ProjectConfigV1, layers: LayerIR[
     code: "SMALL_FEATURES",
     message: `${slivers} cut piece${slivers === 1 ? " is" : "s are"} narrower than the minimum feature size. Glue the offcut in place with its neighbour, or raise the work area so the seam misses it.`,
   });
+  if (tablessLayers.size) {
+    const numbers = [...tablessLayers].sort((a, b) => a - b).map((index) => index + 1);
+    warnings.push({
+      code: "SEAM_TABS_OMITTED",
+      message: `Alignment tabs could not be placed along some seams on layer${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")}; those pieces meet edge to edge. Glue them against a straight edge.`,
+    });
+  }
   if (oversize.length) warnings.push({
     code: "WORK_AREA_OVERSIZE",
     message: `${oversize.length} piece${oversize.length === 1 ? "" : "s"} (${oversize.slice(0, 4).join(", ")}) remain larger than the work area. The seam grid stops at ${MAX_SEAM_DIVISIONS} divisions per axis; use a larger work area or a smaller model.`,

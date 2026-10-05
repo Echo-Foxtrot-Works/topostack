@@ -1,0 +1,54 @@
+{
+ "dataset": "faa-aviation-2026-10-01-v1",
+ "nasrCycle": "2026-10-01",
+ "obstacleDate": "2026-09-27",
+ "suaDate": "2026-10-05",
+ "name": "FAA aeronautical data",
+ "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/",
+ "license": "Public domain (U.S. Government work). FAA Aeronautical Information Services; not for navigation.",
+ "maxZoom": 12,
+ "files": {
+  "classAirspace": {
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/2026-10-01/class_airspace_shape_files.zip",
+   "file": "class_airspace_shape_files.zip",
+   "member": "Shape_Files/Class_Airspace.shp",
+   "sha256": "7057b1a982d5dd5df4d92a5101d222854b415c5ad163d464de36d94100e20201"
+  },
+  "airports": {
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/01_Oct_2026_APT_CSV.zip",
+   "file": "01_Oct_2026_APT_CSV.zip",
+   "sha256": "aba48ea877f249d9b8cd63988b14b3432a6a09ad1fbe9561a5e6443c99c03dd0"
+  },
+  "navaids": {
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/01_Oct_2026_NAV_CSV.zip",
+   "file": "01_Oct_2026_NAV_CSV.zip",
+   "sha256": "c169cba36c91ff1f89e914c1ab7f3aa09a3149867b8dc53c2f307920a417682e"
+  },
+  "obstacles": {
+   "url": "https://aeronav.faa.gov/Obst_Data/DOF_260927.zip",
+   "file": "DOF_260927.zip",
+   "sha256": "3eedb38beb5c10babf59455c3dfa06d0f7679a132b773afd6ef665b6ba5688d3"
+  },
+  "sua": {
+   "service": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Special_Use_Airspace/FeatureServer/0",
+   "file": "sua.geojson.gz",
+   "sha256": "d856b831f2464c1323d688f3bc46f1827953f8d9658dab023a50de8a745829ab"
+  }
+ },
+ "coverage": [
+  { "id": "conus-west", "bounds": [-125.0, 31.3, -95.2, 49.1] },
+  { "id": "conus-south-central", "bounds": [-106.7, 25.8, -93.5, 31.4] },
+  { "id": "conus-southeast", "bounds": [-95.2, 24.4, -75.0, 36.6] },
+  { "id": "conus-central-east", "bounds": [-95.2, 36.5, -66.9, 45.1] },
+  { "id": "conus-upper-midwest", "bounds": [-95.2, 45.0, -82.4, 49.4] },
+  { "id": "conus-new-england", "bounds": [-73.5, 45.0, -66.9, 47.5] },
+  { "id": "alaska", "bounds": [-180.0, 51.0, -129.5, 71.5] },
+  { "id": "aleutians-west", "bounds": [172.0, 51.0, 180.0, 53.5] },
+  { "id": "hawaii", "bounds": [-160.5, 18.5, -154.5, 22.5] },
+  { "id": "puerto-rico-virgin-islands", "bounds": [-67.5, 17.5, -64.5, 18.8] },
+  { "id": "guam-northern-marianas", "bounds": [144.5, 13.0, 146.2, 20.7] },
+  { "id": "american-samoa", "bounds": [-171.2, -14.6, -168.1, -11.0] },
+  { "id": "midway", "bounds": [-177.5, 28.1, -177.3, 28.3] },
+  { "id": "wake", "bounds": [166.5, 19.2, 166.7, 19.4] }
+ ]
+}

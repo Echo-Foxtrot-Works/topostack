@@ -5,7 +5,7 @@ import { LAKE_ARCHIVE_KEY, VECTOR_ARCHIVE_KEY } from "./archive";
 import { geocodeResponse, isGeocoderConfigured } from "./geocode";
 import { terrainResponse } from "./terrain";
 
-export const UPSTREAM_HEALTH_KEY = "health/upstreams-v1.json";
+const UPSTREAM_HEALTH_KEY = "health/upstreams-v1.json";
 const MAX_HEALTH_RECORD_BYTES = 4096;
 const HEALTH_FRESH_MS = 2 * 60 * 60 * 1000;
 

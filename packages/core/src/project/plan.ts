@@ -1,5 +1,6 @@
 import type { ProjectConfigV1 } from "../types.js";
 import { groundWidthMFor, planTerrainStack } from "../pipeline/stack-plan.js";
+import { EARTH_RADIUS_M } from "../primitives/units.js";
 import { boundsForProject } from "./bounds.js";
 
 /** The lowest and highest ground in a crop, from a coarse sample of the terrain. */
@@ -34,7 +35,6 @@ export interface ModelPlan {
   reliefM: number;
 }
 
-const EARTH_RADIUS_M = 6_371_008.8;
 
 export function planFromRelief(config: ProjectConfigV1, relief: ReliefSample): ModelPlan {
   const bounds = boundsForProject(config);

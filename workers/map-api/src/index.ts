@@ -1,16 +1,18 @@
 import packageJson from "../package.json";
-import { coverageRouteResponse, projectRouteResponse, type AgentContext } from "./agent/projects";
+import { coverageRouteResponse, projectRouteResponse, publicOrigin, type AgentContext } from "./agent/projects";
 import { openApiDocument } from "./agent/openapi";
 import { MCP_PATH, mcpResponse, serverCard } from "./mcp/server";
 import { OUTLINE_INDEX_FILE, OUTLINE_PATH, outlineResponse } from "./routes/lake-outlines";
 import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
-import { clientKey, corsHeaders, isAllowedOrigin, json, rateLimitExceeded, withCors } from "./http";
+import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
-import { ARCHIVE_ROUTES, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, parseRangeHeader, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { ARCHIVE_ROUTES, aviationSources, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { API_CATALOG_PATH, apiCatalogResponse, ARD_PATHS, ardResponse, SKILL_PATH, skillResponse, SKILLS_INDEX_PATH, skillsIndexResponse } from "./routes/discovery";
 import { FEEDBACK_PATH, feedbackResponse } from "./routes/feedback";
-import { geocodeLimit, geocodeResponse, isGeocoderConfigured, normalizeGeoapify } from "./routes/geocode";
+import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
+import { isSitePage, sitePageResponse } from "./routes/pages";
 import { isHighVolumeCacheHit, REQUEST_LOG_SAMPLE_RATE, shouldLogRequest } from "./request-log";
 import { terrainResponse, validTile } from "./routes/terrain";
 import { isTerrainRefused, recordTerrainRefusal } from "./terrain-refusal";
@@ -57,7 +59,7 @@ async function withinAgentBudget(request: Request, env: Env): Promise<boolean> {
 }
 
 function agentContext(request: Request, env: Env, ctx: ExecutionContext): AgentContext {
-  return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env) };
+  return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env), admitAgentCall: () => withinAgentBudget(request, env) };
 }
 
 /** POST routes for agents, answered before the read-only method check. */
@@ -93,13 +95,17 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/ready", limited("root", (_request, env) => readinessResponse(env))],
   ["/v1/upstream-health", limited("upstream-health", (_request, env) => upstreamHealth(env))],
   ["/v1/manifest", limited("manifest", (_request, env) => json(
-    buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives),
+    buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives, aviationSources),
     { headers: { "cache-control": "public, max-age=3600" } },
   ))],
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],
   ["/v1/coverage", limited("coverage", (request, env, _ctx, url) => coverageRouteResponse(url, { request, env }))],
   ["/.well-known/mcp/server-card.json", limited("mcp-card", (request, env) => json(serverCard({ request, env }), { headers: { "cache-control": "public, max-age=3600" } }))],
-  ["/v1/openapi.json", limited("openapi", (request, env) => json(openApiDocument(new URL(request.url).origin, env.PUBLIC_ORIGIN || new URL(request.url).origin, packageJson.version), { headers: { "cache-control": "public, max-age=3600" } }))],
+  [API_CATALOG_PATH, limited("discovery", (request, env) => apiCatalogResponse({ request, env }))],
+  [SKILLS_INDEX_PATH, limited("discovery", (request, env) => skillsIndexResponse({ request, env }))],
+  [SKILL_PATH, limited("discovery", (request, env) => skillResponse({ request, env }))],
+  ...ARD_PATHS.map((path): [string, Handler] => [path, limited("discovery", (request, env) => ardResponse({ request, env }))]),
+  ["/v1/openapi.json", limited("openapi", (request, env) => json(openApiDocument(new URL(request.url).origin, publicOrigin({ request, env }), packageJson.version), { headers: { "cache-control": "public, max-age=3600" } }))],
 ]);
 
 async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -108,12 +114,12 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   if (isWrite && !isAllowedOrigin(request.headers.get("origin"), env)) return json({ error: "Origin is not allowed." }, { status: 403 });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request, env) });
   if (url.pathname === "/v1/events") {
-    if (request.method !== "POST") return json({ error: "Method not allowed." }, { status: 405, headers: { allow: "POST,OPTIONS" } });
+    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
     if (!(await withinRequestBudget(request, env, "events"))) return rateLimitExceeded("Rate limit exceeded.");
     return collectUsage(request, env.ENVIRONMENT);
   }
   if (url.pathname === FEEDBACK_PATH) {
-    if (request.method !== "POST") return json({ error: "Method not allowed." }, { status: 405, headers: { allow: "POST,OPTIONS" } });
+    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
     return feedbackResponse(request, env);
   }
   if (url.pathname === MCP_PATH) {
@@ -122,11 +128,11 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
   const projectAction = PROJECT_ROUTES.get(url.pathname);
   if (projectAction) {
-    if (request.method !== "POST") return json({ error: "Method not allowed." }, { status: 405, headers: { allow: "POST,OPTIONS" } });
+    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
     if (!(await withinAgentBudget(request, env))) return rateLimitExceeded();
     return projectRouteResponse(projectAction, agentContext(request, env, ctx));
   }
-  if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "Method not allowed." }, { status: 405, headers: { allow: "GET,HEAD,OPTIONS" } });
+  if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed("GET,HEAD,OPTIONS");
 
   // Existing browser sessions can still request the former static URLs.
   const legacyOutline = /^\/data\/lake-outlines\/(index|[a-f0-9]{24})\.json$/.exec(url.pathname);
@@ -163,6 +169,16 @@ export default {
   },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // Site pages are static assets with their own headers; they skip the API's
+    // routing, budgets and CORS. If negotiation fails, the page is still served.
+    if (isSitePage(url.pathname)) {
+      try {
+        return await sitePageResponse(request, env);
+      } catch (error) {
+        console.error(JSON.stringify({ message: "page_negotiation_failed", path: url.pathname, error: error instanceof Error ? error.message : String(error) }));
+        return env.ASSETS.fetch(request);
+      }
+    }
     try {
       const startedAt = Date.now();
       const metrics = { r2Reads: 0, r2Writes: 0 };
@@ -188,4 +204,3 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-export { geocodeLimit, isAllowedOrigin, isGeocoderConfigured, normalizeGeoapify, parseRangeHeader, shouldLogRequest, validTile };

@@ -29,6 +29,8 @@ export function GET(): Response {
     `- HTTP API: ${SITE_ORIGIN}/v1/openapi.json describes POST /v1/projects/resolve, /plan and /link, which take the same project request as the MCP tools.`,
     // Plain text: the guide is linked once, in its docs section below.
     `- Connecting Claude, ChatGPT, VS Code and browser agents: ${SITE_ORIGIN}/guides/use-with-ai-assistants`,
+    `- Discovery: ${SITE_ORIGIN}/.well-known/api-catalog (RFC 9727 API catalog), ${SITE_ORIGIN}/.well-known/mcp/server-card.json, and the agent skill index ${SITE_ORIGIN}/.well-known/agent-skills/index.json.`,
+    "- Every page listed here answers `Accept: text/markdown` with a Markdown version of its content.",
     "- Plans are estimates from sampled terrain; files are generated and exported in the studio, which a studio link opens and builds. Keep the attribution each response includes.",
     "",
     "## Start here",

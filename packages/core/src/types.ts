@@ -15,6 +15,50 @@ export type UnitSystem = "metric" | "imperial";
 export const TEXT_FONTS = ["technical", "rounded", "stencil", "hershey-sans", "hershey-serif", "hershey-script", "relief", "jost", "oswald", "lora", "roboto-slab"] as const;
 export type TextFont = typeof TEXT_FONTS[number];
 export type TransportationClass = "major-road" | "local-road" | "trail";
+/** FAA aviation detail, each drawn and grouped separately in exports. */
+export type AviationClass = "class-b" | "class-c" | "class-d" | "special-use" | "runway" | "airport" | "navaid" | "obstacle";
+/**
+ * The VFR sectional legend symbol an aviation point is drawn with (see
+ * annotate/aviation-symbols.ts). Airports: `airport` other than hard-surfaced,
+ * `airport-hard` a hard runway of 1,500 to 8,069 ft, `airport-pattern` the
+ * runway layout of a longer one, then private, military and civil-military
+ * fields, heliports and seaplane bases.
+ */
+export type AviationSymbol =
+  | "airport" | "airport-hard" | "airport-pattern" | "airport-private" | "airport-military" | "airport-joint" | "heliport" | "seaplane-base"
+  | "vor" | "vortac" | "vor-dme" | "tacan" | "ndb" | "ndb-dme" | "dme"
+  | "obstacle" | "obstacle-tall" | "obstacle-group" | "obstacle-group-tall" | "wind-turbine" | "wind-turbine-group";
+
+/** Legend details drawn onto an aviation symbol. */
+export interface AviationSymbolDetail {
+  /** Fuel available: ticks around an airport or seaplane base. */
+  fuel?: boolean;
+  /** A rotating beacon: a star above the airport. */
+  beacon?: boolean;
+  /** High-intensity obstruction lights: rays from the top of an obstacle. */
+  highIntensity?: boolean;
+  /** A control tower: the sectional shows it in blue, so the shape is unchanged and it only ranks the label first. */
+  towered?: boolean;
+  /** Runway centerlines around the airport, x east and y south in any unit; the symbol scales them to fit. */
+  runways?: Point2D[][];
+}
+/**
+ * One place a Class B, C or D area's altitudes may be printed, as the sectional
+ * prints them inside the area: Class B and C as ceiling over floor in hundreds
+ * of feet MSL, Class D its ceiling in a dashed box.
+ */
+export interface AviationAltitudeLabel {
+  /** Candidates of one area share this; the area prints at most one label. */
+  area: string;
+  ceilingFt: number;
+  /** Absent for Class D; 0 is the surface. */
+  floorFt?: number;
+  /** "Up to but not including": a minus before a Class D ceiling, T for a Class C ceiling that meets Class B. */
+  ceilingBelow?: boolean;
+  /** Ground distance from the point to the area's nearest edge; the label is printed only if it fits within it. */
+  clearanceM: number;
+}
+export type AviationStatus = "available" | "partial" | "unavailable" | "not-covered" | "not-requested";
 export type NorthArrowStyle = "minimal" | "classic" | "mariner";
 export type BuiltInMarkerSymbol = "pin" | "circle" | "triangle" | "star" | "cross";
 /** A built-in marker shape, or `custom` for one of the project's own icons (see MarkerIconV1). */
@@ -197,7 +241,16 @@ export interface LineStyleV1 {
   /** Center-to-center spacing between the two strokes used by outlined major roads. */
   majorRoadSpacingMm: number;
   roadCap: RoadCap;
+  /** Airspace, special use airspace, runway and aviation symbol strokes. Absent uses DEFAULT_AVIATION_MM. */
+  aviationMm?: number;
+  /** Nominal size of airport, navaid and obstacle symbols. Absent uses DEFAULT_AVIATION_SYMBOL_MM. */
+  aviationSymbolMm?: number;
 }
+
+export const DEFAULT_AVIATION_MM = 0.24;
+export const DEFAULT_AVIATION_SYMBOL_MM = 3.2;
+export const MIN_AVIATION_SYMBOL_MM = 1.5;
+export const MAX_AVIATION_SYMBOL_MM = 8;
 
 export const DEFAULT_LINE_STYLE: LineStyleV1 = {
   contourMm: 0.16,
@@ -346,6 +399,11 @@ export interface ProjectConfigV1 {
   /** Optional vector pattern engraved inside water areas in flat mode. */
   waterFillPattern: WaterFillPattern;
   showBoundaries: boolean;
+  /**
+   * FAA aviation detail (US only; not for navigation). Absent in every project
+   * that never turned it on, which keeps their fingerprints.
+   */
+  aviation?: AviationDetailsV1;
   showCoordinateGrid: boolean;
   showWaterDepth: boolean;
   /** Depth multiplier relative to the terrain's vertical scale; 1 matches it. */
@@ -439,6 +497,20 @@ export interface ElevationGrid {
   max: number;
 }
 
+/** Which FAA aviation detail a project engraves. */
+export interface AviationDetailsV1 {
+  /** Class B, C and D airspace boundaries. */
+  airspace: boolean;
+  /** Prohibited, restricted, warning, alert, MOA and danger areas. */
+  specialUse: boolean;
+  runways: boolean;
+  airports: boolean;
+  navaids: boolean;
+  obstacles: boolean;
+  /** Airport and navaid identifiers beside their symbols, and Class B, C and D altitudes inside their areas. */
+  labels: boolean;
+}
+
 export interface SourceAttribution {
   name: string;
   url: string;
@@ -447,11 +519,19 @@ export interface SourceAttribution {
 
 export interface MarkingFeature {
   id: string;
-  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker";
+  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation";
   operation: Exclude<Operation, "cut">;
   points: Point2D[];
   label?: string;
   transportationClass?: TransportationClass;
+  aviationClass?: AviationClass;
+  /** Aviation points only: one point, drawn as this symbol at a fixed size. */
+  aviationSymbol?: AviationSymbol;
+  aviationDetail?: AviationSymbolDetail;
+  /** Airspace label candidates only: one point where the area's altitudes may be printed. */
+  aviationAltitude?: AviationAltitudeLabel;
+  /** Runways only: ground width in meters, drawn as an outline when it is wide enough at the model's scale. */
+  widthM?: number;
   elevationM?: number;
 }
 
@@ -569,6 +649,17 @@ export interface SourceBundleV1 {
   /** Inland OSM polygons retained for shoreline fallback and depth retries. */
   inlandWaterAreas?: Polygon2D[];
   vectorStatus: "available" | "partial" | "unavailable" | "not-requested";
+  /**
+   * FAA aviation features, kept apart from `markings` so reloading roads and
+   * reloading aviation never replace each other. Absent when never loaded.
+   */
+  aviationMarkings?: MarkingFeature[];
+  /** Absent means aviation was never requested. */
+  aviationStatus?: AviationStatus;
+  /** Effective date of the FAA NASR cycle the aviation features come from. */
+  aviationCycle?: string;
+  /** Credit for the aviation archive, added to the geometry's attribution only while the project draws aviation. */
+  aviationAttribution?: SourceAttribution[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
   lakeDataStatus: "available" | "unavailable" | "not-requested";
   /** Survey failures retain modeled lake depths and generate a warning. */
@@ -608,6 +699,7 @@ export interface OperationPath {
   labelRotationRad?: number;
   textStyle?: TextStyleV1;
   transportationClass?: TransportationClass;
+  aviationClass?: AviationClass;
   /** Closed engraving paths that should render as solid marker artwork. */
   filled?: boolean;
   /** Interior voids in a filled marking, including areas covered by upper sheets. */
@@ -793,7 +885,7 @@ export interface ResolvedSheetNestSettings {
 }
 
 export interface GeometryWarning {
-  code: "TERRAIN_SOURCE_FALLBACK" | "ELEVATION_REPAIRED" | "LOW_RELIEF" | "EMPTY_LAYER" | "SMALL_FEATURES" | "DATA_FALLBACK" | "VECTOR_DATA_PARTIAL" | "VECTOR_DATA_UNAVAILABLE" | "LAKE_DATA_UNAVAILABLE" | "BATHYMETRY_FALLBACK" | "LAKE_DEPTH_PREDICTED" | "LAKE_DEPTH_FROM_CHART" | "LABEL_OMITTED" | "WATER_DEPTH_CLAMPED" | "WORK_AREA_OVERSIZE" | "WORK_AREA_UNSPLIT" | "GRAPHIC_LOOSE_PIECES";
+  code: "TERRAIN_SOURCE_FALLBACK" | "ELEVATION_REPAIRED" | "LOW_RELIEF" | "EMPTY_LAYER" | "SMALL_FEATURES" | "DATA_FALLBACK" | "VECTOR_DATA_PARTIAL" | "VECTOR_DATA_UNAVAILABLE" | "LAKE_DATA_UNAVAILABLE" | "BATHYMETRY_FALLBACK" | "LAKE_DEPTH_PREDICTED" | "LAKE_DEPTH_FROM_CHART" | "LABEL_OMITTED" | "WATER_DEPTH_CLAMPED" | "WORK_AREA_OVERSIZE" | "WORK_AREA_UNSPLIT" | "GRAPHIC_LOOSE_PIECES" | "SEAM_TABS_OMITTED" | "PAINT_WINDOWS_OMITTED" | "AVIATION_DATA_PARTIAL" | "AVIATION_DATA_UNAVAILABLE" | "AVIATION_NOT_COVERED" | "AVIATION_SYMBOLS_FILLED";
   message: string;
   action?: "fit-lake-depth";
 }
@@ -806,6 +898,8 @@ export interface GeometryIRV1 {
   configFingerprint: string;
   sourceKind: SourceBundleV1["sourceKind"];
   vectorStatus: SourceBundleV1["vectorStatus"];
+  aviationStatus?: AviationStatus;
+  aviationCycle?: string;
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;

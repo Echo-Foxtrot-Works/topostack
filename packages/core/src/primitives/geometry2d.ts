@@ -1,4 +1,4 @@
-import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
+import type { MultiPolygon, Pair, Polygon, Ring } from "polygon-clipping";
 import type { Point2D, Polygon2D } from "../types.js";
 
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -26,6 +26,15 @@ export function close(points: Point2D[]): Point2D[] {
 
 export function toRing(points: Point2D[]): Ring {
   return points.map(({ x, y }) => [x, y] as Pair);
+}
+
+/** A polygon as polygon-clipping takes it: the outer ring, then its holes. */
+export function toClipPolygon(polygon: Polygon2D): Polygon {
+  return [toRing(polygon.outer), ...polygon.holes.map(toRing)];
+}
+
+export function toMultiPolygon(polygons: Polygon2D[]): MultiPolygon {
+  return polygons.map(toClipPolygon);
 }
 
 export function toPoint(ringPoint: Pair): Point2D {
@@ -406,6 +415,34 @@ export function ringFitsInsidePolygon(ring: Point2D[], polygon: Polygon2D, margi
   const child = preparePolygons([{ outer: ring, holes: [] }]);
   // No boundary crossed, so a hole is either entirely enclosed or entirely outside.
   return !polygon.holes.some((hole) => hole.length > 1 && pointInPreparedPolygons(hole[0]!, child));
+}
+
+// Douglas–Peucker: keeps every vertex that deviates from the simplified shape
+// by more than tolerance. The previous distance-bucket thinning kept collinear
+// stair-step vertices while dropping genuine curvature, which read as chunky.
+export function simplify(points: Point2D[], tolerance: number): Point2D[] {
+  if (points.length <= 5 || tolerance <= 0) return points;
+  const keep = new Uint8Array(points.length);
+  keep[0] = 1;
+  keep[points.length - 1] = 1;
+  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  while (stack.length) {
+    const [start, end] = stack.pop()!;
+    let maxDistance = tolerance;
+    let maxIndex = -1;
+    for (let index = start + 1; index < end; index += 1) {
+      const distance = distanceToSegment(points[index]!, points[start]!, points[end]!);
+      if (distance > maxDistance) {
+        maxDistance = distance;
+        maxIndex = index;
+      }
+    }
+    if (maxIndex > 0) {
+      keep[maxIndex] = 1;
+      stack.push([start, maxIndex], [maxIndex, end]);
+    }
+  }
+  return close(points.filter((_, index) => keep[index] === 1));
 }
 
 /** Douglas-Peucker thinning of a closed ring; the result stays closed. */

@@ -20,6 +20,7 @@ Run by `npm run build` in the generator or by CI after a build.
 | `generate-icons.mjs` | Regenerate favicons and app icons from `static/favicon.svg` | `npm run assets:icons` |
 | `lock-lake-slugs.mjs` | Append a URL slug for every lake that newly qualifies for its own `/lake/<slug>` page to `apps/generator/src/lib/site/lake-slugs.json`; existing slugs never change ([seo-operations.md](../docs/seo-operations.md)) | manual, after a lake directory change; `lake-places.test.ts` fails until it has run |
 | `prune-atomm-dist.mjs` | Drop the public site's images and example files from an Atomm build; no-op for other environments | generator `build` |
+| `write-markdown-pages.mjs` | Write a Markdown twin (`index.md`, `guides/<slug>.md`, …) beside every prerendered site page, from its `<main>`, for the Worker's `Accept: text/markdown` negotiation; no-op for the Atomm build | generator `build`; generator `build:e2e` |
 | `write-build-version.mjs` | Record git metadata for the About page in the built site | generator `build`; generator `build:e2e` |
 | `write-third-party-licenses.mjs` | Write the licence notices for redistributed compiled code (the sheet-nesting engine) to `dist/licenses/third-party.txt` | generator `build`; generator `build:e2e` |
 | `packages/nest-wasm/scripts/build.mjs` | Compile the sparrow nesting engine to WebAssembly into the committed `packages/nest-wasm/pkg/` (needs Rust, wasm-bindgen-cli and wasm-opt; see the [package README](../packages/nest-wasm/README.md)). With `--check`, it verifies `pkg/` was built from the current sources without needing Rust | `npm run build:nest-wasm` (manual); `--check` from the package `test` script; `nest-wasm.yml` workflow |
@@ -49,6 +50,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 | Script | Purpose | Run by |
 | --- | --- | --- |
 | `benchmark-terrain.py` | Time the terrain packaging pipeline for a set of regions | manual |
+| `build-faa-aviation.py` | Build the FAA aviation archive (airspace, special use airspace, runways, airports, navaids, obstacles) from the files pinned in `scripts/data/faa-aviation-sources.json`; needs `tippecanoe` and `pmtiles` | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `build-hrdem-terrain.py` | Package NRCan HRDEM rasters into terrain archives and register them in the catalog | manual: [hrdem-terrain.md](../docs/hrdem-terrain.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |
 | `build-lake-directory.py` | Build the lake directory the site and studio search read | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `build-lake-outlines.py` | Build provider lake outlines for the outline archive | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
@@ -62,7 +64,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 | `select-nbs-lakes.py` | Choose the NBS lakes to ship from a canonical `nbs_inventory.py` run: keep lakes at least half surveyed, name them from the USGS National Hydrography Dataset, place them by county and state from Census TIGERweb, assign regional datasets, and pin the scheme, HydroLAKES and every tile and attribute table in `scripts/data/noaa-nbs-sources.json` | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md#noaa-national-bathymetric-source-lakes) |
 | `survey_enc.py` | Grid a lake's depths from NOAA electronic chart (ENC) cells: contours and soundings from the most detailed cells first, shoreline at 0 m, lakes mostly charted as drying refused (library for build-survey-bathymetry.py) | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md#noaa-nautical-chart-lakes) |
 | `survey_nbs.py` | Build the `noaa-nbs-*` archives from those pins: survey cells only, clipped to HydroLAKES, lakes perched above chart datum refused (library for build-survey-bathymetry.py) | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md#noaa-national-bathymetric-source-lakes) |
-| `snapshot-survey-service.py` | Snapshot a survey web service into a local raster for the survey builder | manual |
+| `snapshot-survey-service.py` | Snapshot an ArcGIS layer as checksum-pinnable GeoJSON, for the survey builder and the FAA special use airspace | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `survey_regions.py` | Regional contour and reservoir adapters used by build-survey-bathymetry.py (library) | manual |
 | `terrain_release.py` | Offline terrain registry helpers: immutable manifests and atomic catalog snapshots (library) | manual |
 | `tile_writer.py` | Shared raster tile helpers for the survey bathymetry and HRDEM terrain builders (library) | manual: [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |
@@ -71,6 +73,7 @@ One Node builder lives here too, because its output feeds the survey build:
 
 | Script | Purpose | Run by |
 | --- | --- | --- |
+| `check-aviation-features.mjs` | Run every feature the FAA aviation builder wrote through the browser's `@topostack/data-contracts/aviation-tiles` parsers before tiling | `build-faa-aviation.py` |
 | `trace-depth-charts.mjs` | Trace the curated charts in `scripts/data/depth-charts.json` into depth chart records with `@topostack/chart-trace`. Sources are downloaded to `.topostack/depth-charts/` and checked against their sha256 pins. Publishable records go to `scripts/data/depth-charts/`; the rest stay local with `report.json`. Scanned PDFs need poppler's `pdftoppm`. Library: `lib/depth-charts.mjs`. | manual: `node scripts/data-build/trace-depth-charts.mjs [--only <id>]`, see [depth-chart-tracing.md](../docs/depth-chart-tracing.md) |
 
 ## Provisioning (`provision/`)
@@ -82,6 +85,7 @@ Upload archives and catalogs to R2 and manage their lifecycle. Need Cloudflare c
 | `build-lake-data.mjs` | Build the global lake bathymetry archive (needs tippecanoe) | manual: [data-and-fabrication.md](../docs/data-and-fabrication.md), [development.md](../docs/development.md) |
 | `fetch-lake-outlines.mjs` | Fetch the pinned lake-outline release into the build directory before deploy | CI/workflows |
 | `manage-cache-lifecycle.mjs` | Audit and apply the R2 cache lifecycle rules, with rollback receipts | `npm run data:cache-audit` |
+| `provision-aviation-data.mjs` | Verify the FAA aviation archive against its registration and upload it to R2 | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `provision-lake-data.mjs` | Upload registered lake bathymetry and additional terrain archives to R2 | manual: [hrdem-terrain.md](../docs/hrdem-terrain.md), [data-layer-review.md](../docs/data-layer-review.md), [lake-bathymetry.md](../docs/lake-bathymetry.md), [data-and-fabrication.md](../docs/data-and-fabrication.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md), [data-layer-operations.md](../docs/data-layer-operations.md), [noaa-bathymetry.md](../docs/noaa-bathymetry.md), [development.md](../docs/development.md) |
 | `provision-lake-outlines.mjs` | Upload a lake-outline release to R2 and promote it | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `provision-vector-data.mjs` | Upload the pinned Protomaps OSM archive to R2 | `npm run data:provision` |

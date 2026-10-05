@@ -4,6 +4,11 @@ import { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat, type Geo
 export { latToWorldY, lonToWorldX, TILE_SIZE, worldSize, worldXToLon, worldYToLat } from "@topostack/core";
 export const MAX_DATA_TILES = 24;
 
+/** The whole zoom the data loaders work at: the map's zoom is fractional, the tile pyramids stop at 15. */
+export function dataZoom(zoom: number): number {
+  return Math.max(0, Math.min(15, Math.round(zoom)));
+}
+
 /**
  * The inverse of `tilePointProjector`: artwork millimetres back to [lon, lat].
  * Water areas are carried in millimetres from the artwork's centre, but a depth
@@ -20,10 +25,6 @@ export function artworkToLonLat(bounds: GeoBounds, widthMm: number, heightMm: nu
     worldXToLon(westX + (point.x / widthMm + 0.5) * (eastX - westX), zoom),
     worldYToLat(northY + (point.y / heightMm + 0.5) * (southY - northY), zoom),
   ];
-}
-
-export function groundWidthM(bounds: GeoBounds): number {
-  return Math.abs(bounds.east - bounds.west) * Math.PI / 180 * 6_371_008.8 * Math.cos(((bounds.north + bounds.south) / 2) * Math.PI / 180);
 }
 
 export interface DataTile { x: number; worldX: number; y: number; z: number }

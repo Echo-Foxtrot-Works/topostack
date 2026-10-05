@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT } from "../types.js";
+import { DEFAULT_PROJECT, type ProjectConfigV1 } from "../types.js";
 import { parseProject } from "./parse.js";
 
 describe("project import validation", () => {
@@ -197,7 +197,10 @@ describe("project import validation", () => {
   it("restores paint templates, defaulting a saved project without them to none", () => {
     const { paintTemplates: _paint, ...legacyProject } = DEFAULT_PROJECT;
     expect(parseProject(legacyProject).paintTemplates).toEqual([]);
-    expect(parseProject({ ...DEFAULT_PROJECT, paintTemplates: ["water"] }).paintTemplates).toEqual(["water"]);
+    const templates: ProjectConfigV1["paintTemplates"] = ["water"];
+    const parsed = parseProject({ ...DEFAULT_PROJECT, paintTemplates: templates });
+    expect(parsed.paintTemplates).toEqual(["water"]);
+    expect(parsed.paintTemplates).not.toBe(templates);
     expect(() => parseProject({ ...DEFAULT_PROJECT, paintTemplates: ["lava"] })).toThrow(/paint templates/i);
     expect(() => parseProject({ ...DEFAULT_PROJECT, paintTemplates: ["water", "water"] })).toThrow(/paint templates/i);
     expect(() => parseProject({ ...DEFAULT_PROJECT, paintTemplates: "water" })).toThrow(/paint templates/i);

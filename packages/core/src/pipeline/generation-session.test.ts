@@ -2,9 +2,11 @@ import polygonClipping from "polygon-clipping";
 import { describe, expect, it, vi } from "vitest";
 import { createGeometryGenerator, generateGeometry, type GenerationStage } from "./generate.js";
 import { createSyntheticSource } from "./synthetic-source.js";
-import { DEFAULT_PROJECT, type GeometryIRV1, type ProjectConfigV1 } from "../types.js";
+import { DEFAULT_SHEET_NESTING } from "../export/sheet-nest/resolve.js";
+import { DEFAULT_PROJECT, type CustomGraphicV1, type GeometryIRV1, type ProjectConfigV1 } from "../types.js";
 
 const comparable = (geometry: GeometryIRV1) => ({ ...geometry, generatedAt: "" });
+const graphic: CustomGraphicV1 = { id: "graphic-0001", name: "Frame", shapes: [{ outer: [-500, -500, 500, -500, 500, 500, -500, 500], holes: [] }] };
 // Each loop regenerates a full map per edit; CI coverage runs 2–3x slower than local runs.
 
 describe("generation terrain cache", () => {
@@ -17,6 +19,10 @@ describe("generation terrain cache", () => {
       { showElevationLabels: false }, { showRoads: false }, { optimizeMaterialUse: false },
       { workAreaWidthMm: 180, workAreaHeightMm: 180 }, { paintTemplates: ["water"] },
       { showAlignmentGuides: false }, { laserKerfMm: 0.25 }, { units: "imperial" },
+      { sheetNesting: { ...DEFAULT_SHEET_NESTING, sheetWidthMm: 300, sheetHeightMm: 200 } },
+      { plaque: { enabled: false, text: "Mount Hood", sizeMm: 6, placement: { anchor: "center", offset: { x: 0, y: 0.5 } } } },
+      { scaleBarPlacement: { anchor: "center", offset: { x: 0.2, y: -0.4 } } },
+      { customGraphics: [graphic], placedGraphics: [{ id: "placed-0001", graphicId: graphic.id, placement: { anchor: "center", offset: { x: 0, y: 0 } }, sizeMm: 12, rotationDeg: 0, operation: "cut" }] },
     ];
     for (const edit of edits) {
       const config = { ...DEFAULT_PROJECT, ...edit }, stages: GenerationStage[] = [];

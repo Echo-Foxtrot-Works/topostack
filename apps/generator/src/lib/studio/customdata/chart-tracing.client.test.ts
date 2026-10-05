@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import type { ChartBuildResult } from "$lib/domain/chart-build";
 import { draft, resetDraft } from "$lib/studio/customdata/chart-draft.svelte";
-import { canTrace, chooseChartFile, keepChart, placeDepth, removeDepth, resetSession, resultIsCurrent, session, traceChart, traceHint, traceInputsKey, reviewSourceKey, generateReviewedDepths, canKeepChart } from "$lib/studio/customdata/chart-tracing.svelte";
+import { canTrace, chooseChartFile, keepChart, resetSession, resultIsCurrent, session, traceChart, traceHint, traceInputsKey, reviewSourceKey, generateReviewedDepths, canKeepChart } from "$lib/studio/customdata/chart-tracing.svelte";
 
 /** The PDF renderer; pdf.js itself needs a real browser, so it is exercised end to end instead. */
 const pdf = vi.hoisted(() => ({ renderPdfPage: vi.fn() }));
@@ -81,18 +81,6 @@ describe("tracing a depth chart", () => {
     expect(draft.image).toBeUndefined();
   });
 
-  it("will not place a depth until one is typed", async () => {
-    await upload();
-    placeDepth(10, 12, 3);
-    expect(draft.depths).toHaveLength(0);
-    expect(session.error).toContain("Type the depth");
-
-    session.pendingDepth = "10";
-    placeDepth(10, 12, 3);
-    expect(draft.depths).toEqual([{ x: 10, y: 12, value: 10, reach: 3 }]);
-    expect(session.error).toBe("");
-  });
-
   it("prepares geometry without seed depths", async () => {
     await upload();
     expect(draft.depths).toHaveLength(0);
@@ -101,17 +89,15 @@ describe("tracing a depth chart", () => {
 
   it("marks a traced result out of date whenever what it was traced from changes", async () => {
     await upload();
-    session.pendingDepth = "10";
-    placeDepth(4, 4, 3);
+    draft.depths = [...draft.depths, { x: 4, y: 4, value: 10, reach: 3 }];
     draft.result = traced();
     draft.resultKey = traceInputsKey();
     expect(resultIsCurrent()).toBe(true);
-    session.pendingDepth = "20";
-    placeDepth(8, 8, 3);
+    draft.depths = [...draft.depths, { x: 8, y: 8, value: 20, reach: 3 }];
     expect(resultIsCurrent(), "a new depth").toBe(false);
 
     draft.resultKey = traceInputsKey();
-    removeDepth(0);
+    draft.depths = draft.depths.slice(1);
     expect(resultIsCurrent(), "a removed depth").toBe(false);
 
     draft.resultKey = traceInputsKey();
@@ -127,12 +113,7 @@ describe("tracing a depth chart", () => {
     draft.lake = { id: "lake-1", name: "Round Lake", hylakId: 9092, footprint: 1, spanKm: [1, 1], distanceKm: 0, clipped: false, outline: [[-80, 45], [-79.99, 45], [-79.99, 45.01]] };
     await upload();
     draft.reads = "elevation";
-    session.pendingDepth = "10";
-    placeDepth(4, 4, 3);
-    session.pendingDepth = "20";
-    placeDepth(8, 8, 3);
-    session.pendingDepth = "30";
-    placeDepth(16, 16, 3);
+    draft.depths = [{ x: 4, y: 4, value: 10, reach: 3 }, { x: 8, y: 8, value: 20, reach: 3 }, { x: 16, y: 16, value: 30, reach: 3 }];
     await traceChart();
     expect(builds).toHaveLength(0);
     expect(traceHint()).toContain("surface elevation");
@@ -147,14 +128,9 @@ describe("tracing a depth chart", () => {
   it("drops a trace that finishes after its depths changed, and stays quiet when one is cancelled", async () => {
     draft.lake = { id: "lake-1", name: "Round Lake", hylakId: 9092, footprint: 1, spanKm: [1, 1], distanceKm: 0, clipped: false, outline: [[-80, 45], [-79.99, 45], [-79.99, 45.01]] };
     await upload();
-    session.pendingDepth = "10";
-    placeDepth(4, 4, 3);
-    session.pendingDepth = "20";
-    placeDepth(8, 8, 3);
-    session.pendingDepth = "30";
-    placeDepth(16, 16, 3);
+    draft.depths = [{ x: 4, y: 4, value: 10, reach: 3 }, { x: 8, y: 8, value: 20, reach: 3 }, { x: 16, y: 16, value: 30, reach: 3 }];
     const first = traceChart();
-    placeDepth(12, 12, 3);
+    draft.depths = [...draft.depths, { x: 12, y: 12, value: 30, reach: 3 }];
     builds[0]!.resolve(traced());
     await first;
     expect(draft.result, "a stale trace must not land on the new depths").toBeUndefined();
@@ -198,12 +174,7 @@ describe("tracing a depth chart", () => {
   it("does not let a cancelled trace clear the busy state of a newer upload", async () => {
     draft.lake = { id: "lake-1", name: "Round Lake", hylakId: 9092, footprint: 1, spanKm: [1, 1], distanceKm: 0, clipped: false, outline: [[-80, 45], [-79.99, 45], [-79.99, 45.01]] };
     await upload();
-    session.pendingDepth = "10";
-    placeDepth(4, 4, 3);
-    session.pendingDepth = "20";
-    placeDepth(8, 8, 3);
-    session.pendingDepth = "30";
-    placeDepth(16, 16, 3);
+    draft.depths = [{ x: 4, y: 4, value: 10, reach: 3 }, { x: 8, y: 8, value: 20, reach: 3 }, { x: 16, y: 16, value: 30, reach: 3 }];
     const trace = traceChart();
     let finish!: (value: unknown) => void;
     pdf.renderPdfPage.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
@@ -219,18 +190,11 @@ describe("tracing a depth chart", () => {
     expect(session.busy).toBe(false);
   });
 
-  it("accepts below-datum elevations but rejects negative water depths", async () => {
+  it("traces below-datum elevations once the surface elevation is known", async () => {
     await upload();
-    session.pendingDepth = "-10";
-    placeDepth(4, 4, 3);
-    expect(draft.depths).toHaveLength(0);
     draft.reads = "elevation";
-    placeDepth(4, 4, 3);
-    expect(draft.depths[0]?.value).toBe(-10);
-    session.pendingDepth = "-20";
-    placeDepth(8, 8, 3);
-    session.pendingDepth = "-30";
-    placeDepth(16, 16, 3);
+    draft.depths = [{ x: 4, y: 4, value: -10, reach: 3 }, { x: 8, y: 8, value: -20, reach: 3 }, { x: 16, y: 16, value: -30, reach: 3 }];
+    expect(canTrace()).toBe(false);
     draft.surface = "0";
     expect(canTrace()).toBe(true);
     draft.interval = "-5";

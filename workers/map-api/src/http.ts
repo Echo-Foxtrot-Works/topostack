@@ -59,7 +59,8 @@ export function corsHeaders(request: Request, env: Env): Headers {
   const headers = new Headers({
     "access-control-allow-methods": isEvent || isAgentPost ? "POST,OPTIONS" : "GET,HEAD,OPTIONS",
     "access-control-allow-headers": pathname === "/mcp" ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
-    "access-control-expose-headers": pathname === "/mcp" ? "mcp-session-id,mcp-protocol-version" : "content-length,content-range,etag,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
+    // retry-after is readable so browser clients can back off after a 429.
+    "access-control-expose-headers": pathname === "/mcp" ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
     "access-control-max-age": "86400",
     "vary": "Origin",
   });
@@ -158,6 +159,10 @@ export function etagMatches(ifNoneMatch: string | null, etag: string): boolean {
   if (ifNoneMatch.trim() === "*") return true;
   const normalize = (value: string) => value.trim().replace(/^W\//, "");
   return ifNoneMatch.split(",").some((candidate) => normalize(candidate) === normalize(etag));
+}
+
+export function methodNotAllowed(allow: string): Response {
+  return json({ error: "Method not allowed." }, { status: 405, headers: { allow } });
 }
 
 export function rateLimitExceeded(message = "Rate limit exceeded. Try again shortly."): Response {

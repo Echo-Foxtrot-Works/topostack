@@ -1,7 +1,7 @@
 import { anchoredCenter, placementAt } from "./anchor.js";
 import { labelDimensions } from "./labels.js";
 import { cropRadiusMm } from "../primitives/crop.js";
-import { scaleMarking } from "../pipeline/stack-plan.js";
+import { scaleMarking } from "../primitives/units.js";
 import type { NorthArrowPlacementV1, OperationPath, Point2D, ProjectConfigV1 } from "../types.js";
 
 /** Half height of the end ticks, and the gap from the bar down to its label. */

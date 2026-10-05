@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv } from "cloudflare:workers";
-import worker, { shouldLogRequest } from "../src/index";
+import worker from "../src/index";
+import { shouldLogRequest } from "../src/request-log";
 import { REQUEST_LOG_SAMPLE_RATE } from "../src/request-log";
 import { terrainPng } from "./terrain-fixture";
 

@@ -1,4 +1,4 @@
-import { FEET_PER_METER } from "../primitives/units.js";
+import { EARTH_RADIUS_M } from "../primitives/units.js";
 import { MIN_LAYER_COUNT } from "../types.js";
 import type { GeoBounds, ProjectConfigV1, TerrainStackPlan } from "../types.js";
 
@@ -6,7 +6,7 @@ import type { GeoBounds, ProjectConfigV1, TerrainStackPlan } from "../types.js";
 /** East-west ground distance across the bounds, measured along their middle latitude. */
 export function groundWidthMFor(bounds: GeoBounds): number {
   const radians = Math.PI / 180;
-  return Math.abs((bounds.east - bounds.west) * radians) * 6_371_008.8 * Math.cos(((bounds.north + bounds.south) / 2) * radians);
+  return Math.abs((bounds.east - bounds.west) * radians) * EARTH_RADIUS_M * Math.cos(((bounds.north + bounds.south) / 2) * radians);
 }
 
 /**
@@ -77,22 +77,3 @@ export function planTerrainStack(config: ProjectConfigV1, reliefM: number, bound
   };
 }
 
-function niceScaleDistance(maximumM: number): number {
-  if (!(maximumM > 0)) return 0;
-  const power = 10 ** Math.floor(Math.log10(maximumM));
-  return [5, 2, 1].map((factor) => factor * power).find((value) => value <= maximumM) ?? power;
-}
-
-export function scaleMarking(maximumM: number, units: ProjectConfigV1["units"]): { distanceM: number; label: string } {
-  if (units === "metric") {
-    const distanceM = niceScaleDistance(maximumM);
-    return { distanceM, label: distanceM >= 1000 ? `${Number((distanceM / 1000).toFixed(1))} km` : `${Math.round(distanceM)} m` };
-  }
-  const maximumFeet = maximumM * FEET_PER_METER;
-  if (maximumFeet >= 2640) {
-    const miles = niceScaleDistance(maximumFeet / 5280);
-    return { distanceM: miles * 5280 / FEET_PER_METER, label: `${Number(miles.toFixed(1))} mi` };
-  }
-  const feet = niceScaleDistance(maximumFeet);
-  return { distanceM: feet / FEET_PER_METER, label: `${Math.round(feet)} ft` };
-}

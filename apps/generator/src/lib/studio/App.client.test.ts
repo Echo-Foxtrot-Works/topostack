@@ -23,7 +23,7 @@ vi.mock("$lib/domain/fonts", async (importOriginal) => {
 });
 vi.mock("$lib/atomm/atomm-bridge", () => ({ connectAtomm: vi.fn(() => () => undefined) }));
 vi.mock("$app/navigation", () => ({ replaceState: (url: URL) => window.history.replaceState(window.history.state, "", url) }));
-vi.mock("$lib/studio/ThreePreview.svelte", async () => ({ default: (await import("$lib/studio/TestPreview.svelte")).default }));
+vi.mock("$lib/studio/ThreePreview.svelte", async () => ({ default: (await import("$lib/studio/testing/TestPreview.svelte")).default }));
 
 import { PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
 import App from "$lib/studio/App.svelte";

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { ArrowRight, Star } from "@lucide/svelte";
-  import { Brand, ThemeToggle, Topbar } from "@loidolt/theme-svelte";
+  import { Brand, SkipLink, ThemeToggle, Topbar } from "@loidolt/theme-svelte";
   import { theme } from "$lib/site/theme";
   import { REPOSITORY_URL } from "$lib/site/site";
   // The homepage is the reference for this header; every other public page reuses it.
@@ -9,7 +9,7 @@
   let { meta = "Studio", content, home = false, static: plain = false }: { meta?: string; content: string; home?: boolean; static?: boolean } = $props();
 </script>
 
-<a class="skip-link" href={`#${content}`}>Skip to content</a>
+<SkipLink targetId={content} label="Skip to content" />
 <Topbar class="site-topbar">
   {#snippet brand()}<Brand name="TopoStack" {meta} href={`${base}/`} />{/snippet}
   {#snippet actions()}
@@ -32,8 +32,6 @@
   a:hover { color: var(--loidolt-text-accent); }
   .header-cta:hover { background: var(--loidolt-accent-hover); color: var(--loidolt-on-accent); }
   a:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: 5px; }
-  .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; padding: 12px 18px; background: var(--loidolt-surface); }
-  .skip-link:focus { top: 12px; }
   @media (max-width: 760px) {
     .header-guide { display: none; }
     .header-cta { font-size: 12px; padding-inline: 12px; gap: 8px; }

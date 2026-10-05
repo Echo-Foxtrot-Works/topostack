@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ChevronDown } from "@lucide/svelte";
   import { Field, Section } from "@loidolt/theme-svelte";
-  import { displayLength } from "@topostack/core";
+  import { aviationRequested, DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, displayLength, MAX_AVIATION_SYMBOL_MM, MIN_AVIATION_SYMBOL_MM } from "@topostack/core";
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
   import { getStudio } from "$lib/studio/studio-context";
@@ -55,6 +55,16 @@
         <Field label="Lat / long grid" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Coordinate grid line width" value={shownLineWidth(studio.project.lineStyle.coordinateGridMm)} min={displayLength(0.05, studio.project.units)} max={displayLength(1.5, studio.project.units)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onValueChange={(value) => void setLineWidth("coordinateGridMm", value)} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
       </div>
       </div>
+      {#if aviationRequested(studio.project)}
+      <div class="linework-group linework-group--fields">
+      <p class="subgroup-heading">Aviation</p>
+      <div class="field-stack">
+        <Field label="Airspace & runways" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Aviation line width" value={shownLineWidth(studio.project.lineStyle.aviationMm ?? DEFAULT_AVIATION_MM)} min={displayLength(0.05, studio.project.units)} max={displayLength(1.5, studio.project.units)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onValueChange={(value) => void setLineWidth("aviationMm", value)} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
+        <Field label="Symbol size" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Aviation symbol size" value={shownLineWidth(studio.project.lineStyle.aviationSymbolMm ?? DEFAULT_AVIATION_SYMBOL_MM)} min={displayLength(MIN_AVIATION_SYMBOL_MM, studio.project.units)} max={displayLength(MAX_AVIATION_SYMBOL_MM, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 0.1} onValueChange={(value) => void setLineWidth("aviationSymbolMm", value)} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
+      </div>
+      <small class="depth-note">Class B is drawn heavier, Class D dashed and special use airspace hatched on the inside, each in its own SVG group. Symbols follow the VFR sectional legend.</small>
+      </div>
+      {/if}
       <div class="linework-group">
       <p class="subgroup-heading">Road appearance</p>
       <div class="ldt-toggle-group trail-pattern-options" role="radiogroup" aria-label="Major road style">

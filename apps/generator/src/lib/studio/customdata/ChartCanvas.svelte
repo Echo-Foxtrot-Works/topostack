@@ -120,7 +120,7 @@
       <figcaption class="chart-hint">Choose Prepare contours for review in the sidebar to begin. Scroll or pinch to inspect the source.</figcaption>
     </figure>
 
-    {#if session.error && !session.point}<p class="chart-error" role="alert">{session.error}</p>{/if}
+    {#if session.error}<p class="chart-error" role="alert">{session.error}</p>{/if}
 
     </section>
     {@render depthPreviews()}

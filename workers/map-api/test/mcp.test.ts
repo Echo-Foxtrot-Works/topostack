@@ -107,6 +107,16 @@ describe("MCP server through the SDK client", () => {
     await client.close();
   });
 
+  it("keeps attribution on a search with no matches", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ results: [] })));
+    const client = await connect();
+    const result = await client.callTool({ name: "search_places", arguments: { query: "Nowhere Particular" } });
+    const text = (result.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/^No places matched/);
+    expect(text).toMatch(/\nData: .*Geoapify/);
+    await client.close();
+  });
+
   it("checks coverage for an area", async () => {
     const client = await connect();
     const result = await client.callTool({ name: "check_coverage", arguments: { area: { bounds: { west: -78.96, south: 46.45, east: -78.92, north: 46.48 } } } });
@@ -210,6 +220,24 @@ describe("MCP transport", () => {
     const limited = { ...env, AGENT_LIMITER: { limit: vi.fn(async () => ({ success: false })) } } as unknown as Env;
     const response = await worker.fetch(new Request(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }) }), limited, context);
     expect(response.status).toBe(429);
+  });
+
+  it("keeps batches short", async () => {
+    const response = await rpc(Array.from({ length: 9 }, (_, index) => ({ jsonrpc: "2.0", id: index, method: "ping" })));
+    expect(response.status).toBe(400);
+    expect((await response.json<{ error: { code: number; message: string } }>()).error).toEqual({ code: -32600, message: "A batch holds at most 8 messages." });
+  });
+
+  it("charges the agent budget for every tool call in a batch past the first", async () => {
+    const limit = vi.fn(async () => ({ success: limit.mock.calls.length <= 2 }));
+    const limited = { ...env, AGENT_LIMITER: { limit } } as unknown as Env;
+    const call = (id: number) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "create_studio_link", arguments: { area: { center: { lat: 46.85, lon: -121.76 }, widthKm: 20 } } } });
+    const response = await worker.fetch(new Request(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify([call(1), { jsonrpc: "2.0", id: "p", method: "ping" }, call(2), call(3)]) }), limited, context);
+    const replies = await response.json<Array<{ id: number | string; result: { isError?: boolean; content?: Array<{ text: string }> } }>>();
+    // One charge for the request, one for each tool call after the first.
+    expect(limit).toHaveBeenCalledTimes(3);
+    expect(replies.map(({ id, result }) => [id, result.isError ?? false])).toEqual([[1, false], ["p", false], [2, false], [3, true]]);
+    expect(replies[3]?.result.content?.[0]?.text).toMatch(/agent budget for this client is used up/);
   });
 
   it("publishes a server card", async () => {

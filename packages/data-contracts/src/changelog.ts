@@ -66,7 +66,20 @@ export function compareVersions(a: string, b: string): number {
   if (left[4] === right[4]) return 0;
   if (left[4] === undefined) return 1;
   if (right[4] === undefined) return -1;
-  return left[4] < right[4] ? -1 : 1;
+  return comparePrerelease(left[4].split("."), right[4].split("."));
+}
+
+/** SemVer precedence: numeric identifiers compare as numbers and sort before text; a longer list wins a tie. */
+function comparePrerelease(left: string[], right: string[]): number {
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    const a = left[index]!, b = right[index]!;
+    if (a === b) continue;
+    const aNumeric = /^\d+$/.test(a), bNumeric = /^\d+$/.test(b);
+    if (aNumeric && bNumeric) return Math.sign(Number(a) - Number(b));
+    if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+    return a < b ? -1 : 1;
+  }
+  return Math.sign(left.length - right.length);
 }
 
 /** The SemVer bump a set of entries calls for. */

@@ -1,3 +1,4 @@
+import { EARTH_RADIUS_M } from "../primitives/units.js";
 import type { GeoBounds, GeoPoint, ProjectConfigV1 } from "../types.js";
 
 /**
@@ -10,7 +11,6 @@ export const TILE_SIZE = 256;
 export const MERCATOR_MAX_LATITUDE = 85.0511;
 
 const RADIANS = Math.PI / 180;
-const EARTH_RADIUS_M = 6_371_008.8;
 
 export const worldSize = (zoom: number) => TILE_SIZE * 2 ** zoom;
 export const lonToWorldX = (lon: number, zoom: number) => ((lon + 180) / 360) * worldSize(zoom);

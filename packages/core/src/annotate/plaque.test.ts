@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, DEFAULT_PLAQUE_SIZE_MM, NORTH_ARROW_ANCHORS, engravingToSvg, generateGeometry, labelDimensions, labelLineSegments, masterToSvg, plaqueFootprint, plaqueLines, plaqueMarkings, projectFingerprint, unsupportedLabelCharacters, validateProject, type NorthArrowAnchor, type PlaqueV1, type ProjectConfigV1 } from "../index.js";
+import { DEFAULT_PROJECT, DEFAULT_PLAQUE_SIZE_MM, NORTH_ARROW_ANCHORS, generateGeometry, labelDimensions, labelLineSegments, plaqueFootprint, plaqueMarkings, projectFingerprint, unsupportedLabelCharacters, validateProject, type NorthArrowAnchor, type PlaqueV1, type ProjectConfigV1 } from "../index.js";
+import { engravingToSvg } from "../export/engraving-svg.js";
+import { masterToSvg } from "../export/svg.js";
+import { plaqueLines } from "./plaque.js";
 import { realSource } from "../test-support/sources.js";
 
 const plaque = (patch: Partial<PlaqueV1> = {}): PlaqueV1 => ({ enabled: true, text: "Crater Lake\n2026", sizeMm: DEFAULT_PLAQUE_SIZE_MM, placement: { anchor: "bottom-left", offset: { x: 0, y: 0 } }, ...patch });

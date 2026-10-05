@@ -13,19 +13,27 @@ const EMPTY_GEOCODE_CACHE_SECONDS = 5 * 60;
 // Ratelimit bindings count per Cloudflare location, not account-wide: this is
 // a per-colo ceiling, and the provider-side daily cap configured in the
 // Geoapify dashboard remains the real spend limit.
-export const GEOCODE_GLOBAL_LIMIT_KEY = "geocode-global";
+const GEOCODE_GLOBAL_LIMIT_KEY = "geocode-global";
 
 interface GeoapifyResult { lat?: unknown; lon?: unknown; formatted?: unknown; place_id?: unknown; result_type?: unknown; rank?: { importance?: unknown } }
 
+function geoapifyResults(payload: unknown): GeoapifyResult[] {
+  return payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
+}
+
+/** Geoapify's id, or one made from the position when it sends none; the merge matches places back to results by it. */
+function geoapifyPlaceId(item: GeoapifyResult | undefined, index: number): string {
+  return String(item?.place_id ?? (String(item?.lat) + "," + String(item?.lon) + "," + String(index)));
+}
+
 export function normalizeGeoapify(payload: unknown): Array<{ place_id: string; display_name: string; lat: number; lon: number; type?: string }> {
-  const results = payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
-  return results.flatMap((item, index) => {
+  return geoapifyResults(payload).flatMap((item, index) => {
     if (!item || typeof item !== "object") return [];
     const lat = item.lat;
     const lon = item.lon;
     const label = typeof item.formatted === "string" ? item.formatted.trim() : "";
     if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -85.0511 || lat > 85.0511 || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
-    return [{ place_id: String(item.place_id ?? (String(lat) + "," + String(lon) + "," + String(index))), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
+    return [{ place_id: geoapifyPlaceId(item, index), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
   });
 }
 
@@ -41,10 +49,9 @@ export function mergeGeoapify(payloads: unknown[], limit: number): ReturnType<ty
   const ranked: Array<{ place: ReturnType<typeof normalizeGeoapify>[number]; importance: number; order: number }> = [];
   const seen = new Set<string>();
   for (const payload of payloads) {
-    const raw = payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results) ? (payload as { results: GeoapifyResult[] }).results : [];
     const places = normalizeGeoapify(payload);
     // normalizeGeoapify drops invalid results, so match each place back to its raw result by id.
-    const importanceById = new Map(raw.map((item, index) => [String(item?.place_id ?? (String(item?.lat) + "," + String(item?.lon) + "," + String(index))), typeof item?.rank?.importance === "number" && Number.isFinite(item.rank.importance) ? item.rank.importance : 0]));
+    const importanceById = new Map(geoapifyResults(payload).map((item, index) => [geoapifyPlaceId(item, index), typeof item?.rank?.importance === "number" && Number.isFinite(item.rank.importance) ? item.rank.importance : 0]));
     for (const place of places) {
       const duplicate = [place.place_id, `${place.display_name.toLowerCase()}|${place.lat.toFixed(2)}|${place.lon.toFixed(2)}`];
       if (duplicate.some((key) => seen.has(key))) continue;
@@ -55,10 +62,16 @@ export function mergeGeoapify(payloads: unknown[], limit: number): ReturnType<ty
   return ranked.sort((a, b) => b.importance - a.importance || a.order - b.order).slice(0, limit).map(({ place }) => place);
 }
 
+/** Longer queries are cut to this many characters. */
+export const GEOCODE_QUERY_MAX_CHARS = 160;
+/** Results per search; the REST route clamps `limit` to 1 through this. */
+export const GEOCODE_MAX_RESULTS = 8;
+export const GEOCODE_DEFAULT_RESULTS = 5;
+
 export function geocodeLimit(value: string | null): number {
-  if (value === null || value.trim() === "") return 5;
+  if (value === null || value.trim() === "") return GEOCODE_DEFAULT_RESULTS;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(8, Math.trunc(parsed))) : 5;
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(GEOCODE_MAX_RESULTS, Math.trunc(parsed))) : GEOCODE_DEFAULT_RESULTS;
 }
 
 export function isGeocoderConfigured(env: Pick<Env, "GEOCODER_API_KEY">): boolean {
@@ -66,7 +79,7 @@ export function isGeocoderConfigured(env: Pick<Env, "GEOCODER_API_KEY">): boolea
 }
 
 /** Case and whitespace variants of one query share a cache entry. */
-export function normalizeGeocodeQuery(query: string): string {
+function normalizeGeocodeQuery(query: string): string {
   return query.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
@@ -147,7 +160,7 @@ async function searchGeoapify(request: Request, env: Env, apiKey: string, query:
 
 export async function geocodeResponse(request: Request, env: Env, ctx: ExecutionContext, url: URL, options: GeocodeOptions = {}): Promise<Response> {
   const { bypassCache = false, bypassLimits = false } = options;
-  const query = normalizeGeocodeQuery(url.searchParams.get("q") ?? "").slice(0, 160).trim();
+  const query = normalizeGeocodeQuery(url.searchParams.get("q") ?? "").slice(0, GEOCODE_QUERY_MAX_CHARS).trim();
   const limit = geocodeLimit(url.searchParams.get("limit"));
   if (query.length < 2) return json({ error: "Query must contain at least two characters." }, { status: 400 });
   const key = await cacheKey(env, query, limit);

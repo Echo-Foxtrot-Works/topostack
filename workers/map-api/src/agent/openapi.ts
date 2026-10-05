@@ -1,5 +1,5 @@
-import { PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
-import { ATTRIBUTION_SCHEMA, COVERAGE_SCHEMA, PLAN_SCHEMA } from "./schemas";
+import { GEOCODE_DEFAULT_RESULTS, GEOCODE_MAX_RESULTS, GEOCODE_QUERY_MAX_CHARS } from "../routes/geocode";
+import { ATTRIBUTION_SCHEMA, coverageResultSchema, PLAN_SCHEMA, PROJECT_REQUEST_BODY_SCHEMA } from "./schemas";
 
 /**
  * The OpenAPI 3.1 description of the agent routes. The request schema is the
@@ -7,8 +7,6 @@ import { ATTRIBUTION_SCHEMA, COVERAGE_SCHEMA, PLAN_SCHEMA } from "./schemas";
  * the MCP tools' output schemas, so the document cannot drift from what the
  * routes accept or return. The route table test keeps the paths honest.
  */
-const { $schema: _dialect, $id: _id, ...projectRequest } = PROJECT_REQUEST_SCHEMA;
-
 const errorResponse = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
 const jsonBody = (ref: string) => ({ required: true, content: { "application/json": { schema: { $ref: ref } } } });
 const jsonResponse = (description: string, schema: Record<string, unknown>) => ({ description, content: { "application/json": { schema } } });
@@ -97,8 +95,8 @@ export function openApiDocument(apiOrigin: string, siteOrigin: string, version: 
           operationId: "searchPlaces",
           summary: "Search for a place by name",
           parameters: [
-            { name: "q", in: "query", required: true, schema: { type: "string", minLength: 2, maxLength: 160 } },
-            { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 8, default: 5 } },
+            { name: "q", in: "query", required: true, schema: { type: "string", minLength: 2 }, description: `Longer queries are cut to ${GEOCODE_QUERY_MAX_CHARS} characters.` },
+            { name: "limit", in: "query", schema: { type: "integer", default: GEOCODE_DEFAULT_RESULTS }, description: `Clamped to 1–${GEOCODE_MAX_RESULTS}.` },
           ],
           responses: {
             "200": {
@@ -114,14 +112,14 @@ export function openApiDocument(apiOrigin: string, siteOrigin: string, version: 
           },
         },
       },
-      "/v1/openapi.json": { get: { operationId: "openApi", summary: "This document", responses: { "200": { description: "OpenAPI 3.1" } } } },
+      "/v1/openapi.json": { get: { operationId: "openApi", summary: "This document", responses: { "200": { description: "OpenAPI 3.1" }, "429": errorResponse("Rate limited.") } } },
     },
     components: {
       schemas: {
-        ProjectRequestV1: projectRequest,
+        ProjectRequestV1: PROJECT_REQUEST_BODY_SCHEMA,
         Error: { type: "object", required: ["error"], properties: { error: { type: "string" }, errors: { type: "array", items: { type: "object", properties: { path: { type: "string" }, message: { type: "string" } } } } } },
         Attribution: ATTRIBUTION_SCHEMA,
-        CoverageResult: { ...COVERAGE_SCHEMA, required: [...(COVERAGE_SCHEMA.required as string[]), "attribution"], properties: { ...(COVERAGE_SCHEMA.properties as Record<string, unknown>), attribution: { $ref: "#/components/schemas/Attribution" } } },
+        CoverageResult: coverageResultSchema({ $ref: "#/components/schemas/Attribution" }),
         ProjectPlan: PLAN_SCHEMA,
       },
     },

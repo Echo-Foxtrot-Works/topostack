@@ -1,6 +1,7 @@
 // No external dependencies: the hourly production monitor runs this file
 // straight from a checkout, so it must not need an
 // `npm ci`; the jsdom-based SEO checks run separately (scripts/verify/verify-seo-http.mjs).
+import { gunzipSync } from "node:zlib";
 import { fetchWithRetry as fetchDeploymentResponse } from "../lib/deployment-fetch.mjs";
 
 const deploymentTarget = process.env.WORKER_URL;
@@ -129,5 +130,31 @@ if (readiness?.dependencies?.lakeData?.status === "available") {
 
 const manifest = await fetchJson(publicBase, "/v1/manifest");
 if (manifest?.schemaVersion !== 1 || manifest?.coverage?.vectorMaxZoom !== 12 || typeof manifest?.datasetVersion !== "string" || !Array.isArray(manifest?.sources)) throw new Error("The deployed Worker returned an invalid data manifest.");
+
+// FAA aviation is optional for /ready, so nothing above notices when its
+// archive is missing or older than the registration the Worker advertises:
+// projects with aviation detail would then fail to load or carry the wrong
+// symbols. When the manifest names the archive, it must serve exactly that dataset.
+const aviation = manifest.sources.find((source) => source?.archive === "/v1/aviation.pmtiles");
+if (aviation) {
+  const aviationResponse = await fetchWithRetry(publicBase, "/v1/aviation.pmtiles", { headers: { range: "bytes=0-126", origin: atommOrigin } });
+  verifyPublicCors(aviationResponse);
+  const aviationHeader = new Uint8Array(await aviationResponse.arrayBuffer());
+  if (aviationResponse.status !== 206 || new TextDecoder().decode(aviationHeader.subarray(0, 7)) !== "PMTiles" || aviationHeader[7] !== 3) {
+    throw new Error(`The aviation archive did not return a PMTiles v3 header range (HTTP ${aviationResponse.status}). Provision ${aviation.id} with scripts/provision/provision-aviation-data.mjs.`);
+  }
+  // Header fields are little-endian: JSON metadata offset at byte 24, its length at 32, internal compression at 97 (1 none, 2 gzip).
+  const header = new DataView(aviationHeader.buffer);
+  const metadataOffset = Number(header.getBigUint64(24, true));
+  const metadataLength = Number(header.getBigUint64(32, true));
+  const compression = aviationHeader[97];
+  if (!metadataLength || metadataLength > 1_000_000 || (compression !== 1 && compression !== 2)) throw new Error("The aviation archive header has unreadable metadata.");
+  const metadataResponse = await fetchWithRetry(publicBase, "/v1/aviation.pmtiles", { headers: { range: `bytes=${metadataOffset}-${metadataOffset + metadataLength - 1}`, origin: atommOrigin } });
+  const metadataBytes = Buffer.from(await metadataResponse.arrayBuffer());
+  const metadata = JSON.parse((compression === 2 ? gunzipSync(metadataBytes) : metadataBytes).toString("utf8"));
+  if (metadata?.topostack_dataset !== aviation.id) {
+    throw new Error(`The aviation archive serves ${metadata?.topostack_dataset ?? "no dataset"}, but the Worker advertises ${aviation.id}. Provision the pinned archive with scripts/provision/provision-aviation-data.mjs.`);
+  }
+}
 
 console.log(`Verified ${expectedEnvironment} TopoStack app and API at ${publicBase.origin} (deployment ${deploymentTarget})`);

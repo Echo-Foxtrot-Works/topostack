@@ -48,7 +48,7 @@ import MapCanvas from "$lib/studio/MapCanvas.svelte";
 import TwoDPreview from "$lib/studio/TwoDPreview.svelte";
 import EngravingPreview from "$lib/studio/EngravingPreview.svelte";
 import ThreePreview from "$lib/studio/ThreePreview.svelte";
-import ThreePreviewHost from "$lib/studio/ThreePreviewHost.svelte";
+import ThreePreviewHost from "$lib/studio/testing/ThreePreviewHost.svelte";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 

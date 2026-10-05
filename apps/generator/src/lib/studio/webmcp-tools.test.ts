@@ -15,8 +15,9 @@ function fakeHost(overrides: Partial<WebMcpHost> = {}) {
     setLocation: vi.fn((location, name) => { project = { ...project, location, ...(name ? { name } : {}) }; }),
     applyPatch: vi.fn(async (patch) => { project = { ...project, ...patch }; }),
     generate: vi.fn(async () => undefined),
-    undo: vi.fn(),
+    undo: vi.fn(() => true),
     openExport: vi.fn(),
+    editBlockedBy: () => undefined,
     ...overrides,
   };
   const tool = (name: string) => webMcpTools(host).find((entry) => entry.name === name)!;
@@ -76,7 +77,20 @@ describe("studio WebMCP tools", () => {
     const result = await tool("topostack_open_export").execute({});
     expect(host.openExport).toHaveBeenCalledOnce();
     expect(result.content[0]!.text).toContain("blocked: Generate before export");
-    await tool("topostack_undo").execute({});
+    expect((await tool("topostack_undo").execute({})).content[0]!.text).toMatch(/^Undone\./);
     expect(host.undo).toHaveBeenCalledOnce();
+    const empty = fakeHost({ undo: vi.fn(() => false) });
+    expect((await empty.tool("topostack_undo").execute({})).content[0]!.text).toBe("Nothing to undo.");
+  });
+
+  it("refuses edits while the studio has a placement draft open", async () => {
+    const { tool, host } = fakeHost({ editBlockedBy: () => "The studio is placing an item. Finish or cancel it there first." });
+    for (const [name, input] of [["topostack_set_area", { area: { center: { lat: 45.37, lon: -121.7 }, widthKm: 10 } }], ["topostack_update_design", { widthMm: 250 }], ["topostack_undo", {}]] as const) {
+      const result = await tool(name).execute(input);
+      expect(result, name).toMatchObject({ isError: true, content: [{ text: "The studio is placing an item. Finish or cancel it there first." }] });
+    }
+    expect(host.setLocation).not.toHaveBeenCalled();
+    expect(host.applyPatch).not.toHaveBeenCalled();
+    expect(host.undo).not.toHaveBeenCalled();
   });
 });
