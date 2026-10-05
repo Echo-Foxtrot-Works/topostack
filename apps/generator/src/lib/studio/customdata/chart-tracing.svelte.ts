@@ -6,6 +6,7 @@ import type { ChartContour } from "$lib/domain/chart-contours";
 import { CHART_BATHYMETRY_LIMITS, decodeChartDepths, type ChartAttestation, type ChartUnit, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import type { ChartImage } from "$lib/domain/chart-build";
 import type { UserDepthChartRefV1 } from "@topostack/core";
+import { readRoleColor } from "@loidolt/theme-svelte";
 import { ChartTraceClient } from "$lib/workers/chart-trace-client";
 import { draft, draftRevision, resetChartImage } from "$lib/studio/customdata/chart-draft.svelte";
 
@@ -155,7 +156,7 @@ export function paintChart(canvas: HTMLCanvasElement, crosshair?: { x: number; y
   if (draft.pixels) context.putImageData(draft.pixels, 0, 0);
   if (contour?.points.length) {
     const scale = image.width / (canvas.getBoundingClientRect().width || image.width);
-    const accent = getComputedStyle(canvas).getPropertyValue("--loidolt-accent").trim() || "#c4511b";
+    const accent = readRoleColor(canvas, "accent") ?? "#c4511b";
     for (const [colour, width] of [["#ffffff", 7], [accent, 3]] as const) {
       context.strokeStyle = colour;
       context.lineWidth = width * scale;

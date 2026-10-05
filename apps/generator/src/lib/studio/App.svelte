@@ -2,7 +2,7 @@
   import { onDestroy, onMount, untrack, setContext } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
-  import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace } from "@loidolt/theme-svelte";
+  import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
   import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
   import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
@@ -297,7 +297,7 @@
 
   $effect(() => {
     void theme.resolved;
-    themeColor = getComputedStyle(document.documentElement).getPropertyValue("--loidolt-background").trim();
+    themeColor = readRoleColor(document.documentElement, "background") ?? "";
   });
 
   // Opening place search, the map, or 3D again retries a failed load: their
