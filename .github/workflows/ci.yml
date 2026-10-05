@@ -225,16 +225,35 @@ jobs:
 
       - name: Resolve Playwright version
         id: playwright
-        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")" >> "$GITHUB_OUTPUT"
+          echo "image=$ImageOS" >> "$GITHUB_OUTPUT"
 
-      # Browser binaries are versioned with Playwright; system libraries are
-      # not cached, so a cache hit still installs them.
+      # Browser binaries are versioned with Playwright; a cache hit still
+      # installs the system libraries they need.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
+
+      # Those libraries come from Ubuntu's mirror, which at times serves a few
+      # KB/s: WebKit's couple of hundred packages once took a shard past its
+      # time limit before any test ran. Keep the downloaded packages and give
+      # them back to apt, so a run downloads only what changed since. The key
+      # follows the image's OS and Playwright, which pins what install-deps asks for.
+      - name: Cache browser system packages
+        id: system-packages-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/system-packages
+          key: system-packages-${{ runner.os }}-${{ steps.playwright.outputs.image }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
+
+      - name: Restore browser system packages to apt
+        run: |
+          echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages > /dev/null
+          if [ -d ~/system-packages ]; then sudo find ~/system-packages -name '*.deb' -exec cp -t /var/cache/apt/archives/ {} +; fi
 
       - name: Install browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -243,6 +262,13 @@ jobs:
       - name: Install browser system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps ${{ matrix.browser }}
+
+      - name: Keep browser system packages for the cache
+        if: steps.system-packages-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/system-packages
+          find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/system-packages/ {} +
+          echo "Cached $(find ~/system-packages -name '*.deb' | wc -l) packages ($(du -sh ~/system-packages | cut -f1))."
 
       - name: Test browser generation and export
         run: xvfb-run --auto-servernum npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/3
