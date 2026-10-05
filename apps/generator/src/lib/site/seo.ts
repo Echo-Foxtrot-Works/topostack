@@ -213,7 +213,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "The tools, resources and prompts of TopoStack's remote MCP server, the in-chat preview app, protocol behavior, error codes and rate limits.",
     label: "MCP server reference",
     published: "2026-09-25",
-    updated: "2026-09-25",
+    updated: "2026-10-02",
     image: socialCard("guides-mcp-server", "MCP server reference card with a Mount Rainier model previewed inside a chat as stacked sheets."),
   },
   "/guides/agent-api": {
