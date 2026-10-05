@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.70.2",
+    "@sveltejs/kit": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/d3-contour": "^3.0.6",
     "@types/three": "^0.186.0",
