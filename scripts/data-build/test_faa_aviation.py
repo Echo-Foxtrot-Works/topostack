@@ -70,6 +70,12 @@ class Airspace(unittest.TestCase):
         self.assertEqual(len(areas('D')), 1)
         self.assertEqual(len(areas('B')), 2)
 
+    def test_class_d_areas_of_one_name_at_different_airports_stay_apart(self):
+        here = {'type': 'Polygon', 'coordinates': [[[-105, 39], [-104.9, 39], [-104.9, 39.1], [-105, 39.1], [-105, 39]]]}
+        there = {'type': 'Polygon', 'coordinates': [[[-104.5, 39.5], [-104.4, 39.5], [-104.4, 39.6], [-104.5, 39.6], [-104.5, 39.5]]]}
+        labels = aviation.airspace_label_features([(airspace('D', UPPER_VAL='8000'), here), (airspace('D', UPPER_VAL='8000'), there)])
+        self.assertEqual(len({item['properties']['area'] for item in labels}), 2)
+
     def test_rings_run_with_their_area_on_the_left(self):
         clockwise = {'type': 'Polygon', 'coordinates': [list(reversed(SQUARE['coordinates'][0])), SQUARE['coordinates'][1]]}
         exterior, hole = aviation.rings_as_lines(clockwise)

@@ -1,28 +1,28 @@
 {
- "dataset": "faa-aviation-2026-09-03-v3",
- "nasrCycle": "2026-09-03",
+ "dataset": "faa-aviation-2026-10-01-v1",
+ "nasrCycle": "2026-10-01",
  "obstacleDate": "2026-09-27",
- "suaDate": "2026-09-29",
+ "suaDate": "2026-10-05",
  "name": "FAA aeronautical data",
  "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/",
  "license": "Public domain (U.S. Government work). FAA Aeronautical Information Services; not for navigation.",
  "maxZoom": 12,
  "files": {
   "classAirspace": {
-   "url": "https://nfdc.faa.gov/webContent/28DaySub/2026-09-03/class_airspace_shape_files.zip",
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/2026-10-01/class_airspace_shape_files.zip",
    "file": "class_airspace_shape_files.zip",
    "member": "Shape_Files/Class_Airspace.shp",
-   "sha256": "d46cf74185c48e9ebacdb21229ade49d816c8369d1942478bb13826d12a8b76e"
+   "sha256": "7057b1a982d5dd5df4d92a5101d222854b415c5ad163d464de36d94100e20201"
   },
   "airports": {
-   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_APT_CSV.zip",
-   "file": "03_Sep_2026_APT_CSV.zip",
-   "sha256": "d5e4c999d4c96ab4d66d8ce9a387de8ea59b5226a6144ea1ba58758ff29bbbd9"
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/01_Oct_2026_APT_CSV.zip",
+   "file": "01_Oct_2026_APT_CSV.zip",
+   "sha256": "aba48ea877f249d9b8cd63988b14b3432a6a09ad1fbe9561a5e6443c99c03dd0"
   },
   "navaids": {
-   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_NAV_CSV.zip",
-   "file": "03_Sep_2026_NAV_CSV.zip",
-   "sha256": "47202ff2824706d23f3c41fe6bd8984518ccf5aafa6d47625073b3f1c27c4c65"
+   "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/01_Oct_2026_NAV_CSV.zip",
+   "file": "01_Oct_2026_NAV_CSV.zip",
+   "sha256": "c169cba36c91ff1f89e914c1ab7f3aa09a3149867b8dc53c2f307920a417682e"
   },
   "obstacles": {
    "url": "https://aeronav.faa.gov/Obst_Data/DOF_260927.zip",
