@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -91,6 +91,57 @@ export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefine
     .slice(0, limit);
 }
 
+export interface InsertLake { key: string; name: string; insertIds: string[]; excluded: boolean }
+
+/**
+ * Every lake an acrylic insert could replace, one row per lake (a lake the
+ * crop or its islands break into several surfaces is still one switch),
+ * largest first. A lake with neither insert nor exclusion was skipped, and
+ * the generation warnings say why.
+ */
+export function insertLakes(geometry: Pick<GeometryIRV1, "waterSurfaces" | "waterInserts">, project: Pick<ProjectConfigV1, "waterInserts">): InsertLake[] {
+  const excluded = new Set(project.waterInserts?.excludedLakeIds ?? []);
+  const rows = new Map<string, InsertLake & { areaMm2: number }>();
+  for (const surface of geometry.waterSurfaces) {
+    if (surface.kind !== "lake") continue;
+    const key = waterInsertLakeKey(surface);
+    const row = rows.get(key) ?? { key, name: surface.name ?? `Lake ${rows.size + 1}`, insertIds: [], excluded: excluded.has(key), areaMm2: 0 };
+    row.areaMm2 += surface.polygons.reduce((total, polygon) => total + Math.abs(ringArea(polygon.outer)), 0);
+    rows.set(key, row);
+  }
+  for (const insert of geometry.waterInserts ?? []) rows.get(insert.lakeKey)?.insertIds.push(insert.id);
+  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => row);
+}
+
+/**
+ * How many unnested acrylic panels the export writes: one per wood sheet that
+ * holds inserts, or one per insert on a sheet whose inserts together outgrow
+ * the work area. Mirrors core's `acrylicPanels` from the inserts' bounds, so
+ * the studio need not load the export code to say it.
+ */
+export function acrylicPanelCount(geometry: Pick<GeometryIRV1, "waterInserts" | "waterInsertMaterial">, project: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): number {
+  const inserts = geometry.waterInserts ?? [];
+  const kerf = geometry.waterInsertMaterial?.kerfMm ?? 0;
+  const bedWidth = project.workAreaWidthMm > 0 ? project.workAreaWidthMm : Number.POSITIVE_INFINITY;
+  const bedHeight = project.workAreaHeightMm > 0 ? project.workAreaHeightMm : Number.POSITIVE_INFINITY;
+  let count = 0;
+  for (const layerIndex of new Set(inserts.map((insert) => insert.layerIndex))) {
+    const onLayer = inserts.filter((insert) => insert.layerIndex === layerIndex);
+    const points = onLayer.flatMap((insert) => insert.polygons.flatMap((polygon) => polygon.outer));
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const fits = Math.max(...xs) - Math.min(...xs) + kerf <= bedWidth && Math.max(...ys) - Math.min(...ys) + kerf <= bedHeight;
+    count += onLayer.length === 1 || fits ? 1 : onLayer.length;
+  }
+  return count;
+}
+
+function ringArea(ring: Array<{ x: number; y: number }>): number {
+  let area = 0;
+  for (let index = 1; index < ring.length; index += 1) area += ring[index - 1]!.x * ring[index]!.y - ring[index]!.x * ring[index - 1]!.y;
+  return area / 2;
+}
+
 export const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
@@ -153,7 +204,8 @@ export function sectionSummary(section: ConfigSectionId, project: ProjectConfigV
       const seams = planSeamGrid(project);
       const contours = project.smoothing === 1 ? "Smooth contours" : "Standard contours";
       const paint = project.outputMode === "stack" && project.paintTemplates.length ? " · Paint templates" : "";
-      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}`;
+      const acrylic = project.outputMode === "stack" && project.waterInserts ? " · Acrylic water" : "";
+      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}${acrylic}`;
     }
   }
 }

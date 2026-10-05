@@ -26,7 +26,9 @@
     layer,
     // Higher sheets read lighter, as they catch more light on the finished piece.
     shade: `color-mix(in srgb, #f3dcb4 ${Math.round(35 + 65 * index / Math.max(1, geometry.layers.length - 1))}%, #b98a55)`,
-    markings: layer.markings.filter((marking) => !hiddenByPrefix(marking.id, hiddenPrefixes) && !marking.id.startsWith("alignment-")),
+    // Detail engraved on an acrylic insert reads on the water it covers.
+    markings: [...layer.markings, ...(geometry.waterInserts ?? []).filter((insert) => insert.layerIndex === index).flatMap((insert) => insert.markings)]
+      .filter((marking) => !hiddenByPrefix(marking.id, hiddenPrefixes) && !marking.id.startsWith("alignment-")),
   })));
 </script>
 

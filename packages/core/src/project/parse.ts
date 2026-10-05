@@ -1,4 +1,4 @@
-import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1 } from "../types.js";
+import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
 import { SHEET_NEST_ROTATIONS } from "../export/sheet-nest/resolve.js";
@@ -54,6 +54,19 @@ function sheetNestingValue(value: unknown): SheetNestSettingsV1 {
   };
   if (Object.values(settings).some((entry) => typeof entry === "number" && !Number.isFinite(entry))) throw new Error("Sheet nesting settings must be numbers.");
   return settings;
+}
+/** Water insert settings: optional numbers stay absent so they follow the wood; ranges are checked by `validateProject`. */
+function waterInsertsValue(value: unknown): WaterInsertSettingsV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Acrylic water insert settings are invalid.");
+  const record = value as Record<string, unknown>;
+  const excluded = record.excludedLakeIds ?? [];
+  if (!Array.isArray(excluded) || excluded.some((id) => typeof id !== "string")) throw new Error("Acrylic water insert exclusions must be lake ids.");
+  return {
+    ...(record.thicknessMm === undefined ? {} : { thicknessMm: numberValue(record.thicknessMm) }),
+    ...(record.kerfMm === undefined ? {} : { kerfMm: numberValue(record.kerfMm) }),
+    fitClearanceMm: numberValue(record.fitClearanceMm),
+    excludedLakeIds: [...excluded] as string[],
+  };
 }
 function outputModeValue(value: unknown): ProjectConfigV1["outputMode"] {
   if (value === undefined) return DEFAULT_PROJECT.outputMode;
@@ -389,6 +402,8 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     showAssemblyLabels: record.showAssemblyLabels === undefined ? DEFAULT_PROJECT.showAssemblyLabels : booleanValue(record.showAssemblyLabels, "showAssemblyLabels"),
     paintTemplates: paintTemplatesValue(record.paintTemplates),
     ...(record.sheetNesting === undefined ? {} : { sheetNesting: sheetNestingValue(record.sheetNesting) }),
+    ...(record.waterInserts === undefined ? {} : { waterInserts: waterInsertsValue(record.waterInserts) }),
+    ...(record.waterInsertSheetNesting === undefined ? {} : { waterInsertSheetNesting: sheetNestingValue(record.waterInsertSheetNesting) }),
     showElevationLabels: booleanValue(record.showElevationLabels, "showElevationLabels"), showNorthArrow: booleanValue(record.showNorthArrow, "showNorthArrow"), showScaleBar: booleanValue(record.showScaleBar, "showScaleBar"),
     elevationLabelPosition: labelPositionRecord ? { x: numberValue(labelPositionRecord.x), y: numberValue(labelPositionRecord.y) } : { ...DEFAULT_PROJECT.elevationLabelPosition },
     textStyle: textStyleRecord ? {

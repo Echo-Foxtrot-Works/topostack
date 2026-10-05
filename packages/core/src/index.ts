@@ -27,6 +27,8 @@ export { SheetNestError, planSheets, type PlanSheetsOptions } from "./export/she
 export { verifySheetPlan } from "./export/sheet-nest/verify.js";
 export { paintRegions, paintStencil } from "./pipeline/paint-regions.js";
 export type { FlatWaterArea, PaintLayerClip, PaintRegionSources } from "./pipeline/paint-regions.js";
+export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, waterInsertMaterial } from "./pipeline/water-inserts.js";
+export { acrylicGeometry, acrylicNestableParts, resolveAcrylicNestSettings } from "./export/water-inserts.js";
 export { FEET_PER_METER, MM_PER_INCH, displayElevation, displayLength, elevationUnit, lengthUnit, millimetersFromDisplay } from "./primitives/units.js";
 // Water carving is a stage of `generateGeometry`, not an entry point: its
 // scratch-buffer helpers and ladder fitting are meaningless without the grid

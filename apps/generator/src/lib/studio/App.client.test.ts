@@ -771,8 +771,8 @@ describe("TopoStack Svelte shell", () => {
     [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Fabrication settings"))!.click();
     await tick();
     const fields = target.querySelector<HTMLElement>(".advanced-fields")!;
-    // Material-saving nests, water paint templates, and smooth contours.
-    expect(fields.querySelectorAll('.toggle-stack button[role="switch"]')).toHaveLength(3);
+    // Material-saving nests, water paint templates, acrylic water inserts, and smooth contours.
+    expect(fields.querySelectorAll('.toggle-stack button[role="switch"]')).toHaveLength(4);
     // Glue margin, laser kerf, minimum feature, and the two work-area fields.
     expect(fields.querySelectorAll(".field-stack > .field-row")).toHaveLength(5);
     // Text engraving and the elevation label position now sit beside what they

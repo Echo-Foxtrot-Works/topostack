@@ -57,6 +57,13 @@ export function lakeArea(overrides: Partial<WaterAreaV1> = {}): WaterAreaV1 {
   };
 }
 
+/** A flat lake in a bowl: level inside a 40 mm outline, rising 4 m per mm beyond it. */
+export function bowlLake(project: ProjectConfigV1): SourceBundleV1 {
+  return gridSource(project, 96, (nx, ny) => {
+    const radiusMm = Math.hypot((nx * project.widthMm) / 2, (ny * project.heightMm) / 2);
+    return radiusMm <= 42 ? 1500 : 1500 + (radiusMm - 42) * 4;
+  });
+}
 
 /**
  * Layer count is derived from map scale, so a test that needs an exact count

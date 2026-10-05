@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, type GeometryIRV1, type LayerIR, type WaterSurfaceIR } from "@topostack/core";
-import { activeDetailCount, activeLinePreset, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes, sectionSummary, visibleWarnings } from "$lib/studio/preview-summary";
+import { acrylicPanelCount, activeDetailCount, activeLinePreset, countDetailMarkings, featuredLayerIndex, insertLakes, layerForEnabledDetail, modeledLakes, sectionSummary, visibleWarnings } from "$lib/studio/preview-summary";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 const marking = (id: string, kind: string) => ({ id, kind, points: [] });
@@ -37,6 +37,30 @@ describe("preview summaries", () => {
     ] as unknown as WaterSurfaceIR[]);
     expect(lakes.map((lake) => [lake.id, lake.name])).toEqual([["b", "Deep"], ["a", "Lake 1"]]);
     expect(modeledLakes(undefined)).toEqual([]);
+  });
+
+  it("lists every lake an acrylic insert could replace, one row per lake, largest first", () => {
+    const square = (size: number) => [{ outer: [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }, { x: 0, y: 0 }], holes: [] }];
+    const waterSurfaces = [
+      { id: "lake-7-0", kind: "lake", hylakId: 7, name: "Split", polygons: square(10) },
+      { id: "lake-7-1", kind: "lake", hylakId: 7, name: "Split", polygons: square(10) },
+      { id: "osm-lake-2", kind: "lake", polygons: square(30) },
+      { id: "sea", kind: "ocean", polygons: square(99) },
+      { id: "lake-9-0", kind: "lake", hylakId: 9, name: "Off", polygons: square(5) },
+    ] as unknown as WaterSurfaceIR[];
+    const waterInserts = [{ id: "W1", lakeKey: "osm-lake-2" }, { id: "W2", lakeKey: "7" }, { id: "W3", lakeKey: "7" }] as GeometryIRV1["waterInserts"];
+    expect(insertLakes({ waterSurfaces, waterInserts }, { waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: ["9"] } })).toEqual([
+      { key: "osm-lake-2", name: "Lake 2", insertIds: ["W1"], excluded: false },
+      { key: "7", name: "Split", insertIds: ["W2", "W3"], excluded: false },
+      { key: "9", name: "Off", insertIds: [], excluded: true },
+    ]);
+    const insert = (id: string, layerIndex: number, x: number) => ({ id, layerIndex, polygons: square(40).map((polygon) => ({ ...polygon, outer: polygon.outer.map((point) => ({ x: point.x + x, y: point.y })) })) });
+    const inserts = { waterInserts: [insert("W1", 3, 0), insert("W2", 3, 100), insert("W3", 5, 0)] as unknown as GeometryIRV1["waterInserts"] };
+    // One panel per sheet holding inserts, until a sheet's inserts together outgrow the bed.
+    expect(acrylicPanelCount(inserts, { workAreaWidthMm: 0, workAreaHeightMm: 0 })).toBe(2);
+    expect(acrylicPanelCount(inserts, { workAreaWidthMm: 100, workAreaHeightMm: 100 })).toBe(3);
+    expect(acrylicPanelCount({}, DEFAULT_PROJECT)).toBe(0);
+    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: [] } }, 8)).toContain("Acrylic water");
   });
 
   it("deduplicates, filters dismissed, prioritizes depth actions, and limits warnings", () => {

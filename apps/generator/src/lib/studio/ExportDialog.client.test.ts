@@ -11,11 +11,11 @@ describe("ExportDialog", () => {
   });
   afterEach(async () => { if (component) await unmount(component); component = undefined; });
 
-  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean } = {}) {
+  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean } = {}) {
     const onDownload = vi.fn();
     const target = document.createElement("div");
     component = mount(ExportDialog, { target, props: {
-      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested,
+      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested, acrylicCount: props.acrylicCount, acrylicNested: props.acrylicNested,
       blockedReason: props.blockedReason, preparing: false, phase: "idle", title: "", detail: "",
       onDownload, onClose: () => undefined,
     } });
@@ -30,14 +30,22 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("2 nested sheets");
   });
 
+  it("adds the acrylic insert panels or sheets to the complete project's count", async () => {
+    const panels = await render({ outputMode: "stack" }, { acrylicCount: 1 });
+    expect(panels.target.querySelector(".export-hero")?.textContent).toContain("9 panels + 1 acrylic panel,");
+    const sheets = await render({ outputMode: "stack" }, { panelCount: 2, nested: true, acrylicCount: 2, acrylicNested: true });
+    expect(sheets.target.querySelector(".export-hero")?.textContent).toContain("2 nested sheets + 2 acrylic sheets,");
+  });
+
   it("leads layered projects with the complete project and lists specialist files behind a disclosure", async () => {
     const { target, onDownload, button, rows } = await render({ outputMode: "stack", paintTemplates: [] });
     expect(target.querySelector(".export-hero")?.textContent).toContain("Complete project");
     expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels");
     expect(target.textContent).toContain("Crater Lake · 12 layers · 9 cut panels");
     expect(target.querySelector<HTMLDetailsElement>(".export-more")?.open).toBe(false);
-    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Assembly guide"]);
+    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Assembly guide"]);
     expect(button("Paint templates")?.disabled).toBe(true);
+    expect(button("Acrylic inserts")?.disabled).toBe(true);
     button("Complete project")!.click();
     button("Cut panels")!.click();
     expect(onDownload.mock.calls).toEqual([["all"], ["panels"]]);

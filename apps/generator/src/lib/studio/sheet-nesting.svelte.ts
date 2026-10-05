@@ -1,5 +1,5 @@
 import type { GeometryIRV1, NestPartV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
-import type { SheetPreview } from "$lib/studio/sheet-nest-runner";
+import type { NestMaterial, SheetPreview } from "$lib/studio/sheet-nest-runner";
 import type { NestClient } from "$lib/workers/nest-client";
 
 export type SheetNestStatus = "idle" | "running" | "done" | "error";
@@ -42,6 +42,8 @@ export class SheetNesting {
     private readonly loadRunner: () => Promise<Runner> = () => import("$lib/studio/sheet-nest-runner"),
     private readonly now: () => number = () => performance.now(),
     private readonly loadCache: () => Promise<Cache> = () => import("$lib/storage/nest-cache"),
+    /** Acrylic inserts nest on their own stock, under their own settings and plan. */
+    readonly material: NestMaterial = "wood",
   ) {}
 
   /** The plan to export with: only when chosen and still current. */
@@ -52,7 +54,7 @@ export class SheetNesting {
   async start(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
     this.#latest = { geometry, project };
     const runner = await this.#load();
-    const job = runner.prepareNestJob(geometry, project);
+    const job = runner.prepareNestJob(geometry, project, this.material);
     if (!job.ok) {
       this.status = "error";
       this.error = job.error;
@@ -75,7 +77,7 @@ export class SheetNesting {
       this.#show(plan);
       // The design may have changed while the search ran; refresh() waited for it.
       const latest = this.#latest;
-      if (latest) this.current = runner.planIsCurrent(plan, latest.geometry, latest.project);
+      if (latest) this.current = runner.planIsCurrent(plan, latest.geometry, latest.project, this.material);
       this.useSheets = true;
       this.status = "done";
       void this.#storage().then((cache) => cache.saveNestPlan(plan, true));
@@ -104,7 +106,7 @@ export class SheetNesting {
   async restore(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
     if (this.#busy()) return;
     const runner = await this.#load();
-    const job = runner.prepareNestJob(geometry, project);
+    const job = runner.prepareNestJob(geometry, project, this.material);
     if (!job.ok) return;
     const key = runner.jobKeyOf(job);
     // One lookup per job, however often the studio asks.
@@ -141,7 +143,7 @@ export class SheetNesting {
     if (!plan || this.status === "running") return;
     const runner = await this.#load();
     // A newer plan may have landed while the runner loaded.
-    if (this.plan === plan) this.current = runner.planIsCurrent(plan, geometry, project);
+    if (this.plan === plan) this.current = runner.planIsCurrent(plan, geometry, project, this.material);
   }
 
   dispose(): void {
