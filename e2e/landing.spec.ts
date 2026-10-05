@@ -62,6 +62,10 @@ test("old About links redirect to the homepage", async ({ page, baseURL }) => {
 });
 
 test("direct studio visits restore saved project settings", async ({ page }) => {
+  // Autosave starts once startup restore finishes, and headless Chromium then spends
+  // seconds compiling the 3D preview's shaders in software, which delays the first
+  // write well past the default five-second wait.
+  const startup = { timeout: 30_000 };
   await page.route("https://static-res.makextool.com/**", (route) => route.abort());
   await page.goto("/studio");
   const name = page.getByRole("textbox", { name: "Project name", exact: true });
@@ -75,12 +79,12 @@ test("direct studio visits restore saved project settings", async ({ page }) => 
       read.onsuccess = () => { db.close(); resolve(read.result?.name); };
       read.onerror = () => { db.close(); reject(read.error); };
     };
-  }))).toBe("My saved landscape");
+  })), startup).toBe("My saved landscape");
   await page.goto("/");
   await page.getByRole("link", { name: "Start creating", exact: true }).first().click();
-  await expect(name).toHaveValue("My saved landscape");
+  await expect(name).toHaveValue("My saved landscape", startup);
   await page.reload();
-  await expect(name).toHaveValue("My saved landscape");
+  await expect(name).toHaveValue("My saved landscape", startup);
 });
 
 test("mobile readers can navigate guides, examples and the studio with correct metadata", async ({ page, baseURL }) => {
