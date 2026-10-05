@@ -5,6 +5,8 @@ import { bowlLake, circleRing, lakeArea as lake, scaledForLayers } from "../test
 const LAKE_RADIUS_MM = 40;
 import { pointInPolygon, signedArea } from "../primitives/geometry2d.js";
 import { cutWaterInserts, WATER_INSERT_LEDGE_MM, waterInsertMaterial } from "./water-inserts.js";
+import { acrylicPanelGroups, fitsWorkArea } from "./water-insert-panels.js";
+import { waterInsertLakeKey } from "../types.js";
 
 
 function square(minX: number, minY: number, maxX: number, maxY: number): Point2D[] {
@@ -127,6 +129,67 @@ describe("water insert geometry", () => {
     expect(warnings[1]!.message).not.toContain("W2");
   });
 
+  it("cuts many lakes on one sheet, each fitted to its own basin and none taking a neighbour's pit", () => {
+    const centres = [-60, -20, 20, 60];
+    const holes = (radius: number) => centres.map((x) => circleRing(x, 0, radius));
+    const layers = [
+      layer(0, [{ outer: square(-100, -100, 100, 100), holes: holes(4) }]),
+      // Each basin hole overshoots its lake by a millimetre; a separate pit sits a millimetre off the second lake.
+      layer(1, [{ outer: square(-100, -100, 100, 100), holes: [...holes(11), circleRing(-20, 13.5, 1.5)] }]),
+      layer(2, [{ outer: square(-100, -100, 100, 100), holes: holes(14) }]),
+    ];
+    const lakes = centres.map((x, index) => surface({ id: `lake-${index}`, hylakId: 100 + index, polygons: [{ outer: circleRing(x, 0, 10), holes: [] }] }));
+    const cut = cutWaterInserts(project, layers, lakes, 1.5, [])!;
+    expect(cut.inserts).toHaveLength(4);
+    for (const [index, x] of centres.entries()) {
+      const insert = cut.inserts.find((entry) => entry.surfaceId === `lake-${index}`)!;
+      expect(area(insert.polygons)).toBeCloseTo(Math.PI * 11 ** 2, -1);
+      expect(inside({ x: x + 10.5, y: 0 }, layers[1]!.polygons)).toBe(false);
+      expect(inside({ x: x + 11 - WATER_INSERT_LEDGE_MM / 2, y: 0 }, layers[0]!.polygons)).toBe(true);
+    }
+    // The pit stays a hole in the wood, not acrylic.
+    expect(inside({ x: -20, y: 13.5 }, cut.inserts.flatMap((insert) => insert.polygons))).toBe(false);
+    expect(inside({ x: -20, y: 13.5 }, layers[1]!.polygons)).toBe(false);
+  });
+
+  it("keeps a lake wood when its water would leave the sheet without any wood", () => {
+    const layers = [layer(0, [{ outer: square(-50, -50, 50, 50), holes: [] }]), layer(1, [{ outer: square(-50, -50, 50, 50), holes: [] }])];
+    const before = structuredClone(layers);
+    const flood = surface({ layerIndex: 1, polygons: [{ outer: square(-60, -60, 60, 60), holes: [] }] });
+    const warnings: GeometryWarning[] = [];
+    expect(cutWaterInserts(project, layers, [flood], 1.5, warnings)!.inserts).toEqual([]);
+    expect(layers).toEqual(before);
+    expect(warnings.map((warning) => warning.message)).toEqual([expect.stringContaining("covers its whole sheet")]);
+  });
+
+  it("records the water still open where an arm stayed wood", () => {
+    const layers = [layer(0, [{ outer: square(-100, -100, 100, 100), holes: [] }]), layer(1, [{ outer: square(-100, -100, 100, 100), holes: [] }])];
+    const armed = surface({ polygons: [{ outer: polygonUnion(circleRing(0, 0, 20), square(19, -1, 60, 1)), holes: [] }] });
+    const whole = surface({ id: "lake-2", hylakId: 8, polygons: [{ outer: circleRing(-60, 0, 12), holes: [] }] });
+    cutWaterInserts(project, layers, [armed, whole], 1.5, []);
+    expect(inside({ x: 45, y: 0 }, armed.openPolygons!)).toBe(true);
+    expect(inside({ x: 0, y: 0 }, armed.openPolygons!)).toBe(false);
+    expect(whole.openPolygons).toEqual([]);
+  });
+
+  it("groups the acrylic onto panels the same way for the warning, the export and the studio", () => {
+    const insert = (id: string, layerIndex: number, x: number, size: number) => ({ id, layerIndex, polygons: [{ outer: square(x, 0, x + size, size), holes: [] }] });
+    const material = { kerfMm: 0.1, fitClearanceMm: 0.1 };
+    const inserts = [insert("W1", 3, 0, 40), insert("W2", 3, 100, 40), insert("W3", 5, 0, 40)];
+    expect(acrylicPanelGroups(inserts, material, { workAreaWidthMm: 0, workAreaHeightMm: 0 }).map((group) => group.map((entry) => entry.id))).toEqual([["W1", "W2"], ["W3"]]);
+    // 140 × 40 fits a 50 × 150 bed turned.
+    expect(acrylicPanelGroups(inserts, material, { workAreaWidthMm: 50, workAreaHeightMm: 150 })).toHaveLength(2);
+    expect(acrylicPanelGroups(inserts, material, { workAreaWidthMm: 100, workAreaHeightMm: 100 }).map((group) => group.map((entry) => entry.id))).toEqual([["W1"], ["W2"], ["W3"]]);
+    expect(fitsWorkArea({ widthMm: 120, heightMm: 40 }, { workAreaWidthMm: 50, workAreaHeightMm: 130 })).toBe(true);
+    expect(fitsWorkArea({ widthMm: 120, heightMm: 60 }, { workAreaWidthMm: 50, workAreaHeightMm: 130 })).toBe(false);
+  });
+
+  it("keys a lake by HydroLAKES id, then by the name its source gives it, then by its surface", () => {
+    expect(waterInsertLakeKey({ id: "lake-7-0", hylakId: 7 })).toBe("7");
+    expect(waterInsertLakeKey({ id: "osm-lake-3", lakeKey: "outline:pond-chart-0001" })).toBe("outline:pond-chart-0001");
+    expect(waterInsertLakeKey({ id: "survey-mn-1-0" })).toBe("survey-mn-1-0");
+  });
+
   it("resolves the acrylic from the wood when thickness and kerf are left unset", () => {
     expect(waterInsertMaterial(DEFAULT_PROJECT)).toBeUndefined();
     expect(waterInsertMaterial({ ...DEFAULT_PROJECT, materialThicknessMm: 4, laserKerfMm: 0.2, waterInserts: { kerfMm: 0.08, fitClearanceMm: 0.2, excludedLakeIds: [] } }))
@@ -211,6 +274,18 @@ describe("water inserts in a generated stack", () => {
     expect(shown).toEqual([]);
     const ids = [...result.layers, ...result.waterInserts!].flatMap((entry) => entry.markings.map((marking) => marking.id));
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps the shoreline score along an arm that stayed wood", () => {
+    // A 2 mm channel runs out of the lake: too narrow for acrylic, so its shore stays scored.
+    const armed = lake({ name: "Bowl", hylakId: 42, maxDepthM: 150, meanDepthM: 60, polygon: { outer: polygonUnion(circleRing(0, 0, 40), square(39, -1, 75, 1)), holes: [] } });
+    const ring: MarkingFeature = { ...shoreline, points: armed.polygon.outer };
+    const withArm = generateGeometry(config, { ...source, waterAreas: [armed], markings: [ring, road] });
+    const insertPolygons = withArm.waterInserts!.flatMap((entry) => entry.polygons);
+    const shore = withArm.layers.flatMap((layer) => layer.markings).filter((marking) => marking.id.startsWith("water-area-0-shore-0"));
+    expect(shore.length).toBeGreaterThan(0);
+    for (const marking of shore) for (const point of marking.points) expect(inside(point, insertPolygons)).toBe(false);
+    expect(shore.some((marking) => marking.points.some((point) => point.x > 50))).toBe(true);
   });
 
   it("leaves the stack exactly as before when inserts are off", () => {

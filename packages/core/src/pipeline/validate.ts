@@ -265,8 +265,12 @@ function validatePlaque(plaque: PlaqueV1): void {
   if (!placement.offset || ![placement.offset.x, placement.offset.y].every(Number.isFinite) || Math.abs(placement.offset.x) > 1 || Math.abs(placement.offset.y) > 1) throw new Error("Title offsets must be between -100% and 100%.");
 }
 
-/** Lake keys are HydroLAKES ids or generated surface ids; the cap bounds a project's size, not any real map. */
-const WATER_INSERT_LAKE_KEY = /^[A-Za-z0-9:_-]{1,96}$/;
+/**
+ * Lake keys are HydroLAKES ids, `outline:<chart id>` or source ids, which a
+ * data provider names; any printable token is accepted. The caps bound a
+ * project's size, not any real map.
+ */
+const WATER_INSERT_LAKE_KEY = /^[\x21-\x7e]{1,128}$/;
 const MAX_WATER_INSERT_EXCLUSIONS = 500;
 
 function validateWaterInserts(settings: NonNullable<ProjectConfigV1["waterInserts"]>): void {

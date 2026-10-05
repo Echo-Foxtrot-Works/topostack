@@ -1,18 +1,12 @@
 import { offsetPolygons } from "../primitives/offset.js";
 import { ringBounds } from "../primitives/geometry2d.js";
 import { markingsWithin } from "../pipeline/marking-clip.js";
-import { tidy } from "../pipeline/water-inserts.js";
+import { normalizedPolygons } from "../pipeline/water-inserts.js";
+import { acrylicPanelGroups } from "../pipeline/water-insert-panels.js";
 import { panelBounds, type FabricationPanel } from "./panel-layout.js";
 import { nestableParts } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings, type SheetNestSettingsResult } from "./sheet-nest/resolve.js";
-import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1, WaterInsertIR } from "../types.js";
-
-/** One acrylic sheet's worth of inserts: every insert that sits in wood layer `layerIndex`. */
-export interface AcrylicLayer {
-  /** The wood layer the inserts replace; the acrylic layer is named after it. */
-  woodLayerIndex: number;
-  inserts: WaterInsertIR[];
-}
+import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1 } from "../types.js";
 
 /**
  * The inserts as a geometry of their own, so the panel, SVG, master and
@@ -21,8 +15,11 @@ export interface AcrylicLayer {
  * an insert shrunk by the fit clearance and keeps its `W` id as its piece id.
  * The acrylic kerf replaces the wood's, so the outline moves out by half of
  * it and island holes move in. Undefined when there is nothing to cut.
+ *
+ * `markings: false` leaves the engraving out, for callers that need only the
+ * outlines (the sheet nesting parts) and would otherwise pay to clip it.
  */
-export function acrylicGeometry(ir: GeometryIRV1): GeometryIRV1 | undefined {
+export function acrylicGeometry(ir: GeometryIRV1, { markings: withMarkings = true }: { markings?: boolean } = {}): GeometryIRV1 | undefined {
   const inserts = ir.waterInserts ?? [];
   const material = ir.waterInsertMaterial;
   if (!inserts.length || !material) return undefined;
@@ -33,13 +30,13 @@ export function acrylicGeometry(ir: GeometryIRV1): GeometryIRV1 | undefined {
     const pieces: LayerPieceV1[] = [];
     const markings: LayerIR["markings"] = [];
     for (const insert of inserts.filter((entry) => entry.layerIndex === woodLayerIndex)) {
-      const fitted = tidy(offsetPolygons(insert.polygons, -material.fitClearanceMm, "miter"), 0);
+      const fitted = normalizedPolygons(offsetPolygons(insert.polygons, -material.fitClearanceMm, "miter"), 0);
       fitted.forEach((polygon, part) => {
         const bounds = ringBounds(polygon.outer);
         pieces.push({ polygonIndex: polygons.length, id: fitted.length > 1 ? `${insert.id}-${part + 1}` : insert.id, column: 0, row: 0, exempt: false, widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY });
         polygons.push(polygon);
       });
-      markings.push(...markingsWithin(insert.markings, fitted, "inside", { keepKnockouts: true }));
+      if (withMarkings) markings.push(...markingsWithin(insert.markings, fitted, "inside", { keepKnockouts: true }));
     }
     return {
       id: `acrylic-${String(woodLayerIndex + 1).padStart(2, "0")}`,
@@ -71,23 +68,24 @@ export function acrylicWoodLayers(ir: GeometryIRV1): number[] {
 }
 
 /**
- * Unnested acrylic panels: every insert of one wood layer on one canvas just
- * large enough for them. Acrylic is never seam-split, since a seam would show
- * in the water; when a layer's inserts together outgrow the machine, each
- * goes on its own panel instead.
+ * Unnested acrylic panels, grouped as `acrylicPanelGroups` says: every insert
+ * of one wood layer on one canvas just large enough for them, or each insert
+ * on its own panel when together they outgrow the machine. Acrylic is never
+ * seam-split, since a seam would show in the water.
  */
-export function acrylicPanels(acrylic: GeometryIRV1, config: ProjectConfigV1): FabricationPanel[] {
-  const bedWidth = config.workAreaWidthMm > 0 ? config.workAreaWidthMm : Number.POSITIVE_INFINITY;
-  const bedHeight = config.workAreaHeightMm > 0 ? config.workAreaHeightMm : Number.POSITIVE_INFINITY;
-  const fits = (bounds: Pick<FabricationPanel, "minX" | "minY" | "maxX" | "maxY">) => bounds.maxX - bounds.minX <= bedWidth + 1e-6 && bounds.maxY - bounds.minY <= bedHeight + 1e-6;
-  return acrylic.layers.flatMap((layer) => {
-    const all = new Map([[layer.index, new Set(layer.polygons.map((_, index) => index))]]);
-    const whole = panelBounds(acrylic, [layer.index], all);
-    if (layer.polygons.length === 1 || fits(whole)) return [{ rootLayerIndex: layer.index, layerIndexes: [layer.index], included: all, ...whole }];
-    return layer.polygons.map((_, polygonIndex) => {
-      const included = new Map([[layer.index, new Set([polygonIndex])]]);
-      return { rootLayerIndex: layer.index, layerIndexes: [layer.index], cellName: layer.pieces[polygonIndex]!.id, included, ...panelBounds(acrylic, [layer.index], included) };
-    });
+export function acrylicPanels(generated: GeometryIRV1, acrylic: GeometryIRV1, config: ProjectConfigV1): FabricationPanel[] {
+  const material = generated.waterInsertMaterial;
+  if (!material) return [];
+  const woodLayers = acrylicWoodLayers(generated);
+  return acrylicPanelGroups(generated.waterInserts ?? [], material, config).map((group) => {
+    const layerIndex = woodLayers.indexOf(group[0]!.layerIndex);
+    const layer = acrylic.layers[layerIndex]!;
+    // An insert the clearance split into parts keeps them together, as `W1-1`, `W1-2`.
+    const ids = new Set(group.map((insert) => insert.id));
+    const polygonIndexes = layer.pieces.filter((piece) => ids.has(piece.id.replace(/-\d+$/, ""))).map((piece) => piece.polygonIndex);
+    const included = new Map([[layerIndex, new Set(polygonIndexes)]]);
+    const whole = polygonIndexes.length === layer.polygons.length;
+    return { rootLayerIndex: layerIndex, layerIndexes: [layerIndex], ...(whole ? {} : { cellName: group[0]!.id }), included, ...panelBounds(acrylic, [layerIndex], included) };
   });
 }
 
@@ -98,6 +96,6 @@ export function resolveAcrylicNestSettings(config: ProjectConfigV1): SheetNestSe
 
 /** Acrylic parts to nest: one per insert, named by its `W` id. Empty without inserts. */
 export function acrylicNestableParts(ir: GeometryIRV1): NestPartV1[] {
-  const acrylic = acrylicGeometry(ir);
+  const acrylic = acrylicGeometry(ir, { markings: false });
   return acrylic ? nestableParts(acrylic) : [];
 }

@@ -582,7 +582,6 @@
       // Acrylic inserts fill their opening from the ledge below, riding the
       // layer they replace when the stack is exploded. Map detail engraved on
       // them sits on their top face.
-      const inserted = new Set((activeGeometry.waterInserts ?? []).map((insert) => insert.surfaceId));
       (activeGeometry.waterInserts ?? []).forEach((insert) => {
         const layer = activeGeometry.layers[insert.layerIndex];
         if (!layer) return;
@@ -613,12 +612,12 @@
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
       });
       // The surface floats on the top face of the layer holding its waterline,
-      // and rides that layer when the stack is exploded. A lake that became
-      // acrylic shows the acrylic instead.
-      (activeGeometry.waterSurfaces ?? []).filter((surface) => !inserted.has(surface.id)).forEach((surface) => {
+      // and rides that layer when the stack is exploded. Where a lake became
+      // acrylic the acrylic stands in, so only its still-open water floats.
+      (activeGeometry.waterSurfaces ?? []).forEach((surface) => {
         const layer = activeGeometry.layers[surface.layerIndex] ?? activeGeometry.layers[0];
         if (!layer) return;
-        surface.polygons.forEach((polygon) => {
+        (surface.openPolygons ?? surface.polygons).forEach((polygon) => {
           const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), waterMaterial);
           mesh.castShadow = false;
           mesh.receiveShadow = false;

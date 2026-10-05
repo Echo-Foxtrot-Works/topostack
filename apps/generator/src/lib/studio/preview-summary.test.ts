@@ -50,12 +50,12 @@ describe("preview summaries", () => {
     ] as unknown as WaterSurfaceIR[];
     const waterInserts = [{ id: "W1", lakeKey: "osm-lake-2" }, { id: "W2", lakeKey: "7" }, { id: "W3", lakeKey: "7" }] as GeometryIRV1["waterInserts"];
     expect(insertLakes({ waterSurfaces, waterInserts }, { waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: ["9"] } })).toEqual([
-      { key: "osm-lake-2", name: "Lake 2", insertIds: ["W1"], excluded: false },
+      { key: "osm-lake-2", name: "Lake 1", insertIds: ["W1"], excluded: false },
       { key: "7", name: "Split", insertIds: ["W2", "W3"], excluded: false },
       { key: "9", name: "Off", insertIds: [], excluded: true },
     ]);
     const insert = (id: string, layerIndex: number, x: number) => ({ id, layerIndex, polygons: square(40).map((polygon) => ({ ...polygon, outer: polygon.outer.map((point) => ({ x: point.x + x, y: point.y })) })) });
-    const inserts = { waterInserts: [insert("W1", 3, 0), insert("W2", 3, 100), insert("W3", 5, 0)] as unknown as GeometryIRV1["waterInserts"] };
+    const inserts = { waterInserts: [insert("W1", 3, 0), insert("W2", 3, 100), insert("W3", 5, 0)] as unknown as GeometryIRV1["waterInserts"], waterInsertMaterial: { thicknessMm: 3, kerfMm: 0, fitClearanceMm: 0, ledgeMm: 2 } };
     // One panel per sheet holding inserts, until a sheet's inserts together outgrow the bed.
     expect(acrylicPanelCount(inserts, { workAreaWidthMm: 0, workAreaHeightMm: 0 })).toBe(2);
     expect(acrylicPanelCount(inserts, { workAreaWidthMm: 100, workAreaHeightMm: 100 })).toBe(3);

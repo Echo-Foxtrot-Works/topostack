@@ -513,9 +513,12 @@ export interface WaterInsertSettingsV1 {
   excludedLakeIds: string[];
 }
 
-/** The key a project uses to opt a lake out of acrylic inserts: its HydroLAKES id, else its surface id. */
-export function waterInsertLakeKey(surface: { id: string; hylakId?: number }): string {
-  return surface.hylakId === undefined ? surface.id : String(surface.hylakId);
+/**
+ * The key a project uses to opt a lake out of acrylic inserts: its HydroLAKES
+ * id, else its lasting `lakeKey`, else (a lake no source names) its surface id.
+ */
+export function waterInsertLakeKey(surface: { id: string; hylakId?: number; lakeKey?: string }): string {
+  return surface.hylakId === undefined ? surface.lakeKey ?? surface.id : String(surface.hylakId);
 }
 
 export interface ElevationGrid {
@@ -580,6 +583,13 @@ export interface WaterAreaV1 {
   outlineSource?: "provider" | "osm";
   outlineSourceId?: string;
   surveyId?: string;
+  /**
+   * A lasting name for a lake HydroLAKES does not know, where `id` is not
+   * one: a map outline is numbered by its place in the tile. Set to
+   * `outline:<chart id>` once a traced chart names the lake (see
+   * OUTLINE_CHART_KEY_PREFIX).
+   */
+  lakeKey?: string;
   /** HydroLAKES `Elevation`; the DEM median inside the polygon is the fallback. */
   surfaceElevationM?: number;
   /** GLOBathy `Dmax_use_m`. */
@@ -636,7 +646,15 @@ export interface WaterSurfaceIR {
   kind: WaterKind;
   name?: string;
   hylakId?: number;
+  /** The source area's `lakeKey`, when it has one. */
+  lakeKey?: string;
   polygons: Polygon2D[];
+  /**
+   * The water still open once acrylic inserts filled part of the lake; absent
+   * when no insert touches it, empty when inserts cover it all. The previews
+   * float the surface over these, the acrylic standing in for the rest.
+   */
+  openPolygons?: Polygon2D[];
   surfaceElevationM: number;
   bedElevationM: number;
   /** Uniform compression applied after the requested depth multiplier; present only when fitted. */

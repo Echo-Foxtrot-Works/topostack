@@ -1,6 +1,6 @@
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { labelGeometry } from "../annotate/labels.js";
-import { boundsOverlap, clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, ringBounds, toMultiPolygon, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
+import { labelDimensions, labelGeometry } from "../annotate/labels.js";
+import { type Bounds2D, boundsOverlap, clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, ringBounds, toMultiPolygon, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
 import type { OperationPath, Point2D, Polygon2D } from "../types.js";
 
 /** Which share of the markings to keep: the part over `polygons`, or the part clear of them. */
@@ -51,10 +51,14 @@ export function markingsWithin(markings: OperationPath[], polygons: Polygon2D[],
       return keeps(first) ? [mark] : [];
     }
   };
+  // A mark whose box reaches no polygon's box lies wholly on one side; only
+  // the few near an edge pay for label glyphs and clipping.
+  const reaches = (box: Bounds2D) => boundsOverlap(box, prepared.bounds) && prepared.outerBounds.some((bounds) => boundsOverlap(bounds, box));
   return markings.flatMap((mark) => {
     const first = mark.points[0];
     if (!first) return [];
     if (mark.knockout) return options.keepKnockouts && (!inside || boundsOverlap(ringBounds(mark.points), prepared.bounds)) ? [mark] : [];
+    if (!reaches(markBounds(mark))) return inside ? [] : [mark];
     if (mark.label) {
       const { strokes, fills } = labelGeometry(mark.label, first, 0, 0, mark.labelRotationRad, mark.textStyle);
       if ([...strokes, ...fills.flatMap((fill) => [fill.outer, ...fill.holes])].every((line) => line.every(keeps))) return [mark];
@@ -68,6 +72,16 @@ export function markingsWithin(markings: OperationPath[], polygons: Polygon2D[],
     if (mark.filled) return clippedFill(mark);
     return parted(mark, clipLine(mark.points), true);
   });
+}
+
+/** A box around everything a mark engraves; a label's text may turn any way about its anchor. */
+function markBounds(mark: OperationPath): Bounds2D {
+  const box = ringBounds(mark.points);
+  if (!mark.label) return box;
+  const { width, height } = labelDimensions(mark.label, mark.textStyle);
+  // Generous: glyphs may overhang their advance box a little.
+  const reach = Math.hypot(width, height) * 1.25 + 1;
+  return { minX: box.minX - reach, minY: box.minY - reach, maxX: box.maxX + reach, maxY: box.maxY + reach };
 }
 
 /** One rectangle comfortably around every marking, label boxes included. */

@@ -6,6 +6,8 @@ export { projectFingerprint } from "./pipeline/fingerprint.js";
 // Polygon clip inputs appear in exported signatures (paint regions, marker
 // placement), so the prepared form is public even though the primitives stay internal.
 export type { PreparedPolygons } from "./primitives/geometry2d.js";
+// Ring area, so the studio ranks shapes by size the way core measures them.
+export { signedArea } from "./primitives/geometry2d.js";
 export { labelDimensions, labelLineSegments, labelPathData, labelSvgPaths, roundText, unsupportedLabelCharacters, type LabelLineSegment } from "./annotate/labels.js";
 export { FONT_CATALOG, clearRegisteredFonts, decodeFontGlyphs, fontEntry, isBitmapFont, isFontLoaded, missingGlyphs, projectFonts, registerFont, type FontCatalogEntry, type FontGlyphsV1, type FontKind } from "./annotate/font-data.js";
 export { markerCenterForAnchor, markerIcon, markerPolygons, markerSymbolPaths, unwrapLongitude } from "./annotate/markers.js";
@@ -28,6 +30,7 @@ export { verifySheetPlan } from "./export/sheet-nest/verify.js";
 export { paintRegions, paintStencil } from "./pipeline/paint-regions.js";
 export type { FlatWaterArea, PaintLayerClip, PaintRegionSources } from "./pipeline/paint-regions.js";
 export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, waterInsertMaterial } from "./pipeline/water-inserts.js";
+export { acrylicPanelGroups } from "./pipeline/water-insert-panels.js";
 export { acrylicGeometry, acrylicNestableParts, resolveAcrylicNestSettings } from "./export/water-inserts.js";
 export { FEET_PER_METER, MM_PER_INCH, displayElevation, displayLength, elevationUnit, lengthUnit, millimetersFromDisplay } from "./primitives/units.js";
 // Water carving is a stage of `generateGeometry`, not an entry point: its

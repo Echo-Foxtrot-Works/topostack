@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { acrylicPanelGroups, AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -105,41 +105,20 @@ export function insertLakes(geometry: Pick<GeometryIRV1, "waterSurfaces" | "wate
   for (const surface of geometry.waterSurfaces) {
     if (surface.kind !== "lake") continue;
     const key = waterInsertLakeKey(surface);
-    const row = rows.get(key) ?? { key, name: surface.name ?? `Lake ${rows.size + 1}`, insertIds: [], excluded: excluded.has(key), areaMm2: 0 };
-    row.areaMm2 += surface.polygons.reduce((total, polygon) => total + Math.abs(ringArea(polygon.outer)), 0);
+    const row = rows.get(key) ?? { key, name: surface.name ?? "", insertIds: [], excluded: excluded.has(key), areaMm2: 0 };
+    row.areaMm2 += surface.polygons.reduce((total, polygon) => total + Math.abs(signedArea(polygon.outer)), 0);
     rows.set(key, row);
   }
   for (const insert of geometry.waterInserts ?? []) rows.get(insert.lakeKey)?.insertIds.push(insert.id);
-  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => row);
+  // Unnamed lakes are numbered in the order they are listed.
+  let unnamed = 0;
+  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => ({ ...row, name: row.name || `Lake ${++unnamed}` }));
 }
 
-/**
- * How many unnested acrylic panels the export writes: one per wood sheet that
- * holds inserts, or one per insert on a sheet whose inserts together outgrow
- * the work area. Mirrors core's `acrylicPanels` from the inserts' bounds, so
- * the studio need not load the export code to say it.
- */
+/** How many unnested acrylic panels the export writes, by the grouping the export itself uses. */
 export function acrylicPanelCount(geometry: Pick<GeometryIRV1, "waterInserts" | "waterInsertMaterial">, project: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): number {
-  const inserts = geometry.waterInserts ?? [];
-  const kerf = geometry.waterInsertMaterial?.kerfMm ?? 0;
-  const bedWidth = project.workAreaWidthMm > 0 ? project.workAreaWidthMm : Number.POSITIVE_INFINITY;
-  const bedHeight = project.workAreaHeightMm > 0 ? project.workAreaHeightMm : Number.POSITIVE_INFINITY;
-  let count = 0;
-  for (const layerIndex of new Set(inserts.map((insert) => insert.layerIndex))) {
-    const onLayer = inserts.filter((insert) => insert.layerIndex === layerIndex);
-    const points = onLayer.flatMap((insert) => insert.polygons.flatMap((polygon) => polygon.outer));
-    const xs = points.map((point) => point.x);
-    const ys = points.map((point) => point.y);
-    const fits = Math.max(...xs) - Math.min(...xs) + kerf <= bedWidth && Math.max(...ys) - Math.min(...ys) + kerf <= bedHeight;
-    count += onLayer.length === 1 || fits ? 1 : onLayer.length;
-  }
-  return count;
-}
-
-function ringArea(ring: Array<{ x: number; y: number }>): number {
-  let area = 0;
-  for (let index = 1; index < ring.length; index += 1) area += ring[index - 1]!.x * ring[index]!.y - ring[index]!.x * ring[index - 1]!.y;
-  return area / 2;
+  const material = geometry.waterInsertMaterial;
+  return material ? acrylicPanelGroups(geometry.waterInserts ?? [], material, project).length : 0;
 }
 
 export const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;

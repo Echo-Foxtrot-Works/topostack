@@ -5,6 +5,7 @@ import { engravingToSvg } from "./engraving-svg.js";
 import { assemblyGuideToHtml, type GuideFont, type GuideSheetMap } from "./assembly-guide.js";
 import { exportBlockReason } from "./export-policy.js";
 import { formatNumber as format } from "../primitives/format.js";
+import { ringBounds } from "../primitives/geometry2d.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
@@ -149,7 +150,7 @@ function acrylicFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: st
   if (!acrylic || !material) return undefined;
   const woodLayers = acrylicWoodLayers(generated);
   const nested = plan ? nestedLayout(acrylic, resolveAcrylicNestSettings(config), plan, undefined, "acrylic sheet") : undefined;
-  const panels: FabricationPanel[] = nested ? nested.sheets.map((sheet) => sheet.panel) : acrylicPanels(acrylic, config);
+  const panels: FabricationPanel[] = nested ? nested.sheets.map((sheet) => sheet.panel) : acrylicPanels(generated, acrylic, config);
   const bodies = nested ? nested.sheets.map((sheet) => nestedSheetBodies(acrylic, sheet)) : panels.map((panel) => panelBodies(acrylic, panel));
   const panelFiles = panels.map((panel, index) => {
     const filename = nested ? `${base}-acrylic-sheet-${String(index + 1).padStart(2, "0")}.svg`
@@ -191,10 +192,8 @@ function acrylicFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: st
       ledgeMm: material.ledgeMm,
       master: master.filename,
       inserts: inserts.map((insert) => {
-        const bounds = insert.polygons.flatMap((polygon) => polygon.outer);
-        const xs = bounds.map((point) => point.x);
-        const ys = bounds.map((point) => point.y);
-        return { id: insert.id, lakeKey: insert.lakeKey, name: insert.name, layerId: generated.layers[insert.layerIndex]?.id, widthMm: Math.max(...xs) - Math.min(...xs), heightMm: Math.max(...ys) - Math.min(...ys) };
+        const bounds = ringBounds(insert.polygons.flatMap((polygon) => polygon.outer));
+        return { id: insert.id, lakeKey: insert.lakeKey, name: insert.name, layerId: generated.layers[insert.layerIndex]?.id, widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY };
       }),
       panels: panelFiles.map(({ panel, file, engravingFile, insertIds }, index) => ({
         ...(nested ? { sheet: index + 1, usedWidthMm: nested.sheets[index]!.sheet.usedWidthMm } : {}),

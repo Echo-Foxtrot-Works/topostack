@@ -128,7 +128,7 @@
   let resetOpen = $state(false);
   const exportNotice = new ExportNotice((message) => { status = message; });
   const sheetNesting = new SheetNesting();
-  const acrylicSheetNesting = new SheetNesting(undefined, undefined, undefined, "acrylic");
+  const acrylicSheetNesting = SheetNesting.forAcrylic();
   const automaticNesting = new AutomaticNesting();
   setContext("atomm-nesting", automaticNesting);
   $effect(() => { if (embeddedInPlatform && previewBusy) automaticNesting.cancel(); });

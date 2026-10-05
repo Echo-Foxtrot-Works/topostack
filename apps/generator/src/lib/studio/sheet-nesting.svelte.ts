@@ -46,6 +46,11 @@ export class SheetNesting {
     readonly material: NestMaterial = "wood",
   ) {}
 
+  /** The layout of the acrylic water inserts on their own stock sheets. */
+  static forAcrylic(): SheetNesting {
+    return new SheetNesting(undefined, undefined, undefined, "acrylic");
+  }
+
   /** The plan to export with: only when chosen and still current. */
   get exportPlan(): SheetNestPlanV1 | undefined {
     return this.useSheets && this.current ? this.plan : undefined;
