@@ -84,4 +84,4 @@ Where the chart uses colour alone, the engraving cannot follow. Towered airports
    node scripts/provision/provision-aviation-data.mjs .topostack/faa/faa-aviation.pmtiles --verify-only --skip-digest-check
    node scripts/provision/provision-aviation-data.mjs .topostack/faa/faa-aviation.pmtiles --provision --expected-sha256=<sha>
    ```
-6. Check a Class B city, a Class D field and a crop outside the US in the development studio, then `--promote`, and repeat with `--prod`. The Worker advertises the dataset in `scripts/data/faa-aviation-sources.json`, so deploy the registration change together with promotion.
+6. Check a Class B city, a Class D field and a crop outside the US in the development studio, then `--promote`, and repeat with `--prod`. The Worker advertises the dataset in `scripts/data/faa-aviation-sources.json`, so deploy the registration change together with promotion. The deployment smoke test and the hourly production monitor (`verify-worker-deployment.mjs`) fail while the served archive's `topostack_dataset` differs from the dataset the Worker advertises.
