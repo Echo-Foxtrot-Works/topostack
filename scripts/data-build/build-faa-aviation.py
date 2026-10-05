@@ -56,6 +56,9 @@ SHARED_EDGE_DEGREES = 3e-5
 LABEL_MIN_SPACING_M = 2_000
 LABEL_CANDIDATES = 24
 LABEL_DETAIL_MINZOOM = 9
+# Class D pieces of one name and ceiling this close (about 1 km) are one area. Names repeat
+# across airports ("DENVER CLASS D" is both Rocky Mountain Metro and Centennial), so nearness decides.
+CLASS_D_PIECE_DEGREES = 0.01
 SUA_KINDS = {'P': 'prohibited', 'R': 'restricted', 'W': 'warning', 'A': 'alert', 'MOA': 'moa', 'D': 'danger'}
 # LEVEL_CODE U: upper-altitude only (floor at or above 18,000 ft MSL). The sectional shows
 # airspace effective below 18,000 ft, and these usually repeat the boundary of a low part.
@@ -218,10 +221,11 @@ def airspace_label_features(records):
 
     Every Class B and C sector is its own area, labelled for its own floor. A
     Class D split into records (an extension, a cut-out) prints its ceiling
-    once, so its pieces with one name and ceiling share an area number.
+    once, so pieces with one name and ceiling that touch share an area number.
     """
     out = []
-    areas = {}
+    count = 0
+    pieces = []  # (name, ceiling, below, geometry, area) of every Class D piece so far
     for cls, name, properties, polygon in charted_airspace(records):
         floor = altitude_ft(properties.get('LOWER_VAL'), properties.get('LOWER_UOM'), properties.get('LOWER_CODE'))
         ceiling = altitude_ft(properties.get('UPPER_VAL'), properties.get('UPPER_UOM'), properties.get('UPPER_CODE'))
@@ -234,8 +238,13 @@ def airspace_label_features(records):
         if properties.get('UPPER_DESC') == 'TNI':
             values['ceiling_below'] = True
         for part in getattr(polygon, 'geoms', [polygon]):
-            key = (name, ceiling, values.get('ceiling_below', False)) if cls == 'D' else len(areas)
-            area = areas.setdefault(key, len(areas))
+            key = (name, ceiling, values.get('ceiling_below', False))
+            joined = next((piece[4] for piece in pieces if cls == 'D' and piece[:3] == key and piece[3].distance(part) <= CLASS_D_PIECE_DEGREES), None)
+            area = joined if joined is not None else count
+            if joined is None:
+                count += 1
+            if cls == 'D':
+                pieces.append((*key, part, area))
             for index, (lon, lat, clearance) in enumerate(label_candidates(part)):
                 out.append(feature({'type': 'Point', 'coordinates': [lon, lat]}, {**values, 'area': area, 'clearance_m': clearance},
                                    airspace_minzoom(cls) if index == 0 else max(airspace_minzoom(cls), LABEL_DETAIL_MINZOOM)))
