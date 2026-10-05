@@ -10,7 +10,8 @@ Every input is pinned by URL and SHA-256 in [`scripts/data/faa-aviation-sources.
 
 | Layer | Source | Cycle | Kept |
 | --- | --- | --- | --- |
-| `airspace` | NASR `class_airspace_shape_files.zip` | 28 days | Class B, C and D rings, with floor and ceiling in feet where the FAA gives them. Class E is left out: its thousands of transition areas would bury a model in lines. |
+| `airspace` | NASR `class_airspace_shape_files.zip` | 28 days | Class B, C and D boundaries. An edge two areas of one class share (Class B shelves, a Class C core and its shelf) comes twice in the source, the copies up to a few metres apart; it is written once, so the laser burns it once. Class E is left out: its thousands of transition areas would bury a model in lines. |
+| `airspace_labels` | the same shapefile | 28 days | Places to print each Class B, C and D area's ceiling and floor: its roomiest point (by `polylabel`), points around it and points spread over large areas, each with its distance to the area's edge. Every B and C sector is its own area; a Class D split into records with one name and ceiling shares one. |
 | `sua` | AIS Open Data `Special_Use_Airspace` service, snapshotted | as published | Prohibited, restricted, warning, alert, MOA and danger areas effective below 18,000 ft (the service's `LEVEL_CODE` U records, upper altitudes only, are left out as the sectional leaves them out). The service splits an area into records wherever its floor or ceiling changes, such as an exclusion around an airport, often cutting the main record around them; the records of one name are dissolved into one outline, as charted. |
 | `runways` | NASR `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | The centerline between both surveyed ends, with width and length. The studio draws the true-width outline when it is at least three strokes wide at the model's scale. Water lanes, rooftop pads and helipads are skipped. |
 | `airports` | NASR `APT_BASE.csv` + `APT_RWY.csv` + `APT_RWY_END.csv` | 28 days | Operational US airports, heliports and seaplane bases, with public/private/military use, tower status, fuel, rotating beacon, civil-military joint use, the longest hard-surfaced runway, and the runway layout of fields with a hard runway of 1,500 ft or more |
@@ -25,12 +26,12 @@ NAD83 coordinates are used as WGS84. They are under 2 m apart in the conterminou
 
 `build-faa-aviation.py` writes one vector PMTiles archive, zoom 5–12. Its layers and properties are the contract in [`@topostack/data-contracts/aviation-tiles`](../packages/data-contracts/src/aviation-tiles.ts). Before tiling, `check-aviation-features.mjs` runs every feature through the browser's own parsers, so the archive cannot carry a value the studio would drop.
 
-- Boundaries are LineStrings, never polygons. Tile clipping then only splits lines, which the browser rejoins, and never draws an edge along a tile seam. Every ring (holes included) runs with its area on its left, so the studio knows the inside of a boundary even where the crop cuts it open.
-- Each feature has a minimum zoom. Class B/C airspace, special use airspace and prominent airports appear from zoom 5–6. Class D, runways and obstacles of 1,000 ft or more appear from 7, other airports from 8 and lower obstacles from 9.
-- Points are never thinned (`--drop-rate=1`); the studio budgets features instead. It keeps up to 1,500 airports and navaids (more makes the load partial, which blocks export) and the 2,000 tallest obstacles. A crop can hold ten thousand obstacles, so beyond that the shortest are left out without blocking export, as the sectional charts only selected obstacles where they crowd.
+- Boundaries are LineStrings, never polygons. Tile clipping then only splits lines, which the browser rejoins, and never draws an edge along a tile seam. Every special use ring (holes included) runs with its area on its left, so the studio knows the inside of a boundary even where the crop cuts it open. Class B, C and D are never hatched, so their shared edges can be written once without a side.
+- Each feature has a minimum zoom. Class B/C airspace, special use airspace and prominent airports appear from zoom 5–6. Class D, runways and obstacles of 1,000 ft or more appear from 7, other airports from 8 and lower obstacles from 9. Each airspace label's roomiest place appears with its area; the others from 9.
+- Points are never thinned (`--drop-rate=1`); the studio budgets features instead. It keeps up to 1,500 airports and navaids (more makes the load partial, which blocks export) the 2,000 tallest obstacles and the 600 roomiest airspace label places. A crop can hold ten thousand obstacles, so beyond that the shortest are left out without blocking export, as the sectional charts only selected obstacles where they crowd.
 - Metadata carries `topostack_dataset`, `faa_nasr_cycle`, `faa_obstacle_date` and `faa_sua_date`. tippecanoe's `name` and `generator_options` record temporary paths, so the builder replaces them and a rebuild from the same pins is byte-identical.
 
-The 2026-09-03 cycle (`faa-aviation-2026-09-03-v3`: the legend properties and oriented rings of v2, plus dissolved special use areas without upper-altitude records) builds to 35 MB (SHA-256 `f0f78ff94cfb0f8521388807e4a596bcefedf4d9085c6e271656b6c3464ed2d9`, byte-identical across rebuilds) with 1,289 airspace rings, 1,179 special use rings, 8,472 runways, 18,811 airports, 1,523 navaids and 184,123 obstacles.
+The 2026-09-03 cycle (`faa-aviation-2026-09-03-v3`: the legend properties and oriented rings of v2, plus dissolved special use areas without upper-altitude records, Class B/C/D edges written once and the airspace label layer) builds to 35 MB (SHA-256 `093089f596dda96f2d0de70669b52639431db7ce318765146ced538a8114541f`, byte-identical across rebuilds) with 1,643 airspace edges, 13,278 airspace label places, 1,179 special use rings, 8,472 runways, 18,811 airports, 1,523 navaids and 184,123 obstacles.
 
 The Worker serves it by range at `/v1/aviation.pmtiles` from the logical key `aviation/current.pmtiles`. It is optional: `/ready` does not wait for it, and the studio requests it only when a project turns aviation detail on.
 
@@ -44,7 +45,7 @@ Everything is drawn after the VFR sectional legend in the FAA [Aeronautical Char
 | --- | --- |
 | Public airport, no hard runway of 1,500 ft | Open circle |
 | Hard-surfaced runway 1,500 to 8,069 ft | Filled disc with the runways knocked out (hatched fill) |
-| Hard-surfaced runway over 8,069 ft | The runway layout, in outline once each strip can be three strokes wide, as centerlines at smaller symbol sizes |
+| Hard-surfaced runway over 8,069 ft | The runway layout, in outline once each strip can be three strokes wide, as centerlines at smaller symbol sizes. Close parallel runways are pushed apart until they read as two (outlines by a stroke and a half of clear space, centerlines by two and a half strokes); where that would shrink the layout below four fifths of its size, they are drawn as one runway. The disc's knockouts are spread the same way. |
 | Private field without such a runway | Circle with R |
 | Military field / civil-military field | Double circle; the runway layout once a hard runway reaches 1,500 ft (the legend's military rows have no filled disc) |
 | Heliport, seaplane base | Circle with H, anchor |
@@ -57,9 +58,11 @@ Everything is drawn after the VFR sectional legend in the FAA [Aeronautical Char
 | Wind turbine | Mast, hub and three blades, alone or as a group |
 | High-intensity lights | Rays and lightning strokes above the top |
 | Class B, C, D | Heavy solid, solid, dashed |
+| Class B and C altitudes | Ceiling over floor in hundreds of feet MSL with a bar between (`SFC` for the surface; `T` for a Class C ceiling up to the Class B above), inside the area |
+| Class D ceiling | Hundreds of feet MSL in a dashed box, a minus for "up to but not including" |
 | Special use airspace | Solid line hatched on the inside edge |
 
-Where symbols would print over one another, the studio leaves out the optional ones, as the sectional charts only selected private fields, heliports and obstacles: every public and military field and every navaid is drawn, then private fields, heliports and obstacles (tallest first) wherever they overlap nothing already drawn. Identifiers keep clear of every drawn symbol. Symbols under ten aviation line widths across fill in when engraved, so generation warns (`AVIATION_SYMBOLS_FILLED`); the defaults give thirteen.
+Where symbols would print over one another, the studio leaves out the optional ones, as the sectional charts only selected private fields, heliports and obstacles: every public and military field and every navaid is drawn, then private fields, heliports and obstacles (tallest first) wherever they overlap nothing already drawn. Identifiers keep clear of every drawn symbol. With identifiers on, each Class B, C and D area in view prints its altitudes once, at its roomiest place in the crop where the label fits inside the area and clear of symbols and other labels; a sector too narrow at the model's scale prints none, as the chart leaves them off. Symbols under ten aviation line widths across fill in when engraved, so generation warns (`AVIATION_SYMBOLS_FILLED`); the defaults give thirteen.
 
 Where the chart uses colour alone, the engraving cannot follow. Towered airports (blue) look like the others and only take the first label places; prohibited, restricted and warning areas (blue) are hatched like alert areas and MOAs (magenta). Hatched fills are spaced a little under one stroke apart so they engrave solid, and NDB dots are kept at least 2.6 strokes apart so they stay dots.
 

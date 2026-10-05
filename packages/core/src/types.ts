@@ -42,6 +42,22 @@ export interface AviationSymbolDetail {
   /** Runway centerlines around the airport, x east and y south in any unit; the symbol scales them to fit. */
   runways?: Point2D[][];
 }
+/**
+ * One place a Class B, C or D area's altitudes may be printed, as the sectional
+ * prints them inside the area: Class B and C as ceiling over floor in hundreds
+ * of feet MSL, Class D its ceiling in a dashed box.
+ */
+export interface AviationAltitudeLabel {
+  /** Candidates of one area share this; the area prints at most one label. */
+  area: string;
+  ceilingFt: number;
+  /** Absent for Class D; 0 is the surface. */
+  floorFt?: number;
+  /** "Up to but not including": a minus before a Class D ceiling, T for a Class C ceiling that meets Class B. */
+  ceilingBelow?: boolean;
+  /** Ground distance from the point to the area's nearest edge; the label is printed only if it fits within it. */
+  clearanceM: number;
+}
 export type AviationStatus = "available" | "partial" | "unavailable" | "not-covered" | "not-requested";
 export type NorthArrowStyle = "minimal" | "classic" | "mariner";
 export type BuiltInMarkerSymbol = "pin" | "circle" | "triangle" | "star" | "cross";
@@ -491,7 +507,7 @@ export interface AviationDetailsV1 {
   airports: boolean;
   navaids: boolean;
   obstacles: boolean;
-  /** Airport and navaid identifiers beside their symbols. */
+  /** Airport and navaid identifiers beside their symbols, and Class B, C and D altitudes inside their areas. */
   labels: boolean;
 }
 
@@ -512,6 +528,8 @@ export interface MarkingFeature {
   /** Aviation points only: one point, drawn as this symbol at a fixed size. */
   aviationSymbol?: AviationSymbol;
   aviationDetail?: AviationSymbolDetail;
+  /** Airspace label candidates only: one point where the area's altitudes may be printed. */
+  aviationAltitude?: AviationAltitudeLabel;
   /** Runways only: ground width in meters, drawn as an outline when it is wide enough at the model's scale. */
   widthM?: number;
   elevationM?: number;

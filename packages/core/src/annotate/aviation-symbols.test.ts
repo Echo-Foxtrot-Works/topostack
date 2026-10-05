@@ -74,6 +74,24 @@ describe("aviation symbols", () => {
     expect(aviationSymbolPaths("airport-pattern", origin, 4)).toEqual(aviationSymbolPaths("airport-hard", origin, 4));
   });
 
+  it("keeps parallel runways apart, merging them only where the symbol has no room", () => {
+    // Two 3,000 m runways 300 m apart: at 3.2 mm they would be 0.3 mm apart, under 2.5 strokes.
+    const pair: AviationSymbolDetail = { runways: [[{ x: -150, y: -1500 }, { x: -150, y: 1500 }], [{ x: 150, y: -1500 }, { x: 150, y: 1500 }]] };
+    const spread = aviationSymbolPaths("airport-pattern", origin, 3.2, pair, 0.24);
+    expect(spread).toHaveLength(2);
+    expect(Math.abs(spread[0]![0]!.x - spread[1]![0]!.x)).toBeGreaterThanOrEqual(0.6 - 1e-9);
+    // Long enough to read as runways still.
+    expect(Math.abs(spread[0]![0]!.y - spread[0]![1]!.y)).toBeGreaterThan(2);
+    // In the disc, the knockouts keep at least one stroke of disc between them: a hatch line runs between.
+    const disc = aviationSymbolPaths("airport-hard", origin, 3.2, pair, 0.24);
+    expect(disc.some((path) => path.length === 2 && path[0]!.y === path[1]!.y && path.every((point) => Math.abs(point.x) < 0.2))).toBe(true);
+    // Four parallels in a heavy-stroked symbol cannot all stay apart: neighbours merge into one runway each.
+    const four: AviationSymbolDetail = { runways: [-450, -150, 150, 450].map((x) => [{ x, y: -1500 }, { x, y: 1500 }]) };
+    const merged = aviationSymbolPaths("airport-pattern", origin, 3.2, four, 0.5);
+    expect(merged.length).toBeLessThan(4);
+    expect(merged.every((path) => Math.abs(path[0]!.y - path.at(-1)!.y) > 2)).toBe(true);
+  });
+
   it("carries the VORTAC's tabs on the bottom and upper sides", () => {
     const [hexagon, ...rest] = aviationSymbolPaths("vortac", origin, 4);
     expect(hexagon).toHaveLength(7);

@@ -39,7 +39,7 @@ export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
 export { exportBlockReason } from "./export/export-policy.js";
 export { sourceRequirements } from "./pipeline/source-requirements.js";
-export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationFeatures, aviationRequested, aviationStroke, aviationSymbolSize, runwayPaths, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
+export { AVIATION_DATA_DETAILS, NO_AVIATION, airspaceAltitudeText, aviationClassEnabled, aviationFeatures, aviationRequested, aviationStroke, aviationSymbolSize, runwayPaths, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
 export { aviationSymbolPaths } from "./annotate/aviation-symbols.js";
 export { cropRadiusMm } from "./primitives/crop.js";
 

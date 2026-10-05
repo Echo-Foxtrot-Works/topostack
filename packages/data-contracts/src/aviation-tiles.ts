@@ -6,9 +6,13 @@
  *
  * Boundaries (airspace, special use airspace) are stored as LineStrings, never
  * polygons: tile clipping then only splits lines, which the browser rejoins,
- * and never invents an edge along a tile seam. Every ring runs with its area on
- * the left, so a boundary's inside survives clipping. Runways are centerlines
- * with their width; the model draws the outline when it is wide enough to read.
+ * and never invents an edge along a tile seam. Every special use ring runs with
+ * its area on the left, so a boundary's inside survives clipping; a Class B, C
+ * or D edge two areas share is stored once. Each of those areas also has
+ * candidate points for its altitude label (`airspace_labels`), each with the
+ * room around it, so the model prints the label only where it fits inside the
+ * area. Runways are centerlines with their width; the model draws the outline
+ * when it is wide enough to read.
  *
  * Airport and obstacle properties carry what the sectional legend draws from:
  * fuel (ticks), rotating beacon (star), hard surface and runway layout (filled
@@ -16,7 +20,7 @@
  * are optional, so an archive written before them still parses.
  */
 
-export const AVIATION_LAYERS = ["airspace", "sua", "runways", "airports", "navaids", "obstacles"] as const;
+export const AVIATION_LAYERS = ["airspace", "airspace_labels", "sua", "runways", "airports", "navaids", "obstacles"] as const;
 export type AviationLayer = (typeof AVIATION_LAYERS)[number];
 
 export const AIRSPACE_CLASSES = ["B", "C", "D"] as const;
@@ -35,7 +39,21 @@ export type AirportUse = (typeof AIRPORT_USES)[number];
 export const NAVAID_KINDS = ["vor", "vortac", "vor-dme", "tacan", "ndb", "ndb-dme", "dme"] as const;
 export type NavaidKind = (typeof NAVAID_KINDS)[number];
 
+/** Floor and ceiling were written on boundaries before the labels layer; an edge shared by two areas has neither now. */
 export interface AirspaceProperties { class: AirspaceClass; name: string; ident?: string; floorFt?: number; ceilingFt?: number }
+/** One place an area's altitudes may be printed. */
+export interface AirspaceLabelProperties {
+  class: AirspaceClass;
+  /** Candidates with the same number belong to one area, which prints one label. */
+  area: number;
+  ceilingFt: number;
+  /** Absent for Class D, which prints its ceiling alone; 0 is the surface. */
+  floorFt?: number;
+  /** The ceiling is "up to but not including" (the chart's minus, or T under Class B). */
+  ceilingBelow?: boolean;
+  /** Distance from this point to the area's nearest edge. */
+  clearanceM: number;
+}
 export interface SuaProperties { kind: SuaKind; name: string }
 export interface RunwayProperties { airport: string; runway: string; widthFt: number; lengthFt: number }
 /** One runway centerline, `[x1, y1, x2, y2]` in meters east and north of the airport reference point. */
@@ -72,6 +90,7 @@ export interface ObstacleProperties {
 
 export interface AviationPropertiesByLayer {
   airspace: AirspaceProperties;
+  airspace_labels: AirspaceLabelProperties;
   sua: SuaProperties;
   runways: RunwayProperties;
   airports: AirportProperties;
@@ -81,7 +100,7 @@ export interface AviationPropertiesByLayer {
 
 /** Geometry each layer carries in the archive (vector tile type 1 point, 2 line). */
 export const AVIATION_LAYER_GEOMETRY: Record<AviationLayer, "point" | "line"> = {
-  airspace: "line", sua: "line", runways: "line", airports: "point", navaids: "point", obstacles: "point",
+  airspace: "line", airspace_labels: "point", sua: "line", runways: "line", airports: "point", navaids: "point", obstacles: "point",
 };
 
 // Tile properties are snake_case, as vector tile schemas conventionally are.
@@ -125,6 +144,17 @@ function parseAirspace(raw: Raw): AirspaceProperties | undefined {
   const name = text(raw, "name");
   if (!cls || !name) return undefined;
   return compact({ class: cls, name, ident: text(raw, "ident", 8), floorFt: feet(raw, "floor_ft"), ceilingFt: feet(raw, "ceiling_ft") });
+}
+
+function parseAirspaceLabel(raw: Raw): AirspaceLabelProperties | undefined {
+  const cls = member(AIRSPACE_CLASSES, raw.class);
+  const area = raw.area;
+  const ceilingFt = feet(raw, "ceiling_ft", 60_000);
+  const clearanceM = feet(raw, "clearance_m", 1_000_000);
+  if (!cls || typeof area !== "number" || !Number.isInteger(area) || area < 0 || ceilingFt === undefined || !clearanceM) return undefined;
+  const floorFt = feet(raw, "floor_ft", 60_000);
+  if (cls !== "D" && floorFt === undefined) return undefined;
+  return compact({ class: cls, area, ceilingFt, floorFt, ceilingBelow: raw.ceiling_below === true ? true : undefined, clearanceM });
 }
 
 function parseSua(raw: Raw): SuaProperties | undefined {
@@ -173,7 +203,7 @@ function parseObstacle(raw: Raw): ObstacleProperties | undefined {
 }
 
 const PARSERS: { [L in AviationLayer]: (raw: Raw) => AviationPropertiesByLayer[L] | undefined } = {
-  airspace: parseAirspace, sua: parseSua, runways: parseRunway, airports: parseAirport, navaids: parseNavaid, obstacles: parseObstacle,
+  airspace: parseAirspace, airspace_labels: parseAirspaceLabel, sua: parseSua, runways: parseRunway, airports: parseAirport, navaids: parseNavaid, obstacles: parseObstacle,
 };
 
 export function isAviationLayer(value: unknown): value is AviationLayer {

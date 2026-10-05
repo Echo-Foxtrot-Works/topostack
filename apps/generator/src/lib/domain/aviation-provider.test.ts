@@ -151,6 +151,22 @@ describe("FAA aviation loading", () => {
     expect(result.markings.slice(0, tallInCrop).every((marking) => marking.aviationSymbol === "obstacle-tall")).toBe(true);
   });
 
+  it("reads airspace altitude label places with the airspace, whether or not labels are on", async () => {
+    archive.tile = () => ({
+      airspace_labels: [
+        { type: 1, properties: { class: "B", area: 7, ceiling_ft: 12000, floor_ft: 8000, clearance_m: 4200 }, geometry: center },
+        { type: 1, properties: { class: "D", area: 8, ceiling_ft: 2500, ceiling_below: true, clearance_m: 0 }, geometry: center },
+      ],
+    });
+    const result = await loadAviationMarkings(denver, 11, project({ airspace: true }));
+    expect(result.status).toBe("available");
+    const places = result.markings.filter((marking) => marking.aviationAltitude);
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((marking) => marking.aviationClass === "class-b" && !marking.aviationSymbol)).toBe(true);
+    expect(places[0]!.aviationAltitude).toEqual({ area: "7", ceilingFt: 12000, floorFt: 8000, clearanceM: 4200 });
+    expect((await loadAviationMarkings(denver, 11, project({ airports: true }))).markings).toEqual([]);
+  });
+
   it("keeps navaids that share an identifier but not a kind", async () => {
     archive.tile = () => ({
       navaids: [

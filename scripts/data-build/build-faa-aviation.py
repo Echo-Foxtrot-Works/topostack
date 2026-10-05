@@ -10,9 +10,12 @@ packages/data-contracts/src/aviation-tiles.ts; every feature is checked
 against that contract in Node before tiling.
 
 Boundaries are written as LineStrings so tile clipping never invents an edge
-along a tile seam, each ring running with its area on the left so the studio
-can hatch special use airspace on the inside, as the sectional does. Runways are centerlines with their width; the studio draws
-the outline when it is wide enough to read at the model's scale. NAD83 coordinates are used as WGS84 (under 2 m apart in the
+along a tile seam, each special use ring running with its area on the left so
+the studio can hatch it on the inside, as the sectional does. Class B, C and D
+edges that neighbouring areas share are written once, and each area's ceiling
+and floor get candidate label points in `airspace_labels`. Runways are
+centerlines with their width; the studio draws the outline when it is wide
+enough to read at the model's scale. NAD83 coordinates are used as WGS84 (under 2 m apart in the
 conterminous US, far below engraving resolution).
 
 Usage:
@@ -35,14 +38,24 @@ import urllib.request
 import zipfile
 
 import fiona
-from shapely.geometry import Polygon, shape
+import shapely
+from shapely.geometry import LineString, Point, Polygon, shape
 from shapely.geometry.polygon import orient
-from shapely.ops import unary_union
+from shapely.ops import linemerge, polylabel, unary_union
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / 'scripts/data/faa-aviation-sources.json'
 
 AIRSPACE_CLASSES = {'B', 'C', 'D'}
+# Neighbouring areas of one class (Class B shelves, a Class C core and its shelf) are surveyed
+# separately, so a shared edge comes twice, its two copies up to a few metres apart. Within this
+# distance (about 3 m) of an edge already written, an edge is the same edge and is written once.
+SHARED_EDGE_DEGREES = 3e-5
+# Where each area's floor and ceiling can be printed: its roomiest point, then points spread over it
+# so a crop showing only part of a large shelf still has one, the closest no nearer than this.
+LABEL_MIN_SPACING_M = 2_000
+LABEL_CANDIDATES = 24
+LABEL_DETAIL_MINZOOM = 9
 SUA_KINDS = {'P': 'prohibited', 'R': 'restricted', 'W': 'warning', 'A': 'alert', 'MOA': 'moa', 'D': 'danger'}
 # LEVEL_CODE U: upper-altitude only (floor at or above 18,000 ft MSL). The sectional shows
 # airspace effective below 18,000 ft, and these usually repeat the boundary of a low part.
@@ -122,24 +135,110 @@ def altitude_ft(value, unit, code):
     return int(number)
 
 
-def airspace_features(records):
-    out = []
+def charted_airspace(records):
+    """The Class B, C and D records the sectional draws, with their class, name and properties."""
     for properties, geometry in records:
         cls = properties.get('CLASS')
         name = (properties.get('NAME') or '').strip()
-        if cls not in AIRSPACE_CLASSES or not name or geometry is None:
-            continue
+        if cls in AIRSPACE_CLASSES and name and geometry is not None:
+            yield cls, name, properties, shapely.force_2d(shape(geometry)).buffer(0)
+
+
+def airspace_minzoom(cls):
+    return 5 if cls in ('B', 'C') else 7
+
+
+def airspace_features(records):
+    """Class B, C and D boundaries, each edge once.
+
+    Unlike special use airspace these are never hatched, so an edge two areas
+    share needs no side and is written for the first area only; drawn for both,
+    the laser would burn it twice.
+    """
+    out = []
+    written = {cls: [] for cls in AIRSPACE_CLASSES}
+    for cls, name, properties, polygon in charted_airspace(records):
         values = {'class': cls, 'name': name}
         if (properties.get('IDENT') or '').strip():
             values['ident'] = properties['IDENT'].strip()
+        for ring in rings_as_lines(polygon):
+            line = LineString(ring['coordinates'])
+            box = line.buffer(SHARED_EDGE_DEGREES).bounds
+            nearby = [edge for edge in written[cls] if edge.bounds[0] <= box[2] and edge.bounds[2] >= box[0] and edge.bounds[1] <= box[3] and edge.bounds[3] >= box[1]]
+            rest = line.difference(unary_union(nearby).buffer(SHARED_EDGE_DEGREES, cap_style='flat')) if nearby else line
+            if rest.is_empty:
+                continue
+            merged = linemerge(rest) if rest.geom_type == 'MultiLineString' else rest
+            for piece in getattr(merged, 'geoms', [merged]):
+                coordinates = [[round(x, 6), round(y, 6)] for x, y in piece.coords]
+                if piece.length < SHARED_EDGE_DEGREES or len(coordinates) < 2:
+                    continue
+                written[cls].append(piece)
+                out.append(feature({'type': 'LineString', 'coordinates': coordinates}, values, airspace_minzoom(cls)))
+    return out
+
+
+def label_candidates(polygon):
+    """Points inside an area where its altitudes can be printed, the roomiest first, as (lon, lat, clearance in metres)."""
+    lat0 = polygon.representative_point().y
+    scale = (111_320 * math.cos(math.radians(lat0)), 110_540)
+    metric = shapely.transform(polygon, lambda coordinates: coordinates * scale)
+    boundary = metric.boundary
+    pole = polylabel(metric, tolerance=25)
+    best = boundary.distance(pole)
+    if best <= 0:
+        return []
+    spacing = max(best, LABEL_MIN_SPACING_M)
+    west, south, east, north = metric.bounds
+    grid = [Point(west + spacing * (i + 0.5), south + spacing * (j + 0.5))
+            for i in range(int((east - west) / spacing) + 1) for j in range(int((north - south) / spacing) + 1)]
+    spare = [(point, boundary.distance(point)) for point in grid if metric.contains(point)]
+    spare = [(point, clearance) for point, clearance in spare if clearance >= best * 0.4]
+    chosen = [(pole, best)]
+    # Places around the pole: a round Class D's pole is its airport, whose symbol and identifier take it.
+    for step in range(8):
+        turn = step * math.pi / 4
+        point = Point(pole.x + best * 0.5 * math.cos(turn), pole.y + best * 0.5 * math.sin(turn))
+        clearance = boundary.distance(point)
+        if metric.contains(point) and clearance >= best * 0.4:
+            chosen.append((point, clearance))
+    # Farthest-point order: each next candidate is the one farthest from those already chosen.
+    while spare and len(chosen) < LABEL_CANDIDATES:
+        distance = lambda item: min(item[0].distance(point) for point, _ in chosen)
+        far = max(spare, key=distance)
+        if distance(far) < spacing * 0.9:
+            break
+        chosen.append(far)
+        spare.remove(far)
+    return [(round(point.x / scale[0], 6), round(point.y / scale[1], 6), int(clearance)) for point, clearance in chosen]
+
+
+def airspace_label_features(records):
+    """Where each Class B, C and D area's ceiling and floor can be printed, as the sectional prints them inside the area.
+
+    Every Class B and C sector is its own area, labelled for its own floor. A
+    Class D split into records (an extension, a cut-out) prints its ceiling
+    once, so its pieces with one name and ceiling share an area number.
+    """
+    out = []
+    areas = {}
+    for cls, name, properties, polygon in charted_airspace(records):
         floor = altitude_ft(properties.get('LOWER_VAL'), properties.get('LOWER_UOM'), properties.get('LOWER_CODE'))
         ceiling = altitude_ft(properties.get('UPPER_VAL'), properties.get('UPPER_UOM'), properties.get('UPPER_CODE'))
-        if floor is not None:
+        # Class D prints its ceiling alone; B and C print ceiling over floor.
+        if ceiling is None or (cls != 'D' and floor is None):
+            continue
+        values = {'class': cls, 'ceiling_ft': ceiling}
+        if cls != 'D':
             values['floor_ft'] = floor
-        if ceiling is not None:
-            values['ceiling_ft'] = ceiling
-        for line in rings_as_lines(geometry):
-            out.append(feature(line, values, 5 if cls in ('B', 'C') else 7))
+        if properties.get('UPPER_DESC') == 'TNI':
+            values['ceiling_below'] = True
+        for part in getattr(polygon, 'geoms', [polygon]):
+            key = (name, ceiling, values.get('ceiling_below', False)) if cls == 'D' else len(areas)
+            area = areas.setdefault(key, len(areas))
+            for index, (lon, lat, clearance) in enumerate(label_candidates(part)):
+                out.append(feature({'type': 'Point', 'coordinates': [lon, lat]}, {**values, 'area': area, 'clearance_m': clearance},
+                                   airspace_minzoom(cls) if index == 0 else max(airspace_minzoom(cls), LABEL_DETAIL_MINZOOM)))
     return out
 
 
@@ -357,8 +456,10 @@ def build_layers(pins, cache):
     airports = operational_airports(base)
     with gzip.open(fetch(files['sua'], cache)) as stream:
         sua = json.load(stream)
+    airspace = read_airspace(fetch(files['classAirspace'], cache), files['classAirspace']['member'])
     return {
-        'airspace': airspace_features(read_airspace(fetch(files['classAirspace'], cache), files['classAirspace']['member'])),
+        'airspace': airspace_features(airspace),
+        'airspace_labels': airspace_label_features(airspace),
         'sua': sua_features(sua),
         'runways': runway_features(airports, runways, ends),
         'airports': airport_features(airports, runways, ends),

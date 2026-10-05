@@ -1,5 +1,5 @@
 import { aviationSymbolPaths, aviationSymbolRadius, aviationSymbolStandsOnAnchor } from "../annotate/aviation-symbols.js";
-import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationClass, type AviationDetailsV1, type AviationSymbol, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
+import { DEFAULT_AVIATION_MM, DEFAULT_AVIATION_SYMBOL_MM, type AviationAltitudeLabel, type AviationClass, type AviationDetailsV1, type AviationSymbol, type LineStyleV1, type MarkingFeature, type Point2D, type ProjectConfigV1 } from "../types.js";
 
 /**
  * FAA aviation detail: which classes a project draws, how each is stroked, and
@@ -119,6 +119,33 @@ export interface AviationLabelCandidate {
   priority: number;
 }
 
+/** One place an airspace's altitudes may be printed, at this model's scale. */
+export interface AviationAltitudeCandidate {
+  area: string;
+  aviationClass: AviationClass;
+  anchor: Point2D;
+  /** Distance from the anchor to the area's nearest edge; the printed label must fit within it. */
+  clearanceMm: number;
+  /** Class B and C print the ceiling over the floor; Class D prints its ceiling alone, boxed. */
+  ceiling: string;
+  floor?: string;
+}
+
+const hundreds = (feet: number) => String(Math.round(feet / 100));
+
+/**
+ * Altitudes as the sectional prints them, in hundreds of feet MSL: Class B and
+ * C as ceiling over floor (SFC for the surface; T for a Class C ceiling that
+ * runs up to, not into, the Class B above), Class D its ceiling alone, with a
+ * minus for "up to but not including".
+ */
+export function airspaceAltitudeText(aviationClass: AviationClass, altitude: Pick<AviationAltitudeLabel, "ceilingFt" | "floorFt" | "ceilingBelow">): { ceiling: string; floor?: string } {
+  if (aviationClass === "class-d") return { ceiling: `${altitude.ceilingBelow ? "-" : ""}${hundreds(altitude.ceilingFt)}` };
+  return { ceiling: altitude.ceilingBelow ? "T" : hundreds(altitude.ceilingFt), floor: altitude.floorFt ? hundreds(altitude.floorFt) : "SFC" };
+}
+
+const ALTITUDE_CLASS_ORDER: Partial<Record<AviationClass, number>> = { "class-b": 0, "class-c": 1, "class-d": 2 };
+
 /** Label order by symbol; a towered field also outranks every untowered one. */
 const LABEL_PRIORITY: Partial<Record<AviationSymbol, number>> = {
   "airport-pattern": 1, "airport-hard": 1, "airport-joint": 1, "airport-military": 1, airport: 2, "seaplane-base": 3,
@@ -175,14 +202,15 @@ function crowdedSymbols(points: readonly MarkingFeature[], sizeMm: number): Set<
 
 /**
  * Enabled aviation features as engraving line features, plus the identifier
- * labels to place once every line is routed and the area each drawn symbol
- * covers, which labels keep clear of. Points become their symbols, less
+ * and airspace altitude labels to place once every line is routed, and the
+ * area each drawn symbol covers, which labels keep clear of. Points become their symbols, less
  * optional ones that would print over another (see `crowdedSymbols`); runways
  * become outlines or centerlines.
  */
-export function aviationFeatures(features: readonly MarkingFeature[], config: Pick<ProjectConfigV1, "aviation" | "lineStyle">, mmPerMeter: number): { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; symbols: AviationSymbolBox[] } {
+export function aviationFeatures(features: readonly MarkingFeature[], config: Pick<ProjectConfigV1, "aviation" | "lineStyle">, mmPerMeter: number): { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; altitudes: AviationAltitudeCandidate[]; symbols: AviationSymbolBox[] } {
   const lines: MarkingFeature[] = [];
   const labels: AviationLabelCandidate[] = [];
+  const altitudes: AviationAltitudeCandidate[] = [];
   const symbols: AviationSymbolBox[] = [];
   const symbolMm = aviationSymbolSize(config.lineStyle);
   const strokeMm = config.lineStyle.aviationMm ?? DEFAULT_AVIATION_MM;
@@ -191,6 +219,12 @@ export function aviationFeatures(features: readonly MarkingFeature[], config: Pi
   for (const feature of enabled) {
     const aviationClass = feature.aviationClass!;
     const line = (points: Point2D[], index: number): MarkingFeature => ({ id: `${feature.id}-${index}`, kind: "aviation", operation: "engrave", aviationClass, points });
+    if (feature.aviationAltitude) {
+      const anchor = feature.points[0];
+      const { area, clearanceM } = feature.aviationAltitude;
+      if (anchor && config.aviation?.labels) altitudes.push({ area, aviationClass, anchor, clearanceMm: clearanceM * mmPerMeter, ...airspaceAltitudeText(aviationClass, feature.aviationAltitude) });
+      continue;
+    }
     if (feature.aviationSymbol) {
       const anchor = feature.points[0];
       if (!anchor || crowded.has(feature)) continue;
@@ -211,5 +245,7 @@ export function aviationFeatures(features: readonly MarkingFeature[], config: Pi
     paths.forEach((points, index) => lines.push(line(points, index)));
   }
   labels.sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label) || left.id.localeCompare(right.id));
-  return { lines, labels, symbols };
+  // Class B before C before D, then the roomiest place first; each area prints once.
+  altitudes.sort((left, right) => (ALTITUDE_CLASS_ORDER[left.aviationClass] ?? 3) - (ALTITUDE_CLASS_ORDER[right.aviationClass] ?? 3) || right.clearanceMm - left.clearanceMm || left.area.localeCompare(right.area));
+  return { lines, labels, altitudes, symbols };
 }

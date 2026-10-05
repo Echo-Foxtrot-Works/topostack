@@ -8,7 +8,7 @@ test("engraves FAA aviation detail and exports it with its cycle and a not-for-n
   await page.route("**/v1/events", (route) => route.fulfill({ status: 204 }));
   await page.goto("/studio");
   await page.getByRole("button", { name: "Expand all" }).click();
-  for (const name of ["Class B, C and D airspace", "Runways", "Airports", "Airport and navaid identifiers"]) {
+  for (const name of ["Class B, C and D airspace", "Runways", "Airports", "Identifiers and airspace altitudes"]) {
     await page.getByRole("switch", { name, exact: true }).click();
     await expect(page.getByRole("switch", { name, exact: true })).toBeChecked();
   }

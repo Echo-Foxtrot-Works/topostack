@@ -116,6 +116,117 @@ function fitRunways(runways: Path[], center: Point2D, radius: number): Array<[Po
   return segments.map(([start, end]) => [place(start), place(end)]);
 }
 
+/** Runways within this angle of each other are parallels. */
+const PARALLEL_RADIANS = (10 * Math.PI) / 180;
+/** Spreading may shrink the layout to this share of its size; past it, close parallels are drawn as one. */
+const MIN_SPREAD_SCALE = 0.8;
+
+type Segment = [Point2D, Point2D];
+interface Parallel { index: number; offset: number; from: number; to: number }
+
+/**
+ * Runways grouped into families of parallels, each member with its offset
+ * across the family's direction and its extent along it, sorted by offset.
+ */
+function parallelFamilies(runways: Segment[]): Array<{ along: Point2D; normal: Point2D; members: Parallel[] }> {
+  const angle = ([start, end]: Segment) => ((Math.atan2(end.y - start.y, end.x - start.x) % Math.PI) + Math.PI) % Math.PI;
+  const turn = (left: number, right: number) => { const difference = Math.abs(left - right) % Math.PI; return Math.min(difference, Math.PI - difference); };
+  const families: number[][] = [];
+  runways.forEach((runway, index) => {
+    const family = families.find((members) => turn(angle(runways[members[0]!]!), angle(runway)) < PARALLEL_RADIANS);
+    if (family) family.push(index); else families.push([index]);
+  });
+  return families.map((family) => {
+    const [start, end] = runways[family[0]!]!;
+    const length = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+    const along = { x: (end.x - start.x) / length, y: (end.y - start.y) / length };
+    const normal = { x: -along.y, y: along.x };
+    const members = family.map((index) => {
+      const [a, b] = runways[index]!;
+      const ends = [a.x * along.x + a.y * along.y, b.x * along.x + b.y * along.y];
+      return { index, offset: ((a.x + b.x) / 2) * normal.x + ((a.y + b.y) / 2) * normal.y, from: Math.min(...ends), to: Math.max(...ends) };
+    }).sort((left, right) => left.offset - right.offset);
+    return { along, normal, members };
+  });
+}
+
+const sideBySide = (left: Parallel, right: Parallel) => left.to > right.from && right.to > left.from;
+
+/**
+ * Parallel runways pushed apart so neighbours that run alongside each other
+ * are at least `minimum` apart, as a cartographer spreads a layout too small to
+ * show them separately. Each family keeps its order and stays centred where it
+ * was; runways that do not overlap along their length stay put.
+ */
+function spreadParallels(runways: Segment[], minimum: number): Segment[] {
+  const moved = runways.map(([start, end]): Segment => [{ ...start }, { ...end }]);
+  for (const { normal, members } of parallelFamilies(runways)) {
+    const spread = members.map((member) => member.offset);
+    members.forEach((member, position) => members.slice(0, position).forEach((other, otherPosition) => {
+      if (sideBySide(other, member)) spread[position] = Math.max(spread[position]!, spread[otherPosition]! + minimum);
+    }));
+    const shift = members.reduce((sum, member, position) => sum + member.offset - spread[position]!, 0) / members.length;
+    members.forEach((member, position) => {
+      const by = spread[position]! - member.offset + shift;
+      moved[member.index] = moved[member.index]!.map((point) => ({ x: point.x + normal.x * by, y: point.y + normal.y * by })) as Segment;
+    });
+  }
+  return moved;
+}
+
+/** Parallel runways closer than `minimum` alongside each other drawn as one, spanning both, midway between them. */
+function mergeParallels(runways: Segment[], minimum: number): Segment[] {
+  const merged: Segment[] = [];
+  for (const { along, normal, members } of parallelFamilies(runways)) {
+    const groups: Parallel[][] = [];
+    for (const member of members) {
+      const group = groups.find((candidate) => candidate.some((other) => sideBySide(other, member) && member.offset - other.offset < minimum));
+      if (group) group.push(member); else groups.push([member]);
+    }
+    for (const group of groups) {
+      const offset = group.reduce((sum, member) => sum + member.offset, 0) / group.length;
+      const point = (distance: number) => ({ x: along.x * distance + normal.x * offset, y: along.y * distance + normal.y * offset });
+      merged.push([point(Math.min(...group.map((member) => member.from))), point(Math.max(...group.map((member) => member.to)))]);
+    }
+  }
+  return merged;
+}
+
+/** How far a layout reaches from the middle of its bounds. */
+function reach(runways: Segment[]): number {
+  const points = runways.flat();
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const middle = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  return Math.max(...points.map((point) => Math.hypot(point.x - middle.x, point.y - middle.y)));
+}
+
+/**
+ * Runways fitted within `radius` of `center` with parallels at least `minimum`
+ * apart. Spreading widens the layout and refitting shrinks it again, until the
+ * parallels sit `minimum` apart at full size; when that leaves the runways
+ * under MIN_SPREAD_SCALE of their fitted length, close parallels are merged
+ * into one runway and the layout is fitted again.
+ */
+function fitSpread(runways: Path[], center: Point2D, radius: number, minimum: number): Segment[] {
+  let source = fitRunways(runways, center, radius);
+  for (;;) {
+    let fitted = source;
+    let scale = 1;
+    for (let pass = 0; pass < 6 && fitted.length > 1; pass += 1) {
+      const spread = spreadParallels(fitted, minimum);
+      const shrink = radius / reach(spread);
+      scale *= Math.min(1, shrink);
+      fitted = fitRunways(spread, center, radius);
+      if (shrink > 0.995) break;
+    }
+    const merged = scale < MIN_SPREAD_SCALE ? mergeParallels(source, minimum) : source;
+    // The last refit shrank the spacing a little; spread once more and accept the layout a hair wider.
+    if (merged.length === source.length) return fitted.length > 1 ? spreadParallels(fitted, minimum) : fitted;
+    source = fitRunways(merged, center, radius);
+  }
+}
+
 /** The strip a runway covers, `halfWidth` either side of its centerline, as a closed ring. */
 function strip([start, end]: [Point2D, Point2D], halfWidth: number): Path {
   const length = Math.hypot(end.x - start.x, end.y - start.y) || 1;
@@ -335,7 +446,8 @@ export function aviationSymbolPaths(symbol: AviationSymbol, anchor: Point2D, siz
     case "airport-hard": {
       // The gap left for each runway is at least 1.2 strokes, and the hatch's round caps reach half a stroke into it.
       const gap = Math.max(circleRadius * 0.15, strokeMm * 0.6);
-      const knockouts = fitRunways(detail.runways ?? [], center, circleRadius * 0.78).map((runway) => strip(runway, gap + strokeMm / 2));
+      // Knockouts of parallel runways keep at least one stroke of disc between them.
+      const knockouts = fitSpread(detail.runways ?? [], center, circleRadius * 0.78, 2 * gap + strokeMm * 2).map((runway) => strip(runway, gap + strokeMm / 2));
       return [...solid((inset) => circle(center, circleRadius - inset), strokeMm, knockouts), ...around(center, circleRadius, radius, detail, true)];
     }
     case "airport-pattern": {
@@ -343,8 +455,10 @@ export function aviationSymbolPaths(symbol: AviationSymbol, anchor: Point2D, siz
       const halfWidth = Math.max(radius * 0.14, strokeMm * 1.5);
       const hollow = halfWidth <= radius * 0.2;
       const margin = hollow ? halfWidth : strokeMm / 2;
+      // Parallel runways stay apart: outlines by a stroke and a half of clear space, centerlines by two and a half strokes.
+      const minimum = hollow ? 2 * halfWidth + strokeMm * 1.5 : strokeMm * 2.5;
       // A beacon star takes the top of the symbol, so the layout moves down and shrinks.
-      const fitted = detail.beacon ? fitRunways(detail.runways ?? [], at(center, 0, radius * 0.2), radius * 0.75 - margin) : fitRunways(detail.runways ?? [], center, radius * 0.95 - margin);
+      const fitted = detail.beacon ? fitSpread(detail.runways ?? [], at(center, 0, radius * 0.2), radius * 0.75 - margin, minimum) : fitSpread(detail.runways ?? [], center, radius * 0.95 - margin, minimum);
       if (!fitted.length) return aviationSymbolPaths("airport-hard", anchor, sizeMm, detail, strokeMm);
       const runways = hollow ? unionOutline(fitted.map((runway) => strip(runway, halfWidth))) : fitted.map(([start, end]) => [start, end]);
       return [...runways, ...(detail.beacon ? [star(at(center, 0, -radius * 0.8), radius * 0.2)] : [])];

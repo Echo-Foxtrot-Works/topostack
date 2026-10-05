@@ -89,6 +89,42 @@ describe("aviation styling", () => {
 });
 
 describe("aviation generation and export", () => {
+  it("prints airspace altitudes inside their areas as the sectional does, once per area", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
+    const place = (id: string, aviationClass: MarkingFeature["aviationClass"], x: number, y: number, aviationAltitude: NonNullable<MarkingFeature["aviationAltitude"]>): MarkingFeature =>
+      ({ id, kind: "aviation", operation: "engrave", aviationClass, aviationAltitude, points: [{ x, y }] });
+    const roomy = 100_000;
+    const candidates = [
+      place("b-1", "class-b", -60, 0, { area: "1", ceilingFt: 12_000, floorFt: 8_000, clearanceM: roomy }),
+      place("b-2", "class-b", 60, 0, { area: "1", ceilingFt: 12_000, floorFt: 8_000, clearanceM: roomy / 2 }),
+      place("c-core", "class-c", 0, 60, { area: "2", ceilingFt: 4_800, floorFt: 0, clearanceM: roomy }),
+      place("c-under-b", "class-c", 0, -60, { area: "3", ceilingFt: 4_800, floorFt: 2_100, ceilingBelow: true, clearanceM: roomy }),
+      place("d", "class-d", 100, 60, { area: "4", ceilingFt: 2_500, ceilingBelow: true, clearanceM: roomy }),
+      // A sliver of an area too narrow for its label at this scale.
+      place("thin", "class-b", -100, -60, { area: "5", ceilingFt: 10_000, floorFt: 7_000, clearanceM: 1 }),
+    ];
+    const labels = (aviation: AviationDetailsV1) => generateGeometry({ ...project, aviation }, { ...aviationSource(project), aviationMarkings: candidates }).layers[0]!.markings
+      .filter((marking) => marking.id.startsWith("aviation-label-"));
+    const printed = labels(ALL);
+    const words = printed.filter((marking) => marking.label).map((marking) => marking.label);
+    expect(words.sort()).toEqual(["-25", "120", "21", "48", "80", "SFC", "T"].sort());
+    // Area 1 took its roomiest place, left of centre; ceiling above the bar, floor below.
+    const ceiling = printed.find((marking) => marking.label === "120")!;
+    const floor = printed.find((marking) => marking.label === "80")!;
+    expect(ceiling.points[0]!.x).toBeLessThan(0);
+    expect(ceiling.points[0]!.y).toBeLessThan(floor.points[0]!.y);
+    expect(printed.filter((marking) => marking.id.endsWith("-bar"))).toHaveLength(3);
+    // Class D: the ceiling in a dashed box of several open strokes.
+    expect(printed.filter((marking) => marking.id.includes("-box-")).length).toBeGreaterThan(4);
+    expect(labels({ ...ALL, labels: false })).toEqual([]);
+    expect(labels({ ...ALL, airspace: false })).toEqual([]);
+    // A stack routes them onto whichever sheets show at each place, like identifiers.
+    const stack: ProjectConfigV1 = { ...project, outputMode: "stack" };
+    const stacked = generateGeometry(stack, { ...aviationSource(stack), aviationMarkings: candidates }).layers.flatMap((layer) => layer.markings)
+      .filter((marking) => marking.id.startsWith("aviation-label-"));
+    expect(stacked.length).toBeGreaterThan(0);
+  });
+
   it("places identifiers clear of unlabelled symbols too", () => {
     const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...quiet, outputMode: "engraving", aviation: ALL };
     const point = (id: string, aviationSymbol: MarkingFeature["aviationSymbol"], x: number): MarkingFeature =>

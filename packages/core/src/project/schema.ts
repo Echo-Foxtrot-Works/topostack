@@ -56,7 +56,7 @@ export const DETAILS_SCHEMA: Schema = {
 export const AVIATION_SCHEMA: Schema = {
   type: "object",
   additionalProperties: false,
-  description: "FAA aviation detail, US and territories only; decorative, never for navigation. Every switch is off unless set: airspace (Class B, C and D boundaries), specialUse (restricted, MOA, warning and similar areas), runways, airports, navaids, obstacles (200 ft AGL and taller), labels (airport and navaid identifiers).",
+  description: "FAA aviation detail, US and territories only; decorative, never for navigation. Every switch is off unless set: airspace (Class B, C and D boundaries), specialUse (restricted, MOA, warning and similar areas), runways, airports, navaids, obstacles (200 ft AGL and taller), labels (airport and navaid identifiers, and Class B, C and D altitudes).",
   properties: Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, { type: "boolean" }])),
 };
 
