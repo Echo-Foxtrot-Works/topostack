@@ -207,7 +207,7 @@ describe("geographic crop bounds", () => {
   it("fits the map area to the cut aspect ratio while proportional resizing keeps the area", () => {
     const original = boundsForProject(DEFAULT_PROJECT);
     expect(boundsForProject({ ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm * 2, heightMm: DEFAULT_PROJECT.heightMm * 2 })).toEqual(original);
-    for (const [widthMm, heightMm] of [[400, 100], [100, 400], [200, 200]]) {
+    for (const [widthMm, heightMm] of [[400, 100], [100, 400], [200, 200]] as const) {
       for (const location of [DEFAULT_PROJECT.location, { ...DEFAULT_PROJECT.location, bounds: original }]) {
         const bounds = boundsForProject({ ...DEFAULT_PROJECT, location, widthMm, heightMm });
         const radians = Math.PI / 180;
