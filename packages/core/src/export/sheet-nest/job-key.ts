@@ -1,4 +1,4 @@
-import { fnv1aHex, stableStringify } from "../../pipeline/fingerprint.js";
+import { fnv1aHex, stableStringify } from "../../primitives/hash.js";
 import type { NestPartV1, ResolvedSheetNestSettings } from "../../types.js";
 
 const round = (value: number) => Math.round(value * 1000) / 1000;

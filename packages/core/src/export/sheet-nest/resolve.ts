@@ -1,4 +1,4 @@
-import type { ProjectConfigV1, ResolvedSheetNestSettings, SheetNestRotation, SheetNestSettingsV1 } from "../../types.js";
+import { SHEET_NEST_ROTATIONS, type ProjectConfigV1, type ResolvedSheetNestSettings, type SheetNestRotation, type SheetNestSettingsV1 } from "../../types.js";
 
 export const DEFAULT_SHEET_NESTING: SheetNestSettingsV1 = {
   sheetWidthMm: 0,
@@ -16,8 +16,6 @@ export const SHEET_NEST_LIMITS = {
   spacingMm: { min: 0, max: 20 },
   timeBudgetS: { min: 2, max: 600 },
 } as const;
-
-export const SHEET_NEST_ROTATIONS: readonly SheetNestRotation[] = ["none", "half", "quarter", "free"];
 
 export type SheetNestSettingsResult = { ok: true; settings: ResolvedSheetNestSettings } | { ok: false; error: string };
 

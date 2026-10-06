@@ -30,7 +30,7 @@ export interface GeometryWorkerResponse {
 const sourceIds = new WeakMap<SourceBundleV1, number>();
 let lastSourceId = 0;
 /** Stable per-object identity, so an unchanged source is never structured-cloned twice. */
-export function sourceIdentity(source: SourceBundleV1): number {
+function sourceIdentity(source: SourceBundleV1): number {
   let id = sourceIds.get(source);
   if (id === undefined) { id = ++lastSourceId; sourceIds.set(source, id); }
   return id;
@@ -39,7 +39,7 @@ export function sourceIdentity(source: SourceBundleV1): number {
 type WorkerFactory = () => Worker;
 type Generate = (config: ProjectConfigV1, source: SourceBundleV1) => GeometryIRV1;
 
-export const defaultWorkerFactory: WorkerFactory | undefined = typeof Worker === "undefined"
+const defaultWorkerFactory: WorkerFactory | undefined = typeof Worker === "undefined"
   ? undefined
   : () => new Worker(new URL("./geometry.worker.ts", import.meta.url), { type: "module" });
 
@@ -48,7 +48,7 @@ export const defaultWorkerFactory: WorkerFactory | undefined = typeof Worker ===
  * terminated. Short jobs finish and keep the cached source; long ones would
  * delay the next preview by more than a restart and source re-clone costs.
  */
-export const ABANDONED_WORK_LIMIT_MS = 1_000;
+const ABANDONED_WORK_LIMIT_MS = 1_000;
 
 interface PendingRequest {
   id: number;

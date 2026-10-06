@@ -125,7 +125,7 @@ export function shorelineFor(trace: { shoreline: Point2[][]; contours: { points:
  * Why no contour got a depth, in the maker's terms. The record's own error
  * names ids and batch steps, which mean nothing in the studio.
  */
-export function levellingFailure(diagnostics: { labels: number; labelled: number; labelDisagreements: number; contradictoryRegions: number }): string {
+function levellingFailure(diagnostics: { labels: number; labelled: number; labelDisagreements: number; contradictoryRegions: number }): string {
   if (!diagnostics.labels) return "The placed depths could not be read. Type each as a number, such as 10 or 2.5.";
   if (!diagnostics.labelled) return "None of the placed depths is on a traced line. Click on the contour line itself, a little away from its printed number.";
   if (diagnostics.labelDisagreements || diagnostics.contradictoryRegions) return "The placed depths disagree with each other or with the contour interval. Check each depth, and that the interval matches the chart.";

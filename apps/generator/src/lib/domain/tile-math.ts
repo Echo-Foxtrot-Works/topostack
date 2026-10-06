@@ -1,7 +1,7 @@
 import { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat, type GeoBounds, type Point2D } from "@topostack/core";
 
 /** Web-mercator tile arithmetic shared by terrain, vector, lake, and survey loaders. The projection itself lives in core. */
-export { latToWorldY, lonToWorldX, TILE_SIZE, worldSize, worldXToLon, worldYToLat } from "@topostack/core";
+export { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat } from "@topostack/core";
 export const MAX_DATA_TILES = 24;
 
 /** The whole zoom the data loaders work at: the map's zoom is fractional, the tile pyramids stop at 15. */
@@ -30,7 +30,7 @@ export function artworkToLonLat(bounds: GeoBounds, widthMm: number, heightMm: nu
 export interface DataTile { x: number; worldX: number; y: number; z: number }
 export interface TileWindow { zoom: number; westX: number; eastX: number; northY: number; southY: number; tiles: DataTile[] }
 
-export function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
+function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
   const westX = lonToWorldX(bounds.west, zoom);
   const eastX = lonToWorldX(bounds.east, zoom);
   const northY = latToWorldY(bounds.north, zoom);

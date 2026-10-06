@@ -57,6 +57,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: No unused exports
+        run: npm run lint:exports
+
       - name: Typecheck
         run: npm run typecheck
 

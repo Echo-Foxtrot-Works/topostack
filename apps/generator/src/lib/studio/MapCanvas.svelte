@@ -6,7 +6,7 @@
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
   import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
-  import { MAX_PROJECT_DIMENSION_MM, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
+  import { MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
   import { boundsForProject } from "$lib/domain/data-provider";
   import { polygonsPath } from "$lib/studio/svg-path";
   let { lakeSelection, onLakeViewportChange, onLakeMapClick, project, aspectLocked = $bindable(false), placingMarker = false, drawingLine = false, draftPoints = [], framing = true, hint = "Drag the map to choose your terrain", onLocationChange, onSelectionResize, onUnavailable, onPlaceMarker, onMoveMarker, onStopPlacing, onDrawPoint, onFinishDraw, onCancelDraw }: {
@@ -220,7 +220,7 @@
     }, { topostackProgrammatic: true });
   }
 
-  const longitudeWindow = () => project.location.bounds ?? { west: project.location.lon - 180, east: project.location.lon + 180, south: -85.0511, north: 85.0511 };
+  const longitudeWindow = () => project.location.bounds ?? { west: project.location.lon - 180, east: project.location.lon + 180, south: -MERCATOR_MAX_LATITUDE, north: MERCATOR_MAX_LATITUDE };
 
   function customLineData(lines: CustomLineFeatureV1[]) {
     const longitudeBounds = longitudeWindow();

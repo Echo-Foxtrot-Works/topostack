@@ -21,7 +21,7 @@ export const VECTOR_ARCHIVE_KEY = "osm/current.pmtiles";
 export const LAKE_ARCHIVE_KEY = "lakes/current.pmtiles";
 // Optional: studios request it only when a project turns aviation detail on,
 // so /ready does not depend on it.
-export const AVIATION_ARCHIVE_KEY = "aviation/current.pmtiles";
+const AVIATION_ARCHIVE_KEY = "aviation/current.pmtiles";
 
 export interface ArchiveRoute { key: string; label: string }
 

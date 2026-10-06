@@ -65,6 +65,18 @@ const AVIATION_LABEL_LIMIT = 60;
 const AVIATION_ALTITUDE_LIMIT = 40;
 /** Space between an aviation symbol and its identifier. */
 const AVIATION_LABEL_GAP_MM = 0.6;
+/** Aviation text is capped near the symbol size so identifiers stay attached, but never below this height. */
+const AVIATION_TEXT_MIN_MM = 1.6;
+const AVIATION_TEXT_PER_SYMBOL = 0.7;
+/** Land relief below this many meters gets the LOW_RELIEF warning. */
+const LOW_RELIEF_M = 20;
+/**
+ * Routed features × layers at which merging each layer's covering set into one
+ * boolean union pays for itself; below it the cheap per-layer sets are faster.
+ */
+const UNION_COVERING_MIN_WORK = 1_000;
+/** Stacks with at least this many layers spread alignment and elevation-label work across helper workers. */
+const PARALLEL_MIN_LAYERS = 32;
 
 
 /** Each layer's material and the material stacked above it, indexed once for routing many markings. */
@@ -355,7 +367,7 @@ function buildLadder(context: GenerationContext, carved: CarvedWater, waterAreas
   const { landMin, landMax, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
-  if (landRelief < 20) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical." });
+  if (landRelief < LOW_RELIEF_M) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical." });
 
   const hasOcean = !flatEngraving && waterAreas.some((area) => area.kind === "ocean");
   const stack = planTerrainStack(config, landRelief, source.bounds, depthBelowLandM);
@@ -791,7 +803,7 @@ function placeAviationLabels(context: GenerationContext, clips: LayerClip[]): vo
   const { config, clip, aviation } = context;
   if (!aviation.labels.length && !aviation.altitudes.length) return;
   const placer = annotationPlacer(context, clips);
-  const textStyle = { ...config.textStyle, sizeMm: Math.min(config.textStyle.sizeMm, Math.max(1.6, aviationSymbolSize(config.lineStyle) * 0.7)) };
+  const textStyle = { ...config.textStyle, sizeMm: Math.min(config.textStyle.sizeMm, Math.max(AVIATION_TEXT_MIN_MM, aviationSymbolSize(config.lineStyle) * AVIATION_TEXT_PER_SYMBOL)) };
   type Box = { left: number; top: number; right: number; bottom: number };
   // Every drawn symbol, labelled or not (private fields, obstacles), and each label once placed.
   const occupied: Box[] = [...aviation.symbols];
@@ -1259,14 +1271,14 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Boolean unions pay off when many paths repeatedly query a tall stack.
   // Sparse maps and flat engravings keep the cheap original covering sets.
   const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + config.customLines.length;
-  const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= 1_000);
+  const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= UNION_COVERING_MIN_WORK);
   const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm: config.widthMm / Math.max(1, grid.width - 1) }, fabricationNests, context.warnings);
   stage("fabrication");
   const transportationLabels = routeMarkings(context, clips, ladder);
   stage("routing");
   placeAnnotations(context, clips);
   // Small maps keep the original path and never start extra workers.
-  const usePool = parallel && !flatEngraving && layers.length >= 32;
+  const usePool = parallel && !flatEngraving && layers.length >= PARALLEL_MIN_LAYERS;
   if (!flatEngraving && config.showAlignmentGuides) {
     if (usePool) {
       const results = yield { config, tasks: layers.slice(0, -1).map((layer, index) => ({
