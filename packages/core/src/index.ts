@@ -5,7 +5,7 @@ export { createSyntheticSource } from "./pipeline/synthetic-source.js";
 export { projectFingerprint } from "./pipeline/fingerprint.js";
 // Polygon clip inputs appear in exported signatures (paint regions, marker
 // placement), so the prepared form is public even though the primitives stay internal.
-export type { PreparedPolygons } from "./primitives/geometry2d.js";
+export { distanceToSegment, polylineLength, signedArea, type PreparedPolygons } from "./primitives/geometry2d.js";
 export { labelDimensions, labelLineSegments, labelPathData, labelSvgPaths, roundText, unsupportedLabelCharacters, type LabelLineSegment } from "./annotate/labels.js";
 export { FONT_CATALOG, clearRegisteredFonts, decodeFontGlyphs, fontEntry, isBitmapFont, isFontLoaded, missingGlyphs, projectFonts, registerFont, type FontCatalogEntry, type FontGlyphsV1, type FontKind } from "./annotate/font-data.js";
 export { markerCenterForAnchor, markerIcon, markerPolygons, markerSymbolPaths, unwrapLongitude } from "./annotate/markers.js";

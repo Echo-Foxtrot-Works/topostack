@@ -71,3 +71,12 @@ export function tilePointProjector(window: TileWindow, widthMm: number, heightMm
     y: (((tile.y + point.y / extent) * TILE_SIZE - window.northY) / (window.southY - window.northY) - 0.5) * heightMm,
   });
 }
+
+/**
+ * The tiles covering `bounds` in a vector archive at `zoom`, clamped to the
+ * archive's zoom range, and the projector from those tiles to model millimetres.
+ */
+export function archiveTileWindow(header: { minZoom: number; maxZoom: number }, bounds: GeoBounds, zoom: number, size: { widthMm: number; heightMm: number }): { window: TileWindow; projectPoint: ReturnType<typeof tilePointProjector> } {
+  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, zoom)), header.minZoom);
+  return { window, projectPoint: tilePointProjector(window, size.widthMm, size.heightMm) };
+}

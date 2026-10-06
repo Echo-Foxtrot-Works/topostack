@@ -1,4 +1,5 @@
 import { reviewAlignment, reviewGeometryIssues, type ChartReview } from "./chart-review.ts";
+import { pathLength } from "@topostack/chart-trace/geometry";
 import { snapCandidates, SNAP_MIN_IOU } from "@topostack/chart-trace/georef";
 import type { Point2 } from "@topostack/chart-trace/local-frame";
 import type { Rgb } from "@topostack/chart-trace/raster";
@@ -95,12 +96,6 @@ export function chartId(name: string | undefined, random: () => number = Math.ra
   return `${base}-chart-${suffix}`.slice(0, 64);
 }
 
-const ringLength = (ring: readonly Point2[]): number => {
-  let total = 0;
-  for (let index = 1; index < ring.length; index += 1) total += Math.hypot(ring[index]![0] - ring[index - 1]![0], ring[index]![1] - ring[index - 1]![1]);
-  return total;
-};
-
 /**
  * The shore the snap is fitted from: the longest traced line that closes, or
  * the longest line of all when nothing closed. A chart's outer shore is its
@@ -115,7 +110,7 @@ export function shorelineFor(trace: { shoreline: Point2[][]; contours: { points:
   let bestLength = 0;
   for (const ring of rings) {
     if (ring.length < 3) continue;
-    const length = ringLength(ring);
+    const length = pathLength(ring);
     if (length > bestLength) { best = ring; bestLength = length; }
   }
   return best;

@@ -332,6 +332,13 @@ export function clipPolyline(points: Point2D[], polygons: Polygon2D[] | Prepared
   return result;
 }
 
+export function polylineLength(points: Point2D[]): number {
+  return points.reduce((total, point, index) => {
+    const next = points[index + 1];
+    return total + (next ? Math.hypot(next.x - point.x, next.y - point.y) : 0);
+  }, 0);
+}
+
 export function distanceToSegment(point: Point2D, start: Point2D, end: Point2D): number {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
