@@ -6,7 +6,6 @@ entire multi-GB project. See docs/hrdem-terrain.md for pinning and rollout.
 """
 import argparse
 import hashlib
-import json
 import math
 import platform
 from pathlib import Path

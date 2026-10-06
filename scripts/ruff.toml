@@ -1,0 +1,9 @@
+# Lint for the Python data builders. CI runs it with the pinned version below
+# (see the python-data-tools job); locally: uvx ruff@0.14.0 check scripts
+required-version = "==0.14.0"
+target-version = "py313"
+
+[lint]
+# Pyflakes (unused imports and names, undefined names), syntax errors, and
+# mutable or call-evaluated default arguments.
+select = ["F", "E9", "B006", "B008"]
