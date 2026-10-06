@@ -1,6 +1,6 @@
 import { DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
-import { fnv1aHex, stableStringify } from "../pipeline/fingerprint.js";
-import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, zoomForBounds } from "./bounds.js";
+import { fnv1aHex, stableStringify } from "../primitives/hash.js";
+import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, MERCATOR_MAX_LATITUDE, zoomForBounds } from "./bounds.js";
 import { parseProject } from "./parse.js";
 
 /**
@@ -163,7 +163,7 @@ function text(value: unknown, path: string, maxLength: number, issues: Issues, k
 }
 
 function latitude(value: unknown, path: string, issues: Issues): number | undefined {
-  return numberIn(value, path, { min: -85.0511, max: 85.0511 }, issues);
+  return numberIn(value, path, { min: -MERCATOR_MAX_LATITUDE, max: MERCATOR_MAX_LATITUDE }, issues);
 }
 function longitude(value: unknown, path: string, issues: Issues): number | undefined {
   return numberIn(value, path, { min: -180, max: 180 }, issues);
@@ -348,7 +348,7 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
     if (enabled !== undefined) (patch as Record<string, unknown>)[DETAIL_FIELDS[key]] = enabled;
   }
   if (change.aviation) {
-    const aviation = Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, change.aviation![key] ?? project.aviation?.[key] ?? false])) as unknown as AviationDetailsV1;
+    const aviation = Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, change.aviation![key] ?? project.aviation?.[key] ?? false])) as Record<keyof AviationDetailsV1, boolean>;
     // All off drops the setting, so the design reads exactly as one without aviation.
     patch.aviation = PROJECT_REQUEST_AVIATION_KEYS.some((key) => aviation[key]) ? aviation : undefined;
   }

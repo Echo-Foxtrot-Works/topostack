@@ -1,6 +1,7 @@
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
 
 const MAX_GEOCODER_BYTES = 256_000;
 const GEOCODE_CACHE_SECONDS = 60 * 60 * 24;
@@ -32,7 +33,7 @@ export function normalizeGeoapify(payload: unknown): Array<{ place_id: string; d
     const lat = item.lat;
     const lon = item.lon;
     const label = typeof item.formatted === "string" ? item.formatted.trim() : "";
-    if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -85.0511 || lat > 85.0511 || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
+    if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -MERCATOR_MAX_LATITUDE || lat > MERCATOR_MAX_LATITUDE || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
     return [{ place_id: geoapifyPlaceId(item, index), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
   });
 }

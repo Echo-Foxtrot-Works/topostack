@@ -17,7 +17,7 @@ export interface PlacedOutline {
   bounds: Bounds2D;
 }
 
-export function placeOutlines(partsById: Map<string, NestPartV1>, placements: NestPlacementV1[]): PlacedOutline[] {
+function placeOutlines(partsById: Map<string, NestPartV1>, placements: NestPlacementV1[]): PlacedOutline[] {
   return placements.flatMap((placement) => {
     const part = partsById.get(placement.partId);
     if (!part) return [];

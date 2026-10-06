@@ -42,7 +42,7 @@ export interface NestRunOptions {
 
 export type WorkerFactory = () => Worker;
 
-export const defaultWorkerFactory: WorkerFactory | undefined =
+const defaultWorkerFactory: WorkerFactory | undefined =
   typeof Worker === "undefined" ? undefined : () => new Worker(new URL("./nest.worker.ts", import.meta.url), { type: "module" });
 
 interface Job {

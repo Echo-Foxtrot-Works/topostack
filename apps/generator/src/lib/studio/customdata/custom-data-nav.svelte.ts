@@ -17,7 +17,7 @@ export interface CustomDataSectionInfo {
   label: string;
 }
 
-export const CUSTOM_DATA_SECTIONS: readonly CustomDataSectionInfo[] = [
+const CUSTOM_DATA_SECTIONS: readonly CustomDataSectionInfo[] = [
   { id: "charts", label: "Depth charts" },
   { id: "markers", label: "Markers" },
   { id: "paths", label: "Trails & boundaries" },

@@ -65,7 +65,7 @@ function panelOperationGroup(ir: GeometryIRV1, panel: FabricationPanel, operatio
   return `<g id="${panelId(panel)}-${operation.toUpperCase()}" data-layers="${escapeXml(layerIds)}"${cell}${transform}>${body}</g>`;
 }
 
-export function operationGroup(operation: Operation, body: string, style: LineStyleV1): string {
+function operationGroup(operation: Operation, body: string, style: LineStyleV1): string {
   if (operation === "assembly") {
     // Omitted entirely when empty: an empty process would still show up as a
     // layer to configure in the machine's software.

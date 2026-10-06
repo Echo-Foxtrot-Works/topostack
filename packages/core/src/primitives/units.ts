@@ -4,6 +4,8 @@ export const MM_PER_INCH = 25.4;
 export const FEET_PER_METER = 3.280839895;
 /** Mean Earth radius (IUGG), for every ground distance TopoStack measures on the sphere. */
 export const EARTH_RADIUS_M = 6_371_008.8;
+/** The Web Mercator latitude limit; terrain and vector tiles end here. */
+export const MERCATOR_MAX_LATITUDE = 85.0511;
 
 export function displayLength(valueMm: number, units: UnitSystem): number {
   return units === "imperial" ? valueMm / MM_PER_INCH : valueMm;

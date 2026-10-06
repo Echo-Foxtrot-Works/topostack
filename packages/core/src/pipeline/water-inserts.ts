@@ -24,7 +24,7 @@ export const WATER_INSERT_LEDGE_MM = 2;
 export const WATER_INSERT_MIN_WIDTH_MM = 3;
 
 /** Smallest insert worth cutting and placing by hand. */
-export const WATER_INSERT_MIN_AREA_MM2 = 50;
+const WATER_INSERT_MIN_AREA_MM2 = 50;
 
 /**
  * How far past an insert's edge an inserted lake's shoreline score is left

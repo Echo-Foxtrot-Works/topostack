@@ -1,6 +1,6 @@
 # Canadian terrain packaging benchmark — 2026-09-16
 
-Initial bounded experiment for the [terrain expansion plan](terrain-expansion-plan.md). Twelve real MRDEM-30 DTM archives were built and verified locally. No benchmark source was registered in the application or published.
+Initial bounded experiment for the [terrain expansion plan](../terrain-expansion-plan.md). Twelve real MRDEM-30 DTM archives were built and verified locally. No benchmark source was registered in the application or published.
 
 ## Decision
 

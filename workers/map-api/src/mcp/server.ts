@@ -26,7 +26,7 @@ const INSTRUCTIONS = [
 ].join(" ");
 
 /** Batch entries run concurrently, so a batch is kept short. */
-export const MAX_BATCH_MESSAGES = 8;
+const MAX_BATCH_MESSAGES = 8;
 
 const AGENT_BUDGET_SPENT = { content: [{ type: "text", text: "The agent budget for this client is used up. Try again in a minute." }], isError: true };
 

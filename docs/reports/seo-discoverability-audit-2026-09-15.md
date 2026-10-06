@@ -2,7 +2,7 @@
 
 Date: September 15, 2026. Source reviewed: `dev` at `335a5c9`, initially clean working tree. Live site: [TopoStack](https://topostack.echofoxtrot.works/).
 
-Implementation follow-up: [SEO operations and verification](seo-operations.md). The findings below record the pre-implementation audit.
+Implementation follow-up: [SEO operations and verification](../seo-operations.md). The findings below record the pre-implementation audit.
 
 ## Assessment
 
@@ -130,7 +130,7 @@ The following are **keyword hypotheses**, not measured search-volume or ranking 
 
 Start with the two workflow guides and one excellent example. Link to them from relevant homepage sections, add breadcrumbs, and link each to the studio. Give each a unique title, description and canonical, and include it in the sitemap. Add preset-aware studio links only when the app actually supports them.
 
-Use real exported artwork and genuine fabrication photographs when available. The homepage currently has decorative inline SVG illustrations and no `<img>` elements; the existing [studio screenshot](images/studio-crater-lake.png) is shown in the README, not on the landing page. A screenshot can explain the product now; label it as a preview. Future photos should document actual results. Use descriptive alt text, dimensions and compressed responsive assets. See Google's [image guidance](https://developers.google.com/search/docs/appearance/google-images).
+Use real exported artwork and genuine fabrication photographs when available. The homepage currently has decorative inline SVG illustrations and no `<img>` elements; the existing [studio screenshot](../images/studio-crater-lake.png) is shown in the README, not on the landing page. A screenshot can explain the product now; label it as a preview. Future photos should document actual results. Use descriptive alt text, dimensions and compressed responsive assets. See Google's [image guidance](https://developers.google.com/search/docs/appearance/google-images).
 
 A spot check of relevant searches surfaced other tools with explicit generator pages, including [Maperivo](https://www.maperivo.com/map-generator) and [LayeredMaps](https://layeredmaps.app/). This supports testing specific maker-oriented pages; it does not establish their traffic or relative Google positions. Avoid mass-producing near-identical place pages and unverified compatibility claims.
 

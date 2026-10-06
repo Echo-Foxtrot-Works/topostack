@@ -17,7 +17,7 @@ import { assembleWater } from "$lib/domain/water-assembly";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
 
 // Pure geometry helpers moved to focused modules; re-exported for existing callers.
-export { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, joinPaths, limitVectorMarkingGroups, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+export { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 export { applyLakeShorelines, assembleWater, combineWaterAreas } from "$lib/domain/water-assembly";
 
 export interface PlaceResult { id: string; label: string; lat: number; lon: number; type?: string; bounds?: GeoBounds; zoom?: number; surveyedLake?: boolean }

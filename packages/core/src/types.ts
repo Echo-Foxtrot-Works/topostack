@@ -846,7 +846,8 @@ export interface FabricationPanelV1 {
  * Which rotations sheet nesting may give a part: none, a half turn, quarter
  * turns, or any angle. Parts are never mirrored, since engraving is one-sided.
  */
-export type SheetNestRotation = "none" | "half" | "quarter" | "free";
+export const SHEET_NEST_ROTATIONS = ["none", "half", "quarter", "free"] as const;
+export type SheetNestRotation = typeof SHEET_NEST_ROTATIONS[number];
 
 /** Stock sheets and packing effort for sheet nesting, as the maker set them. */
 export interface SheetNestSettingsV1 {

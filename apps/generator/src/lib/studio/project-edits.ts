@@ -13,13 +13,15 @@ type CustomLinesPatch = Pick<ProjectConfigV1, "customLines">;
 /** The largest north arrow that fits a map of this size; agent requests clamp with the same rule. */
 export { northArrowMaximumMm } from "@topostack/core";
 
-export function customDataPointCount(project: Pick<ProjectConfigV1, "customLines">): number {
+function customDataPointCount(project: Pick<ProjectConfigV1, "customLines">): number {
   return project.customLines.reduce((total, line) => total + line.points.length, 0);
 }
 
+/** @public Panels read this through `StudioContext.edits`. */
 export const canAddMarker = (project: Pick<ProjectConfigV1, "markers">): boolean => project.markers.length < MAX_MAP_MARKERS;
 export const canAddCustomLine = (project: Pick<ProjectConfigV1, "customLines">): boolean =>
   project.customLines.length < MAX_CUSTOM_LINES && customDataPointCount(project) + 2 <= MAX_CUSTOM_DATA_POINTS;
+/** @public Panels read this through `StudioContext.edits`. */
 export const canAddCustomLinePoint = (project: Pick<ProjectConfigV1, "customLines">, line: CustomLineFeatureV1): boolean =>
   line.points.length < MAX_CUSTOM_LINE_POINTS && customDataPointCount(project) < MAX_CUSTOM_DATA_POINTS;
 
@@ -75,6 +77,7 @@ export function removeMarker(project: Project, id: string): MarkersPatch {
   return { markers: project.markers.filter((marker) => marker.id !== id) };
 }
 
+/** @public Panels read this through `StudioContext.edits`. */
 export const canAddMarkerIcon = (project: Pick<ProjectConfigV1, "markerIcons">): boolean => (project.markerIcons?.length ?? 0) < MAX_MARKER_ICONS;
 
 const sameShapes = (left: MarkerIconV1, right: MarkerIconV1) => JSON.stringify(left.shapes) === JSON.stringify(right.shapes);
@@ -136,7 +139,9 @@ export function graphicMaximumMm(widthMm: number, heightMm: number): number {
   return Math.min(GRAPHIC_MAX_SIZE_MM, Math.max(GRAPHIC_MIN_SIZE_MM, Math.min(widthMm, heightMm) - GRAPHIC_EDGE_ROOM_MM));
 }
 
+/** @public Panels read this through `StudioContext.edits`. */
 export const canAddCustomGraphic = (project: Pick<ProjectConfigV1, "customGraphics">): boolean => (project.customGraphics?.length ?? 0) < MAX_CUSTOM_GRAPHICS;
+/** @public Panels read this through `StudioContext.edits`. */
 export const canPlaceGraphic = (project: Pick<ProjectConfigV1, "customGraphics" | "placedGraphics">): boolean =>
   Boolean(project.customGraphics?.length) && (project.placedGraphics?.length ?? 0) < MAX_PLACED_GRAPHICS;
 

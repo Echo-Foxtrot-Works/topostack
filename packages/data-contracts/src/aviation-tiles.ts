@@ -1,3 +1,5 @@
+import { isMercatorBoundsTuple } from "./geo-bounds.ts";
+
 /**
  * The FAA aviation PMTiles archive: layer names, per-feature properties, and
  * archive metadata. The offline builder writes exactly this shape and the
@@ -297,10 +299,9 @@ export function validateAviationSources(value: unknown): AviationSources {
     const id = text(region, "id", 64);
     const bounds = region.bounds;
     if (!id || ids.has(id) || !Array.isArray(bounds) || bounds.length !== 4 || !bounds.every((n) => typeof n === "number" && Number.isFinite(n))) throw new Error("Invalid aviation coverage region.");
-    const [west, south, east, north] = bounds as [number, number, number, number];
-    if (west < -180 || east > 180 || south < -85.0511 || north > 85.0511 || west >= east || south >= north) throw new Error(`Invalid aviation coverage bounds: ${id}`);
+    if (!isMercatorBoundsTuple(bounds)) throw new Error(`Invalid aviation coverage bounds: ${id}`);
     ids.add(id);
-    return { id, bounds: [west, south, east, north] };
+    return { id, bounds: [...bounds] };
   });
   return { ...metadata, name: required("name"), url, license: required("license"), maxZoom, coverage };
 }

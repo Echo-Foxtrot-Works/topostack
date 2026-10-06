@@ -121,7 +121,7 @@ export function acrylicPanelCount(geometry: Pick<GeometryIRV1, "waterInserts" | 
   return material ? acrylicPanelGroups(geometry.waterInserts ?? [], material, project).length : 0;
 }
 
-export const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
+const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
 // even when lower-priority messages exceed the preview's warning limit.

@@ -80,7 +80,7 @@ const overlaps = (bounds: GeoBounds, grid: UserChartBathymetryV1["grid"]): boole
   bounds.east > grid.bounds.west && bounds.west < grid.bounds.east && bounds.north > grid.bounds.south && bounds.south < grid.bounds.north;
 
 /** A chart keyed by outline takes a lake only when their outlines overlap at least this much. */
-export const OUTLINE_MATCH_MIN_IOU = 0.5;
+const OUTLINE_MATCH_MIN_IOU = 0.5;
 
 type LonLat = [number, number];
 

@@ -1,4 +1,4 @@
-import { EARTH_RADIUS_M } from "../primitives/units.js";
+import { EARTH_RADIUS_M, MERCATOR_MAX_LATITUDE } from "../primitives/units.js";
 import type { GeoBounds, GeoPoint, ProjectConfigV1 } from "../types.js";
 
 /**
@@ -7,8 +7,7 @@ import type { GeoBounds, GeoPoint, ProjectConfigV1 } from "../types.js";
  * design reopened anywhere covers the same ground.
  */
 export const TILE_SIZE = 256;
-/** The Web Mercator latitude limit; terrain and vector tiles end here. */
-export const MERCATOR_MAX_LATITUDE = 85.0511;
+export { MERCATOR_MAX_LATITUDE };
 
 const RADIANS = Math.PI / 180;
 

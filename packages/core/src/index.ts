@@ -32,11 +32,11 @@ export type { FlatWaterArea, PaintLayerClip, PaintRegionSources } from "./pipeli
 export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, waterInsertMaterial } from "./pipeline/water-inserts.js";
 export { acrylicPanelGroups } from "./pipeline/water-insert-panels.js";
 export { acrylicGeometry, acrylicNestableParts, resolveAcrylicNestSettings } from "./export/water-inserts.js";
-export { FEET_PER_METER, MM_PER_INCH, displayElevation, displayLength, elevationUnit, lengthUnit, millimetersFromDisplay } from "./primitives/units.js";
+export { FEET_PER_METER, displayElevation, displayLength, elevationUnit, lengthUnit, millimetersFromDisplay } from "./primitives/units.js";
 // Water carving is a stage of `generateGeometry`, not an entry point: its
 // scratch-buffer helpers and ladder fitting are meaningless without the grid
 // state it threads through them. Import those from "./water/water.js" directly.
-// `carveWaterDepth` stays public because scripts/verify-lake-outlines.mjs
+// `carveWaterDepth` stays public because scripts/verify/verify-lake-outlines.mjs
 // carves a grid in the browser to compare provider outlines.
 export { carveWaterDepth } from "./water/water.js";
 // The lake-page depth previews (apps/generator/src/lib/site/lake-preview) repeat the studio's shoreline smoothing before carving.
@@ -44,8 +44,7 @@ export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
 export { exportBlockReason } from "./export/export-policy.js";
 export { sourceRequirements } from "./pipeline/source-requirements.js";
-export { AVIATION_DATA_DETAILS, NO_AVIATION, airspaceAltitudeText, aviationClassEnabled, aviationFeatures, aviationRequested, aviationStroke, aviationSymbolSize, runwayPaths, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
-export { aviationSymbolPaths } from "./annotate/aviation-symbols.js";
+export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationRequested, aviationStroke, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
 export { cropRadiusMm } from "./primitives/crop.js";
 
 export { executeGeometryTask, type GeometryTask, type GeometryBatch, type GeometryTaskResult } from "./pipeline/generation-tasks.js";
