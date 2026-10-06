@@ -5,8 +5,8 @@
  * type stripping, which older Node 22 releases lack (ERR_UNKNOWN_FILE_EXTENSION).
  * Supported ranges come from package.json `engines.node` (`^x.y.z` / `>=x.y.z`).
  */
-import { readFileSync, realpathSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
+import { isMainModule } from "../lib/main-module.mjs";
 
 export function parseVersion(value) {
   const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(value.trim());
@@ -32,7 +32,7 @@ export function satisfiesEngines(version, engines) {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+if (isMainModule(import.meta.url)) {
   const engines = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).engines.node;
   const minimum = engines.split("||")[0].trim().replace(/^[\^>=]+/, "");
   if (!satisfiesEngines(process.version, engines)) {

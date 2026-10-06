@@ -1,5 +1,6 @@
-import { pathToFileURL } from "node:url";
 import { DEVELOPMENT_ORIGIN, PRODUCTION_ORIGIN } from "../lib/r2-buckets.mjs";
+import { CLOUDFLARE_TIMEOUT_MS } from "../lib/cloudflare-client.mjs";
+import { isMainModule } from "../lib/main-module.mjs";
 
 // Hostname redirects that belong to the zone rather than to the Worker: a
 // Single Redirect rule runs before the Worker and its static assets, so the
@@ -74,10 +75,13 @@ export function mergeRedirectRules(existing = [], desired = []) {
   return [...kept, ...desired];
 }
 
+// Zone-scoped, and a missing ruleset (404) is an answer here, so this does not
+// use the account-scoped lib/cloudflare-client.mjs; it shares its deadline.
 async function cloudflare(path, token, init = {}) {
   const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
     ...init,
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...init.headers },
+    signal: AbortSignal.timeout(CLOUDFLARE_TIMEOUT_MS),
   });
   const body = await response.json();
   return { status: response.status, body };
@@ -140,4 +144,4 @@ async function main() {
   if (!apply) console.log("Re-run with --apply to write them.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (isMainModule(import.meta.url)) await main();
