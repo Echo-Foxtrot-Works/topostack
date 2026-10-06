@@ -89,7 +89,7 @@ export async function choosePlace(place: PlaceResult): Promise<void> {
   finally { finish(mine); }
 }
 
-export function previewLake(lake: ChartableLake): void {
+function previewLake(lake: ChartableLake): void {
   picker.activeId = lake.id;
   let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
   for (const [lon, lat] of lake.outline) { west = Math.min(west, lon); east = Math.max(east, lon); south = Math.min(south, lat); north = Math.max(north, lat); }

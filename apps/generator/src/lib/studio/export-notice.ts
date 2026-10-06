@@ -6,7 +6,7 @@ import { prepareProjectSettings, prepareSelectedDownload, startBrowserDownload, 
 export type ExportPhase = "idle" | "preparing" | "ready" | "error";
 
 /** How long a finished or failed export stays announced before the notice returns to idle. */
-export const EXPORT_NOTICE_MS = 8_000;
+const EXPORT_NOTICE_MS = 8_000;
 
 /** The notice describing an export, shared by the browser download and the Atomm handoff. */
 export function describeExport(update: ExportUpdate): { title: string; detail: string; status: string } {

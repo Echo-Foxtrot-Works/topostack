@@ -3,7 +3,7 @@ import { clamp } from "../primitives/geometry2d.js";
 import type { NorthArrowAnchor, NorthArrowPlacementV1, Point2D, ProjectConfigV1 } from "../types.js";
 
 /** Clearance between an anchored annotation and the crop edge. */
-export const ANNOTATION_CLEARANCE_MM = 3;
+const ANNOTATION_CLEARANCE_MM = 3;
 
 export const ANCHOR_VECTORS: Record<NorthArrowAnchor, Point2D> = {
   "top-left": { x: -1, y: -1 }, top: { x: 0, y: -1 }, "top-right": { x: 1, y: -1 },

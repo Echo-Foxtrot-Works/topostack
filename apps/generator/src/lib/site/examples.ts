@@ -1,5 +1,6 @@
 import { EXAMPLES_HOME, SITE_ORIGIN, type SocialImage } from "./site.ts";
 import type { PageSeo } from "./seo.ts";
+import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "./geo.ts";
 
 /**
  * Worked example projects. Each one is a real TopoStack project: the capture
@@ -11,7 +12,6 @@ import type { PageSeo } from "./seo.ts";
  *
  * Crater Lake predates this registry and keeps its own route.
  */
-export { EXAMPLES_HOME };
 
 export interface ExampleConfig {
   slug: string;
@@ -176,10 +176,8 @@ export function exampleImage(example: ExampleConfig): SocialImage {
 
 /** Ground bounds for the cut size: the width spans `groundWidthKm`, the height follows the cut's aspect ratio. */
 export function exampleBounds(example: ExampleConfig): { west: number; south: number; east: number; north: number } {
-  const kmPerDegreeLat = 110.574;
-  const kmPerDegreeLon = 111.32 * Math.cos(example.center.lat * Math.PI / 180);
-  const halfLon = example.groundWidthKm / kmPerDegreeLon / 2;
-  const halfLat = (example.groundWidthKm * example.heightMm / example.widthMm) / kmPerDegreeLat / 2;
+  const halfLon = example.groundWidthKm / kmPerDegreeLon(example.center.lat) / 2;
+  const halfLat = (example.groundWidthKm * example.heightMm / example.widthMm) / KM_PER_DEGREE_LAT / 2;
   return { west: example.center.lon - halfLon, south: example.center.lat - halfLat, east: example.center.lon + halfLon, north: example.center.lat + halfLat };
 }
 

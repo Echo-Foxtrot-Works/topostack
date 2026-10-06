@@ -91,7 +91,7 @@ export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefine
     .slice(0, limit);
 }
 
-export const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
+const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
 // even when lower-priority messages exceed the preview's warning limit.

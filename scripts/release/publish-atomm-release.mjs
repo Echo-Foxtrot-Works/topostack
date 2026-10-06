@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isMainModule } from "../lib/main-module.mjs";
 
 export function validateRun(run, repository) {
   assert.equal(run.repository.full_name, repository, "CI must belong to this repository");
@@ -154,4 +154,4 @@ async function main() {
     title: `TopoStack ${tag.slice("atomm-".length)} for Atomm`, notesFile: notes, prerelease }));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (isMainModule(import.meta.url)) await main();

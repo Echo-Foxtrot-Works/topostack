@@ -15,8 +15,10 @@
 import Delaunator from "delaunator";
 import { frameFor, type Point2 } from "./local-frame.ts";
 import { fillRings, type GridLayout } from "./raster-fill.ts";
+import type { ChartGridMethod } from "@topostack/data-contracts/chart-bathymetry";
 
-export type GridMethod = "harmonic" | "tin";
+/** How depths are interpolated between contours; the stored record names the same choice. */
+export type GridMethod = ChartGridMethod;
 
 export interface GridContour {
   depthM: number;

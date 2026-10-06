@@ -1171,7 +1171,7 @@
           <StudioMenu />
         {/snippet}
       </Topbar>
-      <ContextBar class="terrain-contextbar" section="Terrain" title={project.location.label.split(",")[0]} detail={project.location.label.split(",").slice(1).join(",") || "Selected coordinates"}>
+      <ContextBar class="terrain-contextbar" section="Terrain" title={project.location.label.split(",")[0] ?? project.location.label} detail={project.location.label.split(",").slice(1).join(",") || "Selected coordinates"}>
         {#snippet actions()}
           <OutputSwitch />
         {/snippet}

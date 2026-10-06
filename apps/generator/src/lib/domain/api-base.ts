@@ -4,7 +4,7 @@
  * another, and an embedded preview (the in-chat MCP App, whose document has no
  * origin of its own) sets one at startup with `configureApiBase`.
  */
-export function normalizeApiBase(value: string | undefined): string | undefined {
+function normalizeApiBase(value: string | undefined): string | undefined {
   if (!value?.trim()) return undefined;
   const url = new URL(value);
   if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password || (url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) {

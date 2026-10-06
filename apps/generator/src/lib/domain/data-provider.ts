@@ -2,22 +2,22 @@ import { loadProviderOutlines, resolveLakeOutlines } from "$lib/domain/lake-outl
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
-import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AviationStatus, type GeoBounds, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AviationStatus, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass, type WaterAreaV1 } from "@topostack/core";
 import { createArchive, networkSignal } from "$lib/domain/archive";
-import { classifyRings, VectorTile } from "@mapbox/vector-tile";
+import { classifyRings, VectorTile, type VectorTileFeature } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { applyPreferredTerrain } from "$lib/domain/terrain-sources";
 import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
-import { dataZoom, fittingTileWindow, tilePointProjector, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
+import { archiveTileWindow, dataZoom, fittingTileWindow, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { assembleWater } from "$lib/domain/water-assembly";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
 
 // Pure geometry helpers moved to focused modules; re-exported for existing callers.
-export { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, joinPaths, limitVectorMarkingGroups, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+export { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 export { applyLakeShorelines, assembleWater, combineWaterAreas } from "$lib/domain/water-assembly";
 
 export interface PlaceResult { id: string; label: string; lat: number; lon: number; type?: string; bounds?: GeoBounds; zoom?: number; surveyedLake?: boolean }
@@ -163,13 +163,21 @@ export interface VectorData {
   truncated: boolean;
 }
 
+/** A vector-tile polygon feature's rings, grouped into polygons and projected. */
+function projectedPolygons(geometry: ReturnType<VectorTileFeature["loadGeometry"]>, project: (point: Point2D) => Point2D): Polygon2D[] {
+  const polygons: Polygon2D[] = [];
+  for (const [outer, ...holes] of classifyRings(geometry)) {
+    if (outer) polygons.push({ outer: outer.map(project), holes: holes.map((ring) => ring.map(project)) });
+  }
+  return polygons;
+}
+
 export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<VectorData> {
   signal?.throwIfAborted();
   const vectorArchive = createArchive(`${apiBase()}/v1/osm.pmtiles`, signal);
   const header = await vectorArchive.getHeader();
   signal?.throwIfAborted();
-  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, Math.round(requestedZoom) + 1)), header.minZoom);
-  const projectPoint = tilePointProjector(window, config.widthMm, config.heightMm);
+  const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
   const { water: usesWaterAreas } = sourceRequirements(config);
   // Share cleanup headroom across the selection. Fixed per-tile/category
   // quotas can discard a dense tile while empty neighbors leave room unused.
@@ -200,12 +208,7 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
           const isOcean = properties.kind === "ocean";
           const geometry = feature.loadGeometry();
           consumeGeometry(geometry, true);
-          classifyRings(geometry).forEach((polygon) => {
-            const [outer, ...holes] = polygon;
-            if (!outer) return;
-            const projected = { outer: outer.map((point) => projectPoint(tile, feature.extent, point)), holes: holes.map((ring) => ring.map((point) => projectPoint(tile, feature.extent, point))) };
-            (isOcean ? oceanPolygons : waterPolygons).push(projected);
-          });
+          (isOcean ? oceanPolygons : waterPolygons).push(...projectedPolygons(geometry, (point) => projectPoint(tile, feature.extent, point)));
           continue;
         }
         let kind: "boundary" | "road" | "trail" | "water";
@@ -300,8 +303,7 @@ async function loadHydroLakeAreas(bounds: GeoBounds, requestedZoom: number, conf
   const lakeArchive = createArchive(`${apiBase()}/v1/lakes.pmtiles`, signal);
   const header = await lakeArchive.getHeader();
   signal?.throwIfAborted();
-  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, Math.round(requestedZoom))), header.minZoom);
-  const projectPoint = tilePointProjector(window, config.widthMm, config.heightMm);
+  const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom), config);
   const numberProperty = (properties: Record<string, unknown>, key: string): number | undefined => {
     const value = Number(properties[key]);
     return Number.isFinite(value) ? value : undefined;
@@ -334,14 +336,7 @@ async function loadHydroLakeAreas(bounds: GeoBounds, requestedZoom: number, conf
         const entry = byLake.get(hylakId) ?? { properties, polygons: [] };
         const geometry = feature.loadGeometry();
         consumeGeometry(geometry, true);
-        classifyRings(geometry).forEach((polygon) => {
-          const [outer, ...holes] = polygon;
-          if (!outer) return;
-          entry.polygons.push({
-            outer: outer.map((point) => projectPoint(tile, feature.extent, point)),
-            holes: holes.map((ring) => ring.map((point) => projectPoint(tile, feature.extent, point))),
-          });
-        });
+        entry.polygons.push(...projectedPolygons(geometry, (point) => projectPoint(tile, feature.extent, point)));
         byLake.set(hylakId, entry);
       }
     }

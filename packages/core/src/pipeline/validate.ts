@@ -1,4 +1,5 @@
 import { isTextFont } from "../annotate/font-data.js";
+import { MERCATOR_MAX_LATITUDE } from "../primitives/units.js";
 import {
   CUSTOM_LINE_KINDS,
   PAINT_REGION_KINDS,
@@ -50,7 +51,7 @@ export function assertGeographicBounds(bounds: GeoBounds, label: "Project" | "So
   if (bounds.west >= bounds.east || bounds.south >= bounds.north) throw new Error(`${label} geographic bounds must be ordered west-to-east and south-to-north.`);
   if (bounds.east - bounds.west > 360) throw new Error(`${label} longitude span cannot exceed 360 degrees.`);
   if (bounds.west < -540 || bounds.east > 540) throw new Error(`${label} longitudes exceed the supported unwrapped world range.`);
-  if (bounds.south < -85.0511 || bounds.north > 85.0511) throw new Error(`${label} latitude bounds exceed Web Mercator coverage.`);
+  if (bounds.south < -MERCATOR_MAX_LATITUDE || bounds.north > MERCATOR_MAX_LATITUDE) throw new Error(`${label} latitude bounds exceed Web Mercator coverage.`);
 }
 
 
@@ -82,7 +83,7 @@ export function validateProject(config: ProjectConfigV1): void {
   if (config.waterDepthLayerLimit !== undefined && (!Number.isSafeInteger(config.waterDepthLayerLimit) || config.waterDepthLayerLimit < 1)) throw new Error("Maximum depth layers must be a positive whole number.");
   if (!Number.isFinite(config.waterDepthExaggeration) || config.waterDepthExaggeration < MIN_WATER_DEPTH_EXAGGERATION || config.waterDepthExaggeration > MAX_WATER_DEPTH_EXAGGERATION) throw new Error(`Water depth exaggeration must be between ${MIN_WATER_DEPTH_EXAGGERATION} and ${MAX_WATER_DEPTH_EXAGGERATION}.`);
   if (config.materialThicknessMm < 0.5 || config.materialThicknessMm > 25) throw new Error("Material thickness must be between 0.5 and 25 mm.");
-  if (config.location.lat < -85.0511 || config.location.lat > 85.0511) throw new Error("This version supports Web Mercator latitudes only.");
+  if (config.location.lat < -MERCATOR_MAX_LATITUDE || config.location.lat > MERCATOR_MAX_LATITUDE) throw new Error("This version supports Web Mercator latitudes only.");
   if (config.location.lon < -180 || config.location.lon > 180) throw new Error("Longitude must be between -180 and 180 degrees.");
   const iconIds = validateMarkerIcons(config.markerIcons);
   validatePlacedGraphics(config.placedGraphics, validateCustomGraphics(config.customGraphics));
@@ -92,7 +93,7 @@ export function validateProject(config: ProjectConfigV1): void {
     if (!marker || typeof marker !== "object" || typeof marker.id !== "string" || !marker.id.trim() || marker.id.length > 120) throw new Error("Each marker must have a valid id.");
     if (markerIds.has(marker.id)) throw new Error("Marker ids must be unique.");
     markerIds.add(marker.id);
-    if (!Number.isFinite(marker.lat) || marker.lat < -85.0511 || marker.lat > 85.0511) throw new Error("Marker latitude must be within Web Mercator limits.");
+    if (!Number.isFinite(marker.lat) || marker.lat < -MERCATOR_MAX_LATITUDE || marker.lat > MERCATOR_MAX_LATITUDE) throw new Error("Marker latitude must be within Web Mercator limits.");
     if (!Number.isFinite(marker.lon) || marker.lon < -180 || marker.lon > 180) throw new Error("Marker longitude must be between -180 and 180 degrees.");
     const size = marker.sizeMm === undefined ? MAP_MARKER_SIZE_MM : marker.sizeMm;
     if (!Number.isFinite(size) || size < MAP_MARKER_MIN_SIZE_MM || size > MAP_MARKER_MAX_SIZE_MM) throw new Error(`Marker size must be between ${MAP_MARKER_MIN_SIZE_MM} and ${MAP_MARKER_MAX_SIZE_MM} mm.`);
@@ -118,7 +119,7 @@ export function validateProject(config: ProjectConfigV1): void {
     customPointCount += line.points.length;
     if (customPointCount > MAX_CUSTOM_DATA_POINTS) throw new Error("Custom lines may contain at most 10000 points in total.");
     for (const point of line.points) {
-      if (!point || typeof point !== "object" || !Number.isFinite(point.lat) || point.lat < -85.0511 || point.lat > 85.0511) throw new Error("Custom line latitude must be within Web Mercator limits.");
+      if (!point || typeof point !== "object" || !Number.isFinite(point.lat) || point.lat < -MERCATOR_MAX_LATITUDE || point.lat > MERCATOR_MAX_LATITUDE) throw new Error("Custom line latitude must be within Web Mercator limits.");
       if (!Number.isFinite(point.lon) || point.lon < -180 || point.lon > 180) throw new Error("Custom line longitude must be between -180 and 180 degrees.");
     }
   }

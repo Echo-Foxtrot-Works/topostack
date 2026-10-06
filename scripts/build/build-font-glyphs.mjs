@@ -4,8 +4,8 @@
 // paths. The output is committed; scripts/test/font-glyphs.test.mjs fails when it is stale.
 // Glyph data for a font id is immutable once released: docs/fonts.md explains why.
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import opentype from "opentype.js";
+import { isMainModule } from "../lib/main-module.mjs";
 
 const root = new URL("../../", import.meta.url);
 export const GLYPH_DIRECTORY = new URL("apps/generator/src/lib/domain/font-glyphs/", root);
@@ -252,7 +252,7 @@ function samplesModule(samples) {
   ].join("\n");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMainModule(import.meta.url)) {
   await mkdir(GLYPH_DIRECTORY, { recursive: true });
   for (const [href, content] of await buildFontGlyphs()) await writeFile(new URL(href), content);
 }

@@ -4,7 +4,7 @@ import { registerFont, type FontGlyphsV1 } from "../annotate/font-data.js";
  * Tiny stand-ins for the curated typefaces, so core tests never depend on the
  * generated glyph files. Cap height 700, descender -200, 1000 units per em.
  */
-export const SINGLE_LINE_FIXTURE: FontGlyphsV1 = {
+const SINGLE_LINE_FIXTURE: FontGlyphsV1 = {
   version: 1,
   id: "hershey-sans",
   kind: "single-line",

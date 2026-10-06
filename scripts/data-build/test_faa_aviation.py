@@ -1,7 +1,6 @@
 """Checks the FAA normalisation against small hand-checked records."""
 import importlib
 import json
-from pathlib import Path
 import unittest
 
 from shapely.geometry import LineString

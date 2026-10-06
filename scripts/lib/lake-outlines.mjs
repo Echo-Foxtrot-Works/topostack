@@ -5,7 +5,8 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { verifyArchiveResponse } from "./archive-provisioning.mjs";
 
-export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+export { sha256Hex as digest } from "./hash.mjs";
+import { sha256Hex as digest } from "./hash.mjs";
 export const releasePath = new URL("../data/lake-outlines-release.json", import.meta.url);
 export async function inspectOutlines(directoryPath) {
   const root = pathToFileURL(resolve(directoryPath) + "/");

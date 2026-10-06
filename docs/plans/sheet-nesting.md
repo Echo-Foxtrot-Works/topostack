@@ -1,5 +1,7 @@
 # Sheet nesting with sparrow (WASM)
 
+> **Status:** shipped in 0.6.0 ([#105](https://github.com/Echo-Foxtrot-Works/topostack/pull/105)). Kept as the design record; the maintained reference is [nesting.md](../nesting.md). "Today" below means before that release.
+
 ## Context
 TopoStack has no sheet packing today. `packages/core/src/pipeline/nesting.ts` only does same-position cavity nesting: a smaller layer is cut from a lower layer's waste, with no moves. Export panels (`export/panel-layout.ts` `fabricationPanels`) are bounding boxes in model coordinates. `masterToSvg` lays them out in a plain grid, so stock around every layer is wasted. `docs/roadmap.md:27` lists translated/rotated sheet nesting as future work.
 

@@ -139,7 +139,7 @@ const hundreds = (feet: number) => String(Math.round(feet / 100));
  * runs up to, not into, the Class B above), Class D its ceiling alone, with a
  * minus for "up to but not including".
  */
-export function airspaceAltitudeText(aviationClass: AviationClass, altitude: Pick<AviationAltitudeLabel, "ceilingFt" | "floorFt" | "ceilingBelow">): { ceiling: string; floor?: string } {
+function airspaceAltitudeText(aviationClass: AviationClass, altitude: Pick<AviationAltitudeLabel, "ceilingFt" | "floorFt" | "ceilingBelow">): { ceiling: string; floor?: string } {
   if (aviationClass === "class-d") return { ceiling: `${altitude.ceilingBelow ? "-" : ""}${hundreds(altitude.ceilingFt)}` };
   return { ceiling: altitude.ceilingBelow ? "T" : hundreds(altitude.ceilingFt), floor: altitude.floorFt ? hundreds(altitude.floorFt) : "SFC" };
 }
