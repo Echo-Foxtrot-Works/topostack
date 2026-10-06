@@ -1,26 +1,9 @@
 import { createSyntheticSource, DEFAULT_PROJECT, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
 import { EARTH_RADIUS_M } from "../primitives/units.js";
+export { distanceToSegment, pointInRing } from "../primitives/geometry2d.js";
 
 export function realSource(project = DEFAULT_PROJECT) {
   return { ...createSyntheticSource(project, 48), sourceKind: "real" as const, imagerySources: ["srtm/N46W122.tif"] };
-}
-
-export function pointInRing(point: { x: number; y: number }, ring: Array<{ x: number; y: number }>): boolean {
-  let inside = false;
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-    const a = ring[index];
-    const b = ring[previous];
-    if (a && b && (a.y > point.y) !== (b.y > point.y) && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-  }
-  return inside;
-}
-
-export function distanceToSegment(point: { x: number; y: number }, start: { x: number; y: number }, end: { x: number; y: number }): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  const t = lengthSquared ? Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared)) : 0;
-  return Math.hypot(point.x - start.x - t * dx, point.y - start.y - t * dy);
 }
 
 export function gridSource(project: ProjectConfigV1, size: number, elevationAt: (nx: number, ny: number) => number): SourceBundleV1 {

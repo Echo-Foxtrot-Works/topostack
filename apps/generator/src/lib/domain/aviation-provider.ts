@@ -7,7 +7,7 @@ import { apiBase } from "$lib/domain/api-base";
 import { createArchive } from "$lib/domain/archive";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
 import { mapTiles } from "$lib/domain/tile-requests";
-import { fittingTileWindow, tilePointProjector } from "$lib/domain/tile-math";
+import { archiveTileWindow } from "$lib/domain/tile-math";
 import { clipVectorTileLine, joinPaths } from "$lib/domain/vector-cleanup";
 
 /**
@@ -138,8 +138,7 @@ export async function loadAviationMarkings(bounds: GeoBounds, requestedZoom: num
   const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
   const { nasrCycle } = parseAviationArchiveMetadata(metadata);
   signal?.throwIfAborted();
-  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, Math.round(requestedZoom) + 1)), header.minZoom);
-  const projectPoint = tilePointProjector(window, config.widthMm, config.heightMm);
+  const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
   const consumeGeometry = createFeatureBudget();
   const lineWidth = config.widthMm + LINE_MARGIN_MM;
   const lineHeight = config.heightMm + LINE_MARGIN_MM;

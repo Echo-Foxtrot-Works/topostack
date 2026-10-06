@@ -2,6 +2,7 @@ import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
 import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
+import { hex } from "../hex";
 
 const MAX_GEOCODER_BYTES = 256_000;
 const GEOCODE_CACHE_SECONDS = 60 * 60 * 24;
@@ -87,7 +88,7 @@ function normalizeGeocodeQuery(query: string): string {
 /** `query` must already be normalized by normalizeGeocodeQuery. */
 async function cacheKey(env: Env, query: string, limit: number): Promise<string> {
   const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.GEOCODER_ORIGIN}|geoapify-v2|${query}|${limit}`));
-  return `geocode/${Array.from(new Uint8Array(keyHash)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}.json`;
+  return `geocode/${hex(keyHash)}.json`;
 }
 
 function jsonHeaders(maxAge: number, cache: string): Headers {
