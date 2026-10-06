@@ -15,7 +15,6 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "22.22.2"
   WASM_BINDGEN_VERSION: "0.2.100"
   BINARYEN_VERSION: "133"
   BINARYEN_SHA256: "2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489"
@@ -41,7 +40,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
 
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
@@ -55,11 +54,24 @@ jobs:
       - name: Test
         run: cargo test --release --locked
 
+      # Compiling these three from source took most of the job. They live in
+      # their own root (not ~/.cargo/bin, which holds the runner's rustup
+      # proxies) and are cached by their pinned versions.
+      - name: Cache WebAssembly tools
+        id: wasm-tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.wasm-tools
+          key: wasm-tools-${{ runner.os }}-${{ env.WASM_BINDGEN_VERSION }}-${{ env.CARGO_ABOUT_VERSION }}-${{ env.CARGO_DENY_VERSION }}
+
       - name: Install WebAssembly tools
         run: |
-          cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked
-          cargo install cargo-about --version "$CARGO_ABOUT_VERSION" --locked
-          cargo install cargo-deny --version "$CARGO_DENY_VERSION" --locked
+          if [ "${{ steps.wasm-tools.outputs.cache-hit }}" != "true" ]; then
+            cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked --root ~/.wasm-tools
+            cargo install cargo-about --version "$CARGO_ABOUT_VERSION" --locked --root ~/.wasm-tools
+            cargo install cargo-deny --version "$CARGO_DENY_VERSION" --locked --root ~/.wasm-tools
+          fi
+          echo "$HOME/.wasm-tools/bin" >> "$GITHUB_PATH"
           archive="binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
           curl -sSLo "$RUNNER_TEMP/$archive" "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/$archive"
           echo "$BINARYEN_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check
