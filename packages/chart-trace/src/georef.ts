@@ -5,17 +5,13 @@
 
 import { frameFor, type LocalFrame, type Point2 } from "./local-frame.ts";
 import { fillRings, type GridLayout } from "./raster-fill.ts";
+import type { ChartControlPointV1 } from "@topostack/data-contracts/chart-bathymetry";
 
 /** Row-major 3x3 matrix. */
 export type Matrix3 = number[];
 
-export interface ControlPoint {
-  /** Chart image pixel, origin top-left, y down. */
-  x: number;
-  y: number;
-  lon: number;
-  lat: number;
-}
+/** A chart image pixel (origin top-left, y down) and the ground position it marks. */
+export type ControlPoint = ChartControlPointV1;
 
 export interface Georeference {
   /** Pixel to [lon, lat, 1]. */

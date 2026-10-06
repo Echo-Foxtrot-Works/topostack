@@ -1,6 +1,7 @@
 import { publicOrigin, type AgentContext } from "../agent/projects";
 import { MCP_PATH } from "../mcp/server";
 import { makingAModelGuide } from "../mcp/resources";
+import { hex } from "../hex";
 
 /**
  * Well-known documents that let an agent find TopoStack's MCP server and HTTP
@@ -112,7 +113,7 @@ ${makingAModelGuide(site)}`;
 
 async function sha256Digest(text: string): Promise<string> {
   const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
-  return `sha256:${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  return `sha256:${hex(bytes)}`;
 }
 
 export function skillResponse(context: DiscoveryContext): Response {

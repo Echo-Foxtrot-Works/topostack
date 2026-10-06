@@ -19,7 +19,8 @@ export const SHEET_NEST_LIMITS = {
 
 export type SheetNestSettingsResult = { ok: true; settings: ResolvedSheetNestSettings } | { ok: false; error: string };
 
-const clamp = (value: number, limit: { min: number; max: number }, fallback: number) =>
+/** `value` clamped to `limit`, or `fallback` when it is not a finite number. */
+const clampOr = (value: number, limit: { min: number; max: number }, fallback: number) =>
   Number.isFinite(value) ? Math.min(limit.max, Math.max(limit.min, value)) : fallback;
 
 /**
@@ -33,19 +34,19 @@ export function resolveSheetNestSettings(config: Pick<ProjectConfigV1, "sheetNes
   if (!(width > 0) || !(height > 0)) {
     return { ok: false, error: "Set a sheet size, or a machine work area, to nest parts onto sheets." };
   }
-  const sheetWidthMm = clamp(width, SHEET_NEST_LIMITS.sheetMm, SHEET_NEST_LIMITS.sheetMm.min);
-  const sheetHeightMm = clamp(height, SHEET_NEST_LIMITS.sheetMm, SHEET_NEST_LIMITS.sheetMm.min);
+  const sheetWidthMm = clampOr(width, SHEET_NEST_LIMITS.sheetMm, SHEET_NEST_LIMITS.sheetMm.min);
+  const sheetHeightMm = clampOr(height, SHEET_NEST_LIMITS.sheetMm, SHEET_NEST_LIMITS.sheetMm.min);
   // A margin that would leave no usable sheet is capped at a quarter of the short side.
-  const marginMm = Math.min(clamp(saved.marginMm, SHEET_NEST_LIMITS.marginMm, DEFAULT_SHEET_NESTING.marginMm), Math.min(sheetWidthMm, sheetHeightMm) / 4);
+  const marginMm = Math.min(clampOr(saved.marginMm, SHEET_NEST_LIMITS.marginMm, DEFAULT_SHEET_NESTING.marginMm), Math.min(sheetWidthMm, sheetHeightMm) / 4);
   return {
     ok: true,
     settings: {
       sheetWidthMm,
       sheetHeightMm,
       marginMm,
-      spacingMm: clamp(saved.spacingMm, SHEET_NEST_LIMITS.spacingMm, DEFAULT_SHEET_NESTING.spacingMm),
+      spacingMm: clampOr(saved.spacingMm, SHEET_NEST_LIMITS.spacingMm, DEFAULT_SHEET_NESTING.spacingMm),
       rotation: SHEET_NEST_ROTATIONS.includes(saved.rotation) ? saved.rotation : DEFAULT_SHEET_NESTING.rotation,
-      timeBudgetS: clamp(saved.timeBudgetS, SHEET_NEST_LIMITS.timeBudgetS, DEFAULT_SHEET_NESTING.timeBudgetS),
+      timeBudgetS: clampOr(saved.timeBudgetS, SHEET_NEST_LIMITS.timeBudgetS, DEFAULT_SHEET_NESTING.timeBudgetS),
       seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : DEFAULT_SHEET_NESTING.seed,
     },
   };

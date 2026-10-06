@@ -3,6 +3,7 @@ import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { edgeCacheKey, matchEdge, putEdge, teeToEdge } from "../edge-cache";
 import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { hex } from "../hex";
 
 const MAX_TERRAIN_BYTES = 2_000_000;
 // R2 keys are versioned; public tile URLs are mutable across deployments.
@@ -75,7 +76,7 @@ function singleEtag(ifNoneMatch: string | null): string | null {
 // advertise the same validator its cached copy will carry.
 async function r2Etag(body: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest("MD5", body);
-  return `"${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}"`;
+  return `"${hex(digest)}"`;
 }
 
 function readTerrainCache(request: Request, env: Env, key: string): Promise<R2Object | R2ObjectBody | null> {

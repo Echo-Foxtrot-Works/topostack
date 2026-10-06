@@ -5,6 +5,7 @@
 // label-sized gaps that continue in the same direction, and labelled only
 // where a label lies on and along the line.
 
+import { pathLength } from "./geometry.ts";
 import type { Point2 } from "./local-frame.ts";
 import type { VectorPage, VectorPath, VectorText } from "./vector-page.ts";
 
@@ -48,12 +49,6 @@ export function styleKey(path: Pick<VectorPath, "stroke" | "lineWidth" | "dashed
   return `${path.stroke ?? "none"}/${path.lineWidth.toFixed(2)}${path.dashed ? "/dashed" : ""}`;
 }
 
-function length(points: readonly Point2[]): number {
-  let total = 0;
-  for (let index = 1; index < points.length; index += 1) total += Math.hypot(points[index]![0] - points[index - 1]![0], points[index]![1] - points[index - 1]![1]);
-  return total;
-}
-
 /** Stroke styles on the page, longest first: the choices a maker (or a batch manifest) picks contours and shoreline from. */
 export function strokeStyles(page: VectorPage): StrokeStyle[] {
   const styles = new Map<string, StrokeStyle>();
@@ -62,7 +57,7 @@ export function strokeStyles(page: VectorPage): StrokeStyle[] {
     const key = styleKey(path);
     const style = styles.get(key) ?? { key, stroke: path.stroke, lineWidth: Number(path.lineWidth.toFixed(2)), dashed: path.dashed, paths: 0, length: 0 };
     style.paths += 1;
-    style.length += length(path.points) + (path.closed ? Math.hypot(path.points[0]![0] - path.points.at(-1)![0], path.points[0]![1] - path.points.at(-1)![1]) : 0);
+    style.length += pathLength(path.points) + (path.closed ? Math.hypot(path.points[0]![0] - path.points.at(-1)![0], path.points[0]![1] - path.points.at(-1)![1]) : 0);
     styles.set(key, style);
   }
   return [...styles.values()].sort((a, b) => b.length - a.length);

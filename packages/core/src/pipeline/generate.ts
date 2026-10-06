@@ -5,7 +5,7 @@ import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, removeTinyRing, contourToM
 import { groundWidthMFor, horizontalScaleFor, planTerrainStack } from "./stack-plan.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
 import { aviationFeatures, aviationRequested, aviationSymbolsFillIn, aviationSymbolSize, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationSymbolBox } from "./aviation.js";
-import { fabricationLabel, junctionRing, longestPath, polylineLength, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
+import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
 import { assertGeographicBounds, validateProject } from "./validate.js";
 import { projectFingerprint } from "./fingerprint.js";
 import { smoothLakeShorelines } from "../water/lake-shoreline.js";
@@ -16,6 +16,7 @@ import {
   clipPolyline,
   close,
   mercatorWorldY,
+  polylineLength,
   normalizeMultiPolygon,
   pointInPreparedPolygons,
   pointInRing,

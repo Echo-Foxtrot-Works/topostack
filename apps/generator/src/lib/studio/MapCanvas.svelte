@@ -5,7 +5,7 @@
   import { LocateFixed, MapPin, Spline } from "@lucide/svelte";
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-  import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+  import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from "maplibre-gl";
   import { MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
   import { boundsForProject } from "$lib/domain/data-provider";
   import { polygonsPath } from "$lib/studio/svg-path";
@@ -234,31 +234,34 @@
     };
   }
 
-  function syncCustomLines(lines: CustomLineFeatureV1[]): void {
-    if (!map || !styleReady) return;
-    const data = customLineData(lines);
-    const source = map.getSource(CUSTOM_SOURCE_ID) as GeoJSONSource | undefined;
+  /** Replace a GeoJSON source's data, or add the source and draw its layers (built only then) the first time. */
+  function upsertGeoJson(target: MapLibreMap, id: string, data: GeoJSONSourceSpecification["data"], layers: () => AddLayerObject[], promoteId?: string): void {
+    const source = target.getSource(id) as GeoJSONSource | undefined;
     if (source) {
       source.setData(data);
       return;
     }
-    map.addSource(CUSTOM_SOURCE_ID, { type: "geojson", data });
-    map.addLayer({
+    target.addSource(id, { type: "geojson", data, ...(promoteId ? { promoteId } : {}) });
+    for (const layer of layers()) target.addLayer(layer);
+  }
+
+  function syncCustomLines(lines: CustomLineFeatureV1[]): void {
+    if (!map || !styleReady) return;
+    upsertGeoJson(map, CUSTOM_SOURCE_ID, customLineData(lines), () => [{
       id: CUSTOM_BOUNDARY_LAYER_ID,
       type: "line",
       source: CUSTOM_SOURCE_ID,
       filter: ["==", ["get", "kind"], "boundary"],
       paint: { "line-color": "#75415d", "line-width": 3, "line-dasharray": [7, 4] },
       layout: { "line-cap": "round", "line-join": "round" },
-    });
-    map.addLayer({
+    }, {
       id: CUSTOM_TRAIL_LAYER_ID,
       type: "line",
       source: CUSTOM_SOURCE_ID,
       filter: ["==", ["get", "kind"], "trail"],
       paint: { "line-color": "#b8682d", "line-width": 3, "line-dasharray": [3, 2] },
       layout: { "line-cap": "round", "line-join": "round" },
-    });
+    }]);
   }
 
   /**
@@ -283,16 +286,13 @@
   function syncMapArea(show: boolean): void {
     if (!map || !styleReady) return;
     const data = mapAreaData(show);
-    const source = map.getSource(AREA_SOURCE_ID) as GeoJSONSource | undefined;
-    if (source) { source.setData(data); return; }
-    if (!data.features.length) return;
-    map.addSource(AREA_SOURCE_ID, { type: "geojson", data });
-    map.addLayer({
+    if (!map.getSource(AREA_SOURCE_ID) && !data.features.length) return;
+    upsertGeoJson(map, AREA_SOURCE_ID, data, () => [{
       id: AREA_LAYER_ID,
       type: "line",
       source: AREA_SOURCE_ID,
       paint: { "line-color": "#20231d", "line-width": 2, "line-opacity": 0.7, "line-dasharray": [2, 2] },
-    });
+    }]);
   }
 
   /**
@@ -318,37 +318,29 @@
   function syncDraft(points: readonly GeoPoint[], to?: { lat: number; lon: number }): void {
     if (!map || !styleReady) return;
     if (!map.getSource(DRAFT_SOURCE_ID) && !points.length) return;
-    const data = draftData(points, to);
-    const source = map.getSource(DRAFT_SOURCE_ID) as GeoJSONSource | undefined;
-    if (source) {
-      source.setData(data);
-      return;
-    }
-    map.addSource(DRAFT_SOURCE_ID, { type: "geojson", data });
-    map.addLayer({
+    upsertGeoJson(map, DRAFT_SOURCE_ID, draftData(points, to), () => [{
       id: DRAFT_LINE_LAYER_ID,
       type: "line",
       source: DRAFT_SOURCE_ID,
       filter: ["all", ["==", ["geometry-type"], "LineString"], ["!", ["get", "rubber"]]],
       paint: { "line-color": "#b8682d", "line-width": 3, "line-dasharray": [2, 2] },
       layout: { "line-cap": "round", "line-join": "round" },
-    });
+    },
     // Thinner and paler: this segment is not placed until the next click.
-    map.addLayer({
+    {
       id: DRAFT_RUBBER_LAYER_ID,
       type: "line",
       source: DRAFT_SOURCE_ID,
       filter: ["all", ["==", ["geometry-type"], "LineString"], ["get", "rubber"]],
       paint: { "line-color": "#b8682d", "line-width": 2, "line-opacity": 0.6, "line-dasharray": [1, 2] },
       layout: { "line-cap": "round", "line-join": "round" },
-    });
-    map.addLayer({
+    }, {
       id: DRAFT_POINT_LAYER_ID,
       type: "circle",
       source: DRAFT_SOURCE_ID,
       filter: ["==", ["geometry-type"], "Point"],
       paint: { "circle-radius": ["case", ["get", "first"], 7, 4.5], "circle-color": "#ffffff", "circle-stroke-color": "#b8682d", "circle-stroke-width": 2 },
-    });
+    }]);
   }
 
   /** True when a click at this screen point would close the shape. */
@@ -482,14 +474,12 @@
     // A background viewport refresh must not clear feedback under a stationary pointer.
     if (hoveredLake !== undefined && !selection?.lakes.some(lake => lake.id === hoveredLake)) highlightLake();
     const data: FeatureCollection = { type: "FeatureCollection", features: (selection?.lakes ?? []).map(lake => ({ type: "Feature", id: lake.id, properties: { id: lake.id, name: lake.name, selected: lake.id === selection?.activeId }, geometry: { type: "Polygon", coordinates: [[...lake.outline, lake.outline[0]!]] } })) };
-    const source = map.getSource("chart-lakes") as GeoJSONSource | undefined;
-    if (source) source.setData(data);
-    else {
-      map.addSource("chart-lakes", { type: "geojson", promoteId: "id", data });
-      map.addLayer({ id: "chart-lakes-fill", type: "fill", source: "chart-lakes", paint: { "fill-color": "#c4511b", "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.5, ["get", "selected"], 0.35, 0.12] } });
-      map.addLayer({ id: "chart-lakes-outline", type: "line", source: "chart-lakes", paint: { "line-color": "#c4511b", "line-width": ["case", ["boolean", ["feature-state", "hover"], false], 4, ["get", "selected"], 3, 1.5] } });
-      if (map.getStyle()?.glyphs) map.addLayer({ id: "chart-lakes-label", type: "symbol", source: "chart-lakes", layout: { "text-field": ["get", "name"], "text-size": 12 }, paint: { "text-color": "#782b0b", "text-halo-color": "#ffffff", "text-halo-width": 2 } });
-    }
+    const target = map;
+    upsertGeoJson(target, "chart-lakes", data, () => [
+      { id: "chart-lakes-fill", type: "fill", source: "chart-lakes", paint: { "fill-color": "#c4511b", "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.5, ["get", "selected"], 0.35, 0.12] } },
+      { id: "chart-lakes-outline", type: "line", source: "chart-lakes", paint: { "line-color": "#c4511b", "line-width": ["case", ["boolean", ["feature-state", "hover"], false], 4, ["get", "selected"], 3, 1.5] } },
+      ...(target.getStyle()?.glyphs ? [{ id: "chart-lakes-label", type: "symbol", source: "chart-lakes", layout: { "text-field": ["get", "name"], "text-size": 12 }, paint: { "text-color": "#782b0b", "text-halo-color": "#ffffff", "text-halo-width": 2 } } satisfies AddLayerObject] : []),
+    ], "id");
   });
   const lakeCameraBounds = $derived(lakeSelection?.bounds);
   $effect(() => { void lakeCameraBounds; if (styleReady) untrack(fitSelection); });
