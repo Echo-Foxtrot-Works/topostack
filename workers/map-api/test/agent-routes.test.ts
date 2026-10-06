@@ -114,8 +114,11 @@ describe("POST /v1/projects/plan", () => {
 
   it("passes on a terrain outage and an exhausted terrain budget", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    const warn = vi.spyOn(console, "warn");
     const outage = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: -33.9, lon: 18.4 }, widthKm: 7 } }), env, context);
     expect(outage.status).toBe(502);
+    // The origin's own status is logged, so a refusing origin is visible and not only a run of 502s.
+    expect(warn.mock.calls.map(([line]) => JSON.parse(String(line)) as unknown)).toContainEqual({ message: "upstream_rejected", service: "Terrain origin", status: 503 });
     const noBudget = { ...env, TERRAIN_GLOBAL_LIMITER: deny() } as unknown as Env;
     const refused = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: -34.9, lon: 138.6 }, widthKm: 7 } }), noBudget, context);
     expect(refused.status).toBe(429);

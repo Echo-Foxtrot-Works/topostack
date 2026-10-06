@@ -21,3 +21,16 @@ updates:
     schedule:
       interval: weekly
       day: monday
+
+  # The Python data builders' one pinned environment. Monthly: these run by
+  # hand and an upgrade means re-checking the archives they build.
+  # nest-wasm's Cargo.lock is left out on purpose: any change to it needs the
+  # committed WebAssembly rebuilt (`npm run build:nest-wasm`), so it is
+  # upgraded by hand with the solver (see packages/nest-wasm/README.md).
+  - package-ecosystem: pip
+    directory: "/scripts/data-build"
+    schedule:
+      interval: monthly
+    groups:
+      python-builders:
+        patterns: ["*"]

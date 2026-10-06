@@ -5,6 +5,7 @@
 // read from a vector PDF's text layer, and marks clicked in the studio. No
 // label is read by machine; see raster-labels.
 
+import { pathLength } from "./geometry.ts";
 import type { Point2 } from "./local-frame.ts";
 import { close, colourMask, darkMask, downsample, eraseBoxes, inkDistance, otsu, removeSmall, thin, type Mask, type RgbaImage, type Rgb } from "./raster.ts";
 import { bulgeCandidates, labelCandidates, mergeCandidates, type LabelCandidate } from "./raster-labels.ts";
@@ -235,19 +236,13 @@ export function simplify(points: readonly Point2[], tolerance: number): Point2[]
   return points.filter((_, index) => keep[index]);
 }
 
-function lineLength(points: readonly Point2[]): number {
-  let total = 0;
-  for (let index = 1; index < points.length; index += 1) total += Math.hypot(points[index]![0] - points[index - 1]![0], points[index]![1] - points[index - 1]![1]);
-  return total;
-}
-
 /**
  * Splits lines into a thin and a heavy class by Otsu over their length-weighted
  * widths, and returns the split when the heavy class is clearly heavier and
  * carries a real share of the ink; otherwise every line is thin.
  */
 export function heavyWidth(lines: readonly SkeletonLine[]): number | undefined {
-  const lengths = lines.map((line) => lineLength(line.points));
+  const lengths = lines.map((line) => pathLength(line.points));
   const widest = Math.max(0, ...lines.map((line) => line.width));
   if (!(widest > 0)) return undefined;
   const histogram = new Float64Array(256);
@@ -312,7 +307,7 @@ function linesOf(mask: Mask, side: number, erase: readonly Box[]): { lines: Skel
 export function withoutLines(mask: Mask, lines: readonly SkeletonLine[], minLength: number): Mask {
   const data = new Uint8Array(mask.data);
   for (const line of lines) {
-    if (lineLength(line.points) < minLength) continue;
+    if (pathLength(line.points) < minLength) continue;
     const radius = line.width / 2 + 1;
     const ring = line.closed ? [...line.points, line.points[0]!] : line.points;
     for (let index = 1; index < ring.length; index += 1) {

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Turns a lake depth chart into bathymetry: georeferencing a chart image against a known lake outline, and interpolating traced contours into a depth grid. Pure TypeScript with no DOM access, run by the batch build in Node and by a studio worker in the browser. Source-only; every consumer compiles TypeScript itself.",
   "exports": {
+    "./geometry": "./src/geometry.ts",
     "./georef": "./src/georef.ts",
     "./grid": "./src/grid.ts",
     "./levels": "./src/levels.ts",

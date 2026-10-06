@@ -31,6 +31,7 @@ from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
 from terrain_release import atomic_write
+from pinned import file_sha256
 
 BUCKET = 'https://noaa-ocs-nationalbathymetry-pds.s3.amazonaws.com'
 PRODUCTS = {
@@ -47,12 +48,7 @@ RAT_FIELDS = ('value', 'count', 'source_survey_id', 'source_institution',
 MEASURE_SIZE = 512
 
 
-def digest(path):
-    value = hashlib.sha256()
-    with open(path, 'rb') as file:
-        for block in iter(lambda: file.read(1 << 20), b''):
-            value.update(block)
-    return value.hexdigest()
+digest = file_sha256
 
 
 def list_keys(prefix):

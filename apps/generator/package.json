@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && vite build && vite build --config vite.mcp-app.config.ts && node ../../scripts/build/prune-atomm-dist.mjs && node ../../scripts/build/finalize-static-headers.mjs && node ../../scripts/build/write-markdown-pages.mjs && node ../../scripts/build/write-build-version.mjs && node ../../scripts/build/write-third-party-licenses.mjs",
-    "build:e2e": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && vite build --mode e2e && vite build --config vite.mcp-app.config.ts --mode e2e && node ../../scripts/build/finalize-static-headers.mjs && node ../../scripts/build/write-markdown-pages.mjs && node ../../scripts/build/write-build-version.mjs && node ../../scripts/build/write-third-party-licenses.mjs",
+    "build": "svelte-kit sync && vite build && vite build --config vite.mcp-app.config.ts && node ../../scripts/build/prune-atomm-dist.mjs && node ../../scripts/build/finalize-static-headers.mjs && node ../../scripts/build/write-markdown-pages.mjs && node ../../scripts/build/write-build-version.mjs && node ../../scripts/build/write-third-party-licenses.mjs",
+    "build:e2e": "svelte-kit sync && vite build --mode e2e && vite build --config vite.mcp-app.config.ts --mode e2e && node ../../scripts/build/finalize-static-headers.mjs && node ../../scripts/build/write-markdown-pages.mjs && node ../../scripts/build/write-build-version.mjs && node ../../scripts/build/write-third-party-licenses.mjs",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run && vitest run --config vitest.client.config.ts",
     "coverage": "vitest run --coverage && vitest run --config vitest.client.config.ts --coverage",

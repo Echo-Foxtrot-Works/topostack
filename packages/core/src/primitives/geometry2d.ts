@@ -1,11 +1,12 @@
 import type { MultiPolygon, Pair, Polygon, Ring } from "polygon-clipping";
 import type { Point2D, Polygon2D } from "../types.js";
+import { MERCATOR_MAX_LATITUDE } from "./units.js";
 
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 /** Web Mercator world Y in [0, 1] (north at 0), clamped to the projection's latitude limit. */
 export function mercatorWorldY(latitude: number): number {
-  const radians = clamp(latitude, -85.0511, 85.0511) * Math.PI / 180;
+  const radians = clamp(latitude, -MERCATOR_MAX_LATITUDE, MERCATOR_MAX_LATITUDE) * Math.PI / 180;
   return (1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2;
 }
 
@@ -331,6 +332,13 @@ export function clipPolyline(points: Point2D[], polygons: Polygon2D[] | Prepared
   return result;
 }
 
+export function polylineLength(points: Point2D[]): number {
+  return points.reduce((total, point, index) => {
+    const next = points[index + 1];
+    return total + (next ? Math.hypot(next.x - point.x, next.y - point.y) : 0);
+  }, 0);
+}
+
 export function distanceToSegment(point: Point2D, start: Point2D, end: Point2D): number {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -340,7 +348,7 @@ export function distanceToSegment(point: Point2D, start: Point2D, end: Point2D):
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
 }
 
-export function orientation(a: Point2D, b: Point2D, c: Point2D): number {
+function orientation(a: Point2D, b: Point2D, c: Point2D): number {
   return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 

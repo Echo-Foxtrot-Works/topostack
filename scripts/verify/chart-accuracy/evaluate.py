@@ -1,4 +1,6 @@
-import json,pathlib,base64
+import json
+import pathlib
+import base64
 import numpy as np
 root=pathlib.Path('.topostack/chart-accuracy')
 

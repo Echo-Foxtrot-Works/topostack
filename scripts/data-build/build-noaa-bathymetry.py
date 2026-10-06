@@ -15,13 +15,13 @@ import shutil
 import sqlite3
 import subprocess
 import tarfile
-import urllib.request
 
 import numpy as np
 from PIL import Image
 import rasterio
 from rasterio.transform import from_bounds
 from rasterio.warp import reproject, Resampling, transform_bounds
+from pinned import download, file_sha256
 
 CATALOG = json.loads((Path(__file__).parent.parent / "data/noaa-great-lakes.json").read_text())
 PINS = json.loads((Path(__file__).parent.parent / "data/noaa-great-lakes-sources.json").read_text())
@@ -35,13 +35,8 @@ def download_grid(lake, cache):
     archive = cache / f"{lake_id}.tar.gz"
     if not archive.exists():
         print(f"Downloading {lake_id}", flush=True)
-        request = urllib.request.Request(url, headers={"User-Agent": "TopoStack bathymetry builder"})
-        temporary = archive.with_suffix(".part")
-        with urllib.request.urlopen(request, timeout=120) as response, temporary.open("wb") as output:
-            shutil.copyfileobj(response, output)
-        temporary.replace(archive)
-    with archive.open("rb") as source:
-        digest = hashlib.file_digest(source, "sha256").hexdigest()
+        download(url, archive, user_agent="TopoStack bathymetry builder", timeout=120)
+    digest = file_sha256(archive)
     expected = next(item["sha256"] for item in PINS["sources"] if item["id"] == lake_id)
     if digest != expected:
         raise ValueError(f"NOAA {lake_id} source checksum changed. Review the source before updating its pin.")

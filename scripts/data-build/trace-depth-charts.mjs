@@ -10,7 +10,6 @@
 // survey archive build; the rest stay in the work directory, which is
 // gitignored, along with report.json.
 
-import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +19,7 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { readPdfPage } from "@topostack/chart-trace/pdf";
 import { writeJsonAtomic } from "../lib/files.mjs";
 import { chartRecord, parseChartManifest, traceChart } from "../lib/depth-charts.mjs";
+import { pinnedDownload } from "../lib/pinned-download.mjs";
 import { run } from "../lib/process.mjs";
 
 const root = new URL("../../", import.meta.url);
@@ -28,21 +28,9 @@ const work = args.work ?? fileURLToPath(new URL(".topostack/depth-charts/", root
 const published = fileURLToPath(new URL("scripts/data/depth-charts/", root));
 const tool = `chart-trace@${JSON.parse(await readFile(new URL("packages/chart-trace/package.json", root), "utf8")).version}`;
 
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-
 /** The source bytes, downloaded once and always checked against the pin. */
 async function source(chart) {
-  const file = join(work, "sources", `${chart.source.sha256}`);
-  let bytes = await readFile(file).catch(() => undefined);
-  if (!bytes) {
-    const response = await fetch(chart.source.url, { headers: { "user-agent": "topostack-depth-charts" } });
-    if (!response.ok) throw new Error(`Depth chart ${chart.id}: download failed with ${response.status}.`);
-    bytes = Buffer.from(await response.arrayBuffer());
-    await mkdir(join(work, "sources"), { recursive: true });
-    await writeFile(file, bytes);
-  }
-  const actual = sha256(bytes);
-  if (actual !== chart.source.sha256) throw new Error(`Depth chart ${chart.id}: source sha256 is ${actual}, pinned ${chart.source.sha256}.`);
+  const bytes = await pinnedDownload({ url: chart.source.url, sha256: chart.source.sha256, file: join(work, "sources", chart.source.sha256), label: `Depth chart ${chart.id}`, headers: { "user-agent": "topostack-depth-charts" } });
   return new Uint8Array(bytes);
 }
 

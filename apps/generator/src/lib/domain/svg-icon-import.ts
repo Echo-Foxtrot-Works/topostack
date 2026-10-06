@@ -7,7 +7,7 @@ import { buildMarkerIcon, flattenSvgPath, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTO
  */
 
 /** Icons are small drawings; anything larger is almost certainly not one. */
-export const MAX_SVG_ICON_BYTES = 1_000_000;
+const MAX_SVG_ICON_BYTES = 1_000_000;
 
 export interface SvgIconImport {
   icon: MarkerIconV1;

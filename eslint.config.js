@@ -37,6 +37,9 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/no-misused-promises": "error",
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/switch-exhaustiveness-check": ["error", { considerDefaultExhaustiveForUnions: true }],
+      "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports", disallowTypeAnnotations: false }],
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
@@ -59,6 +62,8 @@ export default tseslint.config(
     },
   },
   {
+    // Node scripts also hold Playwright page.evaluate callbacks that run in
+    // the browser, so both global sets apply.
     files: ["**/*.mjs", "**/*.config.js"],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },

@@ -1,5 +1,5 @@
-import { pathToFileURL } from "node:url";
 import { fetchGatewayJson, gatewayOrigin } from "../lib/gateway.mjs";
+import { isMainModule } from "../lib/main-module.mjs";
 
 /**
  * Hourly monitor for the Worker's cache-miss probes.
@@ -16,6 +16,6 @@ export async function verifyUpstreamHealth(origin, request = fetch) {
   return result;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   console.log(JSON.stringify(await verifyUpstreamHealth(gatewayOrigin(process.env.WORKER_URL))));
 }

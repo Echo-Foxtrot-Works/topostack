@@ -7,7 +7,7 @@ import { apiBase } from "$lib/domain/api-base";
 import { createArchive } from "$lib/domain/archive";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
 import { mapTiles } from "$lib/domain/tile-requests";
-import { fittingTileWindow, tilePointProjector } from "$lib/domain/tile-math";
+import { archiveTileWindow } from "$lib/domain/tile-math";
 import { clipVectorTileLine, joinPaths } from "$lib/domain/vector-cleanup";
 
 /**
@@ -21,7 +21,7 @@ import { clipVectorTileLine, joinPaths } from "$lib/domain/vector-cleanup";
 export const AVIATION_SOURCES = validateAviationSources(rawAviationSources);
 
 /** Pieces of line decoded before stitching, and airports and navaids kept, per load. Beyond either the result is partial. */
-export const MAX_AVIATION_LINES = 6_000;
+const MAX_AVIATION_LINES = 6_000;
 export const MAX_AVIATION_POINTS = 1_500;
 /**
  * Obstacles kept per load, tallest first. A crop can hold ten thousand (tower
@@ -31,7 +31,7 @@ export const MAX_AVIATION_POINTS = 1_500;
  */
 export const MAX_AVIATION_OBSTACLES = 2_000;
 /** Airspace altitude label candidates kept per load, roomiest first; core prints one per area. */
-export const MAX_AIRSPACE_LABELS = 600;
+const MAX_AIRSPACE_LABELS = 600;
 const FEET_TO_METERS = 0.3048;
 /** Obstacles this tall get the larger sectional symbol. */
 const TALL_OBSTACLE_FT = 1_000;
@@ -110,7 +110,7 @@ export interface AviationData {
   attribution: SourceAttribution[];
 }
 
-export function aviationAttribution(cycle: string): SourceAttribution {
+function aviationAttribution(cycle: string): SourceAttribution {
   return { name: `FAA Aeronautical Information Services, NASR cycle ${cycle}`, url: AVIATION_SOURCES.url, license: AVIATION_SOURCES.license };
 }
 
@@ -138,8 +138,7 @@ export async function loadAviationMarkings(bounds: GeoBounds, requestedZoom: num
   const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
   const { nasrCycle } = parseAviationArchiveMetadata(metadata);
   signal?.throwIfAborted();
-  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, Math.round(requestedZoom) + 1)), header.minZoom);
-  const projectPoint = tilePointProjector(window, config.widthMm, config.heightMm);
+  const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
   const consumeGeometry = createFeatureBudget();
   const lineWidth = config.widthMm + LINE_MARGIN_MM;
   const lineHeight = config.heightMm + LINE_MARGIN_MM;

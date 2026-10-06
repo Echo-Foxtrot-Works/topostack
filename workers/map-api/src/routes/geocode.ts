@@ -1,6 +1,8 @@
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
-import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
+import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
+import { hex } from "../hex";
 
 const MAX_GEOCODER_BYTES = 256_000;
 const GEOCODE_CACHE_SECONDS = 60 * 60 * 24;
@@ -32,7 +34,7 @@ export function normalizeGeoapify(payload: unknown): Array<{ place_id: string; d
     const lat = item.lat;
     const lon = item.lon;
     const label = typeof item.formatted === "string" ? item.formatted.trim() : "";
-    if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -85.0511 || lat > 85.0511 || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
+    if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -MERCATOR_MAX_LATITUDE || lat > MERCATOR_MAX_LATITUDE || typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180 || !label) return [];
     return [{ place_id: geoapifyPlaceId(item, index), display_name: label, lat, lon, ...(typeof item.result_type === "string" ? { type: item.result_type } : {}) }];
   });
 }
@@ -86,7 +88,7 @@ function normalizeGeocodeQuery(query: string): string {
 /** `query` must already be normalized by normalizeGeocodeQuery. */
 async function cacheKey(env: Env, query: string, limit: number): Promise<string> {
   const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.GEOCODER_ORIGIN}|geoapify-v2|${query}|${limit}`));
-  return `geocode/${Array.from(new Uint8Array(keyHash)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}.json`;
+  return `geocode/${hex(keyHash)}.json`;
 }
 
 function jsonHeaders(maxAge: number, cache: string): Headers {
@@ -137,7 +139,7 @@ async function searchGeoapify(request: Request, env: Env, apiKey: string, query:
   }
   if (!upstream.ok) {
     await upstream.body?.cancel();
-    return json({ error: "Geocoder unavailable", status: upstream.status }, { status: 502 });
+    return upstreamRejected(upstream, "Geocoder", "Geocoder unavailable");
   }
   const contentLength = Number(upstream.headers.get("content-length") ?? 0);
   if (contentLength > MAX_GEOCODER_BYTES) {

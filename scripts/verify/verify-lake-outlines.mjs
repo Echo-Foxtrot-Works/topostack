@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { open, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import { openBrowserCheck } from "../lib/browser-check.mjs";
 
 const base = process.env.SURVEY_TEST_APP_URL ?? "http://localhost:5297";
 assert(["localhost", "127.0.0.1"].includes(new URL(base).hostname), "Use a local Vite server");
-const archives = process.argv.find((arg) => arg.startsWith("--local-archives="))?.slice(17);
+const { values: { "local-archives": archives } } = parseArgs({ options: { "local-archives": { type: "string" } } });
 assert(archives, "Pass --local-archives=<directory>");
 const directory = JSON.parse(await readFile(new URL("../../apps/generator/static/data/lake-depth-directory.json", import.meta.url), "utf8"));
 const datasets = ["mn-dnr-lakes-v1", "syke-finland-lakes-v1", "ontario-lakes-v1", "nve-norway-lakes-v1", "twdb-texas-reservoirs-v1", "usbr-reservoirs-v1"];

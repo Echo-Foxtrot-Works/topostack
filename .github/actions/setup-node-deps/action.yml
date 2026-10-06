@@ -1,0 +1,22 @@
+name: Set up Node.js and dependencies
+description: Node.js at the version in .nvmrc, the npm cache, and npm ci. Check out the repository first.
+inputs:
+  install:
+    description: Run npm ci. Set "false" for jobs that use only Node builtins.
+    default: "true"
+  npm-ci-args:
+    description: Arguments for npm ci.
+    default: --no-audit --no-fund
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version-file: .nvmrc
+        cache: ${{ inputs.install == 'true' && 'npm' || '' }}
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: npm ci ${{ inputs.npm-ci-args }}
