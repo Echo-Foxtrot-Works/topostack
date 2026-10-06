@@ -6,6 +6,7 @@ import { getPrompt, promptListing, PROMPTS } from "./prompts";
 import { isJsonRpcMessage, isSupportedVersion, negotiateVersion, paramsRecord, RPC_ERRORS, rpcError, RpcError, rpcResult, SUPPORTED_PROTOCOL_VERSIONS, type JsonRpcMessage } from "./protocol";
 import { readResource, resourceListings, RESOURCES } from "./resources";
 import { callTool, toolListing, TOOLS } from "./tools";
+import { MCP_PATH } from "../paths";
 
 /**
  * TopoStack's remote MCP server: stateless Streamable HTTP at `/mcp`. Each POST
@@ -14,7 +15,6 @@ import { callTool, toolListing, TOOLS } from "./tools";
  * so GET and DELETE are 405. Nothing here needs credentials: the tools only
  * read, and the agent budget limits every call.
  */
-export const MCP_PATH = "/mcp";
 
 const INSTRUCTIONS = [
   "TopoStack plans laser-cut terrain models: layered stacks of sheets or flat engravings.",
