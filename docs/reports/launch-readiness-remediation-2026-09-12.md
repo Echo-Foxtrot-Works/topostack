@@ -30,7 +30,7 @@ This implements the fourteen actionable findings in [the original review](launch
 - The asset budget includes a separate default-preview startup budget covering the 3D engine and geometry worker.
 - Readiness requires both archives, matching default water-depth export requirements. Gateway completion logs include HTTP status, cache outcome, and duration.
 - The live browser canary downloads and inspects its fabrication ZIP, detects uncaught browser errors, and uploads failure diagnostics.
-- Release packaging records ZIP hash, revision/dirty state, API origin, dataset version, and archive identities. Provisioning emits dataset digest receipts. The [acceptance and rollback runbook](release-acceptance.md) covers coordinated restoration and retaining the source archives.
+- Release packaging records ZIP hash, revision/dirty state, API origin, dataset version, and archive identities. Provisioning emits dataset digest receipts. The [acceptance and rollback runbook](../release-acceptance.md) covers coordinated restoration and retaining the source archives.
 - CI audits development/build dependencies as well as production dependencies. `.nvmrc`, CI, and package engines reflect supported Node releases; Worker types were regenerated with upgraded Wrangler.
 
 ## Validation

@@ -1,7 +1,6 @@
-import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1 } from "../types.js";
+import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
-import { SHEET_NEST_ROTATIONS } from "../export/sheet-nest/resolve.js";
 import { validateProject } from "../pipeline/validate.js";
 
 /**
@@ -95,15 +94,15 @@ function scaleBarPlacementValue(value: unknown): ProjectConfigV1["scaleBarPlacem
   if (!value || typeof value !== "object") throw new Error("Scale bar placement is invalid.");
   const record = value as Record<string, unknown>;
   if (!NORTH_ARROW_ANCHORS.includes(record.anchor as NorthArrowAnchor)) throw new Error("Scale bar anchor is invalid.");
-  const offset = record.offset && typeof record.offset === "object" ? record.offset as Record<string, unknown> : undefined;
+  const offset = objectFields(record.offset);
   return { anchor: record.anchor as NorthArrowAnchor, offset: offset ? { x: numberValue(offset.x), y: numberValue(offset.y) } : { x: 0, y: 0 } };
 }
 function plaqueValue(value: unknown): PlaqueV1 | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object") throw new Error("Title settings are invalid.");
   const record = value as Record<string, unknown>;
-  const placement = record.placement && typeof record.placement === "object" ? record.placement as Record<string, unknown> : undefined;
-  const offset = placement?.offset && typeof placement.offset === "object" ? placement.offset as Record<string, unknown> : undefined;
+  const placement = objectFields(record.placement);
+  const offset = objectFields(placement?.offset);
   if (typeof record.text !== "string") throw new Error("Title text is invalid.");
   return {
     enabled: booleanValue(record.enabled, "plaque.enabled"),
@@ -117,11 +116,16 @@ function plaqueValue(value: unknown): PlaqueV1 | undefined {
 
 const AVIATION_DETAIL_KEYS = ["airspace", "specialUse", "runways", "airports", "navaids", "obstacles", "labels"] as const satisfies ReadonlyArray<keyof AviationDetailsV1>;
 
+/** An object's fields, or undefined when the value is not an object. */
+function objectFields(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" ? value as Record<string, unknown> : undefined;
+}
+
 function aviationValue(value: unknown): AviationDetailsV1 {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Aviation settings are invalid.");
   const record = value as Record<string, unknown>;
   // A missing switch is off, so details added later never change an older project.
-  return Object.fromEntries(AVIATION_DETAIL_KEYS.map((key) => [key, record[key] === undefined ? false : booleanValue(record[key], `aviation.${key}`)])) as unknown as AviationDetailsV1;
+  return Object.fromEntries(AVIATION_DETAIL_KEYS.map((key) => [key, record[key] === undefined ? false : booleanValue(record[key], `aviation.${key}`)])) as Record<keyof AviationDetailsV1, boolean>;
 }
 
 function markerSymbolValue(value: unknown): MarkerSymbol {
@@ -159,7 +163,7 @@ function iconShapesValue(item: unknown, existing: Array<{ id: string }>, maxPoin
   if (!Array.isArray(record.shapes) || !record.shapes.length) return undefined;
   const shapes: MarkerIconShapeV1[] = [];
   for (const shape of record.shapes as unknown[]) {
-    const fields = shape && typeof shape === "object" ? shape as Record<string, unknown> : {};
+    const fields = objectFields(shape) ?? {};
     const outer = iconRingValue(fields.outer);
     const holes = Array.isArray(fields.holes) ? fields.holes.map(iconRingValue) : [];
     if (!outer || holes.some((hole) => !hole)) return undefined;
@@ -191,8 +195,8 @@ function placedGraphicsValue(value: unknown, graphics: CustomGraphicV1[] | undef
     const record = item as Record<string, unknown>;
     if (typeof record.id !== "string" || !MARKER_ICON_ID_PATTERN.test(record.id) || placed.some(({ id }) => id === record.id)) continue;
     if (!graphics.some(({ id }) => id === record.graphicId)) continue;
-    const placement = record.placement && typeof record.placement === "object" ? record.placement as Record<string, unknown> : undefined;
-    const offset = placement?.offset && typeof placement.offset === "object" ? placement.offset as Record<string, unknown> : undefined;
+    const placement = objectFields(record.placement);
+    const offset = objectFields(placement?.offset);
     // Lenient on purpose: a placement that fails the checks below is dropped,
     // not fatal, and parsing less than before would reject saved projects.
     const offsetX = Number(offset?.x ?? 0); const offsetY = Number(offset?.y ?? 0);
@@ -316,7 +320,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
   const locationRecord = location as Record<string, unknown>;
   if (typeof record.name === "string" && record.name.trim() && record.name.length > MAX_PROJECT_NAME_LENGTH) throw new Error("Project name must contain at most 120 characters.");
   if (typeof locationRecord.label === "string" && locationRecord.label.length > 240) throw new Error("Project location label must contain at most 240 characters.");
-  const boundsRecord = locationRecord.bounds && typeof locationRecord.bounds === "object" ? locationRecord.bounds as Record<string, unknown> : undefined;
+  const boundsRecord = objectFields(locationRecord.bounds);
   if (record.elevationLabelPosition !== undefined && (!record.elevationLabelPosition || typeof record.elevationLabelPosition !== "object")) throw new Error("Elevation label position is invalid.");
   const labelPositionRecord = record.elevationLabelPosition as Record<string, unknown> | undefined;
   if (record.textStyle !== undefined && (!record.textStyle || typeof record.textStyle !== "object")) throw new Error("Text style is invalid.");
@@ -325,7 +329,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
   const lineStyleRecord = record.lineStyle as Record<string, unknown> | undefined;
   if (record.northArrowPlacement !== undefined && (!record.northArrowPlacement || typeof record.northArrowPlacement !== "object")) throw new Error("North arrow placement is invalid.");
   const northArrowPlacementRecord = record.northArrowPlacement as Record<string, unknown> | undefined;
-  const northArrowOffsetRecord = northArrowPlacementRecord?.offset && typeof northArrowPlacementRecord.offset === "object" ? northArrowPlacementRecord.offset as Record<string, unknown> : undefined;
+  const northArrowOffsetRecord = objectFields(northArrowPlacementRecord?.offset);
   const project: ProjectConfigV1 = {
     ...DEFAULT_PROJECT,
     schemaVersion: 1,

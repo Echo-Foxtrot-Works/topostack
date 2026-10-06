@@ -16,7 +16,7 @@ import { palette, type Swatch } from "@topostack/chart-trace/raster";
 
 export type WorkerFactory = () => Worker;
 
-export const defaultWorkerFactory: WorkerFactory | undefined =
+const defaultWorkerFactory: WorkerFactory | undefined =
   typeof Worker === "undefined" ? undefined : () => new Worker(new URL("./chart-trace.worker.ts", import.meta.url), { type: "module" });
 
 interface WorkerReply {

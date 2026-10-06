@@ -1,4 +1,4 @@
-import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, parseProject, parseProjectRequest, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
+import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, MERCATOR_MAX_LATITUDE, parseProject, parseProjectRequest, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
 import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-contracts/share-link";
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
@@ -140,7 +140,7 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));
     const [west, south, east, north] = parts as [number, number, number, number];
     const bounds = { west, south, east, north };
-    if (parts.length !== 4 || !isMercatorBounds(bounds)) throw new AgentError(400, "bbox must be west,south,east,north in degrees inside ±180° and ±85.0511°, with west < east and south < north.");
+    if (parts.length !== 4 || !isMercatorBounds(bounds)) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with west < east and south < north.`);
     return bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];

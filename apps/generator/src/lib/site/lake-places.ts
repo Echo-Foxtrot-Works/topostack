@@ -1,6 +1,7 @@
 import { lakeStudioLink, type LakeDirectory, type LakeDirectoryEntry, type LakeDirectorySource } from "./lake-directory.ts";
 import { SITE_ORIGIN, type SocialImage } from "./site.ts";
 import type { PageSeo } from "./seo.ts";
+import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "./geo.ts";
 
 /**
  * One prerendered page per substantial named lake, at /lake/<slug>. The region
@@ -24,7 +25,7 @@ const LAKE_PLACES_UPDATED = "2026-09-25";
  * on their region's list, which keeps the generated pages from being thin near-duplicates. Lower
  * it only once Search Console shows the lakes sitemap being indexed well.
  */
-export const PLACE_PAGE_MIN_KM2 = 5;
+const PLACE_PAGE_MIN_KM2 = 5;
 const NEARBY_COUNT = 6;
 /** Piece widths the planning table works out, in millimetres (12, 16 and 24 inches). */
 const PIECE_WIDTHS_MM = [304.8, 406.4, 609.6] as const;
@@ -57,13 +58,11 @@ export interface LakePlace {
   nearby: NearbyLake[];
 }
 
-export const slugify = (text: string): string => text.normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/ø/g, "o").replace(/æ/g, "ae").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const slugify = (text: string): string => text.normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/ø/g, "o").replace(/æ/g, "ae").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 /** Stable across data rebuilds and source version bumps. */
 export const placeKey = (lake: Pick<LakeDirectoryEntry, "sourceId" | "surveyId">): string => `${lake.sourceId.replace(/-v\d+$/, "")}:${lake.surveyId}`;
 
-const KM_PER_DEGREE_LAT = 110.574;
-const kmPerDegreeLon = (lat: number): number => 111.32 * Math.cos(lat * Math.PI / 180);
-export function surveyExtentKm([west, south, east, north]: LakeDirectoryEntry["bounds"]): { width: number; height: number } {
+function surveyExtentKm([west, south, east, north]: LakeDirectoryEntry["bounds"]): { width: number; height: number } {
   return { width: (east - west) * kmPerDegreeLon((south + north) / 2), height: (north - south) * KM_PER_DEGREE_LAT };
 }
 const centerOf = ([west, south, east, north]: LakeDirectoryEntry["bounds"]) => ({ lat: (south + north) / 2, lon: (west + east) / 2 });
@@ -86,14 +85,14 @@ export function eligibleForPlacePage(lake: LakeDirectoryEntry, source: Pick<Lake
   return source.kind === "grid" || width * height >= PLACE_PAGE_MIN_KM2;
 }
 /** "Cook County · Minnesota, USA" → "Cook County, Minnesota"; "Ontario, Canada" → "Ontario". */
-export function placeLabel(region: string): string {
+function placeLabel(region: string): string {
   return region.replace(/ & border lakes$/, "").replace(/, (USA|Canada)$/, "").replace(" · ", ", ");
 }
 /** Names that already say what kind of water they are ("Lake Tahoe", "Rutajärvi", "Bodensee"). */
 const WATER_WORD = /\b(lakes?|lac|lago|laguna|loch|lough|ponds?|reservoir|lagoon|bay|sound|harbou?r|river|creek|bayou|basin|pool|flowage|inlet|slough|see|sjø|sjøen|vatn|vatnet|vann|vannet|järvi|jarvi|lampi|fjord|étang|etang|mere)\b|(järvi|jarvi|vatn|vatnet|vannet|sjøen|see|lampi|selkä)$/iu;
 const lakeWord = (name: string): string => WATER_WORD.test(name) ? "" : " lake";
 
-export function proposeSlug(lake: LakeDirectoryEntry): string {
+function proposeSlug(lake: LakeDirectoryEntry): string {
   return slugify(`${lake.name} ${placeLabel(lake.region)}`);
 }
 
@@ -133,7 +132,7 @@ export function lakePlaceSlugs(directory: LakeDirectory, lock: LakeSlugLock): Ma
   }
   return slugs;
 }
-export const lakePlacePath = (slug: string): string => `${LAKE_PLACE_HOME}/${slug}`;
+const lakePlacePath = (slug: string): string => `${LAKE_PLACE_HOME}/${slug}`;
 
 const formatKm = (km: number): string => km >= 10 ? km.toFixed(0) : km >= 1 ? km.toFixed(1) : km.toFixed(2);
 function coordinateText({ lat, lon }: { lat: number; lon: number }): string {

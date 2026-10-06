@@ -76,7 +76,7 @@ export function nestableParts(ir: GeometryIRV1): NestPartV1[] {
 }
 
 /** Parts smaller than this (about 20 × 20 mm) may be grouped with their neighbours. */
-export const SMALL_PART_MM2 = 400;
+const SMALL_PART_MM2 = 400;
 /** Small parts closer than this travel together. */
 const CLUSTER_GAP_MM = 10;
 /** A group's hull may waste at most this multiple of its parts' own area. */

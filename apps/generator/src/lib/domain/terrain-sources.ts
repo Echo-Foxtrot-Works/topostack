@@ -6,7 +6,7 @@ import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { mapTiles } from "$lib/domain/tile-requests";
 import { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat } from "$lib/domain/tile-math";
 
-export const registeredTerrainSources = validateTerrainCatalog({ sources }).sources;
+const registeredTerrainSources = validateTerrainCatalog({ sources }).sources;
 interface TerrainTile { z: number; x: number; y: number; values: Float32Array }
 
 /**

@@ -3,7 +3,7 @@
 import { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, SITE_ORIGIN, socialCard, type SocialImage } from "./site.ts";
 import latestRelease from "../../../../../changelog/latest.json" with { type: "json" };
 
-export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_LOCALE, SITE_ORIGIN, type SocialImage } from "./site.ts";
+export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_ORIGIN, type SocialImage } from "./site.ts";
 
 export interface PageMeta {
   title: string;
@@ -278,7 +278,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     updated: "2026-09-25",
   },
 };
-export const STUDIO_META = {
+const STUDIO_META = {
   title: "Studio: Create Your Topographic Map | TopoStack",
   description: "Choose a place, customize layered relief or flat engraving, and generate SVG artwork in the free TopoStack studio.",
   label: "studio",
