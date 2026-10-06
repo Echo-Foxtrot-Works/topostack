@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { verifyArchiveResponse } from "./archive-provisioning.mjs";
 
@@ -7,7 +6,8 @@ import { verifyArchiveResponse } from "./archive-provisioning.mjs";
 // published to R2 as content-addressed objects (lake-previews/<sha24>.webp)
 // that the Worker serves at /v1/lake-previews/. The committed pin tells the
 // page build which lakes have one and what it shows.
-export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+export { sha256Hex as digest } from "./hash.mjs";
+import { sha256Hex as digest } from "./hash.mjs";
 export const pinPath = new URL("../../apps/generator/src/lib/site/lake-previews.json", import.meta.url);
 
 /** The pin and upload list for a render folder: every lake in its manifest with a WebP on disk. */

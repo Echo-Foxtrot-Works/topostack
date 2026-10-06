@@ -1,6 +1,6 @@
 # scripts
 
-Operational tooling, grouped by purpose. `lib/` holds shared helpers, `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
+Operational tooling, grouped by purpose. `lib/` holds shared helpers (among them `pinned-download.mjs` for sha256-pinned source files, `hash.mjs`, and `main-module.mjs` for scripts that are also libraries), `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
 
 Every script below says how it is run. "manual" means no npm script or workflow invokes it; the linked runbook does.
 
@@ -58,6 +58,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 | `build-survey-bathymetry.py` | Build surveyed lake-floor archives from registered survey sources | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `chart_records.py` | Turn the published depth chart records in `scripts/data/depth-charts/` into the `community-charts-v1` archive's grids and source pins (library for build-survey-bathymetry.py) | manual: [depth-chart-tracing.md](../docs/depth-chart-tracing.md) |
 | `make-chart-trace-fixture.py` | Regenerate `packages/chart-trace/src/fixtures/tin-parity.json` from `survey_regions.contour_grid`, the parity target for the TypeScript TIN grid | manual, after changing `contour_grid`: [depth-chart-tracing.md](../docs/depth-chart-tracing.md) |
+| `pinned.py` | `download()` (atomic, through a `.part` file) and `file_sha256()` for the builders' pinned sources (library for build-faa-aviation.py, build-noaa-bathymetry.py, tile_writer.py, nbs_inventory.py) | manual |
 | `discover-terrain.py` | Discover and register candidate terrain sources for a region | manual: [terrain-coverage.md](../docs/terrain-coverage.md), [terrain-selection.md](../docs/terrain-selection.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |
 | `nbs_inventory.py` | Inventory NOAA National Bathymetric Source tiles: record the scheme digest and each tile's published SHA-256, classify cells as survey, chart-derived or generalized fill from the attribute tables, and optionally match lake polygons and estimate each lake's surveyed share (`--lakes`, `--measure`) | manual: [noaa-lake-integration-plan.md](../docs/noaa-lake-integration-plan.md) |
 | `select-enc-lakes.py` | Choose the chart-only lakes to build from the chart coverage data, refuse fixed-pool datums, assign regional datasets, and pin every ENC cell by edition and SHA-256 in `scripts/data/noaa-enc-sources.json` | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md#noaa-nautical-chart-lakes) |
