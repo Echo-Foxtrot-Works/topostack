@@ -2,7 +2,6 @@ import { FEEDBACK_LIMITS, parseFeedbackSubmission, type FeedbackKind, type Feedb
 import { BodyTooLargeError, readBounded } from "../body";
 import { clientKey, json, rateLimitExceeded } from "../http";
 
-export const FEEDBACK_PATH = "/v1/feedback";
 const FEEDBACK_GLOBAL_LIMIT_KEY = "feedback-global";
 const KIND_LABELS: Record<FeedbackKind, string> = { bug: "Bug", feature: "Feature", terrain: "Terrain data", lake: "Lake data" };
 

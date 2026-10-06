@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 import { SITE_ORIGIN } from "../../apps/generator/src/lib/site/seo.ts";
 import { expectedPages } from "./seo-pages.mjs";
+import { isMainModule } from "../lib/main-module.mjs";
 
 const pages = expectedPages();
 
@@ -161,7 +161,7 @@ export async function verifyHttpSeo(origin, environment, { propagationTimeoutMs 
   }
   console.log("Verified " + environment + " SEO response semantics at " + origin);
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   // A fresh deployment's assets can lag the Worker, so the deploy job passes a
   // propagation window; monitors leave it unset and fail immediately.
   const propagation = Number(process.env.SEO_PROPAGATION_TIMEOUT_MS ?? 0);

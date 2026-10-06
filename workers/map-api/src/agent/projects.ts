@@ -7,6 +7,7 @@ import { attributionFor, projectDrawsAviation, type Attribution } from "./attrib
 import { areaCoverage, type AreaCoverage } from "./coverage";
 import { studioLink } from "./links";
 import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type ReliefTile } from "./relief";
+import { PUBLIC_HOUR_CACHE } from "../paths";
 
 /**
  * The agent-facing project operations. REST routes and MCP tools both call
@@ -158,6 +159,11 @@ export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: Req
   return parsed.ok ? { bounds: areaBounds(parsed.value.area, 100, 100) } : { errors: parsed.errors };
 }
 
+/** The credits a project's sources require, as the resolve route and the link tool return them. */
+export function projectAttribution(project: ProjectConfigV1, origin: string) {
+  return attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project) });
+}
+
 /** Coverage with the attribution its sources require, as both surfaces return it. */
 export function coverageResult(coverage: AreaCoverage, origin: string) {
   return { ...coverage, attribution: attributionFor(origin, coverage) };
@@ -180,7 +186,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
       return json({ url, length: url.length });
     }
     const { project } = resolveProjectRequest(body);
-    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project) }) });
+    if (action === "resolve") return json({ project, studioUrl: linkFor(project, origin), attribution: projectAttribution(project, origin) });
     if (action === "link") { const url = linkFor(project, origin); return json({ url, length: url.length }); }
     return json(await planProject(project, context));
   } catch (error) {
@@ -192,7 +198,7 @@ export async function projectRouteResponse(action: "resolve" | "plan" | "link", 
 /** GET /v1/coverage. */
 export function coverageRouteResponse(url: URL, context: Pick<AgentContext, "env" | "request">): Response {
   try {
-    return json(coverageResult(areaCoverage(coverageBoundsFromQuery(url)), publicOrigin(context)), { headers: { "cache-control": "public, max-age=3600" } });
+    return json(coverageResult(areaCoverage(coverageBoundsFromQuery(url)), publicOrigin(context)), { headers: { "cache-control": PUBLIC_HOUR_CACHE } });
   } catch (error) {
     if (error instanceof AgentError) return agentErrorResponse(error);
     throw error;

@@ -1,5 +1,5 @@
 import { publicOrigin, type AgentContext } from "../agent/projects";
-import { MCP_PATH } from "../mcp/server";
+import { MCP_PATH, PUBLIC_HOUR_CACHE } from "../paths";
 import { makingAModelGuide } from "../mcp/resources";
 import { hex } from "../hex";
 
@@ -25,7 +25,7 @@ export const SKILL_PATH = `/.well-known/agent-skills/${SKILL_NAME}/SKILL.md`;
 const SERVER_CARD_PATH = "/.well-known/mcp/server-card.json";
 const OPENAPI_PATH = "/v1/openapi.json";
 const OPENAPI_TYPE = "application/vnd.oai.openapi+json;version=3.1";
-const CACHE = "public, max-age=3600";
+const CACHE = PUBLIC_HOUR_CACHE;
 
 type DiscoveryContext = Pick<AgentContext, "env" | "request">;
 

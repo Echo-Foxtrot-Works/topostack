@@ -1,6 +1,6 @@
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
-import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { clientKey, json, rateLimitExceeded, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
 import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
 import { hex } from "../hex";
 
@@ -139,7 +139,7 @@ async function searchGeoapify(request: Request, env: Env, apiKey: string, query:
   }
   if (!upstream.ok) {
     await upstream.body?.cancel();
-    return json({ error: "Geocoder unavailable", status: upstream.status }, { status: 502 });
+    return upstreamRejected(upstream, "Geocoder", "Geocoder unavailable");
   }
   const contentLength = Number(upstream.headers.get("content-length") ?? 0);
   if (contentLength > MAX_GEOCODER_BYTES) {

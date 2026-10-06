@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
   CHANGE_TYPES, CHANGE_TYPE_LABELS, compareVersions, latestRelease, parseFragment, releaseBump, sortEntries, validateChangelog,
 } from "@topostack/data-contracts/changelog";
 import { bumpVersion, nextVersion, readVersions } from "./versions.mjs";
+import { isMainModule } from "../lib/main-module.mjs";
 
 const root = new URL("../../", import.meta.url);
 const SITE = "https://topostack.app";
@@ -193,7 +194,7 @@ async function main(args) {
   else throw new Error(USAGE);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   try {
     await main(process.argv.slice(2));
   } catch (error) {

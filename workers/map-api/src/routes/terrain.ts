@@ -1,8 +1,9 @@
+import packageJson from "../../package.json";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { edgeCacheKey, matchEdge, putEdge, teeToEdge } from "../edge-cache";
-import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
 import { hex } from "../hex";
 
 const MAX_TERRAIN_BYTES = 2_000_000;
@@ -88,7 +89,7 @@ async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promis
   let upstream: Response;
   try {
     upstream = await fetch(`${env.TERRAIN_ORIGIN}/${tile.z}/${tile.x}/${tile.y}.png`, {
-      headers: { "user-agent": "TopoStack/0.1 (terrain fabrication generator)" },
+      headers: { "user-agent": `TopoStack/${packageJson.version} (terrain fabrication generator)` },
       signal: upstreamSignal(request),
     });
   } catch (error) {
@@ -96,7 +97,7 @@ async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promis
   }
   if (upstream.status !== 200 || !upstream.body) {
     await upstream.body?.cancel();
-    return json({ error: "Terrain tile unavailable", status: upstream.status }, { status: 502 });
+    return upstreamRejected(upstream, "Terrain origin", "Terrain tile unavailable");
   }
   const contentLength = Number(upstream.headers.get("content-length") ?? 0);
   const contentType = upstream.headers.get("content-type") ?? "";
