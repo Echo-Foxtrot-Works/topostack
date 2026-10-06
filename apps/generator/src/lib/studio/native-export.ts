@@ -19,8 +19,9 @@ function archiveFilename(masterFilename: string, suffix = "project-files"): stri
 
 /** Build one browser download containing every fabrication file. */
 export async function prepareProjectDownload(output: FabricationPackageV1): Promise<PreparedDownload> {
-  if (output.files.length === 1) {
-    return { ...output.files[0], fileCount: 1 };
+  const [only] = output.files;
+  if (only && output.files.length === 1) {
+    return { ...only, fileCount: 1 };
   }
 
   const entries: AsyncZippable = {};
@@ -93,9 +94,10 @@ export async function prepareSelectedDownload(output: FabricationPackageV1, opti
     if (option === "acrylic") return /-acrylic-(?:\d+(?:-w\d+(?:-\d+)?)?|sheet-\d+|master)(?:-engrave)?\.svg$/.test(file.filename);
     return /-(?:layer-\d+|panel-\d+-layers-[\d-]+)(?:-[a-z]\d+(?:-\d+)?)?\.svg$/.test(file.filename);
   });
-  if (!files.length) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."
+  const [first] = files;
+  if (!first) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."
     : option === "acrylic" ? "No lake became an acrylic insert, so there are no acrylic files." : "This export is not available for the current output type.");
-  if (option === "assembly") return { ...files[0], fileCount: 1 };
+  if (option === "assembly") return { ...first, fileCount: 1 };
   // Keep fabrication instructions and source credits with panel bundles.
   files.push(...output.files.filter((file) => file.filename === "README.txt" || file.filename === "ATTRIBUTION.txt"));
   const download = await prepareProjectDownload({ ...output, files });

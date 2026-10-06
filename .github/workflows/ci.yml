@@ -133,6 +133,9 @@ jobs:
       - name: Install pinned builder dependencies
         run: python -m pip install -r scripts/data-build/requirements.txt
 
+      - name: Lint Python builders
+        run: pipx run ruff==0.14.0 check scripts
+
       - name: Test bathymetry, terrain, and lake outline builders
         # Same command developers run locally; package.json is the single source.
         run: npm run test:python
@@ -204,7 +207,11 @@ jobs:
         # Separate runners keep WebGL tests serial without exceeding the job limit.
         shard: [1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Playwright shards by test count, not duration, so the Atomm workbench
+    # specs all land in shard 1: on Chromium that shard took 9-15 minutes
+    # (about 4 of setup and the E2E build, up to 11 of tests) against 4-9 for
+    # the rest, and at 15 a run whose 29 tests had all passed was cancelled.
+    timeout-minutes: 25
     concurrency:
       group: browser-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true

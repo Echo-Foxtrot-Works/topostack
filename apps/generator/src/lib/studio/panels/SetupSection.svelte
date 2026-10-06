@@ -38,7 +38,7 @@
   {#if studio.embeddedInPlatform}<button type="button" class="btn btn-secondary atomm-edit-map" aria-pressed={studio.mode === "map"} onclick={editMapArea}><MapIcon size={16} aria-hidden="true" />Edit map area</button><p class="preset-label">Suggested places</p>{/if}
   <div class="preset-row" role={studio.embeddedInPlatform ? "group" : undefined} aria-label={studio.embeddedInPlatform ? "Suggested places" : undefined}>
     {#each PRESETS as preset}
-      <button onclick={() => choosePlace(preset)}>{#if studio.embeddedInPlatform}{#if preset.id === "crater-lake"}<Waves size={20} aria-hidden="true" />{:else if preset.id === "grand-canyon"}<Layers3 size={20} aria-hidden="true" />{:else}<Mountain size={20} aria-hidden="true" />{/if}{/if}<span>{preset.label.split(",")[0].replace("Mount ", "Mt. ")}</span></button>
+      <button onclick={() => choosePlace(preset)}>{#if studio.embeddedInPlatform}{#if preset.id === "crater-lake"}<Waves size={20} aria-hidden="true" />{:else if preset.id === "grand-canyon"}<Layers3 size={20} aria-hidden="true" />{:else}<Mountain size={20} aria-hidden="true" />{/if}{/if}<span>{(preset.label.split(",")[0] ?? preset.label).replace("Mount ", "Mt. ")}</span></button>
     {/each}
   </div>
   </div>
