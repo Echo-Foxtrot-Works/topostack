@@ -15,7 +15,6 @@ from pathlib import Path
 import tempfile
 import zipfile
 
-import numpy as np
 from rasterio.warp import transform_geom
 from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
