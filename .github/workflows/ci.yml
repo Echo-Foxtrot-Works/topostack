@@ -275,18 +275,22 @@ jobs:
           path: ~/system-packages
           key: system-packages-${{ runner.os }}-${{ steps.playwright.outputs.image }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
 
+      # A stalled Ubuntu mirror once held apt-get update until the job's 25
+      # minutes ran out. Connections now time out and retry, and the whole
+      # install gets three bounded attempts.
       - name: Restore browser system packages to apt
         run: |
           echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages > /dev/null
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99network-timeouts > /dev/null
           if [ -d ~/system-packages ]; then sudo find ~/system-packages -name '*.deb' -exec cp -t /var/cache/apt/archives/ {} +; fi
 
       - name: Install browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: for attempt in 1 2 3; do timeout 420 npx playwright install --with-deps ${{ matrix.browser }} && exit 0; echo "Browser install attempt $attempt failed."; sudo pkill -f apt-get || true; done; exit 1
 
       - name: Install browser system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps ${{ matrix.browser }}
+        run: for attempt in 1 2 3; do timeout 300 npx playwright install-deps ${{ matrix.browser }} && exit 0; echo "System dependency install attempt $attempt failed."; sudo pkill -f apt-get || true; done; exit 1
 
       - name: Keep browser system packages for the cache
         if: steps.system-packages-cache.outputs.cache-hit != 'true'
