@@ -1,7 +1,7 @@
 // Real source + an explicitly prepared review draft. This is not a claim that
 // the app automatically discovers the fixture's corrections or coordinates.
 import { readFile, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../../lib/hash.mjs';
 import { chromium, expect } from '@playwright/test';
 const source = JSON.parse(await readFile('scripts/verify/chart-release/king-city-reviewed.json'));
 const lake = JSON.parse(await readFile('scripts/verify/chart-accuracy/fixtures/king-city-lake.json'));
@@ -21,7 +21,7 @@ try {
   const review = structuredClone(source.review);
   for (const c of review.contours) c.points = c.points.map(([x,y]) => [(x-left)*sx, (y-top)*sy]);
   for (const p of review.controlPoints) { p.x = (p.x-left)*sx; p.y = (p.y-top)*sy; }
-  const draftFile = { schema: 'chart-review-draft-v1', source: { sha256: createHash('sha256').update(bytes).digest('hex'), page: 0, ...size, units: 'ft', reads: 'elevation', surface: '1028.5', interval: '2' }, review };
+  const draftFile = { schema: 'chart-review-draft-v1', source: { sha256: sha256Hex(bytes), page: 0, ...size, units: 'ft', reads: 'elevation', surface: '1028.5', interval: '2' }, review };
   await page.locator('.chart-review-restore input').setInputFiles({ name: 'king-reviewed.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(draftFile)) });
   await expect(page.getByRole('button', { name: 'Generate reviewed depths', exact: true })).toBeDisabled();
   await page.getByLabel('Select review contour', { exact: true }).selectOption(review.contours.find(c => !c.excluded && c.id !== review.shorelineId).id);

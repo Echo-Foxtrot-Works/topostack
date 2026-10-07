@@ -3,7 +3,7 @@ import { readVersions } from "../release/versions.mjs";
 import { installNativeCapture, nativeFrame } from "./atomm-native-capture.mjs";
 import { readFile, writeFile, mkdir, mkdtemp, copyFile, access } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,7 +16,7 @@ const root = new URL("../../atomm/", import.meta.url);
 const scratch = await mkdtemp(join(tmpdir(), "topostack-listing-"));
 const assets = new URL("assets/", root);
 await mkdir(assets, { recursive: true });
-const sourceDiffSha256 = createHash("sha256").update(execFileSync("git", ["diff", "HEAD", "--", "apps/generator/src", "scripts/dev"])).digest("hex");
+const sourceDiffSha256 = sha256Hex(execFileSync("git", ["diff", "HEAD", "--", "apps/generator/src", "scripts/dev"]));
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const project = JSON.parse(await readFile(new URL("media-project-v6.json", root), "utf8"));
 project.name = "Crater Lake";
@@ -63,7 +63,7 @@ try {
     await cardPage.setContent(`<html><head><style>*{box-sizing:border-box}body{margin:0;background:#e7e8e9;color:#1d302e;font-family:Arial,sans-serif;padding:48px 64px}header{display:flex;justify-content:space-between;font-size:22px;font-weight:700;letter-spacing:-.5px}header span{font-size:16px;font-weight:400;letter-spacing:2px}h1{font-size:62px;letter-spacing:-2.5px;line-height:1.08;margin:30px 0 12px}p{font-size:26px;margin:0 0 30px;color:#405451}main{height:840px;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain;border-radius:16px;box-shadow:0 10px 35px #00000012}footer{position:absolute;bottom:35px;left:64px;right:64px;display:flex;justify-content:space-between;color:#52625f;font-size:15px}</style></head><body><header>TopoStack<span>MAP · LAYER · MAKE</span></header><h1>${escape(title)}</h1><p>${escape(subtitle)}</p><main><img src="data:image/png;base64,${png.toString("base64")}"></main><footer><span>${escape(caption)}</span><span>topostack.app</span></footer></body></html>`);
     await cardPage.locator("img").evaluate(img => img.decode());
     const buffer = await cardPage.screenshot({ path: new URL(name, assets).pathname });
-    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: createHash("sha256").update(buffer).digest("hex"), width: 3200, height: 2400, sourceCommit, title, subtitle });
+    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: sha256Hex(buffer), width: 3200, height: 2400, sourceCommit, title, subtitle });
     console.log("Saved", name);
   }
   const view = async name => { await studio.getByRole("radio", { name, exact: true }).click(); await settled(); };
@@ -205,7 +205,7 @@ try {
   for (const file of ["topostack-cover-loop-v8.mp4", "topostack-showcase-v8.mp4"]) {
     execFileSync(ffmpeg, ["-v", "error", "-i", new URL(file, assets).pathname, "-f", "null", "-"], { stdio: "pipe" });
     const bytes = await readFile(new URL(file, assets));
-    media.push({ file: `assets/${file}`, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), width: 1920, height: 1440, sourceCommit, fullDecodePassed: true, codec: "H.264", fps: 60, audio: false });
+    media.push({ file: `assets/${file}`, bytes: bytes.length, sha256: sha256Hex(bytes), width: 1920, height: 1440, sourceCommit, fullDecodePassed: true, codec: "H.264", fps: 60, audio: false });
   }
   const archive = new URL("media-provenance-v7.json", root);
   try { await access(archive); } catch { await copyFile(new URL("media-provenance.json", root), archive); }

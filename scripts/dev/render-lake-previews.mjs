@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -52,7 +52,7 @@ try {
   await mkdir(out, { recursive: true });
   const manifestPath = join(out, "manifest.json");
   const manifest = existsSync(manifestPath) ? JSON.parse(await readFile(manifestPath, "utf8")) : { rendererVersion: RENDERER_VERSION, api: process.env.VITE_MAP_API_URL, lakes: {} };
-  const inputHash = (lake) => createHash("sha256").update(JSON.stringify([RENDERER_VERSION, process.env.VITE_MAP_API_URL, directory.updated, lake.id, lake.bounds])).digest("hex").slice(0, 16);
+  const inputHash = (lake) => sha256Hex(JSON.stringify([RENDERER_VERSION, process.env.VITE_MAP_API_URL, directory.updated, lake.id, lake.bounds])).slice(0, 16);
 
   const queue = slugs.filter((slug) => {
     const entry = manifest.lakes[slug];
