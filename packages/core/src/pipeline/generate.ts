@@ -1,4 +1,4 @@
-import { executeGeometryTask, type GeometryBatch, type GeometryTaskResult } from "./generation-tasks.js";
+import { executeGeometryTask, type GeometryBatch, type GeometryTask, type GeometryTaskResult } from "./generation-tasks.js";
 import { addMaterialNests } from "./nesting.js";
 import { groundWidthMFor, horizontalScaleFor } from "./stack-plan.js";
 import { aviationFeatures, aviationRequested } from "./aviation.js";
@@ -8,10 +8,9 @@ import { smoothLakeShorelines } from "../water/lake-shoreline.js";
 import { cropBoundary as boundary } from "../primitives/crop.js";
 import { selectElevationLabels } from "../annotate/label-placement.js";
 import { splitLayersForWorkArea } from "./split.js";
-import { displayElevation, elevationUnit } from "../primitives/units.js";
 import { paintRegions } from "./paint-regions.js";
 import { cutWaterInserts, takeInsertMarkings, withInsertSurfaces } from "./water-inserts.js";
-import type { ElevationGrid, GeometryIRV1, GeometryWarning, LayerIR, ProjectConfigV1, SourceBundleV1, WaterInsertIR } from "../types.js";
+import type { ElevationGrid, GeometryIRV1, GeometryWarning, LayerIR, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR } from "../types.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
 import { layerClips } from "./layer-clips.js";
 import { addSourceWarnings } from "./source-warnings.js";
@@ -19,7 +18,7 @@ import { buildLadder, carveWater, contourLayers, measuredElevationGrid } from ".
 import { flatWaterAreas, waterOutputs } from "./water-outputs.js";
 import { insertedShorelines, markingEnabled, placeTransportationLabels, routeMarkings } from "./routing.js";
 import { addAlignmentGuides, addPieceLabels } from "./assembly-marks.js";
-import { cutPlacedGraphics, placeAnnotations, placeElevationLabels, placeGraphics, placeMarkers, placePlaque } from "./annotations.js";
+import { cutPlacedGraphics, elevationLabelTexts, placeAnnotations, placeElevationLabels, placeGraphics, placeMarkers, placePlaque } from "./annotations.js";
 import { placeAviationLabels } from "./aviation-labels.js";
 
 /**
@@ -143,6 +142,24 @@ export function createParallelGeometryGenerator() {
   };
 }
 
+/** Each sheet's alignment guides against the sheet above, as worker tasks. */
+function alignmentTasks(layers: LayerIR[], unsplitOutlines: Polygon2D[][]): GeometryTask[] {
+  return layers.slice(0, -1).map((layer, index) => ({
+    kind: "alignment" as const, layer,
+    nextLayer: { index: layers[index + 1]!.index, polygons: layers[index + 1]!.polygons, pieces: layers[index + 1]!.pieces },
+    outlines: unsplitOutlines[index + 1]!,
+  }));
+}
+
+/** Each sheet's elevation-label search under the sheet above, as worker tasks. */
+function elevationLabelTasks(layers: LayerIR[], config: ProjectConfigV1): GeometryTask[] {
+  return layers.map((layer, index) => ({
+    kind: "elevation-labels" as const, layer,
+    covering: layers[index + 1] && { polygons: layers[index + 1]!.polygons },
+    labels: elevationLabelTexts(layer, config.units),
+  }));
+}
+
 function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, options?: GenerationOptions, session?: GenerationSession, parallel = false): Generator<GeometryBatch, GeometryIRV1, GeometryTaskResult[]> {
   let started = options?.onStage ? performance.now() : 0;
   const stage = (name: GenerationStage) => {
@@ -230,11 +247,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   const usePool = parallel && !flatEngraving && layers.length >= PARALLEL_MIN_LAYERS;
   if (!flatEngraving && config.showAlignmentGuides) {
     if (usePool) {
-      const results = yield { config, tasks: layers.slice(0, -1).map((layer, index) => ({
-        kind: "alignment" as const, layer,
-        nextLayer: { index: layers[index + 1]!.index, polygons: layers[index + 1]!.polygons, pieces: layers[index + 1]!.pieces },
-        outlines: unsplitOutlines[index + 1]!,
-      })) };
+      const results = yield { config, tasks: alignmentTasks(layers, unsplitOutlines) };
       if (results.length !== layers.length - 1) throw new Error("Incomplete alignment batch.");
       results.forEach((result, index) => {
         if (result.kind !== "alignment") throw new Error("Invalid alignment result.");
@@ -253,14 +266,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   placeAviationLabels(context, surfaceClips);
   if (config.showElevationLabels) {
     if (usePool) {
-      const results = yield { config, tasks: layers.map((layer, index) => {
-        const elevation = Math.round(displayElevation(layer.elevationM, config.units));
-        const unit = elevationUnit(config.units);
-        return { kind: "elevation-labels" as const, layer,
-          covering: layers[index + 1] && { polygons: layers[index + 1]!.polygons },
-          labels: [`${elevation} ${unit}`, `${elevation}${unit}`, `${elevation}`],
-        };
-      }) };
+      const results = yield { config, tasks: elevationLabelTasks(layers, config) };
       if (results.length !== layers.length) throw new Error("Incomplete elevation-label batch.");
       const candidates = results.map(result => {
         if (result.kind !== "elevation-labels") throw new Error("Invalid elevation-label result.");

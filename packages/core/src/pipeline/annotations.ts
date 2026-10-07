@@ -1,7 +1,7 @@
 import { removeTinyRing } from "./contours.js";
 import { groundWidthMFor } from "./stack-plan.js";
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, pointInRing, preparePolygons, toMultiPolygon } from "../primitives/geometry2d.js";
+import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, pointInRing, type PreparedPolygons, preparePolygons, toMultiPolygon } from "../primitives/geometry2d.js";
 import { labelDimensions, labelGeometry } from "../annotate/labels.js";
 import { placeElevationLabelStack, type CoordinatedElevationLabel } from "../annotate/label-placement.js";
 import { geoPointToMapPoint, longitudeInBounds, markerCenterForAnchor, markerPolygons } from "../annotate/markers.js";
@@ -12,7 +12,7 @@ import { northArrowMarkings } from "../annotate/north-arrow.js";
 import { scaleBarMarkings } from "../annotate/scale-bar.js";
 import { plaqueFootprint, plaqueMarkings } from "../annotate/plaque.js";
 import { displayElevation, elevationUnit } from "../primitives/units.js";
-import { MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D } from "../types.js";
+import { MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D, type UnitSystem } from "../types.js";
 import type { GenerationContext } from "./generation-context.js";
 import type { LayerClip } from "./layer-clips.js";
 
@@ -21,6 +21,13 @@ interface AnnotationPlacer {
   fits(markings: OperationPath[], name: string): boolean;
   /** Adds markings to the base layer, or routes them onto the exposed surface of the stack. */
   push(markings: OperationPath[], followSurface: boolean): void;
+}
+
+const INSET_CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
+
+/** Whether a square `inset` either side of every point stays inside the crop, so a stroke that wide drawn through them is not cut off. */
+function insetFits(points: Point2D[], inset: number, clip: Point2D[]): boolean {
+  return points.every(({ x, y }) => INSET_CORNERS.every(([dx, dy]) => pointInRing({ x: x + dx * inset, y: y + dy * inset }, clip)));
 }
 
 export function annotationPlacer({ config, clip, warnings, flatEngraving }: GenerationContext, clips: LayerClip[]): AnnotationPlacer {
@@ -35,8 +42,7 @@ export function annotationPlacer({ config, clip, warnings, flatEngraving }: Gene
           const { width, height } = labelDimensions(marking.label, marking.textStyle);
           points.push({ x: x + width, y }, { x, y: y + height }, { x: x + width, y: y + height });
         }
-        const inset = config.lineStyle.annotationMm / 2;
-        return points.every(({ x, y }) => [[-inset, -inset], [inset, -inset], [inset, inset], [-inset, inset]].every(([dx, dy]) => pointInRing({ x: x + dx!, y: y + dy! }, clip)));
+        return insetFits(points, config.lineStyle.annotationMm / 2, clip);
       });
       if (!fits) warnings.push({ code: "LABEL_OMITTED", message: `${name} was omitted because it does not fit the material. Increase the output size or reduce the annotation size.` });
       return fits;
@@ -96,13 +102,16 @@ export function placeAnnotations(context: GenerationContext, clips: LayerClip[])
   }
 }
 
+/** A layer's elevation label, longest form first: the placer takes the first that fits. */
+export function elevationLabelTexts(layer: LayerIR, units: UnitSystem): string[] {
+  const elevation = Math.round(displayElevation(layer.elevationM, units));
+  const unit = elevationUnit(units);
+  return [`${elevation} ${unit}`, `${elevation}${unit}`, `${elevation}`];
+}
+
 export function placeElevationLabels({ config, flatEngraving, warnings }: GenerationContext, layers: LayerIR[], parallelPlacements?: Array<CoordinatedElevationLabel | undefined>): void {
   const omittedLayers: string[] = [];
-  const labelsByLayer = layers.map((layer) => {
-    const elevation = Math.round(displayElevation(layer.elevationM, config.units));
-    const unit = elevationUnit(config.units);
-    return [`${elevation} ${unit}`, `${elevation}${unit}`, `${elevation}`];
-  });
+  const labelsByLayer = layers.map((layer) => elevationLabelTexts(layer, config.units));
   // A flat map labels only its emphasized index contours. Labelling every
   // minor line overwhelms the engraving and implies a label on the base
   // crop boundary, which is not itself a contour.
@@ -156,6 +165,30 @@ export function placePlaque(context: GenerationContext, clips: LayerClip[]): voi
 }
 
 /**
+ * Engraves filled shapes on whichever sheet each part is exposed on: first a
+ * material-coloured knockout halo `clearanceMm` wide around each, so the shape
+ * visibly interrupts what lies beneath, then the shape itself. Ids are
+ * `prefix` + `halo-<shape>-<ring>` or `<shape>`, then the layer and piece.
+ */
+function placeFilledWithHalo(clips: LayerClip[], materials: PreparedPolygons[], polygons: Polygon2D[], clearanceMm: number, prefix: string): void {
+  const place = (path: Point2D[], id: string, holes: Point2D[][], knockout = false) => {
+    markerLayerPolygons(path, materials, holes).forEach(({ layerIndex, polygon }, pieceIndex) => clips[layerIndex]!.layer.markings.push({
+      id: `${prefix}${id}-${layerIndex}-${pieceIndex}`,
+      operation: "engrave",
+      kind: "marker",
+      points: polygon.outer,
+      ...(polygon.holes.length ? { holes: polygon.holes } : {}),
+      filled: true,
+      ...(knockout ? { knockout: true } : {}),
+    }));
+  };
+  polygons.forEach(({ outer }, index) => {
+    offsetClosedRing(outer, clearanceMm, "round").forEach((halo, haloIndex) => place(halo, `halo-${index}-${haloIndex}`, [], true));
+  });
+  polygons.forEach(({ outer, holes }, index) => place(outer, String(index), holes));
+}
+
+/**
  * Markers are added after every other annotation so their material-colored
  * knockout footprints can visibly interrupt contours, labels, and map
  * details before the solid symbol is drawn on top.
@@ -170,28 +203,13 @@ export function placeMarkers({ config, source, flatEngraving }: GenerationContex
     const symbolCenter = markerCenterForAnchor(marker, config.markerIcons, anchor, size);
     // Holes (a pin's eye, a letter's counter) are engraved as gaps in the fill.
     const polygons = markerPolygons(marker, config.markerIcons, symbolCenter, size);
-    const place = (path: Point2D[], id: string, holes: Point2D[][], knockout = false) => {
-      markerLayerPolygons(path, materials, holes).forEach(({ layerIndex, polygon }, pieceIndex) => clips[layerIndex]!.layer.markings.push({
-        id: `map-marker-${markerIndex}-${id}-${layerIndex}-${pieceIndex}`,
-        operation: "engrave",
-        kind: "marker",
-        points: polygon.outer,
-        ...(polygon.holes.length ? { holes: polygon.holes } : {}),
-        filled: true,
-        ...(knockout ? { knockout: true } : {}),
-      }));
-    };
-    polygons.forEach(({ outer }, pathIndex) => {
-      offsetClosedRing(outer, MAP_MARKER_CLEARANCE_MM, "round").forEach((halo, haloIndex) => place(halo, `halo-${pathIndex}-${haloIndex}`, [], true));
-    });
-    polygons.forEach(({ outer, holes }, pathIndex) => place(outer, String(pathIndex), holes));
+    placeFilledWithHalo(clips, materials, polygons, MAP_MARKER_CLEARANCE_MM, `map-marker-${markerIndex}-`);
   });
 }
 
 /** Whether every point of a graphic keeps the annotation line inside the crop; warns naming it when not. */
 function graphicFits({ config, clip, warnings }: GenerationContext, polygons: Polygon2D[], placedIndex: number): boolean {
-  const inset = config.lineStyle.annotationMm / 2;
-  const fits = polygons.length > 0 && polygons.every(({ outer }) => outer.every(({ x, y }) => [[-inset, -inset], [inset, -inset], [inset, inset], [-inset, inset]].every(([dx, dy]) => pointInRing({ x: x + dx!, y: y + dy! }, clip))));
+  const fits = polygons.length > 0 && polygons.every(({ outer }) => insetFits(outer, config.lineStyle.annotationMm / 2, clip));
   if (!fits && polygons.length) warnings.push({ code: "LABEL_OMITTED", message: `Graphic ${placedIndex + 1} was omitted because it does not fit the material. Make it smaller or move it inward.` });
   return fits;
 }
@@ -262,20 +280,6 @@ export function placeGraphics(context: GenerationContext, clips: LayerClip[]): v
       }));
       return;
     }
-    const place = (path: Point2D[], id: string, holes: Point2D[][], knockout = false) => {
-      markerLayerPolygons(path, materials, holes).forEach(({ layerIndex, polygon }, pieceIndex) => clips[layerIndex]!.layer.markings.push({
-        id: `${prefix}${id}-${layerIndex}-${pieceIndex}`,
-        operation: "engrave",
-        kind: "marker",
-        points: polygon.outer,
-        ...(polygon.holes.length ? { holes: polygon.holes } : {}),
-        filled: true,
-        ...(knockout ? { knockout: true } : {}),
-      }));
-    };
-    polygons.forEach(({ outer }, index) => {
-      offsetClosedRing(outer, GRAPHIC_CLEARANCE_MM, "round").forEach((halo, haloIndex) => place(halo, `halo-${index}-${haloIndex}`, [], true));
-    });
-    polygons.forEach(({ outer, holes }, index) => place(outer, String(index), holes));
+    placeFilledWithHalo(clips, materials, polygons, GRAPHIC_CLEARANCE_MM, prefix);
   });
 }
