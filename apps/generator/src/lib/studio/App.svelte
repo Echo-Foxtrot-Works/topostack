@@ -179,6 +179,15 @@
   // project value updates immediately; the preview refresh trails the last tick.
   const PREVIEW_REFRESH_DELAY_MS = 120;
   const MAP_AREA_CHANGED = "Map area changed · regenerate terrain data";
+  /**
+   * Previews wait for the startup project (saved, shared, example, or lake
+   * link) so they are not first built for the sample it replaces. Building the
+   * 3D scene blocks the main thread for seconds on a slow device and held the
+   * link back behind it. A restore that takes longer than this, such as a slow
+   * example download, shows the sample's preview meanwhile.
+   */
+  const STARTUP_PREVIEW_WAIT_MS = 1_000;
+  let startupSettled = $state(false);
   /** The view a project opens in: its engraving, or the stack in 3D unless 3D failed. */
   const defaultModeFor = (outputMode: ProjectConfigV1["outputMode"]): PreviewMode => outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
   let generationAbort: AbortController | undefined;
@@ -249,6 +258,7 @@
   // no fallback view, so they wait for the Retry button instead of looping.
   $effect(() => {
     if (searchOpen) locationDialog.load();
+    if (!startupSettled) return;
     if (mode === "custom") { customDataView.load(); customDataNav.load(); }
     // Markers, paths and imported files are placed on the same map as map view.
     if (mode === "map" || (mode === "custom" && nav.section !== "graphics")) mapCanvas.load();
@@ -399,6 +409,8 @@
 
   onMount(() => {
     let cancelled = false;
+    const settleStartup = () => { if (!cancelled) startupSettled = true; };
+    const startupWait = window.setTimeout(settleStartup, STARTUP_PREVIEW_WAIT_MS);
     menuSections.restore();
     embeddedInPlatform = window.parent !== window;
     if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
@@ -455,6 +467,8 @@
       // unless it would overwrite a saved project that could not be backed up.
       if (!cancelled && autosave) booted = true;
       if (!cancelled) loadRealTerrain();
+      window.clearTimeout(startupWait);
+      settleStartup();
     });
     // Browser agents (WebMCP) get the studio's own tools. Detected inline so
     // browsers without it never load the module; the Atomm embed never offers them.
@@ -463,7 +477,7 @@
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
-    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
+    return () => { cancelled = true; window.clearTimeout(startupWait); disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
   });
 
   autosaveProject(() => project, () => booted, () => { status = "Local save is unavailable in this browser"; });
