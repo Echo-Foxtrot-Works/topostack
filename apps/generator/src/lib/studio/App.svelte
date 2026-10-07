@@ -17,7 +17,6 @@
   import { AutomaticNesting } from "$lib/atomm/automatic-nesting";
   import { provideAutomaticNesting, provideEmbedded } from "$lib/studio/embed-context";
   import { connectAtomm } from "$lib/atomm/atomm-bridge";
-  import type { ModelContextLike } from "$lib/studio/webmcp";
   import type { WebMcpHost } from "$lib/studio/webmcp-tools";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { downloadProject as downloadWithNotice, ExportNotice } from "$lib/studio/export-notice";
@@ -63,19 +62,15 @@
   const MAX_PROJECT_FILE_BYTES = 2_000_000;
   /** A project file carrying traced depth charts is mostly their depth grids. */
   const MAX_PROJECT_BUNDLE_BYTES = 24_000_000;
-  function previewFor(config: ProjectConfigV1, source: SourceBundleV1): GeometryIRV1 {
-    const result = generateGeometry(config, source);
-    addPreviewWarning(result, source);
-    return result;
-  }
-
   function addPreviewWarning(result: GeometryIRV1, source: SourceBundleV1): void {
     if (source.sourceKind === "real" || result.warnings.some((warning) => warning.code === "DATA_FALLBACK")) return;
     result.warnings.push({ code: "DATA_FALLBACK", message: source.sourceKind === "preview" ? "Bundled real-data preview. Generate fresh terrain before exporting." : "Sample preview only. Generate real terrain before exporting." });
   }
 
   const defaultPreviewSource = createSamplePreviewSource();
-  const defaultPreviewGeometry = untrack(() => initialPreview) ?? previewFor(DEFAULT_PROJECT, defaultPreviewSource);
+  // A copy with its own warnings: the warning is added here, never to the caller's prop.
+  const startupGeometry = untrack(() => initialPreview) ?? generateGeometry(DEFAULT_PROJECT, defaultPreviewSource);
+  const defaultPreviewGeometry: GeometryIRV1 = { ...startupGeometry, warnings: [...startupGeometry.warnings] };
   addPreviewWarning(defaultPreviewGeometry, defaultPreviewSource);
   let project = $state.raw<ProjectConfigV1>(DEFAULT_PROJECT);
   let activeSource = $state.raw<SourceBundleV1>(defaultPreviewSource);
@@ -158,7 +153,8 @@
   const exportPhase = $derived(exportNotice.phase);
   const exportTitle = $derived(exportNotice.title);
   const exportDetail = $derived(exportNotice.detail);
-  let themeColor = $state("");
+  // Re-read whenever the theme resolves to light or dark.
+  const themeColor = $derived.by(() => { void theme.resolved; return readRoleColor(document.documentElement, "background") ?? ""; });
   let booted = $state(false);
   let historyAvailability = $state({ canUndo: false, canRedo: false });
   const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
@@ -173,6 +169,9 @@
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
   // project value updates immediately; the preview refresh trails the last tick.
   const PREVIEW_REFRESH_DELAY_MS = 120;
+  const MAP_AREA_CHANGED = "Map area changed · regenerate terrain data";
+  /** The view a project opens in: its engraving, or the stack in 3D unless 3D failed. */
+  const defaultModeFor = (outputMode: ProjectConfigV1["outputMode"]): PreviewMode => outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
   let generationAbort: AbortController | undefined;
   // Preview and modal components load on first use, keeping inactive workflows out of the initial bundle.
   const locationDialog = new LazyComponent(() => import("$lib/studio/LocationDialog.svelte"), (error) => {
@@ -202,7 +201,7 @@
   });
   const customDataView = new LazyComponent(() => import("$lib/studio/customdata/CustomDataView.svelte"), (error) => {
     console.error("TopoStack could not load the custom data view.", error);
-    if (mode === "custom") { mode = project.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d"; previewNotice = "Custom data could not load · reload to update TopoStack"; }
+    if (mode === "custom") { mode = defaultModeFor(project.outputMode); previewNotice = "Custom data could not load · reload to update TopoStack"; }
   });
   // The custom data sidebar carries every tool for tracing a chart, so it is
   // loaded with that view rather than waited for on the studio's first paint.
@@ -234,11 +233,6 @@
     const outputMode = project.outputMode;
     if (outputMode === "engraving" && mode !== "map" && mode !== "engraving" && mode !== "custom" && mode !== "export") mode = "engraving";
     else if (outputMode === "stack" && mode === "engraving") mode = threeUnavailable ? "2d" : "3d";
-  });
-
-  $effect(() => {
-    void theme.resolved;
-    themeColor = readRoleColor(document.documentElement, "background") ?? "";
   });
 
   // Opening place search, the map, or 3D again retries a failed load: their
@@ -417,33 +411,17 @@
       loadProject,
       search: window.location.search,
       loadLakeLocation: () => import("$lib/site/lake-location"),
-      consumeLakeLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("lake"); url.searchParams.delete("bounds");
-        replaceState(url, {});
-      },
+      consumeLakeLink: () => cleanStudioUrl((url) => { url.searchParams.delete("lake"); url.searchParams.delete("bounds"); }),
       hash: window.location.hash,
       loadShareLink: () => import("$lib/studio/share-link"),
-      consumeShareLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.hash = "";
-        url.searchParams.delete("generate");
-        replaceState(url, {});
-      },
+      consumeShareLink: () => cleanStudioUrl((url) => { url.hash = ""; url.searchParams.delete("generate"); }),
       loadExample: async (slug) => {
         const response = await fetch(`${base}/examples/${slug}.json`);
         if (response.status === 404) return undefined;
         if (!response.ok) throw new Error(`Example request failed with status ${response.status}.`);
         return response.json();
       },
-      consumeExampleLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("example");
-        replaceState(url, {});
-      },
+      consumeExampleLink: () => cleanStudioUrl((url) => { url.searchParams.delete("example"); }),
       isCancelled: () => cancelled,
       currentProject: () => project,
       restoreSaved: (saved) => {
@@ -453,25 +431,13 @@
         projectHistory.reset();
         replaceSourceProject(saved, createProjectPreviewSource(saved));
       },
-      openLinkedLake: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        replaceSourceProject(next, createProjectPreviewSource(next));
-      },
+      openLinkedLake: (next, previous) => openProject(next, previous, { keepWarnings: true }),
       generate: () => { void generate(); },
       openSharedProject: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        dismissedWarnings = [];
-        replaceSourceProject(next, createProjectPreviewSource(next));
+        openProject(next, previous);
         trackUsage("share_link_opened", next.outputMode);
       },
-      openExample: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        dismissedWarnings = [];
-        replaceSourceProject(next, createProjectPreviewSource(next));
-      },
+      openExample: (next, previous) => openProject(next, previous),
       setStatus: (message) => { status = message; },
     }).then(({ autosave }) => {
       // Autosave must start even when restoring failed, or later edits are lost,
@@ -482,7 +448,7 @@
     // Browser agents (WebMCP) get the studio's own tools. Detected inline so
     // browsers without it never load the module; the Atomm embed never offers them.
     let disconnectWebMcp = () => {};
-    const agentContext = (document as unknown as { modelContext?: ModelContextLike }).modelContext ?? (navigator as unknown as { modelContext?: ModelContextLike }).modelContext;
+    const agentContext = document.modelContext ?? navigator.modelContext;
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
@@ -538,6 +504,22 @@
     });
   }
 
+  /** Open another project as one undo step: a link, an example, or an imported file. */
+  function openProject(next: ProjectConfigV1, previous: ProjectConfigV1, { keepWarnings = false }: { keepWarnings?: boolean } = {}): void {
+    invalidatePendingPreview();
+    projectHistory.push(previous);
+    if (!keepWarnings) dismissedWarnings = [];
+    replaceSourceProject(next, createProjectPreviewSource(next));
+  }
+
+  /** Remove consumed startup parameters from the address bar without a navigation. */
+  async function cleanStudioUrl(edit: (url: URL) => void): Promise<void> {
+    const { replaceState } = await import("$app/navigation");
+    const url = new URL(window.location.href);
+    edit(url);
+    replaceState(url, {});
+  }
+
   function updateProject(patch: Partial<ProjectConfigV1>): void {
     // Cosmetic edits (rename, exploded-preview slider) and styling must not
     // abort an in-flight generation.
@@ -562,7 +544,7 @@
     invalidatePendingPreview();
     projectHistory.record(project, ["location"]);
     project = { ...project, location: { ...project.location, ...patch, ...(("lat" in patch || "lon" in patch || "zoom" in patch) && !("bounds" in patch) ? { bounds: undefined } : {}) } };
-    if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+    if (!followMapArea()) status = MAP_AREA_CHANGED;
   }
 
   // The platform embed has no Generate step. A moved map area reloads its
@@ -588,7 +570,7 @@
     project = { ...project, name: (place.surveyedLake ? place.label : place.label.split(",")[0] ?? "Terrain project").slice(0, MAX_PROJECT_NAME_LENGTH),
       ...(place.surveyedLake ? { outputMode: "stack" as const, showWaterDepth: true } : {}),
       location: { ...project.location, lat: place.lat, lon: place.lon, label: place.label, zoom: place.zoom ?? 11, bounds: place.bounds } };
-    if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+    if (!followMapArea()) status = MAP_AREA_CHANGED;
     searchOpen = false;
   }
 
@@ -608,7 +590,7 @@
     if (changed.includes("name")) geometry = { ...geometry, projectName: target.name };
     // Still loading here means the change was kept; generation adopts it on completion.
     if (generationState === "loading") return;
-    if (!embeddedInPlatform && !sameMapArea(sourceProject, target) && changed.includes("location")) { status = "Map area changed · regenerate terrain data"; return; }
+    if (!embeddedInPlatform && !sameMapArea(sourceProject, target) && changed.includes("location")) { status = MAP_AREA_CHANGED; return; }
     status = `${action} applied`;
     // A cosmetic change leaves any pending refresh to finish on its own.
     if (keepsWork || !sourceChanged.some((key) => !COSMETIC_KEYS.has(key))) return;
@@ -622,7 +604,7 @@
     explodedDrag = undefined;
     mapAspectLocked = false;
     previewNotice = "";
-    mode = threeUnavailable ? "2d" : "3d";
+    mode = defaultModeFor("stack");
     replaceSourceProject(structuredClone(DEFAULT_PROJECT), createSamplePreviewSource());
     generationState = "ready";
     status = "Project reset to Crater Lake defaults · Undo restores your previous settings";
@@ -647,6 +629,12 @@
     detailsUpdating = false;
     terrainRefreshing = false;
     if (wasGenerating) generationState = "idle";
+  }
+
+  /** What loading terrain fell back on, as warnings on the geometry built from it; Generate and a map-area refresh report it alike. */
+  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<Awaited<ReturnType<typeof loadTerrain>>, "fallback" | "fallbackReason" | "waterWarning">): void {
+    if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
+    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
   }
 
   const styleOf = (config: ProjectConfigV1) => JSON.stringify([config.lineStyle, config.textStyle]);
@@ -676,8 +664,7 @@
         return source;
       },
       onCommit: (next, source) => {
-        if (loaded?.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
-        if (loaded?.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied. (${loaded.waterWarning})` });
+        if (loaded) appendLoadWarnings(next, loaded);
         addPreviewWarning(next, source);
         if (areaChanged) dismissedWarnings = [];
         // Cosmetic edits do not supersede a refresh, so keep the latest name.
@@ -719,7 +706,7 @@
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
-    if (patch.outputMode && patch.outputMode !== project.outputMode) mode = patch.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
+    if (patch.outputMode && patch.outputMode !== project.outputMode) mode = defaultModeFor(patch.outputMode);
     const keys = Object.keys(patch);
     if (keys.every((key) => key === "name")) { updateProject(patch); return Promise.resolve(); }
     if (keys.every((key) => key === "name" || MAP_DETAIL_KEYS.has(key))) return updateMapDetails(patch);
@@ -739,7 +726,7 @@
         invalidatePendingPreview();
         projectHistory.push(project);
         project = { ...project, ...(name ? { name } : {}), location };
-        if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+        if (!followMapArea()) status = MAP_AREA_CHANGED;
       },
       applyPatch: applyAgentPatch,
       generate: () => generate(),
@@ -788,8 +775,7 @@
         next = await pipeline.generate(builtProject, loaded.source, revision);
         checkpoint();
       }
-      if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
-      if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
+      appendLoadWarnings(next, loaded);
       for (const lake of loaded.missingCharts ?? []) next.warnings.push({ code: "BATHYMETRY_FALLBACK", message: `The depth chart for ${lake} is unavailable or has not completed contour review, so it is carved without it. Import a reviewed project file or recreate the chart from its source.` });
       // Cosmetic edits deliberately do not cancel expensive terrain work. Merge
       // their latest values instead of replacing them with the request snapshot.
@@ -800,7 +786,7 @@
       void sourcePreparation?.then((cache) => cache.clear(), () => undefined);
       geometry = completedGeometry; project = completedProject; activeSource = loaded.source; sourceProject = completedProject; selectedLayer = featuredLayerIndex(completedGeometry);
       // Show the result, unless the maker is at work in the custom data view.
-      if (!automatic && mode !== "custom") mode = completedProject.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
+      if (!automatic && mode !== "custom") mode = defaultModeFor(completedProject.outputMode);
       generationState = "ready";
       trackUsage(exportBlockReason(completedGeometry, completedProject) ? "generation_failed" : "generation_succeeded", completedProject.outputMode);
       const outcome = {
@@ -854,7 +840,7 @@
       const candidate = envelope && "project" in envelope ? envelope.project : parsed;
       const imported = parseProject(candidate);
       const saved = charts.length ? await (await import("$lib/storage/user-charts")).saveProjectCharts(charts, imported) : { saved: 0, skipped: 0 };
-      const source = createProjectPreviewSource(imported); invalidatePendingPreview(); projectHistory.push(project); dismissedWarnings = []; replaceSourceProject(imported, source); generationState = "ready";
+      openProject(imported, project); generationState = "ready";
       status = saved.saved ? `Project imported with ${saved.saved === 1 ? "its depth chart" : `${saved.saved} depth charts`} · generate to refresh its terrain` : "Project imported · generate to refresh its terrain";
       loadRealTerrain();
     }
