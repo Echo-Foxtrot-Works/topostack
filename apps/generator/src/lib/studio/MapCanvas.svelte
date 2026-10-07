@@ -7,8 +7,8 @@
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
   import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap, MapEventType, MapMouseEvent } from "maplibre-gl";
-  import { boundsForProject, MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
-  import { polygonsPath } from "$lib/studio/svg-path";
+  import { boundsForProject, MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
+  import { customLineData, draftData, mapAreaData, markerDrawingKey, markerElement, markerLabel, markerPixelOffset, roundDegrees, wrapLongitude } from "$lib/studio/map-overlays";
   /** A tile or source error carries which one failed; a style error carries neither. */
   type MapErrorEvent = MapEventType["error"] & { sourceId?: string; tile?: unknown };
   /** Camera moves the studio makes pass this as event data, so they are not mistaken for the user's. */
@@ -67,9 +67,6 @@
   const CLOSE_RADIUS_PX = 14;
   const CUSTOM_TRAIL_LAYER_ID = "topostack-custom-trails";
   const CUSTOM_BOUNDARY_LAYER_ID = "topostack-custom-boundaries";
-  const MARKER_SYMBOL_SIZE = 22;
-  const MARKER_VIEWBOX_SIZE = 26;
-  const MARKER_ELEMENT_SIZE_PX = 30;
 
   /**
    * Where the pointer is while a path is being drawn, so the segment it would
@@ -149,48 +146,9 @@
       { west: nw.lng + shift, east: se.lng + shift, north: nw.lat, south: se.lat });
   }
 
-  function markerPixelOffset(marker: MapMarkerV1): [number, number] {
-    const center = markerCenterForAnchor(marker, project.markerIcons, { x: 0, y: 0 }, MARKER_SYMBOL_SIZE);
-    const scale = MARKER_ELEMENT_SIZE_PX / MARKER_VIEWBOX_SIZE;
-    return [center.x * scale, center.y * scale];
-  }
-
-  const markerLabel = (marker: MapMarkerV1): string =>
-    `${marker.name ? `${marker.name}, ` : ""}${markerIcon(marker, project.markerIcons)?.name ?? marker.symbol} marker at ${marker.lat.toFixed(5)}, ${marker.lon.toFixed(5)}`;
-
-  /** What a marker's element draws; a change to it redraws the element. */
-  function markerDrawingKey(marker: MapMarkerV1): string {
-    const icon = markerIcon(marker, project.markerIcons);
-    return icon ? `custom:${icon.id}:${icon.anchor ?? "center"}` : marker.symbol;
-  }
-
-  function markerElement(marker: MapMarkerV1): HTMLDivElement {
-    const element = document.createElement("div");
-    element.className = "topostack-map-marker";
-    element.dataset.symbol = marker.symbol;
-    element.dataset.drawing = markerDrawingKey(marker);
-    element.setAttribute("role", "img");
-    element.setAttribute("aria-label", markerLabel(marker));
-    // Hovering a crowded map is the quickest way to tell markers apart.
-    if (marker.name) element.title = marker.name;
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "-13 -13 26 26");
-    svg.setAttribute("aria-hidden", "true");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", polygonsPath(markerPolygons(marker, project.markerIcons, { x: 0, y: 0 }, MARKER_SYMBOL_SIZE)));
-    path.setAttribute("fill-rule", "evenodd");
-    svg.append(path);
-    element.append(svg);
-    return element;
-  }
-
-  const wrapLongitude = (lng: number): number => ((lng + 180) % 360 + 360) % 360 - 180;
-  // Six decimals is about 0.1 m, far finer than a click or any engraving.
-  const roundDegrees = (value: number): number => Math.round(value * 1e6) / 1e6;
-
   function addRenderedMarker(marker: MapMarkerV1, target: MapLibreMap): maplibregl.Marker {
     const draggable = Boolean(onMoveMarker);
-    const rendered = new maplibregl.Marker({ element: markerElement(marker), anchor: "center", offset: markerPixelOffset(marker), draggable }).setLngLat([marker.lon, marker.lat]).addTo(target);
+    const rendered = new maplibregl.Marker({ element: markerElement(marker, project.markerIcons), anchor: "center", offset: markerPixelOffset(marker, project.markerIcons), draggable }).setLngLat([marker.lon, marker.lat]).addTo(target);
     if (draggable) {
       rendered.getElement().classList.add("topostack-map-marker--draggable");
       rendered.on("dragend", () => {
@@ -226,18 +184,6 @@
 
   const longitudeWindow = () => project.location.bounds ?? { west: project.location.lon - 180, east: project.location.lon + 180, south: -MERCATOR_MAX_LATITUDE, north: MERCATOR_MAX_LATITUDE };
 
-  function customLineData(lines: CustomLineFeatureV1[]) {
-    const longitudeBounds = longitudeWindow();
-    return {
-      type: "FeatureCollection" as const,
-      features: lines.map((line) => ({
-        type: "Feature" as const,
-        properties: { id: line.id, kind: line.kind },
-        geometry: { type: "LineString" as const, coordinates: line.points.map((point) => [unwrapLongitude(point.lon, longitudeBounds), point.lat] as [number, number]) },
-      })),
-    };
-  }
-
   /** Replace a GeoJSON source's data, or add the source and draw its layers (built only then) the first time. */
   function upsertGeoJson(target: MapLibreMap, id: string, data: GeoJSONSourceSpecification["data"], layers: () => AddLayerObject[], promoteId?: string): void {
     const source = target.getSource(id) as GeoJSONSource | undefined;
@@ -251,7 +197,7 @@
 
   function syncCustomLines(lines: CustomLineFeatureV1[]): void {
     if (!map || !styleReady) return;
-    upsertGeoJson(map, CUSTOM_SOURCE_ID, customLineData(lines), () => [{
+    upsertGeoJson(map, CUSTOM_SOURCE_ID, customLineData(lines, longitudeWindow()), () => [{
       id: CUSTOM_BOUNDARY_LAYER_ID,
       type: "line",
       source: CUSTOM_SOURCE_ID,
@@ -268,28 +214,9 @@
     }]);
   }
 
-  /**
-   * The project's map area as a line on the map, for views that do not frame
-   * it. Markers and paths outside it are saved but not engraved, so a maker
-   * placing them needs to see where it runs. A circle crop is the ellipse the
-   * bounds hold.
-   */
-  function mapAreaData(show: boolean) {
-    if (!show) return { type: "FeatureCollection" as const, features: [] };
-    // The area generation uses, which exists even before a box was ever dragged.
-    const { west, east, south, north } = boundsForProject(project);
-    const ring: [number, number][] = project.cropShape === "circle"
-      ? Array.from({ length: 73 }, (_, index) => {
-        const angle = (2 * Math.PI * index) / 72;
-        return [(west + east) / 2 + ((east - west) / 2) * Math.cos(angle), (south + north) / 2 + ((north - south) / 2) * Math.sin(angle)];
-      })
-      : [[west, north], [east, north], [east, south], [west, south], [west, north]];
-    return { type: "FeatureCollection" as const, features: [{ type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: ring } }] };
-  }
-
   function syncMapArea(show: boolean): void {
     if (!map || !styleReady) return;
-    const data = mapAreaData(show);
+    const data = mapAreaData(project, show);
     if (!map.getSource(AREA_SOURCE_ID) && !data.features.length) return;
     upsertGeoJson(map, AREA_SOURCE_ID, data, () => [{
       id: AREA_LAYER_ID,
@@ -299,30 +226,10 @@
     }]);
   }
 
-  /**
-   * The path being drawn: the line so far, a dot on every point of it, and the
-   * segment the next click would add, running to the pointer.
-   */
-  function draftData(points: readonly GeoPoint[], to: { lat: number; lon: number } | undefined) {
-    const longitudeBounds = longitudeWindow();
-    const at = (point: { lat: number; lon: number }) => [unwrapLongitude(point.lon, longitudeBounds), point.lat] as [number, number];
-    const coordinates = points.map(at);
-    const last = coordinates[coordinates.length - 1];
-    return {
-      type: "FeatureCollection" as const,
-      features: [
-        ...(coordinates.length > 1 ? [{ type: "Feature" as const, properties: { rubber: false }, geometry: { type: "LineString" as const, coordinates } }] : []),
-        ...(last && to ? [{ type: "Feature" as const, properties: { rubber: true }, geometry: { type: "LineString" as const, coordinates: [last, at(to)] } }] : []),
-        // The first dot is drawn larger: it is the target that closes the shape.
-        ...coordinates.map((coordinate, index) => ({ type: "Feature" as const, properties: { first: index === 0 }, geometry: { type: "Point" as const, coordinates: coordinate } })),
-      ],
-    };
-  }
-
   function syncDraft(points: readonly GeoPoint[], to?: { lat: number; lon: number }): void {
     if (!map || !styleReady) return;
     if (!map.getSource(DRAFT_SOURCE_ID) && !points.length) return;
-    upsertGeoJson(map, DRAFT_SOURCE_ID, draftData(points, to), () => [{
+    upsertGeoJson(map, DRAFT_SOURCE_ID, draftData(points, to, longitudeWindow()), () => [{
       id: DRAFT_LINE_LAYER_ID,
       type: "line",
       source: DRAFT_SOURCE_ID,
@@ -526,7 +433,7 @@
     }
     for (const marker of configuredMarkers) {
       let rendered = mapMarkers.get(marker.id);
-      if (rendered?.getElement().dataset.drawing !== untrack(() => markerDrawingKey(marker))) {
+      if (rendered?.getElement().dataset.drawing !== untrack(() => markerDrawingKey(marker, project.markerIcons))) {
         rendered?.remove();
         rendered = undefined;
       }
@@ -535,7 +442,7 @@
         mapMarkers.set(marker.id, rendered);
       } else {
         rendered.setLngLat([marker.lon, marker.lat]);
-        rendered.getElement().setAttribute("aria-label", markerLabel(marker));
+        rendered.getElement().setAttribute("aria-label", markerLabel(marker, project.markerIcons));
         rendered.getElement().title = marker.name ?? "";
       }
     }
