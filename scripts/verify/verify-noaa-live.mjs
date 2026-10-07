@@ -4,8 +4,9 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { artifactDirectory, openBrowserCheck } from "../lib/browser-check.mjs";
 import { unzipSync } from "fflate";
+import { appUrl } from "../lib/app-url.mjs";
 
-const baseURL = process.env.NOAA_TEST_APP_URL ?? "http://localhost:5293";
+const baseURL = appUrl("NOAA_TEST_APP_URL");
 if (!["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) throw new Error("Use a local Vite app for this development-data check.");
 const coreUrl = `/@fs${fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url))}`;
 const { page, errors, output: artifacts, run } = await openBrowserCheck({

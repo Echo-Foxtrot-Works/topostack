@@ -1,4 +1,3 @@
-import importlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,7 +7,7 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
 
-hrdem = importlib.import_module('build-hrdem-terrain')
+import hrdem
 
 
 class HrdemTerrainTests(unittest.TestCase):

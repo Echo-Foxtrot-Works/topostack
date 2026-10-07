@@ -6,15 +6,18 @@ Run without --build to review candidates. Building reads only the bounded area.
 """
 import argparse
 import hashlib
-import importlib
 import json
 from pathlib import Path
 import urllib.parse
 import urllib.request
 
+import numpy as np
+import rasterio
+
+import hrdem
+import tile_writer
 from terrain_release import register
 
-builder = importlib.import_module('build-hrdem-terrain')
 API = 'https://datacube.services.geo.ca/stac/api'
 # Approved products only: a DSM must never silently masquerade as bare earth.
 PRODUCTS = {'hrdem-mosaic-1m': (300, 1, 'lidar-dtm'),
@@ -98,17 +101,17 @@ def main():
         output = args.out_dir / (source['id'] + '.pmtiles')
         print('Reading ' + source['name'], flush=True)
         try:
-            samples_hash = builder.snapshot(source, pin, target)
-        except builder.NoCoverageError:
+            samples_hash = hrdem.snapshot(source, pin, target)
+        except hrdem.NoCoverageError:
             print('No valid raster coverage; skipped.', flush=True)
             continue
-        pin = {**pin, 'snapshotSha256': builder.tile_writer.digest(target), 'samplesSha256': samples_hash}
-        builder.build(source, pin, target, output)
-        built.append({'source': source, 'pin': pin, 'sha256': builder.tile_writer.digest(output),
+        pin = {**pin, 'snapshotSha256': tile_writer.digest(target), 'samplesSha256': samples_hash}
+        hrdem.build(source, pin, target, output)
+        built.append({'source': source, 'pin': pin, 'sha256': tile_writer.digest(output),
                       'receipt': json.loads(output.with_suffix('.sources.json').read_text())})
         if args.stop_when_covered:
-            with builder.rasterio.open(target) as raster:
-                valid = builder.np.isfinite(raster.read(1))
+            with rasterio.open(target) as raster:
+                valid = np.isfinite(raster.read(1))
             covered = valid if covered is None else covered | valid
             if covered.all():
                 break

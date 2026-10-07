@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile, readdir, stat } from "node:fs/promises";
+import { parseArgs } from "node:util";
 import { JSDOM } from "jsdom";
 import { socialImage } from "../../apps/generator/src/lib/site/seo.ts";
 import { expectedPages } from "./seo-pages.mjs";
 
-const environment = process.argv[process.argv.indexOf("--environment") + 1];
+const { values: { environment } } = parseArgs({ options: { environment: { type: "string" } } });
 assert.ok(["production", "development", "atomm"].includes(environment), "Pass --environment production, development, or atomm");
 const production = environment === "production";
 const origin = "https://topostack.app";

@@ -276,7 +276,7 @@ come from the configured development data service. It does not validate a remote
 upload or release pointer.
 
 ```sh
-SURVEY_TEST_APP_URL=http://localhost:5273 node scripts/verify/verify-surveys-live.mjs \
+TOPOSTACK_APP_URL=http://localhost:5273 node scripts/verify/verify-surveys-live.mjs \
   --coverage-only --local-archives=/tmp/topostack-survey-archives \
   --dataset=ontario-lakes-v1,nve-norway-lakes-v1,twdb-texas-reservoirs-v1,usbr-reservoirs-v1
 ```
@@ -410,7 +410,7 @@ archives, not unimported surveys or reference-only PDF maps.
 
 `lake-directory.test.ts` checks searchability for every catalog record. Run
 `node scripts/verify/verify-lake-search.mjs` against the local preview at port 5298, or set
-`LAKE_SEARCH_TEST_URL=https://dev.topostack.app` to verify development.
+`TOPOSTACK_APP_URL=https://dev.topostack.app` to verify development.
 The browser check covers all source groups, pagination, independent provider
 failures, retries, mobile layout, framed selection, and saved project state.
 
@@ -437,7 +437,7 @@ Regenerate after updating the directory or pinned sources:
 /tmp/topostack-surveys-venv/bin/python scripts/data-build/test_lake_outlines.py
 node --test scripts/test/lake-outlines.test.mjs
 # With a local Vite server: verify all six regional sources with HydroLAKES blocked.
-SURVEY_TEST_APP_URL=http://localhost:5297 node scripts/verify/verify-lake-outlines.mjs \
+TOPOSTACK_APP_URL=http://localhost:5297 node scripts/verify/verify-lake-outlines.mjs \
   --local-archives=/tmp/topostack-survey-archives
 ```
 

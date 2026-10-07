@@ -1,8 +1,9 @@
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
+import { appUrl } from "../lib/app-url.mjs";
 
 // Run against the normal frontend configured with a live survey-data API.
-const origin = process.env.TOPOSTACK_CAPTURE_URL ?? "http://127.0.0.1:5273";
+const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const output = new URL("../../docs/images/", import.meta.url);
 await mkdir(output, { recursive: true });
 

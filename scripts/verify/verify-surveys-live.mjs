@@ -8,8 +8,9 @@ import { parseArgs } from "node:util";
 import { chromium, firefox, webkit } from "@playwright/test";
 import { artifactDirectory, openBrowserCheck } from "../lib/browser-check.mjs";
 import { unzipSync } from "fflate";
+import { appUrl } from "../lib/app-url.mjs";
 
-const baseURL = process.env.SURVEY_TEST_APP_URL ?? "http://localhost:5293";
+const baseURL = appUrl("SURVEY_TEST_APP_URL");
 if (!["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) throw new Error("Use a local Vite app for this development-data check.");
 const coreUrl = `/@fs${fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url))}`;
 const browserName = process.env.SURVEY_TEST_BROWSER ?? "chromium";

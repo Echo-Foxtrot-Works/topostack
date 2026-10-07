@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-const origin = process.env.TOPOSTACK_CAPTURE_URL ?? 'http://127.0.0.1:5274';
+import { appUrl } from '../lib/app-url.mjs';
+const origin = appUrl('TOPOSTACK_CAPTURE_URL');
 const output = new URL('../../docs/images/splitting-paint-templates/', import.meta.url);
 await mkdir(output, { recursive: true });
 const project = JSON.parse(await readFile(new URL('../../atomm/media-project-v3.json', import.meta.url), 'utf8'));

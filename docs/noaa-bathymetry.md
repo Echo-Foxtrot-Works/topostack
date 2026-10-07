@@ -109,6 +109,6 @@ imports a Lake Erie project, generates terrain with depth disabled, enables
 NOAA depth afterward, and verifies a complete fabrication export. It then blocks
 NOAA requests and checks that the fallback remains exportable with a warning.
 ZIPs, a screenshot, and the JSON report go to `topostack-noaa-validation` in the OS temp directory;
-`NOAA_TEST_APP_URL` and `NOAA_TEST_OUTPUT` override the local URL and output path.
+`TOPOSTACK_APP_URL` and `NOAA_TEST_OUTPUT` override the local URL and output path.
 Run this separately from builds and coverage: their generated files can trigger
 Vite reloads and invalidate an in-progress browser test.
