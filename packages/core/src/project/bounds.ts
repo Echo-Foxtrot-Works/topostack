@@ -94,8 +94,11 @@ export function boundsForProject(config: ProjectConfigV1): GeoBounds {
   const size = worldSize(zoom);
   const centerX = lonToWorldX(config.location.lon, zoom);
   const centerY = latToWorldY(config.location.lat, zoom);
+  // The tiles stop at MERCATOR_MAX_LATITUDE, a hair inside the world's top and bottom rows.
+  const topY = latToWorldY(MERCATOR_MAX_LATITUDE, zoom);
+  const bottomY = latToWorldY(-MERCATOR_MAX_LATITUDE, zoom);
   const widthPx = Math.min(420, size);
-  const heightPx = Math.min(280, size);
-  const northY = Math.max(0, Math.min(size - heightPx, centerY - heightPx / 2));
+  const heightPx = Math.min(280, bottomY - topY);
+  const northY = Math.max(topY, Math.min(bottomY - heightPx, centerY - heightPx / 2));
   return fitCutBounds({ west: worldXToLon(centerX - widthPx / 2, zoom), east: worldXToLon(centerX + widthPx / 2, zoom), north: worldYToLat(northY, zoom), south: worldYToLat(northY + heightPx, zoom) }, config.widthMm, config.heightMm);
 }
