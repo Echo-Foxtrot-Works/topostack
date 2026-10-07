@@ -30,7 +30,6 @@
   let future = $state<string[]>([]);
   let svg = $state<SVGSVGElement>();
   let toolsBody = $state<HTMLDivElement>();
-  let source = $state("");
   const current = $derived(draft.review?.contours.find(c => c.id === selected));
   const issues = $derived(generationIssues());
   const pathIssues = $derived(draft.review && draft.image ? reviewGeometryIssues(draft.review, { image: draft.image, units: draft.units, labels: draft.reads, surface: Number(draft.surface), interval: Number(draft.interval) }).filter(issue => issue.contourIds.length) : []);
@@ -58,12 +57,13 @@
     if (!draft.review || !draft.lake) return undefined;
     try { return reviewAlignment(draft.review, draft.lake.outline); } catch { return undefined; }
   });
-  $effect(() => {
-    if (!draft.pixels) return;
+  // The chart image as a data URL for the review's <image>, redrawn when its pixels change.
+  const source = $derived.by(() => {
+    if (!draft.pixels) return "";
     const canvas = document.createElement("canvas");
     canvas.width = draft.pixels.width; canvas.height = draft.pixels.height;
     canvas.getContext("2d")?.putImageData(draft.pixels, 0, 0);
-    source = canvas.toDataURL();
+    return canvas.toDataURL();
   });
 
   const clone = (): ChartReview => JSON.parse(JSON.stringify(draft.review));

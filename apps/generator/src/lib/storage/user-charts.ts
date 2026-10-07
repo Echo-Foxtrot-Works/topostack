@@ -190,7 +190,7 @@ export async function deleteUserChart(id: string): Promise<void> {
 }
 
 /** At most this many charts travel with one project file. */
-export const MAX_PROJECT_CHARTS = 16;
+const MAX_PROJECT_CHARTS = 16;
 
 /** The charts an exported project must carry, so it opens on another device. */
 export async function chartsForProject(config: Pick<ProjectConfigV1, "userDepthCharts">): Promise<UserChartBathymetryV1[]> {

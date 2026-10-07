@@ -7,7 +7,8 @@
 </script>
 
 <script lang="ts">
-  import { onMount, untrack, getContext } from "svelte";
+  import { getEmbedded } from "$lib/studio/embed-context";
+  import { onMount, untrack } from "svelte";
   import * as THREE from "three";
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -34,7 +35,7 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  const isEmbedded = getEmbedded();
   let zoom = $state(1);
   let fitDistance = 320;
   let fitTarget = new THREE.Vector3();

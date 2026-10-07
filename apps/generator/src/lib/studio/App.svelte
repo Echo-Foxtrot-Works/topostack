@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack, setContext } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
-  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
+  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
   import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
@@ -12,11 +12,13 @@
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { exportBlockReason, parseProject } from "@topostack/core";
-  import { loadProject, saveProject, saveProjectUnloadCopy } from "$lib/storage/storage";
+  import { exportBlockReason } from "@topostack/core";
+  import { readProjectFile } from "$lib/studio/project-file";
+  import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
+  import { loadProject } from "$lib/storage/storage";
   import { AutomaticNesting } from "$lib/atomm/automatic-nesting";
+  import { provideAutomaticNesting, provideEmbedded } from "$lib/studio/embed-context";
   import { connectAtomm } from "$lib/atomm/atomm-bridge";
-  import type { ModelContextLike } from "$lib/studio/webmcp";
   import type { WebMcpHost } from "$lib/studio/webmcp-tools";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { downloadProject as downloadWithNotice, ExportNotice } from "$lib/studio/export-notice";
@@ -27,13 +29,15 @@
   import ResetProjectDialog from "$lib/studio/ResetProjectDialog.svelte";
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { ProjectHistory } from "$lib/studio/history";
+  import { MenuSections } from "$lib/studio/menu-sections.svelte";
+  import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
+  import { autosaveProject } from "$lib/studio/autosave.svelte";
   import { historyShortcut } from "$lib/studio/history-keys";
   import { ATOMM_ENGRAVING_MODE_OPTIONS, ATOMM_STACK_MODE_OPTIONS, ENGRAVING_MODE_OPTIONS, PRESETS, STACK_MODE_OPTIONS } from "$lib/studio/options";
   import * as edits from "$lib/studio/project-edits";
   import { isAbortError, PreviewPipeline } from "$lib/studio/preview-pipeline";
   import { LazyComponent } from "$lib/studio/lazy-component";
-  import { addGraphicToSession, canPlace, draftProject, graphicPlaceableId, hiddenMarkingPrefixes, placeableFor, placementPatch, type PlaceableId, type PlacementSession } from "$lib/studio/placement/placeables";
-  import { placementMarginMm } from "$lib/studio/placement/viewport";
+  import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
   import { acrylicPanelCount as findAcrylicPanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
@@ -44,7 +48,7 @@
   import type { SourcePreparationCache } from "$lib/studio/source-refresh";
   import { generationStatus, generationToast, previewPendingStatus, previewUpdatedStatus, type PreviewUpdateKind } from "$lib/studio/status-messages";
   import { nav } from "$lib/studio/customdata/custom-data-nav.svelte";
-  import { provideStudio, type PlacementPhase, type GenerateState, type LineWidthKey, type PreviewMode } from "$lib/studio/studio-context";
+  import { provideStudio, type GenerateState, type LineWidthKey, type PreviewMode } from "$lib/studio/studio-context";
   import ProjectControls from "$lib/studio/panels/ProjectControls.svelte";
   import StudioMenu from "$lib/studio/panels/StudioMenu.svelte";
   import OutputSwitch from "$lib/studio/panels/OutputSwitch.svelte";
@@ -58,23 +62,15 @@
 
   let { initialPreview }: { initialPreview?: GeometryIRV1 } = $props();
 
-  const MENU_STATE_KEY = "topostack-menu-sections-v1";
-  const MAX_PROJECT_FILE_BYTES = 2_000_000;
-  /** A project file carrying traced depth charts is mostly their depth grids. */
-  const MAX_PROJECT_BUNDLE_BYTES = 24_000_000;
-  function previewFor(config: ProjectConfigV1, source: SourceBundleV1): GeometryIRV1 {
-    const result = generateGeometry(config, source);
-    addPreviewWarning(result, source);
-    return result;
-  }
-
   function addPreviewWarning(result: GeometryIRV1, source: SourceBundleV1): void {
     if (source.sourceKind === "real" || result.warnings.some((warning) => warning.code === "DATA_FALLBACK")) return;
     result.warnings.push({ code: "DATA_FALLBACK", message: source.sourceKind === "preview" ? "Bundled real-data preview. Generate fresh terrain before exporting." : "Sample preview only. Generate real terrain before exporting." });
   }
 
   const defaultPreviewSource = createSamplePreviewSource();
-  const defaultPreviewGeometry = untrack(() => initialPreview) ?? previewFor(DEFAULT_PROJECT, defaultPreviewSource);
+  // A copy with its own warnings: the warning is added here, never to the caller's prop.
+  const startupGeometry = untrack(() => initialPreview) ?? generateGeometry(DEFAULT_PROJECT, defaultPreviewSource);
+  const defaultPreviewGeometry: GeometryIRV1 = { ...startupGeometry, warnings: [...startupGeometry.warnings] };
   addPreviewWarning(defaultPreviewGeometry, defaultPreviewSource);
   let project = $state.raw<ProjectConfigV1>(DEFAULT_PROJECT);
   let activeSource = $state.raw<SourceBundleV1>(defaultPreviewSource);
@@ -109,28 +105,19 @@
   $effect(() => { customData.disarmOutside(mode, nav.section); });
   let locationTrigger: HTMLButtonElement;
   let lineworkOpen = $state(false);
-  let menuStateReady = $state(false);
-  let openSections = $state<Record<ConfigSectionId, boolean>>({
-    setup: true,
-    size: false,
-    terrain: false,
-    details: false,
-    customData: false,
-    linework: false,
-    advanced: false,
-  });
+  const menuSections = new MenuSections();
   let AtommWorkbench = $state.raw<typeof import("$lib/atomm/AtommWorkbench.svelte").default>();
   let atommLayoutFailed = $state(false);
   let atommReady = $state(false);
   let embeddedInPlatform = $state(false);
-  setContext("atomm-embedded", () => embeddedInPlatform);
+  provideEmbedded(() => embeddedInPlatform);
   let exportOpen = $state(false);
   let resetOpen = $state(false);
   const exportNotice = new ExportNotice((message) => { status = message; });
   const sheetNesting = new SheetNesting();
   const acrylicSheetNesting = SheetNesting.forAcrylic();
   const automaticNesting = new AutomaticNesting();
-  setContext("atomm-nesting", automaticNesting);
+  provideAutomaticNesting(automaticNesting);
   $effect(() => { if (embeddedInPlatform && previewBusy) automaticNesting.cancel(); });
   // A nested layout depends only on the geometry and the sheet settings, so
   // other edits (a rename, a style tweak) must not re-extract every part.
@@ -166,7 +153,8 @@
   const exportPhase = $derived(exportNotice.phase);
   const exportTitle = $derived(exportNotice.title);
   const exportDetail = $derived(exportNotice.detail);
-  let themeColor = $state("");
+  // Re-read whenever the theme resolves to light or dark.
+  const themeColor = $derived.by(() => { void theme.resolved; return readRoleColor(document.documentElement, "background") ?? ""; });
   let booted = $state(false);
   let historyAvailability = $state({ canUndo: false, canRedo: false });
   const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
@@ -181,6 +169,9 @@
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
   // project value updates immediately; the preview refresh trails the last tick.
   const PREVIEW_REFRESH_DELAY_MS = 120;
+  const MAP_AREA_CHANGED = "Map area changed · regenerate terrain data";
+  /** The view a project opens in: its engraving, or the stack in 3D unless 3D failed. */
+  const defaultModeFor = (outputMode: ProjectConfigV1["outputMode"]): PreviewMode => outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
   let generationAbort: AbortController | undefined;
   // Preview and modal components load on first use, keeping inactive workflows out of the initial bundle.
   const locationDialog = new LazyComponent(() => import("$lib/studio/LocationDialog.svelte"), (error) => {
@@ -199,18 +190,18 @@
   const threePreview = new LazyComponent(() => import("$lib/studio/ThreePreview.svelte"), (error) => {
     console.error("TopoStack could not load the 3D preview.", error);
     // Placement falls back to the flat top-down view on its own.
-    if (placement) threeUnavailable = true;
+    if (placement.session) threeUnavailable = true;
     if (mode === "3d") { threeUnavailable = true; mode = "2d"; previewNotice = "3D preview could not load · reload to update TopoStack"; }
   });
   const exportPreview = new LazyComponent(() => import("$lib/studio/ExportPreview.svelte"), (error) => {
     console.error("TopoStack could not load the export preview.", error); status = "Export preview could not load · retry or reload to update TopoStack";
   });
   const placementStage = new LazyComponent(() => import("$lib/studio/placement/PlacementStage.svelte"), (error) => {
-    console.error("TopoStack could not load placement mode.", error); placement = undefined; status = "Placement could not load · reload to update TopoStack";
+    console.error("TopoStack could not load placement mode.", error); placement.abandon(); status = "Placement could not load · reload to update TopoStack";
   });
   const customDataView = new LazyComponent(() => import("$lib/studio/customdata/CustomDataView.svelte"), (error) => {
     console.error("TopoStack could not load the custom data view.", error);
-    if (mode === "custom") { mode = project.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d"; previewNotice = "Custom data could not load · reload to update TopoStack"; }
+    if (mode === "custom") { mode = defaultModeFor(project.outputMode); previewNotice = "Custom data could not load · reload to update TopoStack"; }
   });
   // The custom data sidebar carries every tool for tracing a chart, so it is
   // loaded with that view rather than waited for on the studio's first paint.
@@ -227,91 +218,21 @@
   const PlacementStage = $derived(placementStage.component);
   const ExportPreview = $derived(exportPreview.component);
 
-  // Placement mode: an uncommitted project patch moved on a top-down view of
-  // the piece. Done applies it as one edit, which generation bakes into the
-  // sheets; see docs/placement.md.
-  let placement = $state<PlacementSession | undefined>();
-  // "settling" holds the drafts on screen until Done's regeneration lands.
-  // "closing" crossfades them into the generated markings while the view is
-  // still top-down, so they line up; only then does the 3D camera ease back.
-  let placementPhase = $state<PlacementPhase>("editing");
-  // Set briefly when entering or leaving swaps the view under the layer, so the new one fades in.
-  let placementFade = $state(false);
-  const PLACEMENT_EXIT_MS = 220;
-  const PLACEMENT_SETTLE_LIMIT_MS = 4_000;
-  const placementBackdrop: "3d" | "flat" | undefined = $derived(placement ? (project.outputMode === "stack" && !threeUnavailable ? "3d" : "flat") : undefined);
-  const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function pulsePlacementFade(): void {
-    if (placementBackdrop !== "3d" || mode === "3d" || reducedMotion()) return;
-    placementFade = true;
-    setTimeout(() => { placementFade = false; }, 400);
-  }
-  const placementMargin = $derived(placementMarginMm(geometry.widthMm, geometry.heightMm));
-  const placementHiddenPrefixes = $derived(placement ? hiddenMarkingPrefixes(project) : []);
-  function startPlacement(id: PlaceableId): void {
-    if (placement) {
-      // A second Move button while placing only switches the selection.
-      if (placementPhase === "editing" && placeableFor(id).available(draftProject(project, placement))) placement = { ...placement, selected: id };
-      return;
-    }
-    if (!placeableFor(id).available(project)) return;
-    openPlacement({ selected: id, draft: {} });
-  }
-  function openPlacement(session: PlacementSession): void {
-    placement = session;
-    placementPhase = "editing";
-    placementStage.load();
-    pulsePlacementFade();
-  }
-  /** Adds a use of an uploaded graphic to the piece as a draft, opening placement mode on it. */
-  function placeGraphic(graphicId: string): void {
-    if (placement && placementPhase !== "editing") return;
-    const next = addGraphicToSession(project, placement, graphicId, crypto.randomUUID());
-    if (!next) { status = "The piece already holds as many graphics as it can. Remove one before adding another."; return; }
-    if (placement) placement = next;
-    else openPlacement(next);
-  }
-  /** Opens placement on the first placed graphic, or places the first uploaded one. */
-  function placeGraphics(): void {
-    const first = project.placedGraphics?.find((placed) => placeableFor(graphicPlaceableId(placed.id)).available(project));
-    if (first) startPlacement(graphicPlaceableId(first.id));
-    else if (project.customGraphics?.[0]) placeGraphic(project.customGraphics[0].id);
-  }
-  function closePlacement(): void {
-    const closingSession = placement;
-    placementPhase = "closing";
-    setTimeout(() => {
-      if (placement !== closingSession) return;
-      pulsePlacementFade();
-      placement = undefined;
-      placementPhase = "editing";
-    }, reducedMotion() ? 0 : PLACEMENT_EXIT_MS);
-  }
-  function commitPlacement(): void {
-    if (!placement || placementPhase !== "editing") return;
-    if (!Object.keys(placement.draft).length) { closePlacement(); return; }
-    const committingSession = placement;
-    placementPhase = "settling";
-    const settled = updateFabrication(placementPatch(project, $state.snapshot(placement.draft))).catch(() => undefined);
-    void Promise.race([settled, new Promise((resolve) => setTimeout(resolve, PLACEMENT_SETTLE_LIMIT_MS))]).then(() => { if (placement === committingSession) closePlacement(); });
-  }
-  function cancelPlacement(): void {
-    if (placement && placementPhase === "editing") closePlacement();
-  }
-  // Turning every placeable off, with no graphic left to add, leaves nothing to place.
-  $effect(() => {
-    if (placement && !canPlace(draftProject(project, placement))) untrack(cancelPlacement);
+  const placement = new PlacementController({
+    project: () => project,
+    geometry: () => geometry,
+    mode: () => mode,
+    threeUnavailable: () => threeUnavailable,
+    loadStage: () => placementStage.load(),
+    updateFabrication: (patch) => updateFabrication(patch),
+    setStatus: (message) => { status = message; },
   });
+  const placementBackdrop = $derived(placement.backdrop);
 
   $effect(() => {
     const outputMode = project.outputMode;
     if (outputMode === "engraving" && mode !== "map" && mode !== "engraving" && mode !== "custom" && mode !== "export") mode = "engraving";
     else if (outputMode === "stack" && mode === "engraving") mode = threeUnavailable ? "2d" : "3d";
-  });
-
-  $effect(() => {
-    void theme.resolved;
-    themeColor = readRoleColor(document.documentElement, "background") ?? "";
   });
 
   // Opening place search, the map, or 3D again retries a failed load: their
@@ -341,7 +262,9 @@
   // panel previews the stack the current settings will actually produce.
   const stackPlan = $derived(planTerrainStack(project, geometry.landReliefM, geometry.bounds, geometry.waterDepthBelowLandM));
   // Sea-level alignment can add a sheet; report the generated count once current.
-  const stackLayerCount = $derived(geometry.configFingerprint === projectFingerprint(project) ? geometry.layers.length : stackPlan.layerCount);
+  // Serializes the whole project, so it is computed once per edit and shared.
+  const currentFingerprint = $derived(projectFingerprint(project));
+  const stackLayerCount = $derived(geometry.configFingerprint === currentFingerprint ? geometry.layers.length : stackPlan.layerCount);
   const previewModeOptions = $derived(embeddedInPlatform
     ? project.outputMode === "engraving" ? ATOMM_ENGRAVING_MODE_OPTIONS : ATOMM_STACK_MODE_OPTIONS
     : project.outputMode === "engraving" ? ENGRAVING_MODE_OPTIONS : STACK_MODE_OPTIONS);
@@ -354,7 +277,7 @@
   const terrainDataStale = $derived(!sameMapArea(sourceProject, project));
   const verticalExaggerationStale = $derived(project.outputMode === "stack" && sourceProject.verticalExaggeration !== project.verticalExaggeration);
   const terrainDataAction = $derived(embeddedInPlatform ? "load" : geometry.sourceKind === "real" ? "regenerate" : "generate");
-  const exportBlockedBy = $derived(exportBlockReason(geometry, project));
+  const exportBlockedBy = $derived(exportBlockReason(geometry, project, currentFingerprint));
   const exportReady = $derived(!exportBlockedBy);
   const exportStatusLabel = $derived(exportPhase === "preparing" ? "Preparing files" : exportPhase === "ready" ? "Export ready" : exportPhase === "error" ? "Export failed" : exportReady ? "Ready to export" : "Generate before export");
   const exportStatusTone = $derived(exportPhase === "error" ? "error" : exportPhase === "preparing" ? "busy" : exportReady ? "ready" : "blocked");
@@ -453,15 +376,12 @@
     choices[next]?.click();
   }
 
-  function toggleSection(section: ConfigSectionId): void {
-    openSections = { ...openSections, [section]: !openSections[section] };
-  }
 
   /** Sidebar sections on screen: markers and paths live in the custom data view outside the Atomm embed. */
   const shownSections = $derived(embeddedInPlatform ? CONFIG_SECTION_IDS : CONFIG_SECTION_IDS.filter((section) => section !== "customData"));
 
   function setAllSections(open: boolean): void {
-    openSections = { ...openSections, ...Object.fromEntries(shownSections.map((section) => [section, open])) };
+    menuSections.setAll(shownSections, open);
   }
 
   function sectionSummary(section: ConfigSectionId): string {
@@ -470,15 +390,7 @@
 
   onMount(() => {
     let cancelled = false;
-    try {
-      const savedMenuState: unknown = JSON.parse(localStorage.getItem(MENU_STATE_KEY) ?? "null");
-      if (savedMenuState && typeof savedMenuState === "object") {
-        openSections = Object.fromEntries(CONFIG_SECTION_IDS.map((section) => [section, typeof (savedMenuState as Record<string, unknown>)[section] === "boolean" ? (savedMenuState as Record<string, boolean>)[section] : openSections[section]])) as Record<ConfigSectionId, boolean>;
-      }
-    } catch {
-      // A malformed preference should never prevent the editor from loading.
-    }
-    menuStateReady = true;
+    menuSections.restore();
     embeddedInPlatform = window.parent !== window;
     if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
@@ -501,33 +413,17 @@
       loadProject,
       search: window.location.search,
       loadLakeLocation: () => import("$lib/site/lake-location"),
-      consumeLakeLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("lake"); url.searchParams.delete("bounds");
-        replaceState(url, {});
-      },
+      consumeLakeLink: () => cleanStudioUrl((url) => { url.searchParams.delete("lake"); url.searchParams.delete("bounds"); }),
       hash: window.location.hash,
       loadShareLink: () => import("$lib/studio/share-link"),
-      consumeShareLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.hash = "";
-        url.searchParams.delete("generate");
-        replaceState(url, {});
-      },
+      consumeShareLink: () => cleanStudioUrl((url) => { url.hash = ""; url.searchParams.delete("generate"); }),
       loadExample: async (slug) => {
         const response = await fetch(`${base}/examples/${slug}.json`);
         if (response.status === 404) return undefined;
         if (!response.ok) throw new Error(`Example request failed with status ${response.status}.`);
         return response.json();
       },
-      consumeExampleLink: async () => {
-        const { replaceState } = await import("$app/navigation");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("example");
-        replaceState(url, {});
-      },
+      consumeExampleLink: () => cleanStudioUrl((url) => { url.searchParams.delete("example"); }),
       isCancelled: () => cancelled,
       currentProject: () => project,
       restoreSaved: (saved) => {
@@ -537,25 +433,13 @@
         projectHistory.reset();
         replaceSourceProject(saved, createProjectPreviewSource(saved));
       },
-      openLinkedLake: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        replaceSourceProject(next, createProjectPreviewSource(next));
-      },
+      openLinkedLake: (next, previous) => openProject(next, previous, { keepWarnings: true }),
       generate: () => { void generate(); },
       openSharedProject: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        dismissedWarnings = [];
-        replaceSourceProject(next, createProjectPreviewSource(next));
+        openProject(next, previous);
         trackUsage("share_link_opened", next.outputMode);
       },
-      openExample: (next, previous) => {
-        invalidatePendingPreview();
-        projectHistory.push(previous);
-        dismissedWarnings = [];
-        replaceSourceProject(next, createProjectPreviewSource(next));
-      },
+      openExample: (next, previous) => openProject(next, previous),
       setStatus: (message) => { status = message; },
     }).then(({ autosave }) => {
       // Autosave must start even when restoring failed, or later edits are lost,
@@ -566,84 +450,17 @@
     // Browser agents (WebMCP) get the studio's own tools. Detected inline so
     // browsers without it never load the module; the Atomm embed never offers them.
     let disconnectWebMcp = () => {};
-    const agentContext = (document as unknown as { modelContext?: ModelContextLike }).modelContext ?? (navigator as unknown as { modelContext?: ModelContextLike }).modelContext;
+    const agentContext = document.modelContext ?? navigator.modelContext;
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
-    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); };
+    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
   });
 
-  $effect(() => {
-    const current = openSections;
-    if (!menuStateReady) return;
-    try { localStorage.setItem(MENU_STATE_KEY, JSON.stringify(current)); } catch { /* Preferences are optional. */ }
-  });
-
-  /**
-   * Never persist a project that would fail validation on the next load —
-   * parse failures there would silently reset the user to the default project.
-   */
-  function canPersist(current: ProjectConfigV1): boolean {
-    try { validateProject(current); } catch { return false; }
-    return Number.isFinite(current.explodedPreview) && current.explodedPreview >= 0 && current.explodedPreview <= 1;
-  }
-
-  /** Persist one snapshot, unless it could not be read back. */
-  function persistProject(current: ProjectConfigV1): void {
-    if (!canPersist(current)) return;
-    void saveProject(current).catch(() => status = "Local save is unavailable in this browser");
-  }
-
-  /** The latest snapshot's write, until it runs; leaving the studio in-app fires no `pagehide`. */
-  let pendingAutosave: (() => void) | undefined;
-  onDestroy(() => pendingAutosave?.());
-  $effect(() => {
-    const current = project;
-    if (!booted) return;
-    let written = false;
-    let timeout = 0;
-    const write = () => { if (written) return; written = true; window.clearTimeout(timeout); persistProject(current); };
-    pendingAutosave = write;
-    timeout = window.setTimeout(write, 450);
-    // A closing, reloading or backgrounded tab must keep this snapshot, but an
-    // unloading page abandons IndexedDB transactions it starts (an edit then
-    // an immediate reload was lost every time), and can abandon one the
-    // debounce started moments earlier. So the snapshot also goes to
-    // localStorage synchronously, even when the debounced write already ran;
-    // `loadProject` prefers that copy while it is newer. `pagehide` covers
-    // close, reload and back/forward cache; `visibilitychange` covers a mobile
-    // tab switch that never unloads, where the IndexedDB write does finish.
-    const flush = () => {
-      if (canPersist(current)) saveProjectUnloadCopy(current);
-      write();
-    };
-    const onHidden = () => { if (document.hidden) flush(); };
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHidden);
-    return () => {
-      window.clearTimeout(timeout);
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHidden);
-    };
-  });
-
-  // Sheet nesting only arranges finished parts at export, so it never touches generation.
-  const COSMETIC_KEYS: ReadonlySet<string> = new Set(["name", "explodedPreview", "sheetNesting", "waterInsertSheetNesting"]);
-  /** Keys whose edits refresh the preview as custom data rather than a fabrication change. */
-  const CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set(["markers", "markerIcons", "customLines", "customGraphics", "placedGraphics"]);
-  // Stroke and text styling never changes the terrain request, so a running
-  // Generate keeps going and re-renders with the latest style when it finishes.
-  const GENERATION_STYLE_KEYS: ReadonlySet<string> = new Set(["lineStyle", "textStyle"]);
+  autosaveProject(() => project, () => booted, () => { status = "Local save is unavailable in this browser"; });
 
   /** Whether an edit to `keys` can leave in-flight generation and preview work running. */
-  function keepsPendingWork(keys: readonly string[]): boolean {
-    // `[].every` is true, so an empty patch used to keep pending work running
-    // at an unchanged revision, and a second refresh could then replace the
-    // first one's debounce while sharing its revision guard.
-    if (!keys.length) return false;
-    const generating = generationState === "loading";
-    return keys.every((key) => COSMETIC_KEYS.has(key) || (generating && GENERATION_STYLE_KEYS.has(key)));
-  }
+  const keepsPendingWork = (keys: readonly string[]) => keepsPendingEdits(keys, generationState === "loading");
 
   /**
    * Swap in a project with its own source and preview, as import, restore, and
@@ -654,7 +471,7 @@
    * superseded, exactly as `refreshPreview` does.
    */
   function replaceSourceProject(next: ProjectConfigV1, source: SourceBundleV1): void {
-    placement = undefined;
+    placement.abandon();
     project = next; sourceProject = next; activeSource = source;
     geometry = { ...geometry, projectName: next.name };
     const revision = pipeline.revision;
@@ -672,6 +489,22 @@
       generationState = "error";
       status = error instanceof Error ? error.message : "Could not update the output geometry.";
     });
+  }
+
+  /** Open another project as one undo step: a link, an example, or an imported file. */
+  function openProject(next: ProjectConfigV1, previous: ProjectConfigV1, { keepWarnings = false }: { keepWarnings?: boolean } = {}): void {
+    invalidatePendingPreview();
+    projectHistory.push(previous);
+    if (!keepWarnings) dismissedWarnings = [];
+    replaceSourceProject(next, createProjectPreviewSource(next));
+  }
+
+  /** Remove consumed startup parameters from the address bar without a navigation. */
+  async function cleanStudioUrl(edit: (url: URL) => void): Promise<void> {
+    const { replaceState } = await import("$app/navigation");
+    const url = new URL(window.location.href);
+    edit(url);
+    replaceState(url, {});
   }
 
   function updateProject(patch: Partial<ProjectConfigV1>): void {
@@ -698,7 +531,7 @@
     invalidatePendingPreview();
     projectHistory.record(project, ["location"]);
     project = { ...project, location: { ...project.location, ...patch, ...(("lat" in patch || "lon" in patch || "zoom" in patch) && !("bounds" in patch) ? { bounds: undefined } : {}) } };
-    if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+    if (!followMapArea()) status = MAP_AREA_CHANGED;
   }
 
   // The platform embed has no Generate step. A moved map area reloads its
@@ -724,7 +557,7 @@
     project = { ...project, name: (place.surveyedLake ? place.label : place.label.split(",")[0] ?? "Terrain project").slice(0, MAX_PROJECT_NAME_LENGTH),
       ...(place.surveyedLake ? { outputMode: "stack" as const, showWaterDepth: true } : {}),
       location: { ...project.location, lat: place.lat, lon: place.lon, label: place.label, zoom: place.zoom ?? 11, bounds: place.bounds } };
-    if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+    if (!followMapArea()) status = MAP_AREA_CHANGED;
     searchOpen = false;
   }
 
@@ -744,12 +577,11 @@
     if (changed.includes("name")) geometry = { ...geometry, projectName: target.name };
     // Still loading here means the change was kept; generation adopts it on completion.
     if (generationState === "loading") return;
-    if (!embeddedInPlatform && !sameMapArea(sourceProject, target) && changed.includes("location")) { status = "Map area changed · regenerate terrain data"; return; }
+    if (!embeddedInPlatform && !sameMapArea(sourceProject, target) && changed.includes("location")) { status = MAP_AREA_CHANGED; return; }
     status = `${action} applied`;
     // A cosmetic change leaves any pending refresh to finish on its own.
-    if (keepsWork || !sourceChanged.some((key) => !COSMETIC_KEYS.has(key))) return;
-    const kind: PreviewUpdateKind = sourceChanged.some((key) => key.startsWith("show")) ? "details" : sourceChanged.every((key) => CUSTOM_DATA_KEYS.has(key)) ? "customData" : "fabrication";
-    void refreshPreview(kind, 0);
+    const kind = keepsWork ? undefined : refreshKindFor(sourceChanged);
+    if (kind) void refreshPreview(kind, 0);
   }
   function resetProject(): void {
     invalidatePendingPreview();
@@ -758,20 +590,20 @@
     explodedDrag = undefined;
     mapAspectLocked = false;
     previewNotice = "";
-    mode = threeUnavailable ? "2d" : "3d";
+    mode = defaultModeFor("stack");
     replaceSourceProject(structuredClone(DEFAULT_PROJECT), createSamplePreviewSource());
     generationState = "ready";
     status = "Project reset to Crater Lake defaults · Undo restores your previous settings";
     loadRealTerrain();
   }
 
-  function undo(): boolean { if (placement) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
-  function redo(): void { if (placement) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
+  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
+  function redo(): void { if (placement.session) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
     const shortcut = historyShortcut(event);
     // An undo would rewrite the project under an open draft; Done or Cancel first.
-    if (!shortcut || placement) return;
+    if (!shortcut || placement.session) return;
     event.preventDefault();
     if (shortcut === "undo") undo(); else redo();
   }
@@ -783,6 +615,12 @@
     detailsUpdating = false;
     terrainRefreshing = false;
     if (wasGenerating) generationState = "idle";
+  }
+
+  /** What loading terrain fell back on, as warnings on the geometry built from it; Generate and a map-area refresh report it alike. */
+  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<Awaited<ReturnType<typeof loadTerrain>>, "fallback" | "fallbackReason" | "waterWarning">): void {
+    if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
+    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
   }
 
   const styleOf = (config: ProjectConfigV1) => JSON.stringify([config.lineStyle, config.textStyle]);
@@ -812,8 +650,7 @@
         return source;
       },
       onCommit: (next, source) => {
-        if (loaded?.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
-        if (loaded?.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied. (${loaded.waterWarning})` });
+        if (loaded) appendLoadWarnings(next, loaded);
         addPreviewWarning(next, source);
         if (areaChanged) dismissedWarnings = [];
         // Cosmetic edits do not supersede a refresh, so keep the latest name.
@@ -855,7 +692,7 @@
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
-    if (patch.outputMode && patch.outputMode !== project.outputMode) mode = patch.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
+    if (patch.outputMode && patch.outputMode !== project.outputMode) mode = defaultModeFor(patch.outputMode);
     const keys = Object.keys(patch);
     if (keys.every((key) => key === "name")) { updateProject(patch); return Promise.resolve(); }
     if (keys.every((key) => key === "name" || MAP_DETAIL_KEYS.has(key))) return updateMapDetails(patch);
@@ -875,13 +712,13 @@
         invalidatePendingPreview();
         projectHistory.push(project);
         project = { ...project, ...(name ? { name } : {}), location };
-        if (!followMapArea()) status = "Map area changed · regenerate terrain data";
+        if (!followMapArea()) status = MAP_AREA_CHANGED;
       },
       applyPatch: applyAgentPatch,
       generate: () => generate(),
       undo,
       openExport: () => { exportOpen = true; },
-      editBlockedBy: () => placement ? "The studio is placing an item. Finish or cancel it there first." : undefined,
+      editBlockedBy: () => placement.session ? "The studio is placing an item. Finish or cancel it there first." : undefined,
     };
   }
 
@@ -924,8 +761,7 @@
         next = await pipeline.generate(builtProject, loaded.source, revision);
         checkpoint();
       }
-      if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
-      if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
+      appendLoadWarnings(next, loaded);
       for (const lake of loaded.missingCharts ?? []) next.warnings.push({ code: "BATHYMETRY_FALLBACK", message: `The depth chart for ${lake} is unavailable or has not completed contour review, so it is carved without it. Import a reviewed project file or recreate the chart from its source.` });
       // Cosmetic edits deliberately do not cancel expensive terrain work. Merge
       // their latest values instead of replacing them with the request snapshot.
@@ -936,7 +772,7 @@
       void sourcePreparation?.then((cache) => cache.clear(), () => undefined);
       geometry = completedGeometry; project = completedProject; activeSource = loaded.source; sourceProject = completedProject; selectedLayer = featuredLayerIndex(completedGeometry);
       // Show the result, unless the maker is at work in the custom data view.
-      if (!automatic && mode !== "custom") mode = completedProject.outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
+      if (!automatic && mode !== "custom") mode = defaultModeFor(completedProject.outputMode);
       generationState = "ready";
       trackUsage(exportBlockReason(completedGeometry, completedProject) ? "generation_failed" : "generation_succeeded", completedProject.outputMode);
       const outcome = {
@@ -978,56 +814,20 @@
   }
   async function importProject(file: File | undefined): Promise<void> {
     if (!file) return;
-    // A rejected file leaves a running Generate alone: report it on the status line only.
-    const reportImportError = (message: string) => { status = message; if (generationState !== "loading") generationState = "error"; };
-    if (file.size > MAX_PROJECT_BUNDLE_BYTES) { reportImportError("Project file must be 24 MB or smaller."); return; }
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      const envelope = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : undefined;
-      const charts = envelope && Array.isArray(envelope.charts) ? envelope.charts : [];
-      // Only a file carrying traced depth charts may be large; everything else keeps the old ceiling.
-      if (!charts.length && file.size > MAX_PROJECT_FILE_BYTES) { reportImportError("Project file must be 2 MB or smaller."); return; }
-      const candidate = envelope && "project" in envelope ? envelope.project : parsed;
-      const imported = parseProject(candidate);
-      const saved = charts.length ? await (await import("$lib/storage/user-charts")).saveProjectCharts(charts, imported) : { saved: 0, skipped: 0 };
-      const source = createProjectPreviewSource(imported); invalidatePendingPreview(); projectHistory.push(project); dismissedWarnings = []; replaceSourceProject(imported, source); generationState = "ready";
-      status = saved.saved ? `Project imported with ${saved.saved === 1 ? "its depth chart" : `${saved.saved} depth charts`} · generate to refresh its terrain` : "Project imported · generate to refresh its terrain";
+      const { project: imported, savedCharts } = await readProjectFile(file);
+      openProject(imported, project); generationState = "ready";
+      status = savedCharts ? `Project imported with ${savedCharts === 1 ? "its depth chart" : `${savedCharts} depth charts`} · generate to refresh its terrain` : "Project imported · generate to refresh its terrain";
       loadRealTerrain();
-    }
-    catch (error) { reportImportError(error instanceof Error ? error.message : "Could not import this project."); }
-  }
-
-  async function shareLink(): Promise<string> {
-    const { shareLinkFor } = await import("$lib/studio/share-link");
-    return shareLinkFor(project, new URL("/studio", window.location.href).toString());
-  }
-
-  async function copyShareLink(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(await shareLink());
-      status = "Share link copied · anyone with it can open this design";
-      trackUsage("share_link_copied", project.outputMode);
     } catch (error) {
-      status = error instanceof Error && error.name !== "NotAllowedError" ? error.message : "Could not copy the share link. Check clipboard permissions and try again.";
+      // A rejected file leaves a running Generate alone: report it on the status line only.
+      status = error instanceof Error ? error.message : "Could not import this project.";
+      if (generationState !== "loading") generationState = "error";
     }
   }
 
-  /** Hands the link to the system share sheet; browsers without one, and share failures, copy it instead. */
-  async function shareDesign(): Promise<void> {
-    let url: string;
-    try { url = await shareLink(); } catch (error) { status = error instanceof Error ? error.message : "Could not create the share link."; return; }
-    const data = { title: `${project.name.trim() || "Topographic map"} · TopoStack`, text: "A topographic map design made with TopoStack", url };
-    if (typeof navigator.share !== "function" || navigator.canShare?.(data) === false) return copyShareLink();
-    try {
-      await navigator.share(data);
-      status = "Design shared · anyone with the link can open it";
-      trackUsage("share_link_shared", project.outputMode);
-    } catch (error) {
-      // Closing the share sheet is not a failure.
-      if (error instanceof Error && error.name === "AbortError") return;
-      await copyShareLink();
-    }
-  }
+  async function copyShareLink(): Promise<void> { status = await copyDesignLink(project); }
+  async function shareDesign(): Promise<void> { const message = await shareDesignLink(project); if (message) status = message; }
 
   async function importCustomData(file: File | undefined): Promise<void> {
     if (!file) return;
@@ -1099,14 +899,14 @@
     get mapCanvas() { return mapCanvas; },
     get ExportPreview() { return ExportPreview; },
     get exportPreview() { return exportPreview; },
-    get placement() { return placement; },
-    set placement(value) { placement = value; },
-    get placementBackdrop() { return placementBackdrop; },
-    get placementPhase() { return placementPhase; },
-    get placementFade() { return placementFade; },
-    get placementMargin() { return placementMargin; },
-    get placementHiddenPrefixes() { return placementHiddenPrefixes; },
-    get openSections() { return openSections; },
+    get placement() { return placement.session; },
+    set placement(value) { placement.session = value; },
+    get placementBackdrop() { return placement.backdrop; },
+    get placementPhase() { return placement.phase; },
+    get placementFade() { return placement.fade; },
+    get placementMargin() { return placement.marginMm; },
+    get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
+    get openSections() { return menuSections.open; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },
     get mode() { return mode; },
@@ -1141,7 +941,7 @@
     saveChartToLibrary: (record) => customData.saveChartToLibrary(record),
     useChartForLake: (key, reference) => customData.useChartForLake(key, reference),
     clearDepthChart: (key) => customData.clearDepthChart(key),
-    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement, placeGraphic, placeGraphics, commitPlacement, cancelPlacement, undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection, setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
+    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection: (section) => menuSections.toggle(section), setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
   });
 </script>
 
@@ -1215,8 +1015,8 @@
             <h1>{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
             <p>Work through the essentials, then open details only when you need them.</p>
             <div class="section-tools" aria-label="Section display controls">
-              <button type="button" onclick={() => setAllSections(true)} disabled={shownSections.every((section) => openSections[section])}>Expand all</button>
-              <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !openSections[section])}>Collapse all</button>
+              <button type="button" onclick={() => setAllSections(true)} disabled={shownSections.every((section) => menuSections.open[section])}>Expand all</button>
+              <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !menuSections.open[section])}>Collapse all</button>
             </div>
           </div>
           <SetupSection />
