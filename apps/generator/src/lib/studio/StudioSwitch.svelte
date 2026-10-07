@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { getContext, type Snippet } from "svelte";
+  import { getEmbedded } from "$lib/studio/embed-context";
+  import { type Snippet } from "svelte";
   import { Switch } from "@loidolt/theme-svelte";
   let { checked = false, disabled = false, onCheckedChange, children, ...rest }: {
     checked?: boolean; disabled?: boolean; onCheckedChange?: (checked: boolean) => void;
     children?: Snippet; "aria-label"?: string;
   } = $props();
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  const isEmbedded = getEmbedded();
 </script>
 
 {#if isEmbedded()}

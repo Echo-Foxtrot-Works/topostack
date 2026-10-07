@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { getEmbedded } from "$lib/studio/embed-context";
   import type { FeatureCollection } from "geojson";
-  import { onMount, untrack, getContext } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { base } from "$app/paths";
   import { LocateFixed, MapPin, Spline } from "@lucide/svelte";
   import * as maplibregl from "maplibre-gl";
@@ -41,7 +42,7 @@
     onStopPlacing?: () => void;
   } = $props();
   import AtommZoom from "$lib/atomm/AtommZoom.svelte";
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  const isEmbedded = getEmbedded();
   let zoomScale = $state(1);
   let initialZoom = 10;
   let initialCenter: [number, number] = [0, 0];

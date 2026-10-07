@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
-  import type { AutomaticNesting, NestingProgress } from "$lib/atomm/automatic-nesting";
+  import type { NestingProgress } from "$lib/atomm/automatic-nesting";
   import { buildProjectPackage, exportBlockReason, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import { buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
@@ -12,8 +12,8 @@
    */
   let { geometry, project, busy = false }: { geometry: GeometryIRV1; project: ProjectConfigV1; busy?: boolean } = $props();
 
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
-  const automaticNesting = getContext<AutomaticNesting | undefined>("atomm-nesting");
+  const isEmbedded = getEmbedded();
+  const automaticNesting = getAutomaticNesting();
   let progress = $state<NestingProgress>({ running: false, previews: [], sheetCount: 0, utilization: 0, updates: 0 });
   $effect(() => automaticNesting?.subscribe(value => { progress = value; }));
   let packaging = $state(false);

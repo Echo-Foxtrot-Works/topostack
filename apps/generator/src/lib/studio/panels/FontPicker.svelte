@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { getEmbedded } from "$lib/studio/embed-context";
   // A select-only combobox for the engraving fonts. Eleven fonts with samples
   // made a swatch grid taller than the rest of Map details, so the picker is
   // one row that opens a grouped list over the sidebar. Built like HeaderMenu:
   // the theme's Select is a native <select> that cannot draw samples, and its
   // bits-ui popover is kept out of the studio's startup bundle.
-  import { tick, getContext } from "svelte";
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  import { tick } from "svelte";
+  const isEmbedded = getEmbedded();
   import { ChevronDown } from "@lucide/svelte";
   import { fontEntry, labelDimensions, labelPathData, type TextFont } from "@topostack/core";
   import { FONT_SAMPLES } from "$lib/studio/font-samples";

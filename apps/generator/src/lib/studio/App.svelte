@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack, setContext } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
@@ -15,6 +15,7 @@
   import { exportBlockReason, parseProject } from "@topostack/core";
   import { loadProject, saveProject, saveProjectUnloadCopy } from "$lib/storage/storage";
   import { AutomaticNesting } from "$lib/atomm/automatic-nesting";
+  import { provideAutomaticNesting, provideEmbedded } from "$lib/studio/embed-context";
   import { connectAtomm } from "$lib/atomm/atomm-bridge";
   import type { ModelContextLike } from "$lib/studio/webmcp";
   import type { WebMcpHost } from "$lib/studio/webmcp-tools";
@@ -123,14 +124,14 @@
   let atommLayoutFailed = $state(false);
   let atommReady = $state(false);
   let embeddedInPlatform = $state(false);
-  setContext("atomm-embedded", () => embeddedInPlatform);
+  provideEmbedded(() => embeddedInPlatform);
   let exportOpen = $state(false);
   let resetOpen = $state(false);
   const exportNotice = new ExportNotice((message) => { status = message; });
   const sheetNesting = new SheetNesting();
   const acrylicSheetNesting = SheetNesting.forAcrylic();
   const automaticNesting = new AutomaticNesting();
-  setContext("atomm-nesting", automaticNesting);
+  provideAutomaticNesting(automaticNesting);
   $effect(() => { if (embeddedInPlatform && previewBusy) automaticNesting.cancel(); });
   // A nested layout depends only on the geometry and the sheet settings, so
   // other edits (a rename, a style tweak) must not re-extract every part.
