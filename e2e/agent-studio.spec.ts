@@ -11,33 +11,13 @@ async function blockNetwork(page: Page) {
 
 test("opens an assistant's studio link and generates it straight away", async ({ page }) => {
   await blockNetwork(page);
-  // TEMPORARY DIAGNOSTICS: record every history write and page error.
-  const diagnostics: string[] = [];
-  page.on("pageerror", (error) => diagnostics.push(`pageerror ${error.message}`));
-  page.on("console", (message) => { if (message.type() === "error" || message.type() === "warning") diagnostics.push(`console.${message.type()} ${message.text().slice(0, 300)}`); });
-  await page.addInitScript(() => {
-    const log: string[] = ((window as unknown as { __urlLog: string[] }).__urlLog = []);
-    for (const name of ["replaceState", "pushState"] as const) {
-      const original = history[name].bind(history);
-      history[name] = (state: unknown, title: string, url?: string | URL | null) => {
-        log.push(`${performance.now().toFixed(0)}ms ${name} ${String(url).slice(0, 80)} :: ${(new Error().stack ?? "").split("\n").slice(2, 6).map((line) => line.trim().slice(0, 120)).join(" | ")}`);
-        return original(state, title, url);
-      };
-    }
-    addEventListener("popstate", () => log.push(`${performance.now().toFixed(0)}ms popstate ${location.href.slice(0, 80)}`));
-  });
   const { explodedPreview: _preview, ...design } = { ...DEFAULT_PROJECT, name: "Agent ridge", materialThicknessMm: 4 };
   const link = new URL(shareUrl(design, "http://127.0.0.1:4173/studio", "?generate=1"));
   await page.goto(`${link.pathname}${link.search}${link.hash}`);
   // The link is consumed so a refresh restores later edits rather than generating again.
   // Read the document's own location: the studio can rewrite it before the
   // initial navigation settles, and page.url() may not see that rewrite.
-  try { await expect.poll(() => page.evaluate(() => location.search)).toBe(""); }
-  catch (error) {
-    const history = await page.evaluate(() => (window as unknown as { __urlLog: string[] }).__urlLog);
-    console.log(`URL DIAGNOSTICS\nlocation=${await page.evaluate(() => location.href.slice(0, 120))}\n${history.join("\n")}\n${diagnostics.join("\n")}\nstatus=${await page.locator(".status-line").first().textContent().catch(() => "?")}`);
-    throw error;
-  }
+  await expect.poll(() => page.evaluate(() => location.search)).toBe("");
   await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
   // Export stays closed until fresh terrain is generated, so an enabled package proves the link generated.
   await page.getByRole("button", { name: "Export", exact: true }).click();
