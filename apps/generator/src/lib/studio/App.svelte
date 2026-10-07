@@ -30,6 +30,7 @@
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { ProjectHistory } from "$lib/studio/history";
   import { MenuSections } from "$lib/studio/menu-sections.svelte";
+  import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
   import { autosaveProject } from "$lib/studio/autosave.svelte";
   import { historyShortcut } from "$lib/studio/history-keys";
   import { ATOMM_ENGRAVING_MODE_OPTIONS, ATOMM_STACK_MODE_OPTIONS, ENGRAVING_MODE_OPTIONS, PRESETS, STACK_MODE_OPTIONS } from "$lib/studio/options";
@@ -458,23 +459,8 @@
 
   autosaveProject(() => project, () => booted, () => { status = "Local save is unavailable in this browser"; });
 
-  // Sheet nesting only arranges finished parts at export, so it never touches generation.
-  const COSMETIC_KEYS: ReadonlySet<string> = new Set(["name", "explodedPreview", "sheetNesting", "waterInsertSheetNesting"]);
-  /** Keys whose edits refresh the preview as custom data rather than a fabrication change. */
-  const CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set(["markers", "markerIcons", "customLines", "customGraphics", "placedGraphics"]);
-  // Stroke and text styling never changes the terrain request, so a running
-  // Generate keeps going and re-renders with the latest style when it finishes.
-  const GENERATION_STYLE_KEYS: ReadonlySet<string> = new Set(["lineStyle", "textStyle"]);
-
   /** Whether an edit to `keys` can leave in-flight generation and preview work running. */
-  function keepsPendingWork(keys: readonly string[]): boolean {
-    // `[].every` is true, so an empty patch used to keep pending work running
-    // at an unchanged revision, and a second refresh could then replace the
-    // first one's debounce while sharing its revision guard.
-    if (!keys.length) return false;
-    const generating = generationState === "loading";
-    return keys.every((key) => COSMETIC_KEYS.has(key) || (generating && GENERATION_STYLE_KEYS.has(key)));
-  }
+  const keepsPendingWork = (keys: readonly string[]) => keepsPendingEdits(keys, generationState === "loading");
 
   /**
    * Swap in a project with its own source and preview, as import, restore, and
@@ -594,9 +580,8 @@
     if (!embeddedInPlatform && !sameMapArea(sourceProject, target) && changed.includes("location")) { status = MAP_AREA_CHANGED; return; }
     status = `${action} applied`;
     // A cosmetic change leaves any pending refresh to finish on its own.
-    if (keepsWork || !sourceChanged.some((key) => !COSMETIC_KEYS.has(key))) return;
-    const kind: PreviewUpdateKind = sourceChanged.some((key) => key.startsWith("show")) ? "details" : sourceChanged.every((key) => CUSTOM_DATA_KEYS.has(key)) ? "customData" : "fabrication";
-    void refreshPreview(kind, 0);
+    const kind = keepsWork ? undefined : refreshKindFor(sourceChanged);
+    if (kind) void refreshPreview(kind, 0);
   }
   function resetProject(): void {
     invalidatePendingPreview();
