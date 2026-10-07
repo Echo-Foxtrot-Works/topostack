@@ -1,5 +1,5 @@
 import { AREA_SCHEMA, PROJECT_REQUEST_PATCH_SCHEMA, cleanRequestText, describeProject, parseProjectRequestPatch, projectFingerprint, requestPatch, type GeometryIRV1, type ProjectConfigV1, type ProjectRequestArea } from "@topostack/core";
-import type { PlaceResult } from "$lib/domain/data-provider";
+import type { PlaceResult } from "$lib/domain/geocode";
 
 /**
  * Tools the open studio offers to a browser agent through WebMCP (Chrome's

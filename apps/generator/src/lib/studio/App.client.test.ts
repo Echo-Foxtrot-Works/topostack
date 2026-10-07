@@ -12,7 +12,9 @@ vi.mock("$lib/domain/archive", async (importOriginal) => ({ ...await importOrigi
 const loadTerrainMock = vi.hoisted(() => vi.fn());
 const loadVectorMarkingsMock = vi.hoisted(() => vi.fn());
 const loadLakeAreasMock = vi.hoisted(() => vi.fn());
-vi.mock("$lib/domain/data-provider", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/data-provider")>(), loadTerrain: loadTerrainMock, loadVectorMarkings: loadVectorMarkingsMock, loadLakeAreas: loadLakeAreasMock }));
+vi.mock("$lib/domain/data-provider", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/data-provider")>(), loadTerrain: loadTerrainMock }));
+vi.mock("$lib/domain/vector-loader", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/vector-loader")>(), loadVectorMarkings: loadVectorMarkingsMock }));
+vi.mock("$lib/domain/lake-area-loader", () => ({ loadLakeAreas: loadLakeAreasMock }));
 vi.mock("$lib/storage/storage", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/storage/storage")>(), loadProject: vi.fn(async () => undefined), saveProject: vi.fn(async () => undefined) }));
 // Glyph files are fetched in the browser; here they are read from the source tree.
 vi.mock("$lib/domain/fonts", async (importOriginal) => {
@@ -1108,6 +1110,8 @@ describe("TopoStack Svelte shell", () => {
     await tick();
     expect(generate.textContent).toContain("Cancel generation");
     expect(target.querySelector(".generation-step")?.textContent).toBe("Step 1 of 3");
+    // The terrain loaders are imported on first use, so the request starts a few ticks later.
+    await vi.waitFor(() => expect(loadTerrainMock).toHaveBeenCalled());
     const onStage = loadTerrainMock.mock.calls.at(-1)![2];
     onStage("preparing");
     await tick();
@@ -1282,7 +1286,8 @@ describe("TopoStack Svelte shell", () => {
     await tick();
     [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Generate terrain"))!.click();
     await tick();
-    expect(loadTerrainMock).toHaveBeenCalledOnce();
+    // The terrain loaders are imported on first use, so the request starts a few ticks later.
+    await vi.waitFor(() => expect(loadTerrainMock).toHaveBeenCalledOnce());
   });
 
   it("updates every Map Details feature without pressing Generate", async () => {

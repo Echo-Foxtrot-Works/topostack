@@ -51,7 +51,7 @@ const elevation = await page.evaluate(async ({ apiBase, tiles, westX, eastX, nor
   // Decode terrarium tiles to elevations at native resolution first, then
   // resample the elevation field. Scaling the PNGs directly interpolates the
   // R/G/B channels independently and blends tile edges into the empty canvas,
-  // both of which fabricate elevations (see loadElevation in data-provider.ts).
+  // both of which fabricate elevations (see loadElevation in elevation-loader.ts).
   const width = 66;
   const height = 44;
   const minTileX = Math.min(...tiles.map((tile) => tile.x));

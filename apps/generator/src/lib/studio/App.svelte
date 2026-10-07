@@ -4,15 +4,14 @@
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
   import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
-  import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
-  import { applySurveyProvenance } from "$lib/domain/bathymetry";
-  import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
-  import { dataZoom } from "$lib/domain/tile-math";
+  import type { TerrainLoadResult } from "$lib/domain/data-provider";
+  import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
   import { CustomDataActions } from "$lib/studio/customdata/custom-data-actions.svelte";
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
+  import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { exportBlockReason } from "@topostack/core";
+  import { boundsForProject, exportBlockReason } from "@topostack/core";
   import { readProjectFile } from "$lib/studio/project-file";
   import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
   import { loadProject } from "$lib/storage/storage";
@@ -35,7 +34,8 @@
   import { historyShortcut } from "$lib/studio/history-keys";
   import { ATOMM_ENGRAVING_MODE_OPTIONS, ATOMM_STACK_MODE_OPTIONS, ENGRAVING_MODE_OPTIONS, PRESETS, STACK_MODE_OPTIONS } from "$lib/studio/options";
   import * as edits from "$lib/studio/project-edits";
-  import { isAbortError, PreviewPipeline } from "$lib/studio/preview-pipeline";
+  import { isAbortError, loadGeometryClient, PreviewPipeline } from "$lib/studio/preview-pipeline";
+  import type { WarmGeometryWorker } from "$lib/workers/geometry-worker-client";
   import { LazyComponent } from "$lib/studio/lazy-component";
   import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
@@ -60,14 +60,20 @@
   import LayerDock from "$lib/studio/panels/LayerDock.svelte";
   import PreviewPanel from "$lib/studio/panels/PreviewPanel.svelte";
 
-  let { initialPreview }: { initialPreview?: GeometryIRV1 } = $props();
+  let { initialPreview, initialSource, takeWarmWorker }: {
+    initialPreview?: GeometryIRV1;
+    /** The decoded sample `initialPreview` was generated from. */
+    initialSource?: SourceBundleV1;
+    /** Hands over the worker that generated `initialPreview`, if it is still running. */
+    takeWarmWorker?: () => WarmGeometryWorker | undefined;
+  } = $props();
 
   function addPreviewWarning(result: GeometryIRV1, source: SourceBundleV1): void {
     if (source.sourceKind === "real" || result.warnings.some((warning) => warning.code === "DATA_FALLBACK")) return;
     result.warnings.push({ code: "DATA_FALLBACK", message: source.sourceKind === "preview" ? "Bundled real-data preview. Generate fresh terrain before exporting." : "Sample preview only. Generate real terrain before exporting." });
   }
 
-  const defaultPreviewSource = createSamplePreviewSource();
+  const defaultPreviewSource = untrack(() => initialSource) ?? createSamplePreviewSource();
   // A copy with its own warnings: the warning is added here, never to the caller's prop.
   const startupGeometry = untrack(() => initialPreview) ?? generateGeometry(DEFAULT_PROJECT, defaultPreviewSource);
   const defaultPreviewGeometry: GeometryIRV1 = { ...startupGeometry, warnings: [...startupGeometry.warnings] };
@@ -160,10 +166,13 @@
   const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
-  const pipeline = new PreviewPipeline();
-  // Map-data refresh code loads with the first preview edit, not at startup. A
-  // failed load is forgotten, so the next edit retries it.
-  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, loadAviation, dataZoom }), "Map data refresh");
+  const pipeline = new PreviewPipeline(() => loadGeometryClient(untrack(() => takeWarmWorker)));
+  // The terrain and map-data loaders (pmtiles, vector tiles, polygon
+  // clipping, the source catalogs) load with the first Generate or preview
+  // edit, not with the studio. A failed load is forgotten, so the next use retries.
+  const terrainLoaders = retryingLoader(() => import("$lib/domain/data-provider"), "Terrain loading");
+  // Map-data refresh code loads with the first preview edit, not at startup.
+  const loadSourcePreparation = retryingLoader(async () => (await import("$lib/studio/source-preparation")).createSourcePreparation(), "Map data refresh");
   let sourcePreparation: Promise<SourcePreparationCache> | undefined;
   const preparedSources = () => sourcePreparation = loadSourcePreparation();
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
@@ -418,7 +427,7 @@
       loadShareLink: () => import("$lib/studio/share-link"),
       consumeShareLink: () => cleanStudioUrl((url) => { url.hash = ""; url.searchParams.delete("generate"); }),
       loadExample: async (slug) => {
-        const response = await fetch(`${base}/examples/${slug}.json`);
+        const response = await fetch(`${base}/examples/${slug}.json`, { signal: networkSignal() });
         if (response.status === 404) return undefined;
         if (!response.ok) throw new Error(`Example request failed with status ${response.status}.`);
         return response.json();
@@ -618,7 +627,7 @@
   }
 
   /** What loading terrain fell back on, as warnings on the geometry built from it; Generate and a map-area refresh report it alike. */
-  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<Awaited<ReturnType<typeof loadTerrain>>, "fallback" | "fallbackReason" | "waterWarning">): void {
+  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<TerrainLoadResult, "fallback" | "fallbackReason" | "waterWarning">): void {
     if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
     if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
   }
@@ -633,7 +642,7 @@
     const nextProject = project;
     const previewProject = nextProject;
     const areaChanged = !sameMapArea(sourceProject, nextProject);
-    let loaded: Awaited<ReturnType<typeof loadTerrain>> | undefined;
+    let loaded: TerrainLoadResult | undefined;
     const fromProject = sourceProject;
     const fromSource = activeSource;
     const patch = projectPatch(fromProject, previewProject);
@@ -645,7 +654,7 @@
       prepareSource: async (signal) => {
         const source = !areaChanged
           ? await (await preparedSources()).prepare(fromSource, fromProject, previewProject, nextProject, signal)
-          : (loaded = await loadTerrain(previewProject, signal)).source;
+          : (loaded = await (await terrainLoaders()).loadTerrain(previewProject, signal)).source;
         if (!signal.aborted && !quiet && embeddedInPlatform) status = "Step 2 of 2 · Building preview geometry…";
         return source;
       },
@@ -745,6 +754,8 @@
     // Throws at each await boundary once canceled (AbortError) or superseded by a newer edit.
     const checkpoint = () => { controller.signal.throwIfAborted(); if (!pipeline.isCurrent(revision)) throw new DOMException("Generation superseded", "AbortError"); };
     try {
+      const { loadTerrain } = await terrainLoaders();
+      checkpoint();
       const loaded = await loadTerrain(generationProject, controller.signal, (stage) => {
         if (controller.signal.aborted || !pipeline.isCurrent(revision)) return;
         generationStep = stage === "fetching" ? 1 : 2;

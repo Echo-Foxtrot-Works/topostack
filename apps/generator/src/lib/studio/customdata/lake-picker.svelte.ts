@@ -1,4 +1,4 @@
-import { searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
+import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
 import { lakesNear, lakesInView, wholeLake, lakeAt, lakeContains, type ChartableLake } from "$lib/domain/lake-lookup";
 import type { GeoBounds } from "@topostack/core";
 import { draft, resetDraft } from "$lib/studio/customdata/chart-draft.svelte";
