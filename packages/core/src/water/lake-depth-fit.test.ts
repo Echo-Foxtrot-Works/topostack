@@ -57,6 +57,17 @@ describe("lake depth fitting", () => {
     expect(result.grid.values[17]).toBe(60); // outside both lakes
   });
 
+  it("fits every part of a lake split into several outlines with one scale", () => {
+    const original = fixture();
+    const rectangle = (left: number, right: number) => [{ x: left, y: -40 }, { x: right, y: -40 }, { x: right, y: 40 }, { x: left, y: 40 }, { x: left, y: -40 }];
+    original.surfaces = [{ ...surface, polygons: [{ outer: rectangle(-40, -10), holes: [] }, { outer: rectangle(10, 40), holes: [] }] }];
+    const result = fitLakesToLadder(original, config, 0);
+    expect(result.grid.values[11]).toBe(0);
+    expect(result.grid.values[13]).toBe(90);
+    expect(result.grid.values[17]).toBe(60); // between the parts
+    expect(result.surfaces[0]?.depthFitScale).toBeCloseTo(0.3);
+  });
+
   it("keeps a fractional floor representable without reporting false clipping", () => {
     for (const floor of [1 / 3, -1 / 3, 1882.6 / 7]) {
       const original = fixture();
