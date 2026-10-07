@@ -1,8 +1,5 @@
 import { EtagMismatch, FetchSource, PMTiles, type Header, type RangeResponse } from "pmtiles";
-
 import { networkSignal } from "$lib/domain/network";
-
-export { networkSignal };
 
 /** The archive operations generation uses. */
 export type Archive = Pick<PMTiles, "getHeader" | "getMetadata" | "getZxy">;

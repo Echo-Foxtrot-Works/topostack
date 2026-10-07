@@ -66,7 +66,8 @@ await run(async () => {
   assert(selectedCases.length > 0, "No survey verification cases selected");
   for (const test of selectedCases) {
     const result = await page.evaluate(async ({ test, coreUrl }) => {
-      const { loadSurveyedLakeDepths, loadLakeAreas } = await import("/src/lib/domain/data-provider.ts");
+      const { loadSurveyedLakeDepths } = await import("/src/lib/domain/data-provider.ts");
+      const { loadLakeAreas } = await import("/src/lib/domain/lake-area-loader.ts");
       const { DEFAULT_PROJECT } = await import(coreUrl);
       const config = { ...DEFAULT_PROJECT, widthMm: 200, heightMm: 200 };
       const lakes = await loadLakeAreas(test.bounds, 12, config);

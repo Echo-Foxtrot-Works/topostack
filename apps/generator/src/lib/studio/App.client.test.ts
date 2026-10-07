@@ -12,7 +12,9 @@ vi.mock("$lib/domain/archive", async (importOriginal) => ({ ...await importOrigi
 const loadTerrainMock = vi.hoisted(() => vi.fn());
 const loadVectorMarkingsMock = vi.hoisted(() => vi.fn());
 const loadLakeAreasMock = vi.hoisted(() => vi.fn());
-vi.mock("$lib/domain/data-provider", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/data-provider")>(), loadTerrain: loadTerrainMock, loadVectorMarkings: loadVectorMarkingsMock, loadLakeAreas: loadLakeAreasMock }));
+vi.mock("$lib/domain/data-provider", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/data-provider")>(), loadTerrain: loadTerrainMock }));
+vi.mock("$lib/domain/vector-loader", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/vector-loader")>(), loadVectorMarkings: loadVectorMarkingsMock }));
+vi.mock("$lib/domain/lake-area-loader", () => ({ loadLakeAreas: loadLakeAreasMock }));
 vi.mock("$lib/storage/storage", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/storage/storage")>(), loadProject: vi.fn(async () => undefined), saveProject: vi.fn(async () => undefined) }));
 // Glyph files are fetched in the browser; here they are read from the source tree.
 vi.mock("$lib/domain/fonts", async (importOriginal) => {

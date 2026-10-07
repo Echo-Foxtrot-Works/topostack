@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@topostack/core";
 import { boundsForProject } from "@topostack/core";
-import { applyLakeShorelines, classifyTransportation, cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, combineWaterAreas, dissolveWaterAreas, dissolveWaterPolygons, isStateProvinceBoundary, limitVectorMarkingGroups, loadVectorMarkings, stitchTransportationMarkings, transportationLabel } from "$lib/domain/data-provider";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+import { classifyTransportation, isStateProvinceBoundary, loadVectorMarkings, transportationLabel } from "$lib/domain/vector-loader";
+import { applyLakeShorelines, combineWaterAreas } from "$lib/domain/water-assembly";
 import { fittingTileWindow } from "$lib/domain/tile-math";
 
 

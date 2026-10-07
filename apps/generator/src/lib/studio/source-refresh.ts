@@ -1,6 +1,6 @@
 import { AVIATION_DATA_DETAILS, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import type { SurveyResult } from "$lib/domain/bathymetry";
-import type { VectorData } from "$lib/domain/data-provider";
+import type { VectorData } from "$lib/domain/vector-loader";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
 
 /**

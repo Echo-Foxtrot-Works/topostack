@@ -1,5 +1,8 @@
 import { applySurveyProvenance } from "$lib/domain/bathymetry";
-import { assembleWater, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadVectorMarkings } from "$lib/domain/data-provider";
+import { loadAviation, loadSurveyedLakeDepths } from "$lib/domain/data-provider";
+import { loadLakeAreas } from "$lib/domain/lake-area-loader";
+import { loadVectorMarkings } from "$lib/domain/vector-loader";
+import { assembleWater } from "$lib/domain/water-assembly";
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { dataZoom } from "$lib/domain/tile-math";
 import { SourcePreparationCache } from "$lib/studio/source-refresh";
