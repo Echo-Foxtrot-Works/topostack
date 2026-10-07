@@ -329,6 +329,262 @@ export interface CarvedWater {
 }
 
 /**
+ * One carve in progress: the grid copy being written, the buffers every lake
+ * shares, and the lake currently being processed. Per-lake work is confined
+ * to that lake's window, so the full-grid buffers are allocated once and only
+ * the entries a lake touches are ever rewritten.
+ */
+interface CarveRun {
+  grid: ElevationGrid;
+  config: ProjectConfigV1;
+  groundWidthM: number;
+  groundHeightM: number;
+  spacingXM: number;
+  spacingYM: number;
+  exaggeration: number;
+  values: Float32Array<ArrayBuffer>;
+  warnings: GeometryWarning[];
+  waterMask: Uint8Array<ArrayBuffer>;
+  /** The current lake's cells, as a mask over the grid and as a list, and the window around them. */
+  mask: Uint8Array<ArrayBuffer>;
+  cells: number[];
+  lakeWindow: CellWindow;
+  /** Each current-lake cell's place in its basin, 0 at the shore and 1 at the deepest point; parallel to `cells`. */
+  normalized: Float64Array<ArrayBuffer>;
+  shoreDistance: Float64Array<ArrayBuffer>;
+  basinBuffers: { factors: Float64Array<ArrayBuffer>; result: Float64Array<ArrayBuffer> };
+  /** Allocated on first use: most maps have no survey rim to bridge at all. */
+  rimBuffer?: Float64Array<ArrayBuffer>;
+  surfaces: WaterSurfaceIR[];
+  surfaceCells: Int32Array[];
+}
+
+// Returned rather than stashed in a mutable: the basin fit and the survey-rim
+// bridge both need to know how these distances were measured, and reading that
+// back off a variable the measurement had set was only correct by call order.
+function measureShore(run: CarveRun, area: WaterAreaV1): LakeShore {
+  const { grid, config, cells } = run;
+  const touchesEdge = cellsTouchGridEdge(cells, grid.width, grid.height);
+  // The exact outline is only usable for a whole lake: a crop edge must never
+  // be measured as if it were a bank.
+  const vectorShore = config.smoothing > 0 && !area.clipped && !touchesEdge;
+  return {
+    distance: vectorShore
+      ? vectorShoreDistances(area.polygon, cells, grid.width, grid.height, config.widthMm, config.heightMm, run.groundWidthM, run.groundHeightM, run.shoreDistance)
+      : distanceToShoreM(run.mask, grid.width, grid.height, run.spacingXM, run.spacingYM, run.lakeWindow, run.shoreDistance),
+    vectorShore,
+    touchesEdge,
+  };
+}
+
+/** Fills `run.normalized` for the current lake and returns the basin radius it is measured against (0 when there is none). */
+function normalizeBasin(run: CarveRun, area: WaterAreaV1, shore: LakeShore, surfaceM: number): number {
+  const { grid, cells, normalized } = run;
+  const { distance } = shore;
+  let visibleRadiusM = 0;
+  for (const cell of cells) if (Number.isFinite(distance[cell])) visibleRadiusM = Math.max(visibleRadiusM, distance[cell]!);
+  const radiusM = area.lmaxM && area.lmaxM > 0 ? area.lmaxM : visibleRadiusM;
+  if (!(radiusM > 0)) return 0;
+  const shape = terrainBasinDistance(grid, run.mask, run.waterMask, cells, distance, run.spacingXM, run.spacingYM,
+    surfaceM, (area.maxDepthM ?? 0) / radiusM, area.clipped ?? false, run.basinBuffers, shore.vectorShore, shore.touchesEdge);
+  let shapeRadiusM = 0;
+  if (shape !== distance) for (const cell of cells) shapeRadiusM = Math.max(shapeRadiusM, shape[cell]!);
+  for (let index = 0; index < cells.length; index += 1) {
+    const cell = cells[index]!;
+    normalized[index] = shape === distance
+      ? Math.min(1, distance[cell]! / radiusM)
+      : shape[cell]! / shapeRadiusM * Math.min(1, visibleRadiusM / radiusM);
+  }
+  return radiusM;
+}
+
+function pushSurface(run: CarveRun, surface: WaterSurfaceIR, indexes: Int32Array): void {
+  run.surfaces.push(surface);
+  run.surfaceCells.push(indexes);
+}
+
+/** The current lake's waterline and how much its DEM interior already varies. */
+interface LakeLevels {
+  /** The lake's DEM samples, ascending. */
+  sorted: Float64Array;
+  surfaceLevelM: number;
+  interiorSpreadM: number;
+}
+
+/**
+ * Writes the current lake's floor from its survey or traced chart. Returns
+ * false when no survey cell lands inside the lake, so the lake falls through
+ * to the other carves.
+ */
+function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM, interiorSpreadM }: LakeLevels): boolean {
+  const { grid, values, cells, warnings, normalized } = run;
+  const survey = area.bathymetry!;
+  const chart = area.bathymetryOrigin === "chart";
+  const surveyNoun = chart ? "depth chart" : "survey";
+  // A misaligned survey cannot be placed, but it is one lake's data, not the
+  // map's: model this lake instead of failing the whole generation.
+  const aligned = survey.width === grid.width && survey.height === grid.height && survey.depthsM.length === values.length;
+  if (!aligned) warnings.push({
+    code: "BATHYMETRY_FALLBACK",
+    message: `${area.name ?? "A lake"} has ${surveyNoun} data that does not match the terrain grid, so its floor uses existing terrain or a modeled basin instead.`,
+  });
+  let surveyedCount = 0;
+  if (aligned) for (const index of cells) {
+    const depth = survey.depthsM[index]!;
+    if (Number.isNaN(depth)) continue;
+    if (!Number.isFinite(depth) || depth < 0 || depth > 1500) throw new Error("Lake bathymetry contains an invalid depth.");
+    surveyedCount += 1;
+  }
+  if (surveyedCount === 0) return false;
+  // Depths are relative to their dataset waterline, not absolute elevations. Anchor
+  // them to the flat terrain waterline. If the DEM already has a basin,
+  // use the lake's published surface elevation instead of its bed median.
+  const surfaceElevationM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
+    ? area.surfaceElevationM!
+    : surfaceLevelM;
+  const missing = surveyedCount < cells.length;
+  const shore = missing ? measureShore(run, area) : undefined;
+  const radiusM = shore && interiorSpreadM <= BATHYMETRIC_RELIEF_M ? normalizeBasin(run, area, shore, surfaceElevationM) : 0;
+  const exponent = !shore || radiusM <= 0 || area.clipped || !(area.meanDepthM && area.maxDepthM)
+    ? 1 : solveShapeExponent(normalized, cells.length, area.meanDepthM / area.maxDepthM);
+  // Coarse survey masks leave a ragged uncovered rim after resampling.
+  // Where no depth model exists, bridge only that narrow rim to the real
+  // shoreline instead of dropping abruptly from survey depth to zero.
+  const rimDepths = shore?.vectorShore && !area.maxDepthM && interiorSpreadM <= BATHYMETRIC_RELIEF_M
+    ? surveyShoreDepths(survey.depthsM, run.mask, cells, shore.distance, grid.width, grid.height, run.spacingXM, run.spacingYM, survey.sampleSpacingM,
+      run.rimBuffer ??= new Float64Array(grid.width * grid.height))
+    : undefined;
+  let bedElevationM = surfaceElevationM;
+  let fallbackCount = 0;
+  for (let index = 0; index < cells.length; index += 1) {
+    const cell = cells[index]!;
+    // Preserve banks and islands caught by a slightly different shoreline.
+    if (values[cell]! > surfaceElevationM + BATHYMETRIC_RELIEF_M) continue;
+    let depth = survey.depthsM[cell]!;
+    if (Number.isNaN(depth)) {
+      fallbackCount += 1;
+      if (interiorSpreadM > BATHYMETRIC_RELIEF_M) depth = Math.max(0, surfaceElevationM - values[cell]!);
+      else if (shore && radiusM > 0 && Number.isFinite(shore.distance[cell]!) && area.maxDepthM) depth = area.maxDepthM * normalized[index]! ** exponent;
+      else depth = rimDepths && Number.isFinite(rimDepths[cell]) ? rimDepths[cell]! : 0;
+    }
+    const bed = surfaceElevationM - depth * run.exaggeration;
+    values[cell] = bed;
+    bedElevationM = Math.min(bedElevationM, bed);
+  }
+  pushSurface(run, {
+    id: area.id, kind: area.kind, name: area.name, hylakId: area.hylakId, ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
+    polygons: [area.polygon], surfaceElevationM, bedElevationM,
+    ...(fallbackCount && area.maxDepthM ? { maxDepthM: area.maxDepthM } : {}),
+    // A traced chart is the maker's own depth source, gaps or not.
+    layerIndex: 0, depthSource: chart ? "user" : fallbackCount ? "mixed" : "surveyed",
+    ...(chart ? { bathymetryOrigin: "chart" as const } : {}),
+  }, areaIndexes);
+  if (fallbackCount) warnings.push({
+    code: "BATHYMETRY_FALLBACK",
+    message: `${area.name ?? "A lake"} has incomplete ${surveyNoun} coverage. Uncovered cells use existing terrain, modeled depths, or estimates near surveyed shores; cells without enough information remain at the waterline.`,
+  });
+  return true;
+}
+
+/**
+ * The DEM already knows this basin (an ocean, or a lake whose interior varies),
+ * so its shape is left alone - but its depth is still scaled, so surveyed and
+ * modeled water answer to the same control. At 1x nothing is written and the
+ * survey passes through exactly.
+ */
+function keepDemBasin(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { sorted, surfaceLevelM }: LakeLevels): void {
+  const { values, cells, exaggeration } = run;
+  const surveyedSurfaceM = area.kind === "ocean" ? 0 : surfaceLevelM;
+  let surveyedBedM = quantile(sorted, sorted.length, 0);
+  if (exaggeration !== 1) {
+    surveyedBedM = surveyedSurfaceM;
+    for (const index of cells) {
+      const depth = surveyedSurfaceM - values[index]!;
+      if (depth <= 0) continue;
+      const scaled = surveyedSurfaceM - depth * exaggeration;
+      values[index] = scaled;
+      if (scaled < surveyedBedM) surveyedBedM = scaled;
+    }
+  }
+  pushSurface(run, {
+    id: area.id,
+    kind: area.kind,
+    ...(area.name ? { name: area.name } : {}),
+    ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
+    ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
+    polygons: [area.polygon],
+    surfaceElevationM: surveyedSurfaceM,
+    bedElevationM: surveyedBedM,
+    layerIndex: 0,
+    depthSource: "surveyed",
+  }, areaIndexes);
+}
+
+/** A flat lake with a known maximum depth: model its basin from the distance to shore. */
+function carveModeledLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM }: LakeLevels): void {
+  const { values, cells, warnings, normalized } = run;
+  const sourceMaxDepthM = area.maxDepthM;
+  const maxDepthM = sourceMaxDepthM === undefined ? undefined : sourceMaxDepthM * run.exaggeration;
+  if (!(maxDepthM && maxDepthM > 0) || sourceMaxDepthM === undefined) return;
+
+  // Take the surface from our own DEM rather than HydroLAKES' `Elevation`.
+  // The lake is flat here, so the median *is* the surface, and it is stated in
+  // the same datum as the surrounding land - borrowing EarthEnv-DEM90's figure
+  // instead would leave a step at the shoreline wherever the two disagree.
+  const surfaceElevationM = surfaceLevelM;
+
+  const shore = measureShore(run, area);
+  // No shoreline in view means no way to place these cells within the basin.
+  if (cells.some((index) => !Number.isFinite(shore.distance[index]!))) {
+    warnings.push({
+      code: "WATER_DEPTH_CLAMPED",
+      message: `${area.name ?? "A lake"} extends past the edge of this map, so its depth could not be modeled. Zoom out to include its shoreline.`,
+    });
+    return;
+  }
+
+  const lmaxM = normalizeBasin(run, area, shore, surfaceElevationM);
+  if (!(lmaxM > 0)) return;
+
+  // A clipped lake's visible cells are not a fair sample of the whole basin,
+  // so fitting an exponent to them would bend the profile to the crop rather
+  // than to the lake. Fall back to GLOBathy's straight line there.
+  const exponent = area.clipped || !(area.meanDepthM && area.meanDepthM > 0)
+    ? 1
+    // Exaggeration scales both the maximum and mean depth, so it must not
+    // change their ratio (and therefore the basin shape). The source maximum
+    // may include a user override; retaining the published mean then bends
+    // the overridden profile while the display multiplier remains uniform.
+    : solveShapeExponent(normalized, cells.length, area.meanDepthM / sourceMaxDepthM);
+
+  let bedElevationM = surfaceElevationM;
+  for (let index = 0; index < cells.length; index += 1) {
+    const cell = cells[index]!;
+    // Only ever cut downward from the waterline. Where a lake outline spills a
+    // little past the shore, those cells are land standing above the surface,
+    // and gouging them would carve a moat into the bank.
+    if (values[cell]! > surfaceElevationM + BATHYMETRIC_RELIEF_M) continue;
+    const bed = surfaceElevationM - maxDepthM * normalized[index]! ** exponent;
+    values[cell] = bed;
+    if (bed < bedElevationM) bedElevationM = bed;
+  }
+
+  pushSurface(run, {
+    id: area.id,
+    kind: area.kind,
+    ...(area.name ? { name: area.name } : {}),
+    ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
+    ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
+    polygons: [area.polygon],
+    surfaceElevationM,
+    bedElevationM,
+    maxDepthM: sourceMaxDepthM,
+    layerIndex: 0,
+    depthSource: area.depthSource ?? "modeled",
+  }, areaIndexes);
+}
+
+/**
  * Write surveyed or modeled lake beds into a copy of the elevation grid.
  *
  * Oceans are never carved: Terrarium already carries real soundings for them,
@@ -349,43 +605,27 @@ export function carveWaterDepth(
   const exaggeration = Number.isFinite(config.waterDepthExaggeration) && config.waterDepthExaggeration >= 0
     ? config.waterDepthExaggeration
     : 1;
-  const surfaces: WaterSurfaceIR[] = [];
-  const warnings: GeometryWarning[] = [];
   const values = Float32Array.from(grid.values);
   const waterMask = new Uint8Array(grid.width * grid.height);
-  if (!areas.length) return { grid: { ...grid, values }, surfaces, warnings, waterMask };
+  if (!areas.length) return { grid: { ...grid, values }, surfaces: [], warnings: [], waterMask };
 
-  // The geographic footprint is independent of physical output stretching.
-  const spacingXM = groundWidthM / Math.max(1, grid.width - 1);
-  const spacingYM = groundHeightM / Math.max(1, grid.height - 1);
-
-  const mask = new Uint8Array(grid.width * grid.height);
-  const interior = new Float64Array(grid.width * grid.height);
-  const normalized = new Float64Array(grid.width * grid.height);
-  // Per-lake work is confined to the lake's window, so these full-grid buffers
-  // are shared and only the entries a lake touches are ever rewritten.
-  const shoreDistance = new Float64Array(grid.width * grid.height);
-  const basinBuffers = { factors: new Float64Array(grid.width * grid.height), result: new Float64Array(grid.width * grid.height) };
-  const cells: number[] = [];
-  let lakeWindow: CellWindow = { minX: 0, minY: 0, maxX: -1, maxY: -1 };
-  // Returned rather than stashed in a mutable: the basin fit and the survey-rim
-  // bridge both need to know how these distances were measured, and reading that
-  // back off a variable the measurement had set was only correct by call order.
-  const measureShore = (area: WaterAreaV1): LakeShore => {
-    const touchesEdge = cellsTouchGridEdge(cells, grid.width, grid.height);
-    // The exact outline is only usable for a whole lake: a crop edge must never
-    // be measured as if it were a bank.
-    const vectorShore = config.smoothing > 0 && !area.clipped && !touchesEdge;
-    return {
-      distance: vectorShore
-        ? vectorShoreDistances(area.polygon, cells, grid.width, grid.height, config.widthMm, config.heightMm, groundWidthM, groundHeightM, shoreDistance)
-        : distanceToShoreM(mask, grid.width, grid.height, spacingXM, spacingYM, lakeWindow, shoreDistance),
-      vectorShore,
-      touchesEdge,
-    };
+  const cellCount = grid.width * grid.height;
+  const run: CarveRun = {
+    grid, config, groundWidthM, groundHeightM, exaggeration, values, waterMask,
+    // The geographic footprint is independent of physical output stretching.
+    spacingXM: groundWidthM / Math.max(1, grid.width - 1),
+    spacingYM: groundHeightM / Math.max(1, grid.height - 1),
+    warnings: [],
+    mask: new Uint8Array(cellCount),
+    cells: [],
+    lakeWindow: { minX: 0, minY: 0, maxX: -1, maxY: -1 },
+    normalized: new Float64Array(cellCount),
+    shoreDistance: new Float64Array(cellCount),
+    basinBuffers: { factors: new Float64Array(cellCount), result: new Float64Array(cellCount) },
+    surfaces: [],
+    surfaceCells: [],
   };
-  // Allocated on first use: most maps have no survey rim to bridge at all.
-  let rimBuffer: Float64Array | undefined;
+  const interior = new Float64Array(cellCount);
 
   // Build the complete mask before carving so neighboring lakes never become
   // land samples for the terrain prior, regardless of their processing order.
@@ -394,37 +634,13 @@ export function carveWaterDepth(
   const areaCells = areas.map((area) => polygonCells(area.polygon, grid, config));
   for (const indexes of areaCells) for (const index of indexes) waterMask[index] = 1;
 
-  const normalizeBasin = (area: WaterAreaV1, shore: LakeShore, surfaceM: number): number => {
-    const { distance } = shore;
-    let visibleRadiusM = 0;
-    for (const cell of cells) if (Number.isFinite(distance[cell])) visibleRadiusM = Math.max(visibleRadiusM, distance[cell]!);
-    const radiusM = area.lmaxM && area.lmaxM > 0 ? area.lmaxM : visibleRadiusM;
-    if (!(radiusM > 0)) return 0;
-    const shape = terrainBasinDistance(grid, mask, waterMask, cells, distance, spacingXM, spacingYM,
-      surfaceM, (area.maxDepthM ?? 0) / radiusM, area.clipped ?? false, basinBuffers, shore.vectorShore, shore.touchesEdge);
-    let shapeRadiusM = 0;
-    if (shape !== distance) for (const cell of cells) shapeRadiusM = Math.max(shapeRadiusM, shape[cell]!);
-    for (let index = 0; index < cells.length; index += 1) {
-      const cell = cells[index]!;
-      normalized[index] = shape === distance
-        ? Math.min(1, distance[cell]! / radiusM)
-        : shape[cell]! / shapeRadiusM * Math.min(1, visibleRadiusM / radiusM);
-    }
-    return radiusM;
-  };
-
-  const surfaceCells: Int32Array[] = [];
-  const pushSurface = (surface: WaterSurfaceIR, indexes: Int32Array): void => {
-    surfaces.push(surface);
-    surfaceCells.push(indexes);
-  };
-
   for (const [areaIndex, area] of areas.entries()) {
+    const { mask, cells } = run;
     for (const index of cells) mask[index] = 0;
     cells.length = 0;
     let count = 0;
     const areaIndexes = areaCells[areaIndex]!;
-    lakeWindow = cellWindow(areaIndexes, grid.width, grid.height);
+    run.lakeWindow = cellWindow(areaIndexes, grid.width, grid.height);
     for (const index of areaIndexes) {
       mask[index] = 1;
       cells.push(index);
@@ -436,178 +652,23 @@ export function carveWaterDepth(
     if (count === 0) continue;
 
     const sorted = interior.slice(0, count).sort();
-    const surfaceLevelM = quantile(sorted, count, 0.5);
-    // Judge "does the DEM already know this basin?" on the middle of the
-    // distribution, not its extremes. A lake outline traced by HydroLAKES never
-    // lands exactly on Terrarium's rendering of the same shoreline, and a
-    // handful of steep rim cells caught inside the polygon would otherwise
-    // condemn the whole lake to being read as surveyed and left flat.
-    const interiorSpreadM = quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1);
+    const levels: LakeLevels = {
+      sorted,
+      surfaceLevelM: quantile(sorted, count, 0.5),
+      // Judge "does the DEM already know this basin?" on the middle of the
+      // distribution, not its extremes. A lake outline traced by HydroLAKES never
+      // lands exactly on Terrarium's rendering of the same shoreline, and a
+      // handful of steep rim cells caught inside the polygon would otherwise
+      // condemn the whole lake to being read as surveyed and left flat.
+      interiorSpreadM: quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1),
+    };
 
-    if (area.bathymetry && area.kind === "lake") {
-      const survey = area.bathymetry;
-      const chart = area.bathymetryOrigin === "chart";
-      const surveyNoun = chart ? "depth chart" : "survey";
-      // A misaligned survey cannot be placed, but it is one lake's data, not the
-      // map's: model this lake instead of failing the whole generation.
-      const aligned = survey.width === grid.width && survey.height === grid.height && survey.depthsM.length === values.length;
-      if (!aligned) warnings.push({
-        code: "BATHYMETRY_FALLBACK",
-        message: `${area.name ?? "A lake"} has ${surveyNoun} data that does not match the terrain grid, so its floor uses existing terrain or a modeled basin instead.`,
-      });
-      let surveyedCount = 0;
-      if (aligned) for (const index of cells) {
-        const depth = survey.depthsM[index]!;
-        if (Number.isNaN(depth)) continue;
-        if (!Number.isFinite(depth) || depth < 0 || depth > 1500) throw new Error("Lake bathymetry contains an invalid depth.");
-        surveyedCount += 1;
-      }
-      if (surveyedCount > 0) {
-        // Depths are relative to their dataset waterline, not absolute elevations. Anchor
-        // them to the flat terrain waterline. If the DEM already has a basin,
-        // use the lake's published surface elevation instead of its bed median.
-        const surfaceElevationM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
-          ? area.surfaceElevationM!
-          : surfaceLevelM;
-        const missing = surveyedCount < cells.length;
-        const shore = missing ? measureShore(area) : undefined;
-        const radiusM = shore && interiorSpreadM <= BATHYMETRIC_RELIEF_M ? normalizeBasin(area, shore, surfaceElevationM) : 0;
-        const exponent = !shore || radiusM <= 0 || area.clipped || !(area.meanDepthM && area.maxDepthM)
-          ? 1 : solveShapeExponent(normalized, cells.length, area.meanDepthM / area.maxDepthM);
-        // Coarse survey masks leave a ragged uncovered rim after resampling.
-        // Where no depth model exists, bridge only that narrow rim to the real
-        // shoreline instead of dropping abruptly from survey depth to zero.
-        const rimDepths = shore?.vectorShore && !area.maxDepthM && interiorSpreadM <= BATHYMETRIC_RELIEF_M
-          ? surveyShoreDepths(survey.depthsM, mask, cells, shore.distance, grid.width, grid.height, spacingXM, spacingYM, survey.sampleSpacingM,
-            rimBuffer ??= new Float64Array(grid.width * grid.height))
-          : undefined;
-        let bedElevationM = surfaceElevationM;
-        let fallbackCount = 0;
-        for (let index = 0; index < cells.length; index += 1) {
-          const cell = cells[index]!;
-          // Preserve banks and islands caught by a slightly different shoreline.
-          if (values[cell]! > surfaceElevationM + BATHYMETRIC_RELIEF_M) continue;
-          let depth = survey.depthsM[cell]!;
-          if (Number.isNaN(depth)) {
-            fallbackCount += 1;
-            if (interiorSpreadM > BATHYMETRIC_RELIEF_M) depth = Math.max(0, surfaceElevationM - values[cell]!);
-            else if (shore && radiusM > 0 && Number.isFinite(shore.distance[cell]!) && area.maxDepthM) depth = area.maxDepthM * normalized[index]! ** exponent;
-            else depth = rimDepths && Number.isFinite(rimDepths[cell]) ? rimDepths[cell]! : 0;
-          }
-          const bed = surfaceElevationM - depth * exaggeration;
-          values[cell] = bed;
-          bedElevationM = Math.min(bedElevationM, bed);
-        }
-        pushSurface({
-          id: area.id, kind: area.kind, name: area.name, hylakId: area.hylakId, ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
-          polygons: [area.polygon], surfaceElevationM, bedElevationM,
-          ...(fallbackCount && area.maxDepthM ? { maxDepthM: area.maxDepthM } : {}),
-          // A traced chart is the maker's own depth source, gaps or not.
-          layerIndex: 0, depthSource: chart ? "user" : fallbackCount ? "mixed" : "surveyed",
-          ...(chart ? { bathymetryOrigin: "chart" as const } : {}),
-        }, areaIndexes);
-        if (fallbackCount) warnings.push({
-          code: "BATHYMETRY_FALLBACK",
-          message: `${area.name ?? "A lake"} has incomplete ${surveyNoun} coverage. Uncovered cells use existing terrain, modeled depths, or estimates near surveyed shores; cells without enough information remain at the waterline.`,
-        });
-        continue;
-      }
-    }
-
+    if (area.bathymetry && area.kind === "lake" && carveSurveyedLake(run, area, areaIndexes, levels)) continue;
     // A fallback shoreline is not evidence that DEM relief is a surveyed bed.
     // Keep unknown-depth lakes as outlines unless actual depths are available.
     if (area.outlineSource && !area.maxDepthM) continue;
-
-    // The DEM already knows this basin, so its shape is left alone - but its
-    // depth is still scaled, so surveyed and modeled water answer to the same
-    // control. At 1x nothing is written and the survey passes through exactly.
-    if (area.kind === "ocean" || interiorSpreadM > BATHYMETRIC_RELIEF_M) {
-      const surveyedSurfaceM = area.kind === "ocean" ? 0 : surfaceLevelM;
-      let surveyedBedM = quantile(sorted, count, 0);
-      if (exaggeration !== 1) {
-        surveyedBedM = surveyedSurfaceM;
-        for (const index of cells) {
-          const depth = surveyedSurfaceM - values[index]!;
-          if (depth <= 0) continue;
-          const scaled = surveyedSurfaceM - depth * exaggeration;
-          values[index] = scaled;
-          if (scaled < surveyedBedM) surveyedBedM = scaled;
-        }
-      }
-      pushSurface({
-        id: area.id,
-        kind: area.kind,
-        ...(area.name ? { name: area.name } : {}),
-        ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
-        ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
-        polygons: [area.polygon],
-        surfaceElevationM: surveyedSurfaceM,
-        bedElevationM: surveyedBedM,
-        layerIndex: 0,
-        depthSource: "surveyed",
-      }, areaIndexes);
-      continue;
-    }
-
-    const sourceMaxDepthM = area.maxDepthM;
-    const maxDepthM = sourceMaxDepthM === undefined ? undefined : sourceMaxDepthM * exaggeration;
-    if (!(maxDepthM && maxDepthM > 0) || sourceMaxDepthM === undefined) continue;
-
-    // Take the surface from our own DEM rather than HydroLAKES' `Elevation`.
-    // The lake is flat here, so the median *is* the surface, and it is stated in
-    // the same datum as the surrounding land - borrowing EarthEnv-DEM90's figure
-    // instead would leave a step at the shoreline wherever the two disagree.
-    const surfaceElevationM = surfaceLevelM;
-
-    const shore = measureShore(area);
-    // No shoreline in view means no way to place these cells within the basin.
-    if (cells.some((index) => !Number.isFinite(shore.distance[index]!))) {
-      warnings.push({
-        code: "WATER_DEPTH_CLAMPED",
-        message: `${area.name ?? "A lake"} extends past the edge of this map, so its depth could not be modeled. Zoom out to include its shoreline.`,
-      });
-      continue;
-    }
-
-    const lmaxM = normalizeBasin(area, shore, surfaceElevationM);
-    if (!(lmaxM > 0)) continue;
-
-    // A clipped lake's visible cells are not a fair sample of the whole basin,
-    // so fitting an exponent to them would bend the profile to the crop rather
-    // than to the lake. Fall back to GLOBathy's straight line there.
-    const exponent = area.clipped || !(area.meanDepthM && area.meanDepthM > 0)
-      ? 1
-      // Exaggeration scales both the maximum and mean depth, so it must not
-      // change their ratio (and therefore the basin shape). The source maximum
-      // may include a user override; retaining the published mean then bends
-      // the overridden profile while the display multiplier remains uniform.
-      : solveShapeExponent(normalized, cells.length, area.meanDepthM / sourceMaxDepthM);
-
-    let bedElevationM = surfaceElevationM;
-    for (let index = 0; index < cells.length; index += 1) {
-      const cell = cells[index]!;
-      // Only ever cut downward from the waterline. Where a lake outline spills a
-      // little past the shore, those cells are land standing above the surface,
-      // and gouging them would carve a moat into the bank.
-      if (values[cell]! > surfaceElevationM + BATHYMETRIC_RELIEF_M) continue;
-      const bed = surfaceElevationM - maxDepthM * normalized[index]! ** exponent;
-      values[cell] = bed;
-      if (bed < bedElevationM) bedElevationM = bed;
-    }
-
-    pushSurface({
-      id: area.id,
-      kind: area.kind,
-      ...(area.name ? { name: area.name } : {}),
-      ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
-      ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
-      polygons: [area.polygon],
-      surfaceElevationM,
-      bedElevationM,
-      maxDepthM: sourceMaxDepthM,
-      layerIndex: 0,
-      depthSource: area.depthSource ?? "modeled",
-    }, areaIndexes);
+    if (area.kind === "ocean" || levels.interiorSpreadM > BATHYMETRIC_RELIEF_M) keepDemBasin(run, area, areaIndexes, levels);
+    else carveModeledLake(run, area, areaIndexes, levels);
   }
 
   let min = Number.POSITIVE_INFINITY;
@@ -616,7 +677,7 @@ export function carveWaterDepth(
     if (value < min) min = value;
     if (value > max) max = value;
   }
-  return { grid: { ...grid, values, min, max }, surfaces, warnings, waterMask, surfaceCells };
+  return { grid: { ...grid, values, min, max }, surfaces: run.surfaces, warnings: run.warnings, waterMask, surfaceCells: run.surfaceCells };
 }
 
 /** Compress over-budget lakes uniformly around their own waterlines before contouring. */
