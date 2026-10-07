@@ -302,5 +302,73 @@ describe("project import validation", () => {
     expect(parseProject({ ...DEFAULT_PROJECT, customGraphics: [graphic], placedGraphics: [{ ...placed, rotationDeg: -90, operation: "etch" }] }).placedGraphics?.[0]).toMatchObject({ rotationDeg: 270, operation: "engrave" });
     expect(parseProject({ ...DEFAULT_PROJECT, customGraphics: [{ ...graphic, name: "" }] }).customGraphics?.[0]!.name).toBe("Graphic");
   });
+  it("rejects input that is not a v1 project with a readable reason", () => {
+    for (const value of [null, "project", 7]) expect(() => parseProject(value)).toThrow(/JSON object/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, schemaVersion: 2 })).toThrow(/v1 project/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, location: null })).toThrow(/location is missing/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, name: "x".repeat(121) })).toThrow(/at most 120/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, location: { ...DEFAULT_PROJECT.location, label: "x".repeat(241) } })).toThrow(/at most 240/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, elevationLabelPosition: null })).toThrow(/elevation label position/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, textStyle: "bold" })).toThrow(/text style/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, lineStyle: null })).toThrow(/line style/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, northArrowPlacement: 0 })).toThrow(/north arrow placement/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, plaque: null })).toThrow(/title settings/i);
+    for (const explodedPreview of [-0.1, 1.5]) expect(() => parseProject({ ...DEFAULT_PROJECT, explodedPreview })).toThrow(/exploded preview/i);
+    // A blank name falls back rather than failing.
+    expect(parseProject({ ...DEFAULT_PROJECT, name: "  " }).name).toBe("Terrain project");
+    const { outputMode: _legacyOutputMode, ...legacyProject } = DEFAULT_PROJECT;
+    expect(parseProject(legacyProject).outputMode).toBe("stack");
+  });
+  it("restores a moved scale bar, defaulting its offset, and rejects a malformed one", () => {
+    expect(parseProject({ ...DEFAULT_PROJECT, scaleBarPlacement: { anchor: "top-right", offset: { x: -0.2, y: 0.1 } } }).scaleBarPlacement).toEqual({ anchor: "top-right", offset: { x: -0.2, y: 0.1 } });
+    expect(parseProject({ ...DEFAULT_PROJECT, scaleBarPlacement: { anchor: "bottom" } }).scaleBarPlacement).toEqual({ anchor: "bottom", offset: { x: 0, y: 0 } });
+    expect(parseProject(DEFAULT_PROJECT)).not.toHaveProperty("scaleBarPlacement");
+    expect(() => parseProject({ ...DEFAULT_PROJECT, scaleBarPlacement: "left" })).toThrow(/scale bar placement/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, scaleBarPlacement: { anchor: "outside" } })).toThrow(/scale bar anchor/i);
+  });
+  it("restores acrylic water insert settings, leaving unset sizes to follow the wood", () => {
+    const waterInserts = { thicknessMm: 3, kerfMm: 0.1, fitClearanceMm: 0.1, excludedLakeIds: ["123"] };
+    expect(parseProject({ ...DEFAULT_PROJECT, waterInserts }).waterInserts).toEqual(waterInserts);
+    expect(parseProject({ ...DEFAULT_PROJECT, waterInserts: { fitClearanceMm: 0.1 } }).waterInserts).toEqual({ fitClearanceMm: 0.1, excludedLakeIds: [] });
+    expect(parseProject(DEFAULT_PROJECT)).not.toHaveProperty("waterInserts");
+    for (const broken of [null, [], "acrylic"]) expect(() => parseProject({ ...DEFAULT_PROJECT, waterInserts: broken })).toThrow(/water insert settings/i);
+    for (const excludedLakeIds of ["123", [123]]) expect(() => parseProject({ ...DEFAULT_PROJECT, waterInserts: { ...waterInserts, excludedLakeIds } })).toThrow(/exclusions/i);
+    const sheet = { sheetWidthMm: 300, sheetHeightMm: 200, marginMm: 3, spacingMm: 2, rotation: "quarter" as const, timeBudgetS: 10, seed: 1 };
+    expect(parseProject({ ...DEFAULT_PROJECT, waterInserts, waterInsertSheetNesting: sheet }).waterInsertSheetNesting).toEqual(sheet);
+  });
+  it("rejects marker and custom line lists that are malformed or too large", () => {
+    const marker = { id: "m", lat: 43, lon: -122, symbol: "pin" };
+    expect(() => parseProject({ ...DEFAULT_PROJECT, markers: marker })).toThrow(/markers must be a list/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, markers: Array.from({ length: 251 }, (_, index) => ({ ...marker, id: `m${index}` })) })).toThrow(/too many markers/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, markers: [null] })).toThrow(/marker must be an object/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, markers: [{ ...marker, id: 7 }] })).toThrow(/marker must have an id/i);
+    const points = (count: number) => Array.from({ length: count }, (_, index) => ({ lat: 43 + index * 1e-5, lon: -122 }));
+    const line = { id: "l", kind: "trail", points: points(2) };
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: line })).toThrow(/custom lines must be a list/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: Array.from({ length: 251 }, (_, index) => ({ ...line, id: `l${index}` })) })).toThrow(/too many custom lines/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: ["trail"] })).toThrow(/custom line must be an object/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: [{ ...line, id: undefined }] })).toThrow(/custom line must have an id/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: [{ ...line, points: "43,-122" }] })).toThrow(/point list/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: [{ ...line, points: points(2001) }] })).toThrow(/too many points/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: Array.from({ length: 6 }, (_, index) => ({ ...line, id: `l${index}`, points: points(1700) })) })).toThrow(/too many custom line points/i);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: [{ ...line, points: [null, { lat: 43, lon: -122 }] }] })).toThrow(/point must be an object/i);
+  });
+  it("caps uploaded icons, graphics, and placements, keeping the first of each id", () => {
+    const shapes = [{ outer: [-500, 500, 500, 500, 0, -500] }];
+    const icons = Array.from({ length: 26 }, (_, index) => ({ id: `icon-${String(index % 25).padStart(4, "0")}`, name: "Icon", shapes }));
+    expect(parseProject({ ...DEFAULT_PROJECT, markerIcons: icons }).markerIcons).toHaveLength(24);
+    const duplicated = parseProject({ ...DEFAULT_PROJECT, markerIcons: [{ ...icons[0], name: "First" }, { ...icons[0], name: "Second" }] });
+    expect(duplicated.markerIcons?.map(({ name }) => name)).toEqual(["First"]);
+    const dense = { id: "icon-dense", name: "Dense", shapes: [{ outer: Array.from({ length: 1602 }, (_, index) => (index % 7) - 3) }] };
+    expect(parseProject({ ...DEFAULT_PROJECT, markerIcons: [dense] })).not.toHaveProperty("markerIcons");
+
+    const graphics = Array.from({ length: 25 }, (_, index) => ({ id: `graphic-${String(index).padStart(4, "0")}`, name: "Logo", shapes }));
+    expect(parseProject({ ...DEFAULT_PROJECT, customGraphics: graphics }).customGraphics).toHaveLength(24);
+    const placed = (index: number) => ({ id: `placed-${String(index).padStart(4, "0")}`, graphicId: graphics[0]!.id, placement: { anchor: "center", offset: { x: 0, y: 0 } }, sizeMm: 30 });
+    const placements = parseProject({ ...DEFAULT_PROJECT, customGraphics: graphics, placedGraphics: [null, placed(0), { ...placed(0), sizeMm: 40 }, ...Array.from({ length: 60 }, (_, index) => placed(index + 1))] }).placedGraphics!;
+    expect(placements).toHaveLength(50);
+    expect(placements[0]).toMatchObject({ id: "placed-0000", sizeMm: 30 });
+    expect(new Set(placements.map(({ id }) => id)).size).toBe(50);
+  });
 });
 

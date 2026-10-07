@@ -40,4 +40,36 @@ describe("traceVectorChart", () => {
     const unlabelled = syntheticChart({ levels: [5, 10], fractions: [0.7, 0.35], labelled: [] });
     expect(() => traceVectorChart(unlabelled.page, { contourStyles: chart.contourStyles, labels: "depth" })).toThrow(/contour interval/);
   });
+  it("keeps only labels on the chart's ladder once the interval is known", () => {
+    const chart = syntheticChart({ levels: [5, 10], fractions: [0.7, 0.35], labelled: [0, 1] });
+    // An OCR misread lying on the outer contour.
+    const [x, y] = ring(0.7)[120]!;
+    chart.page.texts.push({ text: "7", x, y, angle: 0, size: 9, width: 7 });
+    const trace = traceVectorChart(chart.page, { contourStyles: chart.contourStyles, labels: "depth", interval: 5, mapArea });
+    expect(trace.diagnostics.labels).toBe(4);
+    expect(trace.diagnostics.labelDisagreements).toBe(0);
+    expect(trace.contours.map((contour) => contour.value).sort((a, b) => a - b)).toEqual([5, 10]);
+  });
+
+  it("stops after chaining when only the geometry is wanted, needing no labels", () => {
+    const chart = syntheticChart({ levels: [5, 10], fractions: [0.7, 0.35], labelled: [] });
+    const trace = traceVectorChart(chart.page, { contourStyles: chart.contourStyles, labels: "depth", mapArea, geometryOnly: true });
+    expect(trace.selectionContours).toHaveLength(2);
+    expect(trace.selectionContours!.every((contour) => contour.closed)).toBe(true);
+    expect(trace).toMatchObject({ contours: [], shoreline: [], interval: 0 });
+    expect(trace.diagnostics).toMatchObject({ chains: 2, labels: 0, unresolved: 2 });
+  });
+
+  it("drops long ruler-straight lines in contour ink only when asked", () => {
+    const chart = syntheticChart({ levels: [5, 10], fractions: [0.7, 0.35], labelled: [] });
+    const line = (points: [number, number][]) => chart.page.paths.push({ stroke: "#9c9c9c", lineWidth: 0.48, dashed: false, points, closed: false });
+    line([[150, 130], [600, 133], [1050, 136]]); // a section line
+    line([[150, 870], [175, 870]]); // too short to call straight
+    line([[150, 160], [600, 200], [1050, 160]]); // bows 40 units over 900
+    const chains = (dropStraightLines: boolean) => traceVectorChart(chart.page, { contourStyles: chart.contourStyles, labels: "depth", mapArea, geometryOnly: true, dropStraightLines }).selectionContours!;
+    expect(chains(false)).toHaveLength(5);
+    const kept = chains(true);
+    expect(kept).toHaveLength(4);
+    expect(kept.some((chain) => chain.points.some(([, y]) => y === 133))).toBe(false);
+  });
 });

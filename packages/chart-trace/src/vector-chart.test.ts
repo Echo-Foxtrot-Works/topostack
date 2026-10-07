@@ -70,6 +70,25 @@ describe("chainPaths", () => {
     expect(chains).toHaveLength(5);
     expect(chains.filter((chain) => chain.style === "#9c9c9c/0.48" && !chain.closed).every((chain) => chain.points.length === 2)).toBe(true);
   });
+
+  it("on a scan, carries a line straight through a junction where other ink crosses it", () => {
+    const pieces = [
+      path([[0, 0], [4, 0], [7, 0], [10, 0]]),
+      path([[10, 0], [10, 3], [10, 6], [10, 10]]),
+      path([[10, 0], [13, 0], [16, 0], [20, 0]]),
+      path([[50, 50]]),
+      path([[50, 50], [60, 50]], undefined, { stroke: undefined, fill: "#000000" }),
+    ];
+    expect(chainPaths(pieces, 0.5)).toHaveLength(3);
+    const chains = chainPaths(pieces, 0.5, true);
+    expect(chains).toHaveLength(2);
+    expect(chains.find((chain) => chain.points.length > 4)!.points.map(([x, y]) => x + y * 100)).toEqual([0, 4, 7, 10, 13, 16, 20]);
+  });
+
+  it("walks an open chain from whichever end is free", () => {
+    const [chain] = chainPaths([path([[10, 0], [20, 0]]), path([[0, 0], [10, 0]])], 0.5);
+    expect(chain!.points.map(([x]) => x)).toEqual([20, 10, 0]);
+  });
 });
 
 describe("bridgeGaps", () => {
@@ -79,6 +98,12 @@ describe("bridgeGaps", () => {
     const bridged = bridgeGaps([chain([[0, 0], [5, 0], [10, 0]]), chain([[40, 0], [30, 0], [25, 0]]), chain([[60, 0], [70, 0]])], 20);
     expect(bridged).toHaveLength(1);
     expect(bridged[0]!.points.map(([x]) => x)).toEqual([0, 5, 10, 25, 30, 40, 60, 70]);
+  });
+
+  it("gives each end to its nearest partner only", () => {
+    const bridged = bridgeGaps([chain([[0, 0], [10, 0]]), chain([[20, 0], [30, 0]]), chain([[22, 0.5], [40, 0.5]])], 20);
+    expect(bridged).toHaveLength(2);
+    expect(bridged[0]!.points.map(([x]) => x)).toEqual([0, 10, 20, 30]);
   });
 
   it("leaves gaps that turn, are too long, or change style", () => {

@@ -23,6 +23,41 @@ describe("preview summaries", () => {
     expect(layerForEnabledDetail(geometry(layers), { name: "Renamed" })).toBeUndefined();
   });
 
+  it("jumps to the first layer drawing whichever detail was just switched on", () => {
+    const detailed = [
+      layer(0, [marking("alignment-hole-1", "guide"), marking("elevation-label-1", "label")]),
+      layer(1, [marking("water-1", "water"), marking("grid-1", "grid"), marking("scale-bar", "engrave")]),
+      layer(2, [marking("boundary-1", "boundary"), marking("transport-label-2", "label"), marking("trail-1", "trail")]),
+      layer(3, [marking("aviation-1", "aviation"), marking("plaque-text", "engrave")]),
+    ];
+    const jump = (patch: Parameters<typeof layerForEnabledDetail>[1]) => layerForEnabledDetail(geometry(detailed), patch);
+    expect(jump({ showTrails: true })).toBe(2);
+    expect(jump({ showTransportationLabels: true })).toBe(2);
+    expect(jump({ showWater: true })).toBe(1);
+    expect(jump({ showBoundaries: true })).toBe(2);
+    expect(jump({ showCoordinateGrid: true })).toBe(1);
+    expect(jump({ showAlignmentGuides: true })).toBe(0);
+    expect(jump({ showElevationLabels: true })).toBe(0);
+    expect(jump({ showScaleBar: true })).toBe(1);
+    expect(jump({ aviation: { airspace: false, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false } })).toBe(3);
+    expect(jump({ plaque: { enabled: true, text: "Title" } as never })).toBe(3);
+    // Turning a detail off, or turning on only aviation labels, has nothing new to show.
+    expect(jump({ showRoads: false })).toBeUndefined();
+    expect(jump({ aviation: { airspace: false, specialUse: false, runways: false, airports: false, navaids: false, obstacles: false, labels: true } })).toBeUndefined();
+    expect(jump({ plaque: { enabled: false, text: "Title" } as never })).toBeUndefined();
+    // Enabled but not drawn on any layer, so there is nowhere to jump.
+    expect(jump({ showRoads: true })).toBeUndefined();
+  });
+
+  it("counts every kind of detail marking once", () => {
+    const counts = countDetailMarkings([layer(0, [
+      marking("water-1", "water"), marking("aviation-1", "aviation"), marking("aviation-label-1", "label"),
+      marking("alignment-1", "guide"), marking("piece-L01-A1", "label"), marking("elevation-1", "label"), marking("plaque-1", "engrave"),
+    ])], "stack");
+    expect(counts).toMatchObject({ water: 1, aviation: 1, aviationLabel: 1, alignment: 1, piece: 1, elevation: 1, plaque: 1, road: 0, contour: 0 });
+    expect(countDetailMarkings([], "engraving").contour).toBe(0);
+  });
+
   it("counts markings per detail, adding implicit contours for engravings", () => {
     expect(countDetailMarkings(layers, "stack")).toMatchObject({ road: 1, trail: 2, contour: 1, north: 1, scale: 1, transportationLabel: 1, customLine: 1, marker: 1 });
     expect(countDetailMarkings(layers, "engraving").contour).toBe(3);
@@ -73,6 +108,25 @@ describe("preview summaries", () => {
     ] as GeometryIRV1["warnings"];
     expect(visibleWarnings(warnings, []).map((warning) => warning.message)).toEqual(["Too deep", "Predicted"]);
     expect(visibleWarnings(warnings, ["WATER_DEPTH_CLAMPED-Too deep", "LAKE_DEPTH_PREDICTED-Predicted"]).map((warning) => warning.message)).toEqual(["Labels", "Gap"]);
+  });
+
+  it("names the output, place, shape and size in the section summaries", () => {
+    expect(sectionSummary("setup", DEFAULT_PROJECT, 0)).toBe("Layered relief · Crater Lake");
+    expect(sectionSummary("setup", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("Flat engraving · Crater Lake");
+    expect(sectionSummary("size", DEFAULT_PROJECT, 0)).toBe("Rectangle · 300 × 200 mm");
+    expect(sectionSummary("size", { ...DEFAULT_PROJECT, cropShape: "circle", units: "imperial", widthMm: 254, heightMm: 254 }, 0)).toBe("Circle · 10 × 10 in");
+    expect(sectionSummary("terrain", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("12 contours · index every 5");
+    expect(sectionSummary("details", { ...DEFAULT_PROJECT, showRoads: false, showTrails: false, showWater: false, showElevationLabels: false, showNorthArrow: false, showScaleBar: false, showWaterDepth: false }, 0)).toBe("1 detail enabled");
+    expect(sectionSummary("customData", { ...DEFAULT_PROJECT, markers: [{ lat: 1, lon: 2 }] as never, customLines: [{}] as never }, 0)).toBe("1 marker · 1 path");
+  });
+
+  it("summarizes seams and contour smoothing in the advanced section", () => {
+    expect(sectionSummary("advanced", DEFAULT_PROJECT, 0)).toBe("Smooth contours");
+    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, smoothing: 0 }, 0)).toBe("Standard contours");
+    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, workAreaWidthMm: 200, workAreaHeightMm: 400 }, 0)).toBe("2 × 1 sheets per layer · Smooth contours");
+    // Plaques and aviation groups count as details too.
+    const aviation = { airspace: true, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false };
+    expect(activeDetailCount({ ...DEFAULT_PROJECT, aviation, plaque: { enabled: true } as never })).toBe(activeDetailCount(DEFAULT_PROJECT) + 3);
   });
 
   it("summarizes sidebar sections for the output mode", () => {

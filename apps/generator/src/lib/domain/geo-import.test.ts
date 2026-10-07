@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, type GeoPoint } from "@topostack/core";
-import { countOutside, detectGeoFormat, fitToCapacity, parseGeoFile, simplifyToLimit } from "$lib/domain/geo-import";
+import { countOutside, detectGeoFormat, fitToCapacity, importGeoFile, parseGeoFile, simplifyToLimit } from "$lib/domain/geo-import";
 
 const wiggle = (count: number, lat = 46): GeoPoint[] => Array.from({ length: count }, (_, index) => ({ lat: lat + index * 1e-5, lon: -121 + Math.sin(index / 9) * 1e-3 }));
 
@@ -43,6 +43,63 @@ describe("GeoJSON import", () => {
     expect(data.lines[0]!.points).toEqual([{ lat: 10, lon: 0 }, { lat: 11, lon: 1 }]);
     expect(data.skippedPoints).toBe(2);
     expect(() => parseGeoFile("{ not json", "broken.geojson")).toThrow(/not valid JSON/);
+  });
+
+  it("outlines every polygon of a multipolygon by its outer ring", () => {
+    const ring = (lon: number) => [[lon, 45], [lon + 0.1, 45], [lon + 0.1, 45.1], [lon, 45]];
+    const data = parseGeoFile(JSON.stringify({ type: "MultiPolygon", coordinates: [[ring(-120), ring(-119.97)], [ring(-119)], "bad"] }), "parks.geojson");
+    expect(data.lines.map((line) => [line.kind, line.points[0]])).toEqual([["boundary", { lat: 45, lon: -120 }], ["boundary", { lat: 45, lon: -119 }]]);
+  });
+
+  it("ignores geometry it cannot read instead of failing the import", () => {
+    let nested: object = { type: "Point", coordinates: [-121, 46] };
+    for (let level = 0; level < 20; level += 1) nested = { type: "GeometryCollection", geometries: [nested] };
+    const data = parseGeoFile(JSON.stringify({ type: "FeatureCollection", features: [
+      { type: "Feature", geometry: nested },
+      { type: "Feature", geometry: { type: "Polyhedron", coordinates: [] } },
+      { type: "Feature", geometry: { type: "Point", coordinates: "-121,46" } },
+      null,
+    ] }), "odd.geojson");
+    // Too deep to trust, an unknown type, and a malformed position: only the last counts as a bad coordinate.
+    expect(data).toEqual({ markers: [], lines: [], skippedPoints: 1 });
+    expect(() => parseGeoFile("null", "empty.geojson")).toThrow("This GeoJSON file has no features.");
+    expect(() => parseGeoFile("42", "number.geojson")).toThrow("This GeoJSON file has no features.");
+  });
+});
+
+describe("importing a map data file", () => {
+  const bounds = { west: -121.1, east: -120.9, south: 45.9, north: 46.1 };
+  const room = { markers: 250, lines: 250, points: MAX_CUSTOM_DATA_POINTS };
+  const file = (value: unknown, name = "data.geojson", size?: number) => {
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    return { name, size: size ?? text.length, text: async () => text };
+  };
+  const feature = (geometry: object) => ({ type: "Feature", geometry });
+  const collection = (...geometries: object[]) => ({ type: "FeatureCollection", features: geometries.map(feature) });
+  const line = (points: GeoPoint[]) => ({ type: "LineString", coordinates: points.map(({ lat, lon }) => [lon, lat]) });
+
+  it("adds the file's paths and markers and says what it imported", async () => {
+    const result = await importGeoFile(file(collection(line(wiggle(10)), { type: "MultiPoint", coordinates: [[-121, 46], [-121.01, 46.01]] })), room, bounds);
+    expect(result.message).toBe("Imported 1 path and 2 markers");
+    expect(result.patch?.markers).toEqual([{ lat: 46, lon: -121 }, { lat: 46.01, lon: -121.01 }]);
+    expect(result.patch?.lines).toHaveLength(1);
+    expect((await importGeoFile(file({ type: "Point", coordinates: [-121, 46] }), room, bounds)).message).toBe("Imported 1 marker");
+  });
+
+  it("notes thinning, the limit, bad coordinates and features off the map", async () => {
+    const data = collection(line(wiggle(400)), line(wiggle(5, 60)), { type: "Point", coordinates: [-121, 46] }, { type: "Point", coordinates: [-121, 46.05] }, { type: "Point", coordinates: [-121, 95] });
+    const result = await importGeoFile(file(data), { markers: 1, lines: 1, points: 100 }, bounds);
+    expect(result.message).toBe("Imported 1 path and 1 marker · paths simplified to fit the point limit · 2 features left out at the custom data limit · 1 invalid coordinate skipped");
+    expect(result.patch!.lines[0]!.points.length).toBeLessThanOrEqual(100);
+    const away = await importGeoFile(file(collection(line(wiggle(5, 60)), { type: "Point", coordinates: [10, 10] }, { type: "Point", coordinates: [0, 95] }, { type: "Point", coordinates: [0, 96] })), room, bounds);
+    expect(away.message).toBe("Imported 1 path and 1 marker · 2 invalid coordinates skipped · some features lie outside the map area");
+  });
+
+  it("explains why nothing was added", async () => {
+    expect(await importGeoFile(file("{}", "huge.gpx", 20_000_001), room, bounds)).toEqual({ message: "Map data files must be 20 MB or smaller." });
+    expect(await importGeoFile(file(collection()), room, bounds)).toEqual({ message: "No points, paths or boundaries were found in this file." });
+    expect(await importGeoFile(file(collection(line(wiggle(5)))), { markers: 0, lines: 0, points: 0 }, bounds)).toEqual({ message: "Custom data is full. Remove markers or paths before importing more." });
+    await expect(importGeoFile(file("{ broken"), room, bounds)).rejects.toThrow(/not valid JSON/);
   });
 });
 
