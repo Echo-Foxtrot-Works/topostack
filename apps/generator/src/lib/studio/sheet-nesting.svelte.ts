@@ -15,10 +15,10 @@ type Cache = typeof import("$lib/storage/nest-cache");
  */
 export class SheetNesting {
   status = $state<SheetNestStatus>("idle");
-  /** Best layout so far while running, the final one after. */
-  plan = $state<SheetNestPlanV1 | undefined>(undefined);
+  /** Best layout so far while running, the final one after. Replaced whole, never edited, so not deeply reactive. */
+  plan = $state.raw<SheetNestPlanV1 | undefined>(undefined);
   /** The plan's sheets drawn as outlines, for the dialog. */
-  previews = $state<SheetPreview[]>([]);
+  previews = $state.raw<SheetPreview[]>([]);
   /** Whether the plan matches the current geometry and settings. */
   current = $state(false);
   error = $state<string | undefined>(undefined);

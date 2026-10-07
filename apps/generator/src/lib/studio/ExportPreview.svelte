@@ -2,7 +2,7 @@
   import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
-  import { buildProjectPackage, exportBlockReason, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
+  import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import { buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
 
@@ -10,7 +10,8 @@
    * What leaves the generator: the artwork Open in Studio sends, drawn from
    * the exported file itself, and the files a download holds.
    */
-  let { geometry, project, busy = false }: { geometry: GeometryIRV1; project: ProjectConfigV1; busy?: boolean } = $props();
+  // `blocked` is the studio's exportBlockReason for these two, so the project is not fingerprinted again here.
+  let { geometry, project, blocked, busy = false }: { geometry: GeometryIRV1; project: ProjectConfigV1; blocked: string | undefined; busy?: boolean } = $props();
 
   const isEmbedded = getEmbedded();
   const automaticNesting = getAutomaticNesting();
@@ -22,7 +23,6 @@
   type Built = { layoutNote: string; url: string; filename: string; bytes: number; width: number; height: number; cut: boolean; score: boolean; fill: boolean; files: Array<{ filename: string; bytes: number }> };
   let built = $state.raw<Built | undefined>();
   let failure = $state("");
-  const blocked = $derived(exportBlockReason(geometry, project));
 
   function formatBytes(bytes: number): string {
     return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;

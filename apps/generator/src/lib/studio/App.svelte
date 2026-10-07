@@ -261,7 +261,9 @@
   // panel previews the stack the current settings will actually produce.
   const stackPlan = $derived(planTerrainStack(project, geometry.landReliefM, geometry.bounds, geometry.waterDepthBelowLandM));
   // Sea-level alignment can add a sheet; report the generated count once current.
-  const stackLayerCount = $derived(geometry.configFingerprint === projectFingerprint(project) ? geometry.layers.length : stackPlan.layerCount);
+  // Serializes the whole project, so it is computed once per edit and shared.
+  const currentFingerprint = $derived(projectFingerprint(project));
+  const stackLayerCount = $derived(geometry.configFingerprint === currentFingerprint ? geometry.layers.length : stackPlan.layerCount);
   const previewModeOptions = $derived(embeddedInPlatform
     ? project.outputMode === "engraving" ? ATOMM_ENGRAVING_MODE_OPTIONS : ATOMM_STACK_MODE_OPTIONS
     : project.outputMode === "engraving" ? ENGRAVING_MODE_OPTIONS : STACK_MODE_OPTIONS);
@@ -274,7 +276,7 @@
   const terrainDataStale = $derived(!sameMapArea(sourceProject, project));
   const verticalExaggerationStale = $derived(project.outputMode === "stack" && sourceProject.verticalExaggeration !== project.verticalExaggeration);
   const terrainDataAction = $derived(embeddedInPlatform ? "load" : geometry.sourceKind === "real" ? "regenerate" : "generate");
-  const exportBlockedBy = $derived(exportBlockReason(geometry, project));
+  const exportBlockedBy = $derived(exportBlockReason(geometry, project, currentFingerprint));
   const exportReady = $derived(!exportBlockedBy);
   const exportStatusLabel = $derived(exportPhase === "preparing" ? "Preparing files" : exportPhase === "ready" ? "Export ready" : exportPhase === "error" ? "Export failed" : exportReady ? "Ready to export" : "Generate before export");
   const exportStatusTone = $derived(exportPhase === "error" ? "error" : exportPhase === "preparing" ? "busy" : exportReady ? "ready" : "blocked");
