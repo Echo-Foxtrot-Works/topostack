@@ -12,7 +12,9 @@
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { exportBlockReason, parseProject } from "@topostack/core";
+  import { exportBlockReason } from "@topostack/core";
+  import { readProjectFile } from "$lib/studio/project-file";
+  import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
   import { loadProject } from "$lib/storage/storage";
   import { AutomaticNesting } from "$lib/atomm/automatic-nesting";
   import { provideAutomaticNesting, provideEmbedded } from "$lib/studio/embed-context";
@@ -59,9 +61,6 @@
 
   let { initialPreview }: { initialPreview?: GeometryIRV1 } = $props();
 
-  const MAX_PROJECT_FILE_BYTES = 2_000_000;
-  /** A project file carrying traced depth charts is mostly their depth grids. */
-  const MAX_PROJECT_BUNDLE_BYTES = 24_000_000;
   function addPreviewWarning(result: GeometryIRV1, source: SourceBundleV1): void {
     if (source.sourceKind === "real" || result.warnings.some((warning) => warning.code === "DATA_FALLBACK")) return;
     result.warnings.push({ code: "DATA_FALLBACK", message: source.sourceKind === "preview" ? "Bundled real-data preview. Generate fresh terrain before exporting." : "Sample preview only. Generate real terrain before exporting." });
@@ -828,56 +827,20 @@
   }
   async function importProject(file: File | undefined): Promise<void> {
     if (!file) return;
-    // A rejected file leaves a running Generate alone: report it on the status line only.
-    const reportImportError = (message: string) => { status = message; if (generationState !== "loading") generationState = "error"; };
-    if (file.size > MAX_PROJECT_BUNDLE_BYTES) { reportImportError("Project file must be 24 MB or smaller."); return; }
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      const envelope = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : undefined;
-      const charts = envelope && Array.isArray(envelope.charts) ? envelope.charts : [];
-      // Only a file carrying traced depth charts may be large; everything else keeps the old ceiling.
-      if (!charts.length && file.size > MAX_PROJECT_FILE_BYTES) { reportImportError("Project file must be 2 MB or smaller."); return; }
-      const candidate = envelope && "project" in envelope ? envelope.project : parsed;
-      const imported = parseProject(candidate);
-      const saved = charts.length ? await (await import("$lib/storage/user-charts")).saveProjectCharts(charts, imported) : { saved: 0, skipped: 0 };
+      const { project: imported, savedCharts } = await readProjectFile(file);
       openProject(imported, project); generationState = "ready";
-      status = saved.saved ? `Project imported with ${saved.saved === 1 ? "its depth chart" : `${saved.saved} depth charts`} · generate to refresh its terrain` : "Project imported · generate to refresh its terrain";
+      status = savedCharts ? `Project imported with ${savedCharts === 1 ? "its depth chart" : `${savedCharts} depth charts`} · generate to refresh its terrain` : "Project imported · generate to refresh its terrain";
       loadRealTerrain();
-    }
-    catch (error) { reportImportError(error instanceof Error ? error.message : "Could not import this project."); }
-  }
-
-  async function shareLink(): Promise<string> {
-    const { shareLinkFor } = await import("$lib/studio/share-link");
-    return shareLinkFor(project, new URL("/studio", window.location.href).toString());
-  }
-
-  async function copyShareLink(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(await shareLink());
-      status = "Share link copied · anyone with it can open this design";
-      trackUsage("share_link_copied", project.outputMode);
     } catch (error) {
-      status = error instanceof Error && error.name !== "NotAllowedError" ? error.message : "Could not copy the share link. Check clipboard permissions and try again.";
+      // A rejected file leaves a running Generate alone: report it on the status line only.
+      status = error instanceof Error ? error.message : "Could not import this project.";
+      if (generationState !== "loading") generationState = "error";
     }
   }
 
-  /** Hands the link to the system share sheet; browsers without one, and share failures, copy it instead. */
-  async function shareDesign(): Promise<void> {
-    let url: string;
-    try { url = await shareLink(); } catch (error) { status = error instanceof Error ? error.message : "Could not create the share link."; return; }
-    const data = { title: `${project.name.trim() || "Topographic map"} · TopoStack`, text: "A topographic map design made with TopoStack", url };
-    if (typeof navigator.share !== "function" || navigator.canShare?.(data) === false) return copyShareLink();
-    try {
-      await navigator.share(data);
-      status = "Design shared · anyone with the link can open it";
-      trackUsage("share_link_shared", project.outputMode);
-    } catch (error) {
-      // Closing the share sheet is not a failure.
-      if (error instanceof Error && error.name === "AbortError") return;
-      await copyShareLink();
-    }
-  }
+  async function copyShareLink(): Promise<void> { status = await copyDesignLink(project); }
+  async function shareDesign(): Promise<void> { const message = await shareDesignLink(project); if (message) status = message; }
 
   async function importCustomData(file: File | undefined): Promise<void> {
     if (!file) return;
