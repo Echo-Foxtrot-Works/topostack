@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { base } from "$app/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
-  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, validateProject, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
+  import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
   import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
   import { applySurveyProvenance } from "$lib/domain/bathymetry";
   import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
@@ -13,7 +13,7 @@
   import { trackUsage } from "$lib/site/usage";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
   import { exportBlockReason, parseProject } from "@topostack/core";
-  import { loadProject, saveProject, saveProjectUnloadCopy } from "$lib/storage/storage";
+  import { loadProject } from "$lib/storage/storage";
   import { AutomaticNesting } from "$lib/atomm/automatic-nesting";
   import { provideAutomaticNesting, provideEmbedded } from "$lib/studio/embed-context";
   import { connectAtomm } from "$lib/atomm/atomm-bridge";
@@ -28,6 +28,8 @@
   import ResetProjectDialog from "$lib/studio/ResetProjectDialog.svelte";
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { ProjectHistory } from "$lib/studio/history";
+  import { MenuSections } from "$lib/studio/menu-sections.svelte";
+  import { autosaveProject } from "$lib/studio/autosave.svelte";
   import { historyShortcut } from "$lib/studio/history-keys";
   import { ATOMM_ENGRAVING_MODE_OPTIONS, ATOMM_STACK_MODE_OPTIONS, ENGRAVING_MODE_OPTIONS, PRESETS, STACK_MODE_OPTIONS } from "$lib/studio/options";
   import * as edits from "$lib/studio/project-edits";
@@ -58,7 +60,6 @@
 
   let { initialPreview }: { initialPreview?: GeometryIRV1 } = $props();
 
-  const MENU_STATE_KEY = "topostack-menu-sections-v1";
   const MAX_PROJECT_FILE_BYTES = 2_000_000;
   /** A project file carrying traced depth charts is mostly their depth grids. */
   const MAX_PROJECT_BUNDLE_BYTES = 24_000_000;
@@ -109,16 +110,7 @@
   $effect(() => { customData.disarmOutside(mode, nav.section); });
   let locationTrigger: HTMLButtonElement;
   let lineworkOpen = $state(false);
-  let menuStateReady = $state(false);
-  let openSections = $state<Record<ConfigSectionId, boolean>>({
-    setup: true,
-    size: false,
-    terrain: false,
-    details: false,
-    customData: false,
-    linework: false,
-    advanced: false,
-  });
+  const menuSections = new MenuSections();
   let AtommWorkbench = $state.raw<typeof import("$lib/atomm/AtommWorkbench.svelte").default>();
   let atommLayoutFailed = $state(false);
   let atommReady = $state(false);
@@ -388,15 +380,12 @@
     choices[next]?.click();
   }
 
-  function toggleSection(section: ConfigSectionId): void {
-    openSections = { ...openSections, [section]: !openSections[section] };
-  }
 
   /** Sidebar sections on screen: markers and paths live in the custom data view outside the Atomm embed. */
   const shownSections = $derived(embeddedInPlatform ? CONFIG_SECTION_IDS : CONFIG_SECTION_IDS.filter((section) => section !== "customData"));
 
   function setAllSections(open: boolean): void {
-    openSections = { ...openSections, ...Object.fromEntries(shownSections.map((section) => [section, open])) };
+    menuSections.setAll(shownSections, open);
   }
 
   function sectionSummary(section: ConfigSectionId): string {
@@ -405,15 +394,7 @@
 
   onMount(() => {
     let cancelled = false;
-    try {
-      const savedMenuState: unknown = JSON.parse(localStorage.getItem(MENU_STATE_KEY) ?? "null");
-      if (savedMenuState && typeof savedMenuState === "object") {
-        openSections = Object.fromEntries(CONFIG_SECTION_IDS.map((section) => [section, typeof (savedMenuState as Record<string, unknown>)[section] === "boolean" ? (savedMenuState as Record<string, boolean>)[section] : openSections[section]])) as Record<ConfigSectionId, boolean>;
-      }
-    } catch {
-      // A malformed preference should never prevent the editor from loading.
-    }
-    menuStateReady = true;
+    menuSections.restore();
     embeddedInPlatform = window.parent !== window;
     if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
@@ -508,59 +489,7 @@
     return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
   });
 
-  $effect(() => {
-    const current = openSections;
-    if (!menuStateReady) return;
-    try { localStorage.setItem(MENU_STATE_KEY, JSON.stringify(current)); } catch { /* Preferences are optional. */ }
-  });
-
-  /**
-   * Never persist a project that would fail validation on the next load —
-   * parse failures there would silently reset the user to the default project.
-   */
-  function canPersist(current: ProjectConfigV1): boolean {
-    try { validateProject(current); } catch { return false; }
-    return Number.isFinite(current.explodedPreview) && current.explodedPreview >= 0 && current.explodedPreview <= 1;
-  }
-
-  /** Persist one snapshot, unless it could not be read back. */
-  function persistProject(current: ProjectConfigV1): void {
-    if (!canPersist(current)) return;
-    void saveProject(current).catch(() => status = "Local save is unavailable in this browser");
-  }
-
-  /** The latest snapshot's write, until it runs; leaving the studio in-app fires no `pagehide`. */
-  let pendingAutosave: (() => void) | undefined;
-  onDestroy(() => pendingAutosave?.());
-  $effect(() => {
-    const current = project;
-    if (!booted) return;
-    let written = false;
-    let timeout = 0;
-    const write = () => { if (written) return; written = true; window.clearTimeout(timeout); persistProject(current); };
-    pendingAutosave = write;
-    timeout = window.setTimeout(write, 450);
-    // A closing, reloading or backgrounded tab must keep this snapshot, but an
-    // unloading page abandons IndexedDB transactions it starts (an edit then
-    // an immediate reload was lost every time), and can abandon one the
-    // debounce started moments earlier. So the snapshot also goes to
-    // localStorage synchronously, even when the debounced write already ran;
-    // `loadProject` prefers that copy while it is newer. `pagehide` covers
-    // close, reload and back/forward cache; `visibilitychange` covers a mobile
-    // tab switch that never unloads, where the IndexedDB write does finish.
-    const flush = () => {
-      if (canPersist(current)) saveProjectUnloadCopy(current);
-      write();
-    };
-    const onHidden = () => { if (document.hidden) flush(); };
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHidden);
-    return () => {
-      window.clearTimeout(timeout);
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHidden);
-    };
-  });
+  autosaveProject(() => project, () => booted, () => { status = "Local save is unavailable in this browser"; });
 
   // Sheet nesting only arranges finished parts at export, so it never touches generation.
   const COSMETIC_KEYS: ReadonlySet<string> = new Set(["name", "explodedPreview", "sheetNesting", "waterInsertSheetNesting"]);
@@ -1041,7 +970,7 @@
     get placementFade() { return placement.fade; },
     get placementMargin() { return placement.marginMm; },
     get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
-    get openSections() { return openSections; },
+    get openSections() { return menuSections.open; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },
     get mode() { return mode; },
@@ -1076,7 +1005,7 @@
     saveChartToLibrary: (record) => customData.saveChartToLibrary(record),
     useChartForLake: (key, reference) => customData.useChartForLake(key, reference),
     clearDepthChart: (key) => customData.clearDepthChart(key),
-    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection, setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
+    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection: (section) => menuSections.toggle(section), setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
   });
 </script>
 
@@ -1150,8 +1079,8 @@
             <h1>{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
             <p>Work through the essentials, then open details only when you need them.</p>
             <div class="section-tools" aria-label="Section display controls">
-              <button type="button" onclick={() => setAllSections(true)} disabled={shownSections.every((section) => openSections[section])}>Expand all</button>
-              <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !openSections[section])}>Collapse all</button>
+              <button type="button" onclick={() => setAllSections(true)} disabled={shownSections.every((section) => menuSections.open[section])}>Expand all</button>
+              <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !menuSections.open[section])}>Collapse all</button>
             </div>
           </div>
           <SetupSection />
