@@ -5,8 +5,9 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { openBrowserCheck } from "../lib/browser-check.mjs";
+import { appUrl } from "../lib/app-url.mjs";
 
-const base = process.env.SURVEY_TEST_APP_URL ?? "http://localhost:5297";
+const base = appUrl("SURVEY_TEST_APP_URL");
 assert(["localhost", "127.0.0.1"].includes(new URL(base).hostname), "Use a local Vite server");
 const { values: { "local-archives": archives } } = parseArgs({ options: { "local-archives": { type: "string" } } });
 assert(archives, "Pass --local-archives=<directory>");

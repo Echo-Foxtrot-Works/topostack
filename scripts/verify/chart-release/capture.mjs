@@ -3,6 +3,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { sha256Hex } from '../../lib/hash.mjs';
 import { chromium, expect } from '@playwright/test';
+import { appUrl } from '../../lib/app-url.mjs';
 const source = JSON.parse(await readFile('scripts/verify/chart-release/king-city-reviewed.json'));
 const lake = JSON.parse(await readFile('scripts/verify/chart-accuracy/fixtures/king-city-lake.json'));
 const input = '.topostack/chart-accuracy/king-city-crop.png';
@@ -10,7 +11,7 @@ const bytes = await readFile(input);
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });
-  await page.goto(process.env.CHART_STRESS_URL ?? 'http://127.0.0.1:5278/studio');
+  await page.goto(`${appUrl('CHART_STRESS_URL')}/studio`);
   await page.getByRole('radio', { name: 'Custom data', exact: true }).click();
   await page.evaluate(async lake => { const { draft } = await import('/src/lib/studio/customdata/chart-draft.svelte.ts'); draft.lake = lake; }, lake);
   await page.locator('.chart-upload input').setInputFiles(input);

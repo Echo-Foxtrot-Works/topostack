@@ -6,11 +6,12 @@ import { execFileSync } from "node:child_process";
 import { sha256Hex } from "../lib/hash.mjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { appUrl } from "../lib/app-url.mjs";
 
 // Reproducible listing cards: genuine embedded UI and model pixels, with captions.
 // Run against the current generator and deployed data API; no E2E fixture build.
 const { atommVersion } = await readVersions();
-const origin = process.env.TOPOSTACK_CAPTURE_URL ?? "http://127.0.0.1:5284";
+const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
 const root = new URL("../../atomm/", import.meta.url);
 const scratch = await mkdtemp(join(tmpdir(), "topostack-listing-"));

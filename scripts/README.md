@@ -1,6 +1,8 @@
 # scripts
 
-Operational tooling, grouped by purpose. `lib/` holds shared helpers (among them `pinned-download.mjs` for sha256-pinned source files, `hash.mjs`, and `main-module.mjs` for scripts that are also libraries), `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
+Operational tooling, grouped by purpose. `lib/` holds shared helpers (among them `pinned-download.mjs` for sha256-pinned source files, `hash.mjs`, `main-module.mjs` for scripts that are also libraries, and `app-url.mjs`), `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
+
+Scripts that drive the studio in a browser read its address from `TOPOSTACK_APP_URL`, defaulting to the dev server `npm run dev` starts (`http://localhost:5273`, or `TOPOSTACK_WEB_PORT`). The older per-script variables (`SURVEY_TEST_APP_URL`, `CHART_STRESS_URL`, `TOPOSTACK_CAPTURE_URL` and others) still work. Deployment checks keep `PUBLIC_APP_URL` and `WORKER_URL`, which CI sets.
 
 Every script below says how it is run. "manual" means no npm script or workflow invokes it; the linked runbook does.
 
@@ -36,7 +38,7 @@ Local helpers; nothing in CI depends on them.
 | `capture-readme-assets.mjs` | Screenshot the studio and workflows for the README images | manual |
 | `make-readme-media.mjs` | Turn the Atomm cover loop into the README's animated preview, `docs/images/topostack-stack.webp` (needs `ffmpeg` and `img2webp`, or `FFMPEG_PATH` / `IMG2WEBP_PATH`); see `docs/images/README.md` | manual |
 | `atomm-native-capture.mjs` | Capture-only renderer access used by the listing script; preserves real meshes/materials and renders each motion frame at its output resolution; never ships in the app | helper |
-| `capture-atomm-listing.mjs` | Capture current Atomm listing cards and videos (`TOPOSTACK_CAPTURE_URL=http://127.0.0.1:5284 node scripts/dev/capture-atomm-listing.mjs`; requires Playwright Chromium and `ffmpeg`, or `FFMPEG_PATH`); see `docs/images/README.md` | manual |
+| `capture-atomm-listing.mjs` | Capture current Atomm listing cards and videos (`TOPOSTACK_APP_URL=http://127.0.0.1:5284 node scripts/dev/capture-atomm-listing.mjs`; requires Playwright Chromium and `ffmpeg`, or `FFMPEG_PATH`); see `docs/images/README.md` | manual |
 | `capture-atomm-tips.mjs` | Capture the Atomm Tips walkthrough pictures from the studio running as the embed (`node scripts/dev/capture-atomm-tips.mjs` against `npm run dev`; needs `cwebp`); see `docs/images/README.md` | manual |
 | `capture-examples.mjs` | Generate each example project in the studio and save its render, sharing card and project file (`node scripts/dev/capture-examples.mjs [slug ...]` against `npm run dev`; needs `cwebp`) | manual |
 | `capture-social-cards.mjs` | Draw the 1200×630 sharing cards for guides, hubs and lake regions into `apps/generator/static/images/cards/` from pictures already in the repository and the lake directory (`node scripts/dev/capture-social-cards.mjs [name ...]`; Playwright Chromium only, no dev server); see [seo-operations.md](../docs/seo-operations.md). Card layout: `lib/social-card.mjs` | manual |

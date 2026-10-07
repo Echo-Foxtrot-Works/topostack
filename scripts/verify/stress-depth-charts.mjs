@@ -12,9 +12,10 @@ import { parseUserChartBathymetry, decodeChartDepths } from "@topostack/data-con
 import { traceVectorChart } from "@topostack/chart-trace/trace-vector";
 import { sha256Hex } from "../lib/hash.mjs";
 import { pinnedDownload } from "../lib/pinned-download.mjs";
+import { appUrl } from "../lib/app-url.mjs";
 
 const work = resolve(".topostack/real-chart-stress");
-const baseURL = process.env.CHART_STRESS_URL ?? "http://127.0.0.1:5278";
+const baseURL = appUrl("CHART_STRESS_URL");
 const browserName = process.env.CHART_STRESS_BROWSER ?? "chromium";
 const sources = [
   { id: "walden", name: "Walden Pond", url: "https://pubs.usgs.gov/wri/wri014137/pdf/cover.pdf", sha256: "77c75ce92fdfc82a57593f5e3be2c314e1675e9d4ce4a2676ccad91ff4d0b234", area: [710, 285, 1130, 548], scale: 4, units: "m", labels: "depth", interval: 2, styles: ["#01509f/1.00"], location: [42.439, -71.3387] },

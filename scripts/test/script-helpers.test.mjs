@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { appUrl } from "../lib/app-url.mjs";
 import { assertDigestPinPolicy, parseArchiveFlags, provisionWithReceipt, verifyArchiveDigest } from "../lib/archive-provisioning.mjs";
 import { cloudflareClient } from "../lib/cloudflare-client.mjs";
 import { filesBelow, writeJsonAtomic } from "../lib/files.mjs";
@@ -126,4 +127,22 @@ test("process helpers wait for all output before resolving", async () => {
   assert.equal(output.length, bytes);
   await run(process.execPath, ["-e", ""], {});
   await assert.rejects(capture(process.execPath, ["-e", "process.exit(3)"]), /code 3/);
+});
+
+test("appUrl prefers TOPOSTACK_APP_URL, then a script's own variable, then the dev server", () => {
+  const saved = { ...process.env };
+  try {
+    delete process.env.TOPOSTACK_APP_URL; delete process.env.LEGACY_APP_URL; delete process.env.TOPOSTACK_WEB_PORT;
+    assert.equal(appUrl("LEGACY_APP_URL"), "http://localhost:5273");
+    process.env.TOPOSTACK_WEB_PORT = "5290";
+    assert.equal(appUrl("LEGACY_APP_URL"), "http://localhost:5290");
+    process.env.LEGACY_APP_URL = "http://127.0.0.1:5278/";
+    assert.equal(appUrl("LEGACY_APP_URL"), "http://127.0.0.1:5278");
+    process.env.TOPOSTACK_APP_URL = "https://dev.topostack.app";
+    assert.equal(appUrl("LEGACY_APP_URL"), "https://dev.topostack.app");
+  } finally {
+    for (const name of ["TOPOSTACK_APP_URL", "LEGACY_APP_URL", "TOPOSTACK_WEB_PORT"]) {
+      if (saved[name] === undefined) delete process.env[name]; else process.env[name] = saved[name];
+    }
+  }
 });

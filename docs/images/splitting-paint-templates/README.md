@@ -25,4 +25,4 @@ Then, from the repository root:
 node scripts/dev/capture-feature-update.mjs
 ```
 
-Optional environment variables: `TOPOSTACK_CAPTURE_URL` sets the frontend origin; `TOPOSTACK_CAPTURE_LAYER` chooses the one-based layer for the off/on comparison. The browser uses an isolated session and does not modify your saved project. The capture script relays genuine public API responses without localhost Origin/Referer headers, matching the existing README asset workflow.
+Optional environment variables: `TOPOSTACK_APP_URL` sets the frontend origin; `TOPOSTACK_CAPTURE_LAYER` chooses the one-based layer for the off/on comparison. The browser uses an isolated session and does not modify your saved project. The capture script relays genuine public API responses without localhost Origin/Referer headers, matching the existing README asset workflow.
