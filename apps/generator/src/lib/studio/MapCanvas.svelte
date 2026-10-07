@@ -6,9 +6,13 @@
   import { LocateFixed, MapPin, Spline } from "@lucide/svelte";
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-  import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
+  import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap, MapEventType, MapMouseEvent } from "maplibre-gl";
   import { boundsForProject, MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
   import { polygonsPath } from "$lib/studio/svg-path";
+  /** A tile or source error carries which one failed; a style error carries neither. */
+  type MapErrorEvent = MapEventType["error"] & { sourceId?: string; tile?: unknown };
+  /** Camera moves the studio makes pass this as event data, so they are not mistaken for the user's. */
+  type MapMoveEndEvent = MapEventType["moveend"] & { topostackProgrammatic?: boolean };
   let { lakeSelection, onLakeViewportChange, onLakeMapClick, project, aspectLocked = $bindable(false), placingMarker = false, drawingLine = false, draftPoints = [], framing = true, hint = "Drag the map to choose your terrain", onLocationChange, onSelectionResize, onUnavailable, onPlaceMarker, onMoveMarker, onStopPlacing, onDrawPoint, onFinishDraw, onCancelDraw }: {
     lakeSelection?: { bounds?: GeoBounds; activeId?: string; lakes: { id: string; name: string; outline: [number, number][] }[] };
     onLakeViewportChange?: (bounds: GeoBounds) => void;
@@ -442,13 +446,12 @@
     // Only a style that never loaded is a failure; this is earlier than `load`.
     let styleLoaded = false;
     map.once("style.load", () => { styleLoaded = true; });
-    map.on("error", (event) => {
+    map.on("error", (event: MapErrorEvent) => {
       // Individual tiles fail routinely (offline pans, rate limits) and MapLibre
       // retries them; only a style that never loaded leaves a blank canvas.
-      const detail = event as unknown as { sourceId?: string; tile?: unknown; error?: unknown };
-      if (reportedFailure || styleLoaded || styleReady || detail.sourceId !== undefined || detail.tile !== undefined) return;
+      if (reportedFailure || styleLoaded || styleReady || event.sourceId !== undefined || event.tile !== undefined) return;
       reportedFailure = true;
-      console.warn("TopoStack map style could not load.", detail.error);
+      console.warn("TopoStack map style could not load.", event.error);
       onUnavailable?.("load-failed");
     });
     const emitSelection = () => {
@@ -468,8 +471,8 @@
     // Only commit selections for movement the user caused. Programmatic camera
     // moves (initial load, flyTo from external location edits) must not
     // overwrite the stored place label or bounds.
-    map.on("moveend", (event) => {
-      if ((event as unknown as { topostackProgrammatic?: boolean }).topostackProgrammatic) return;
+    map.on("moveend", (event: MapMoveEndEvent) => {
+      if (event.topostackProgrammatic) return;
       // Panning a map that is not choosing the terrain must not reframe it.
       if (!framing) return;
       emitSelection();
@@ -502,15 +505,14 @@
   const cropShape = $derived(project.cropShape);
   const widthMm = $derived(project.widthMm);
   const heightMm = $derived(project.heightMm);
+  /** Changes only when the chosen map area does, through the deriveds above. */
+  const mapArea = $derived({ selectedLocation, cropShape, widthMm, heightMm });
   const markers = $derived(project.markers);
   const markerIcons = $derived(project.markerIcons);
   const customLines = $derived(project.customLines);
 
   $effect(() => {
-    void selectedLocation;
-    void cropShape;
-    void widthMm;
-    void heightMm;
+    void mapArea;
     untrack(() => { if (skipSelectionFit) { skipSelectionFit = false; return; } fitSelection(); });
   });
 
@@ -545,10 +547,7 @@
   });
 
   $effect(() => {
-    void selectedLocation;
-    void cropShape;
-    void widthMm;
-    void heightMm;
+    void mapArea;
     syncMapArea(!framing && !lakeSelection);
   });
 
