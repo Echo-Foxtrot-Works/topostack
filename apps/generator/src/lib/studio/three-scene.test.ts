@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { GeometryIRV1 } from "@topostack/core";
-import { addStacked, appendPolyline, applyExploded, batchSegments, disposeContent, layerGrainTexture, layerKey, type LineBatch } from "$lib/studio/three-scene";
+import { addStacked, appendPolyline, applyExploded, batchSegments, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
 
 type Layer = GeometryIRV1["layers"][number];
 const square = (size: number) => [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }];
@@ -82,5 +82,22 @@ describe("disposeContent", () => {
     expect(keptDispose).not.toHaveBeenCalled();
     expect(resource.dispose).toHaveBeenCalledOnce();
     expect(resources).toHaveLength(0);
+  });
+});
+
+describe("disposeLayerCache", () => {
+  const cached = (key: string): CachedLayer => ({ key, meshes: [], seams: [], face: new THREE.MeshStandardMaterial(), resources: [{ dispose: vi.fn() }] });
+
+  it("frees and forgets only the layers a rebuild did not reuse", () => {
+    const kept = cached("a");
+    const dropped = cached("b");
+    const cache = new Map([["a", kept], ["b", dropped]]);
+    disposeLayerCache(cache, new Set(["a"]));
+    expect([...cache.keys()]).toEqual(["a"]);
+    expect(kept.resources[0]!.dispose).not.toHaveBeenCalled();
+    expect(dropped.resources[0]!.dispose).toHaveBeenCalledOnce();
+    disposeLayerCache(cache);
+    expect(cache.size).toBe(0);
+    expect(kept.resources[0]!.dispose).toHaveBeenCalledOnce();
   });
 });
