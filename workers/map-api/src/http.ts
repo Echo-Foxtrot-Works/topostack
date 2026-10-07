@@ -96,16 +96,30 @@ export function upstreamSignal(request: Request): AbortSignal {
   return AbortSignal.any([request.signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]);
 }
 
-/** An upstream that answered with an error status: logged, and reported to the caller as a bad gateway. */
-export function upstreamRejected(response: Response, service: string, error: string): Response {
-  console.warn(JSON.stringify({ message: "upstream_rejected", service, status: response.status }));
-  return json({ error }, { status: 502 });
+/**
+ * An upstream service that could not give a usable answer. Fetch helpers throw
+ * it; the route that called them turns it into a response with
+ * `upstreamErrorResponse`, so no helper returns either data or a Response.
+ */
+export class UpstreamError extends Error {
+  constructor(readonly status: 502 | 504, message: string) { super(message); this.name = "UpstreamError"; }
 }
 
-export function upstreamFailure(error: unknown, service: string): Response {
+/** An upstream that answered with an error status: logged, and reported to the caller as a bad gateway. */
+export function upstreamRejected(response: Response, service: string, error: string): UpstreamError {
+  console.warn(JSON.stringify({ message: "upstream_rejected", service, status: response.status }));
+  return new UpstreamError(502, error);
+}
+
+/** An upstream that could not be reached, or did not answer in time. */
+export function upstreamFailure(error: unknown, service: string): UpstreamError {
   const timedOut = error instanceof DOMException && error.name === "TimeoutError";
   console.warn(JSON.stringify({ message: "upstream_failed", service, reason: timedOut ? "timeout" : "network" }));
-  return json({ error: timedOut ? `${service} timed out` : `${service} unavailable` }, { status: timedOut ? 504 : 502 });
+  return new UpstreamError(timedOut ? 504 : 502, timedOut ? `${service} timed out` : `${service} unavailable`);
+}
+
+export function upstreamErrorResponse(error: UpstreamError): Response {
+  return json({ error: error.message }, { status: error.status });
 }
 
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
