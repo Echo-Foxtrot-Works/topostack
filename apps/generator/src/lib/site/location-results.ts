@@ -1,4 +1,4 @@
-import type { PlaceResult } from "$lib/domain/data-provider";
+import type { PlaceResult } from "$lib/domain/geocode";
 import type { IndexedLake } from "$lib/site/lake-directory";
 
 const normalizeName = (name: string): string => name.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();

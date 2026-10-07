@@ -11,11 +11,20 @@ const PREVIEW_TIMEOUT_MS = 30_000;
  * second fetch (the first builds the page's bundled preview) pauses that run
  * at its last step, so a test can watch it or cancel it.
  */
-async function holdAutomaticTerrain(page: Page): Promise<() => void> {
+/**
+ * Hold the studio's geometry worker at its script load until released. The
+ * startup preview's worker is refused, so that preview falls back to the main
+ * thread and the studio starts the worker this holds instead of adopting it.
+ */
+async function holdGeometryWorker(page: Page): Promise<() => void> {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   let requests = 0;
-  await page.route("**/geometry.worker-*.js", async route => { if (++requests > 1) await gate; await route.continue(); });
+  await page.route("**/geometry.worker-*.js", async route => {
+    if (++requests === 1) { await route.abort("blockedbyclient"); return; }
+    await gate;
+    await route.continue();
+  });
   return release;
 }
 
@@ -443,7 +452,7 @@ test("Atomm depth allowance is explicit and fitting actions use readable theme b
   await page.route("**/v1/**", route => route.abort("internetdisconnected"));
   await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: "window.atomm = { lifecycle: { on() {} }, app: { getLocale: async () => 'en', getSupportedLocales: async () => [{ code: 'en', name: 'English' }] } };" }));
   await page.route("**/atomm-test", route => route.fulfill({ contentType: "text/html", body: '<iframe title="Atomm generator" src="/studio" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>' }));
-  const releaseTerrain = await holdAutomaticTerrain(page);
+  const releaseTerrain = await holdGeometryWorker(page);
   await page.goto("/atomm-test");
   const studio = page.frameLocator("iframe");
   await expect(studio.locator(".atomm-workbench")).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
@@ -517,13 +526,13 @@ for (const embedded of [true, false]) {
     const workerGate = new Promise<void>(resolve => { releaseWorker = resolve; });
     try {
       // The embed starts loading terrain on its own, so it is held from the start.
-      if (embedded) { const release = await holdAutomaticTerrain(page); void workerGate.then(release); }
+      const release = await holdGeometryWorker(page);
+      void workerGate.then(release);
       await page.goto(embedded ? "/atomm-test" : "/studio");
       const studio = embedded ? page.frameLocator("iframe") : page;
       if (embedded) await expect(studio.locator(".atomm-workbench")).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
       else {
         await expect(studio.getByRole("button", { name: "Generate terrain", exact: true })).toBeVisible();
-        await page.route("**/geometry.worker-*.js", async route => { await workerGate; await route.continue(); });
         await studio.getByRole("button", { name: "Generate terrain", exact: true }).click();
       }
       const overlay = studio.locator(".generation-overlay");

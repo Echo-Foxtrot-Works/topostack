@@ -16,6 +16,8 @@ export interface GeometryWorkerCancel { cancelId: number }
  * worker that later crashed (for example out of memory on a large generation).
  */
 export interface GeometryWorkerReady { ready: true }
+/** A worker that has already answered, holding `source` under `sourceId`. */
+export interface WarmGeometryWorker { worker: Worker; source: SourceBundleV1; sourceId: number }
 export interface GeometryWorkerResponse {
   ready?: undefined;
   cancelled?: boolean;
@@ -74,7 +76,8 @@ interface PendingRequest {
  */
 export class GeometryWorkerClient {
   private worker: Worker | undefined;
-  private workerSourceId = 0;
+  /** The source the current worker holds; undefined until one is posted. */
+  private workerSourceId: number | undefined;
   /** Session-wide: once any worker has answered, workers are known to load here. */
   private workerProven = false;
   private unavailable: boolean;
@@ -121,6 +124,18 @@ export class GeometryWorkerClient {
     else this.scheduleAbandonCheck(remaining);
   }
 
+  /**
+   * Take over a worker that already generated a preview, such as the studio
+   * route's startup preview, instead of starting another. Ignored once this
+   * client has a worker or has fallen back to the main thread.
+   */
+  adopt({ worker, source, sourceId }: WarmGeometryWorker): void {
+    if (this.worker || this.unavailable) { worker.terminate(); return; }
+    if (!sourceIds.has(source)) sourceIds.set(source, sourceId);
+    this.attach(worker, sourceId);
+    this.workerProven = true;
+  }
+
   dispose(): void {
     this.cancel(new DOMException("Generator closed", "AbortError"));
     if (this.worker) this.discardWorker(this.worker);
@@ -140,12 +155,16 @@ export class GeometryWorkerClient {
       this.unavailable = true;
       return undefined;
     }
+    this.attach(worker);
+    return worker;
+  }
+
+  private attach(worker: Worker, sourceId?: number): void {
     this.worker = worker;
-    this.workerSourceId = 0;
+    this.workerSourceId = sourceId;
     worker.onmessage = (event: MessageEvent<GeometryWorkerResponse | GeometryWorkerReady>) => this.handleMessage(worker, event.data);
     worker.onerror = (event) => { event.preventDefault?.(); this.handleFailure(worker, new Error(event.message || "Geometry worker failed.")); };
     worker.onmessageerror = () => this.handleFailure(worker, new Error("Geometry worker returned an unreadable result."));
-    return worker;
   }
 
   private post(request: PendingRequest, includeSource: boolean): void {
@@ -259,7 +278,7 @@ export class GeometryWorkerClient {
     worker.terminate();
     if (this.worker === worker) {
       this.worker = undefined;
-      this.workerSourceId = 0;
+      this.workerSourceId = undefined;
       this.outstanding.clear();
       if (this.abandonTimer !== undefined) { clearTimeout(this.abandonTimer); this.abandonTimer = undefined; }
     }

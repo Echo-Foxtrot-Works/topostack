@@ -42,6 +42,8 @@
 }
 
 .preview-stage {
+  /* The dark backdrop behind the cut-layer and flat placement previews. */
+  --preview-stage-background: #292d27;
   position: relative;
   min-height: 0;
   overflow: hidden;
@@ -147,7 +149,7 @@
   --svg-canvas-width: calc(100% - 64px);
   --svg-canvas-height: calc(100% - 64px);
   overflow: hidden;
-  background-color: #292d27;
+  background-color: var(--preview-stage-background);
   background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px);
   background-size: 20px 20px;
 }

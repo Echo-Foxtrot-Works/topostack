@@ -8,7 +8,7 @@
   import { Button, Field, IconButton, Input } from "@loidolt/theme-svelte";
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import type { ProjectConfigV1 } from "@topostack/core";
-  import { searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
+  import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
   import { clampLatitude, clampLongitude, isSupportedCoordinate, MAX_LATITUDE, MAX_LONGITUDE } from "$lib/domain/coordinates";
   import { loadLocationLakes } from "$lib/studio/lake-directory-cache";
 

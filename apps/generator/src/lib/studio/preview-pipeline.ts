@@ -1,6 +1,6 @@
 import { projectFonts, type GeometryIRV1, type ProjectConfigV1, type SourceBundleV1, type TextFont } from "@topostack/core";
 import { ensureFonts } from "$lib/domain/fonts";
-import type { GeometryWorkerClient } from "$lib/workers/geometry-worker-client";
+import type { GeometryWorkerClient, WarmGeometryWorker } from "$lib/workers/geometry-worker-client";
 import { ModuleLoadError } from "$lib/studio/lazy-load";
 
 export const isAbortError = (error: unknown): boolean => error instanceof DOMException && error.name === "AbortError";
@@ -13,6 +13,18 @@ export interface PreviewUpdate {
   onError: (error: unknown) => void;
   /** Runs after a started update ends; `current` is false once a newer edit superseded it. */
   onSettled: (current: boolean) => void;
+}
+
+/**
+ * The worker client loads on first use, keeping it out of the startup bundle.
+ * `takeWarmWorker` hands over a worker that is already running, if any.
+ */
+export async function loadGeometryClient(takeWarmWorker?: () => WarmGeometryWorker | undefined): Promise<GeometryWorkerClient> {
+  const module = await import("$lib/workers/geometry-worker-client").catch((error: unknown) => { throw new ModuleLoadError("The geometry engine", error); });
+  const client = new module.GeometryWorkerClient();
+  const warm = takeWarmWorker?.();
+  if (warm) client.adopt(warm);
+  return client;
 }
 
 /** A pending trailing debounce; `settle(true)` ends it as superseded. */
@@ -31,12 +43,8 @@ export class PreviewPipeline {
   private clientLoad: Promise<GeometryWorkerClient> | undefined;
   private disposed = false;
 
-  /** The worker client loads on first use, keeping it out of the startup bundle. */
   constructor(
-    private readonly loadClient: () => Promise<GeometryWorkerClient> = async () => {
-      const module = await import("$lib/workers/geometry-worker-client").catch((error: unknown) => { throw new ModuleLoadError("The geometry engine", error); });
-      return new module.GeometryWorkerClient();
-    },
+    private readonly loadClient: () => Promise<GeometryWorkerClient> = loadGeometryClient,
     private readonly loadFonts: (fonts: TextFont[]) => Promise<void> = ensureFonts,
   ) {}
 
