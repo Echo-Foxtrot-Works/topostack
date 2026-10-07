@@ -33,8 +33,7 @@
   import * as edits from "$lib/studio/project-edits";
   import { isAbortError, PreviewPipeline } from "$lib/studio/preview-pipeline";
   import { LazyComponent } from "$lib/studio/lazy-component";
-  import { addGraphicToSession, canPlace, draftProject, graphicPlaceableId, hiddenMarkingPrefixes, placeableFor, placementPatch, type PlaceableId, type PlacementSession } from "$lib/studio/placement/placeables";
-  import { placementMarginMm } from "$lib/studio/placement/viewport";
+  import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
   import { acrylicPanelCount as findAcrylicPanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
@@ -45,7 +44,7 @@
   import type { SourcePreparationCache } from "$lib/studio/source-refresh";
   import { generationStatus, generationToast, previewPendingStatus, previewUpdatedStatus, type PreviewUpdateKind } from "$lib/studio/status-messages";
   import { nav } from "$lib/studio/customdata/custom-data-nav.svelte";
-  import { provideStudio, type PlacementPhase, type GenerateState, type LineWidthKey, type PreviewMode } from "$lib/studio/studio-context";
+  import { provideStudio, type GenerateState, type LineWidthKey, type PreviewMode } from "$lib/studio/studio-context";
   import ProjectControls from "$lib/studio/panels/ProjectControls.svelte";
   import StudioMenu from "$lib/studio/panels/StudioMenu.svelte";
   import OutputSwitch from "$lib/studio/panels/OutputSwitch.svelte";
@@ -200,14 +199,14 @@
   const threePreview = new LazyComponent(() => import("$lib/studio/ThreePreview.svelte"), (error) => {
     console.error("TopoStack could not load the 3D preview.", error);
     // Placement falls back to the flat top-down view on its own.
-    if (placement) threeUnavailable = true;
+    if (placement.session) threeUnavailable = true;
     if (mode === "3d") { threeUnavailable = true; mode = "2d"; previewNotice = "3D preview could not load · reload to update TopoStack"; }
   });
   const exportPreview = new LazyComponent(() => import("$lib/studio/ExportPreview.svelte"), (error) => {
     console.error("TopoStack could not load the export preview.", error); status = "Export preview could not load · retry or reload to update TopoStack";
   });
   const placementStage = new LazyComponent(() => import("$lib/studio/placement/PlacementStage.svelte"), (error) => {
-    console.error("TopoStack could not load placement mode.", error); placement = undefined; status = "Placement could not load · reload to update TopoStack";
+    console.error("TopoStack could not load placement mode.", error); placement.abandon(); status = "Placement could not load · reload to update TopoStack";
   });
   const customDataView = new LazyComponent(() => import("$lib/studio/customdata/CustomDataView.svelte"), (error) => {
     console.error("TopoStack could not load the custom data view.", error);
@@ -228,81 +227,16 @@
   const PlacementStage = $derived(placementStage.component);
   const ExportPreview = $derived(exportPreview.component);
 
-  // Placement mode: an uncommitted project patch moved on a top-down view of
-  // the piece. Done applies it as one edit, which generation bakes into the
-  // sheets; see docs/placement.md.
-  let placement = $state<PlacementSession | undefined>();
-  // "settling" holds the drafts on screen until Done's regeneration lands.
-  // "closing" crossfades them into the generated markings while the view is
-  // still top-down, so they line up; only then does the 3D camera ease back.
-  let placementPhase = $state<PlacementPhase>("editing");
-  // Set briefly when entering or leaving swaps the view under the layer, so the new one fades in.
-  let placementFade = $state(false);
-  const PLACEMENT_EXIT_MS = 220;
-  const PLACEMENT_SETTLE_LIMIT_MS = 4_000;
-  const placementBackdrop: "3d" | "flat" | undefined = $derived(placement ? (project.outputMode === "stack" && !threeUnavailable ? "3d" : "flat") : undefined);
-  const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function pulsePlacementFade(): void {
-    if (placementBackdrop !== "3d" || mode === "3d" || reducedMotion()) return;
-    placementFade = true;
-    setTimeout(() => { placementFade = false; }, 400);
-  }
-  const placementMargin = $derived(placementMarginMm(geometry.widthMm, geometry.heightMm));
-  const placementHiddenPrefixes = $derived(placement ? hiddenMarkingPrefixes(project) : []);
-  function startPlacement(id: PlaceableId): void {
-    if (placement) {
-      // A second Move button while placing only switches the selection.
-      if (placementPhase === "editing" && placeableFor(id).available(draftProject(project, placement))) placement = { ...placement, selected: id };
-      return;
-    }
-    if (!placeableFor(id).available(project)) return;
-    openPlacement({ selected: id, draft: {} });
-  }
-  function openPlacement(session: PlacementSession): void {
-    placement = session;
-    placementPhase = "editing";
-    placementStage.load();
-    pulsePlacementFade();
-  }
-  /** Adds a use of an uploaded graphic to the piece as a draft, opening placement mode on it. */
-  function placeGraphic(graphicId: string): void {
-    if (placement && placementPhase !== "editing") return;
-    const next = addGraphicToSession(project, placement, graphicId, crypto.randomUUID());
-    if (!next) { status = "The piece already holds as many graphics as it can. Remove one before adding another."; return; }
-    if (placement) placement = next;
-    else openPlacement(next);
-  }
-  /** Opens placement on the first placed graphic, or places the first uploaded one. */
-  function placeGraphics(): void {
-    const first = project.placedGraphics?.find((placed) => placeableFor(graphicPlaceableId(placed.id)).available(project));
-    if (first) startPlacement(graphicPlaceableId(first.id));
-    else if (project.customGraphics?.[0]) placeGraphic(project.customGraphics[0].id);
-  }
-  function closePlacement(): void {
-    const closingSession = placement;
-    placementPhase = "closing";
-    setTimeout(() => {
-      if (placement !== closingSession) return;
-      pulsePlacementFade();
-      placement = undefined;
-      placementPhase = "editing";
-    }, reducedMotion() ? 0 : PLACEMENT_EXIT_MS);
-  }
-  function commitPlacement(): void {
-    if (!placement || placementPhase !== "editing") return;
-    if (!Object.keys(placement.draft).length) { closePlacement(); return; }
-    const committingSession = placement;
-    placementPhase = "settling";
-    const settled = updateFabrication(placementPatch(project, $state.snapshot(placement.draft))).catch(() => undefined);
-    void Promise.race([settled, new Promise((resolve) => setTimeout(resolve, PLACEMENT_SETTLE_LIMIT_MS))]).then(() => { if (placement === committingSession) closePlacement(); });
-  }
-  function cancelPlacement(): void {
-    if (placement && placementPhase === "editing") closePlacement();
-  }
-  // Turning every placeable off, with no graphic left to add, leaves nothing to place.
-  $effect(() => {
-    if (placement && !canPlace(draftProject(project, placement))) untrack(cancelPlacement);
+  const placement = new PlacementController({
+    project: () => project,
+    geometry: () => geometry,
+    mode: () => mode,
+    threeUnavailable: () => threeUnavailable,
+    loadStage: () => placementStage.load(),
+    updateFabrication: (patch) => updateFabrication(patch),
+    setStatus: (message) => { status = message; },
   });
+  const placementBackdrop = $derived(placement.backdrop);
 
   $effect(() => {
     const outputMode = project.outputMode;
@@ -571,7 +505,7 @@
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
-    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); };
+    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
   });
 
   $effect(() => {
@@ -655,7 +589,7 @@
    * superseded, exactly as `refreshPreview` does.
    */
   function replaceSourceProject(next: ProjectConfigV1, source: SourceBundleV1): void {
-    placement = undefined;
+    placement.abandon();
     project = next; sourceProject = next; activeSource = source;
     geometry = { ...geometry, projectName: next.name };
     const revision = pipeline.revision;
@@ -766,13 +700,13 @@
     loadRealTerrain();
   }
 
-  function undo(): boolean { if (placement) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
-  function redo(): void { if (placement) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
+  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
+  function redo(): void { if (placement.session) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
     const shortcut = historyShortcut(event);
     // An undo would rewrite the project under an open draft; Done or Cancel first.
-    if (!shortcut || placement) return;
+    if (!shortcut || placement.session) return;
     event.preventDefault();
     if (shortcut === "undo") undo(); else redo();
   }
@@ -882,7 +816,7 @@
       generate: () => generate(),
       undo,
       openExport: () => { exportOpen = true; },
-      editBlockedBy: () => placement ? "The studio is placing an item. Finish or cancel it there first." : undefined,
+      editBlockedBy: () => placement.session ? "The studio is placing an item. Finish or cancel it there first." : undefined,
     };
   }
 
@@ -1100,13 +1034,13 @@
     get mapCanvas() { return mapCanvas; },
     get ExportPreview() { return ExportPreview; },
     get exportPreview() { return exportPreview; },
-    get placement() { return placement; },
-    set placement(value) { placement = value; },
-    get placementBackdrop() { return placementBackdrop; },
-    get placementPhase() { return placementPhase; },
-    get placementFade() { return placementFade; },
-    get placementMargin() { return placementMargin; },
-    get placementHiddenPrefixes() { return placementHiddenPrefixes; },
+    get placement() { return placement.session; },
+    set placement(value) { placement.session = value; },
+    get placementBackdrop() { return placement.backdrop; },
+    get placementPhase() { return placement.phase; },
+    get placementFade() { return placement.fade; },
+    get placementMargin() { return placement.marginMm; },
+    get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
     get openSections() { return openSections; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },
@@ -1142,7 +1076,7 @@
     saveChartToLibrary: (record) => customData.saveChartToLibrary(record),
     useChartForLake: (key, reference) => customData.useChartForLake(key, reference),
     clearDepthChart: (key) => customData.clearDepthChart(key),
-    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement, placeGraphic, placeGraphics, commitPlacement, cancelPlacement, undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection, setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
+    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection, setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
   });
 </script>
 
