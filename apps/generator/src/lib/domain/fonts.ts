@@ -1,4 +1,5 @@
 import { decodeFontGlyphs, fontEntry, isFontLoaded, registerFont, type TextFont } from "@topostack/core";
+import { networkSignal } from "$lib/domain/network";
 
 /**
  * Glyph files for the curated typefaces, built by scripts/build/build-font-glyphs.mjs.
@@ -10,7 +11,8 @@ const glyphUrls = import.meta.glob<string>("./font-glyphs/*.json", { query: "?ur
 type FetchJson = (url: string) => Promise<unknown>;
 
 const fetchJson: FetchJson = async (url) => {
-  const response = await fetch(url);
+  // Shared by every caller waiting on this font, so only the deadline ends it.
+  const response = await fetch(url, { signal: networkSignal() });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 };

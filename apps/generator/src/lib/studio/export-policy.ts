@@ -1,6 +1,7 @@
 import { buildProjectPackage, exportBlockReason, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
 import jostUrl from "@loidolt/theme-styles/fonts/Jost-Medium.woff2?url";
 import archivoUrl from "@loidolt/theme-styles/fonts/Archivo-Regular.woff2?url";
+import { networkSignal } from "$lib/domain/network";
 
 export { buildProjectPackage, exportBlockReason } from "@topostack/core";
 export type ExportIntent = "download" | "openInStudio";
@@ -25,7 +26,7 @@ let guideFonts: Promise<GuideFont[]> | undefined;
 export function loadGuideFonts(): Promise<GuideFont[]> {
   guideFonts ??= Promise.all(GUIDE_FONTS.map(async ({ family, weight, url }) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: networkSignal() });
       if (!response.ok) return [];
       return [{ family, weight, woff2Base64: toBase64(new Uint8Array(await response.arrayBuffer())) }];
     } catch {

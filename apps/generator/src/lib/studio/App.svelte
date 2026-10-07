@@ -9,6 +9,7 @@
   import { CustomDataActions } from "$lib/studio/customdata/custom-data-actions.svelte";
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
+  import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
   import { boundsForProject, exportBlockReason } from "@topostack/core";
   import { readProjectFile } from "$lib/studio/project-file";
@@ -426,7 +427,7 @@
       loadShareLink: () => import("$lib/studio/share-link"),
       consumeShareLink: () => cleanStudioUrl((url) => { url.hash = ""; url.searchParams.delete("generate"); }),
       loadExample: async (slug) => {
-        const response = await fetch(`${base}/examples/${slug}.json`);
+        const response = await fetch(`${base}/examples/${slug}.json`, { signal: networkSignal() });
         if (response.status === 404) return undefined;
         if (!response.ok) throw new Error(`Example request failed with status ${response.status}.`);
         return response.json();
