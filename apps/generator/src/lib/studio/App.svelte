@@ -4,15 +4,13 @@
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
   import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
-  import { assembleWater, boundsForProject, loadAviation, loadLakeAreas, loadSurveyedLakeDepths, loadTerrain, loadVectorMarkings, searchPlaces, type PlaceResult } from "$lib/domain/data-provider";
-  import { applySurveyProvenance } from "$lib/domain/bathymetry";
-  import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
-  import { dataZoom } from "$lib/domain/tile-math";
+  import type { TerrainLoadResult } from "$lib/domain/data-provider";
+  import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
   import { CustomDataActions } from "$lib/studio/customdata/custom-data-actions.svelte";
   import { theme } from "$lib/site/theme";
   import { trackUsage } from "$lib/site/usage";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { exportBlockReason } from "@topostack/core";
+  import { boundsForProject, exportBlockReason } from "@topostack/core";
   import { readProjectFile } from "$lib/studio/project-file";
   import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
   import { loadProject } from "$lib/storage/storage";
@@ -161,9 +159,12 @@
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
   const pipeline = new PreviewPipeline();
-  // Map-data refresh code loads with the first preview edit, not at startup. A
-  // failed load is forgotten, so the next edit retries it.
-  const loadSourcePreparation = retryingLoader(async () => new (await import("$lib/studio/source-refresh")).SourcePreparationCache({ loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater, loadAviation, dataZoom }), "Map data refresh");
+  // The terrain and map-data loaders (pmtiles, vector tiles, polygon
+  // clipping, the source catalogs) load with the first Generate or preview
+  // edit, not with the studio. A failed load is forgotten, so the next use retries.
+  const terrainLoaders = retryingLoader(() => import("$lib/domain/data-provider"), "Terrain loading");
+  // Map-data refresh code loads with the first preview edit, not at startup.
+  const loadSourcePreparation = retryingLoader(async () => (await import("$lib/studio/source-preparation")).createSourcePreparation(), "Map data refresh");
   let sourcePreparation: Promise<SourcePreparationCache> | undefined;
   const preparedSources = () => sourcePreparation = loadSourcePreparation();
   // Continuous controls (sliders, typed numbers) fire on every input tick. The
@@ -618,7 +619,7 @@
   }
 
   /** What loading terrain fell back on, as warnings on the geometry built from it; Generate and a map-area refresh report it alike. */
-  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<Awaited<ReturnType<typeof loadTerrain>>, "fallback" | "fallbackReason" | "waterWarning">): void {
+  function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<TerrainLoadResult, "fallback" | "fallbackReason" | "waterWarning">): void {
     if (loaded.fallback) next.warnings.push({ code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain.${loaded.fallbackReason ? ` (${loaded.fallbackReason})` : ""}` });
     if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})` });
   }
@@ -633,7 +634,7 @@
     const nextProject = project;
     const previewProject = nextProject;
     const areaChanged = !sameMapArea(sourceProject, nextProject);
-    let loaded: Awaited<ReturnType<typeof loadTerrain>> | undefined;
+    let loaded: TerrainLoadResult | undefined;
     const fromProject = sourceProject;
     const fromSource = activeSource;
     const patch = projectPatch(fromProject, previewProject);
@@ -645,7 +646,7 @@
       prepareSource: async (signal) => {
         const source = !areaChanged
           ? await (await preparedSources()).prepare(fromSource, fromProject, previewProject, nextProject, signal)
-          : (loaded = await loadTerrain(previewProject, signal)).source;
+          : (loaded = await (await terrainLoaders()).loadTerrain(previewProject, signal)).source;
         if (!signal.aborted && !quiet && embeddedInPlatform) status = "Step 2 of 2 · Building preview geometry…";
         return source;
       },
@@ -745,6 +746,8 @@
     // Throws at each await boundary once canceled (AbortError) or superseded by a newer edit.
     const checkpoint = () => { controller.signal.throwIfAborted(); if (!pipeline.isCurrent(revision)) throw new DOMException("Generation superseded", "AbortError"); };
     try {
+      const { loadTerrain } = await terrainLoaders();
+      checkpoint();
       const loaded = await loadTerrain(generationProject, controller.signal, (stage) => {
         if (controller.signal.aborted || !pipeline.isCurrent(revision)) return;
         generationStep = stage === "fetching" ? 1 : 2;

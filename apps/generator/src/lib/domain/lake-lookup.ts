@@ -1,7 +1,8 @@
 import { ringIou } from "@topostack/chart-trace/georef";
 import { DEFAULT_PROJECT, type GeoBounds, type Polygon2D, type WaterAreaV1 } from "@topostack/core";
 import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "$lib/domain/coordinates";
-import { loadLakeAreas, loadVectorMarkings, type PlaceResult } from "$lib/domain/data-provider";
+import { loadLakeAreas, loadVectorMarkings } from "$lib/domain/data-provider";
+import type { PlaceResult } from "$lib/domain/geocode";
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { artworkToLonLat } from "$lib/domain/tile-math";
 

@@ -14,13 +14,11 @@ import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
 import { archiveTileWindow, dataZoom, fittingTileWindow, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { assembleWater } from "$lib/domain/water-assembly";
-import { isSupportedCoordinate } from "$lib/domain/coordinates";
 
 // Pure geometry helpers moved to focused modules; re-exported for existing callers.
 export { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 export { applyLakeShorelines, assembleWater, combineWaterAreas } from "$lib/domain/water-assembly";
 
-export interface PlaceResult { id: string; label: string; lat: number; lon: number; type?: string; bounds?: GeoBounds; zoom?: number; surveyedLake?: boolean }
 
 const RAW_VECTOR_MARKING_BUDGET_MULTIPLIER = 4;
 const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"]);
@@ -44,7 +42,6 @@ export async function loadAviation(bounds: GeoBounds, zoom: number, config: Proj
 }
 
 /** The crop is computed in core so the studio and the Worker agree on it. */
-export { boundsForProject };
 
 export function classifyTransportation(properties: Record<string, unknown>): TransportationClass | undefined {
   const kind = typeof properties.kind === "string" ? properties.kind : "";
@@ -506,19 +503,3 @@ function e2eAviationFixture(config: ProjectConfigV1): MarkingFeature[] {
   ];
 }
 
-export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {
-  if (query.trim().length < 2) return [];
-  const response = await fetch(`${apiBase()}/v1/geocode?q=${encodeURIComponent(query.trim())}&limit=5`, { signal: networkSignal(signal) });
-  if (!response.ok) throw new Error("Place search is temporarily unavailable.");
-  const value: unknown = await response.json();
-  if (!Array.isArray(value)) throw new Error("Place search returned an unexpected response.");
-  return value.flatMap((item): PlaceResult[] => {
-    if (!item || typeof item !== "object") return [];
-    const record = item as Record<string, unknown>;
-    const lat = record.lat;
-    const lon = record.lon;
-    const label = typeof record.display_name === "string" ? record.display_name.trim() : "";
-    if (typeof lat !== "number" || typeof lon !== "number" || !isSupportedCoordinate(lat, lon) || !label) return [];
-    return [{ id: String(record.place_id ?? (String(lat) + "," + String(lon))), label, lat, lon, type: typeof record.type === "string" ? record.type : undefined }];
-  });
-}

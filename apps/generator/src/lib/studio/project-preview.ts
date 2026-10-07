@@ -1,5 +1,5 @@
 import { createSyntheticSource, DEFAULT_PROJECT, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
-import { boundsForProject } from "$lib/domain/data-provider";
+import { boundsForProject } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 import { resizeSource } from "$lib/studio/source-refresh";
 

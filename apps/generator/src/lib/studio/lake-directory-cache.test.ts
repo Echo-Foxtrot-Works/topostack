@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NETWORK_TIMEOUT_MS } from "$lib/domain/archive";
+import { NETWORK_TIMEOUT_MS } from "$lib/domain/network";
 import { loadLocationLakes, resetLocationLakes } from "$lib/studio/lake-directory-cache";
 
 const directory = {

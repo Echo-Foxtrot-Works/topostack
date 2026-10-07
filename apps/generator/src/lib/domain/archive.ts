@@ -1,11 +1,8 @@
 import { EtagMismatch, FetchSource, PMTiles, type Header, type RangeResponse } from "pmtiles";
 
-export const NETWORK_TIMEOUT_MS = 20_000;
+import { networkSignal } from "$lib/domain/network";
 
-export function networkSignal(signal?: AbortSignal): AbortSignal {
-  const timeout = AbortSignal.timeout(NETWORK_TIMEOUT_MS);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
-}
+export { networkSignal };
 
 /** The archive operations generation uses. */
 export type Archive = Pick<PMTiles, "getHeader" | "getMetadata" | "getZxy">;

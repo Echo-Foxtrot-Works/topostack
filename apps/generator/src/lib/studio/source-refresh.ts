@@ -4,9 +4,8 @@ import type { VectorData } from "$lib/domain/data-provider";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
 
 /**
- * Loaders and water helpers, passed in rather than imported. This module is
- * loaded on the first preview edit, and importing them here would force the
- * bundler to split the startup chunk they already live in.
+ * Loaders and water helpers, passed in rather than imported, so tests pass
+ * fakes without mocking modules. source-preparation.ts passes the real ones.
  */
 export interface SourceRefreshDependencies {
   loadVectorMarkings: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<VectorData>;

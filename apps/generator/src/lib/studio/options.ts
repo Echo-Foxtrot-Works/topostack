@@ -1,5 +1,5 @@
 import { DEFAULT_PROJECT, FONT_CATALOG, markerSymbolPaths, northArrowMarkings, type CustomLineKind, type LineStyleV1, type BuiltInMarkerSymbol, type NorthArrowStyle, type OperationPath, type Point2D, type RoadCap, type RoadStyle, type FontCatalogEntry, type FontKind, type TrailPattern, type WaterFillPattern } from "@topostack/core";
-import type { PlaceResult } from "$lib/domain/data-provider";
+import type { PlaceResult } from "$lib/domain/geocode";
 
 /** Fixed choices for the studio controls. */
 export const PRESETS: PlaceResult[] = [
