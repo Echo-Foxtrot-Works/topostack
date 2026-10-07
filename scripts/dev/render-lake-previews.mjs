@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import { PNG } from "pngjs";
 import { createServer } from "vite";
 
@@ -25,11 +26,14 @@ const SAMPLE = [
   "sarkar-lake-prince-of-wales-hyder-census-area-alaska", "lake-pontchartrain-st-tammany-parish-louisiana", "lake-washington-king-county-washington",
 ];
 
-const argument = (name) => { const index = process.argv.indexOf(name); return index > 0 ? process.argv[index + 1] : undefined; };
-const out = resolve(argument("--out") ?? ".topostack/lake-previews");
+const { values: args } = parseArgs({ options: {
+  out: { type: "string" }, concurrency: { type: "string" }, api: { type: "string" },
+  slugs: { type: "string" }, all: { type: "boolean" }, sample: { type: "boolean" },
+} });
+const out = resolve(args.out ?? ".topostack/lake-previews");
 // One at a time by default: the map API rate-limits uncached terrain per client, and this shares its limits with visitors.
-const concurrency = Math.max(1, Number(argument("--concurrency") ?? 1));
-process.env.VITE_MAP_API_URL = argument("--api") ?? process.env.VITE_MAP_API_URL ?? "https://topostack.app";
+const concurrency = Math.max(1, Number(args.concurrency ?? 1));
+process.env.VITE_MAP_API_URL = args.api ?? process.env.VITE_MAP_API_URL ?? "https://topostack.app";
 try { execFileSync("cwebp", ["-version"], { stdio: "ignore" }); } catch { throw new Error("cwebp is required (brew install webp)."); }
 
 const root = fileURLToPath(new URL("../../apps/generator/", import.meta.url));
@@ -44,7 +48,7 @@ try {
   const lakes = new Map(directory.lakes.map((lake) => [lake.id, lake]));
   const surveyIds = new Set(directory.sources.map((source) => source.id));
   const bySlug = new Map([...LAKE_PLACES.values()].map((place) => [place.path.slice("/lake/".length), place]));
-  const slugs = process.argv.includes("--all") ? [...bySlug.keys()] : process.argv.includes("--sample") ? SAMPLE : (argument("--slugs") ?? "").split(",").filter(Boolean);
+  const slugs = args.all ? [...bySlug.keys()] : args.sample ? SAMPLE : (args.slugs ?? "").split(",").filter(Boolean);
   if (!slugs.length) throw new Error("Pass --sample, --slugs a,b or --all.");
   const unknown = slugs.filter((slug) => !bySlug.has(slug));
   if (unknown.length) throw new Error(`No lake page for: ${unknown.join(", ")}`);
