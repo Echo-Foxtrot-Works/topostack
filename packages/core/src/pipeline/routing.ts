@@ -12,7 +12,7 @@ import type { LayerClip } from "./layer-clips.js";
 
 const TRANSPORTATION_LABEL_LIMIT = 80;
 
-export function isClosedWater(feature: MarkingFeature): boolean {
+function isClosedWater(feature: MarkingFeature): boolean {
   return feature.kind === "water" && feature.points.length > 3 && Math.hypot(feature.points[0]!.x - feature.points.at(-1)!.x, feature.points[0]!.y - feature.points.at(-1)!.y) <= 1e-6;
 }
 

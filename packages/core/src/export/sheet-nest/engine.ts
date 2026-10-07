@@ -9,6 +9,8 @@
  * `p' = R(rotationDeg) · p + (x, y)`; placed outlines lie inside
  * `[0, stripWidth] × [0, stripHeight]` and stay `spacing` apart.
  */
+import type { SheetNestEngineName } from "../../types.js";
+
 export interface StripEngineItem {
   outline: Array<[number, number]>;
   /** Allowed rotations in degrees; absent means any angle. */
@@ -38,7 +40,7 @@ export interface StripEngineResult {
 }
 
 export interface StripEngine {
-  readonly name: "sparrow" | "rectangles";
+  readonly name: SheetNestEngineName;
   readonly info?: { sparrowRev?: string; jaguaVersion?: string };
   /** Throws when the items cannot be laid out at all, e.g. one is taller than the strip. */
   pack(job: StripEngineJob): StripEngineResult | Promise<StripEngineResult>;

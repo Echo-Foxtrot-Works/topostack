@@ -130,7 +130,8 @@ export interface CustomGraphicV1 {
 }
 
 /** What the laser does with a placed graphic: engrave its filled shape, score its outline, or cut it out of the sheet it lands on. */
-export type GraphicOperation = "engrave" | "score" | "cut";
+/** Graphics take the same three laser operations as everything else. */
+export type GraphicOperation = Operation;
 export const GRAPHIC_OPERATIONS: readonly GraphicOperation[] = ["engrave", "score", "cut"];
 
 /**
@@ -895,12 +896,15 @@ export interface NestPlacementV1 {
   yMm: number;
 }
 
+/** The sparrow solver, or the bounding-box packer it falls back to. */
+export type SheetNestEngineName = "sparrow" | "rectangles";
+
 export interface SheetNestSheetV1 {
   placements: NestPlacementV1[];
   /** Length of stock the parts use along the sheet width, margin included; the rest is offcut. */
   usedWidthMm: number;
   /** Packed by sparrow, or by the bounding-box fallback. */
-  method: "sparrow" | "rectangles";
+  method: SheetNestEngineName;
   /** A stand-in layout for parts the packer has not reached yet. */
   provisional?: boolean;
 }
@@ -911,7 +915,7 @@ export interface SheetNestPlanV1 {
   /** Hash of the parts and settings the plan was made for; a stale plan no longer matches. */
   jobKey: string;
   /** The engine that searched. A sheet it could not improve keeps the bounding-box layout; see each sheet's `method`. */
-  engine: { name: "sparrow" | "rectangles"; sparrowRev?: string; jaguaVersion?: string };
+  engine: { name: SheetNestEngineName; sparrowRev?: string; jaguaVersion?: string };
   settings: ResolvedSheetNestSettings;
   sheets: SheetNestSheetV1[];
   /** False while the packer is still improving the layout. Draft plans are still valid to cut. */
@@ -921,16 +925,8 @@ export interface SheetNestPlanV1 {
   elapsedMs: number;
 }
 
-/** Settings with the work-area fallback applied and every value in range. */
-export interface ResolvedSheetNestSettings {
-  sheetWidthMm: number;
-  sheetHeightMm: number;
-  marginMm: number;
-  spacingMm: number;
-  rotation: SheetNestRotation;
-  timeBudgetS: number;
-  seed: number;
-}
+/** The same settings after `resolveSheetNestSettings`: the work-area fallback applied and every value in range. */
+export type ResolvedSheetNestSettings = SheetNestSettingsV1;
 
 /**
  * One acrylic piece that fills a lake's opening in the sheet carrying its
@@ -959,8 +955,37 @@ export interface WaterInsertMaterialIR {
   ledgeMm: number;
 }
 
+/** Why a generation warns; a stable code the studio and agents key their wording and actions on. */
+export type GeometryWarningCode =
+  | "TERRAIN_SOURCE_FALLBACK"
+  | "ELEVATION_REPAIRED"
+  | "LOW_RELIEF"
+  | "EMPTY_LAYER"
+  | "SMALL_FEATURES"
+  | "DATA_FALLBACK"
+  | "VECTOR_DATA_PARTIAL"
+  | "VECTOR_DATA_UNAVAILABLE"
+  | "LAKE_DATA_UNAVAILABLE"
+  | "BATHYMETRY_FALLBACK"
+  | "LAKE_DEPTH_PREDICTED"
+  | "LAKE_DEPTH_FROM_CHART"
+  | "LABEL_OMITTED"
+  | "WATER_DEPTH_CLAMPED"
+  | "WORK_AREA_OVERSIZE"
+  | "WORK_AREA_UNSPLIT"
+  | "GRAPHIC_LOOSE_PIECES"
+  | "SEAM_TABS_OMITTED"
+  | "PAINT_WINDOWS_OMITTED"
+  | "AVIATION_DATA_PARTIAL"
+  | "AVIATION_DATA_UNAVAILABLE"
+  | "AVIATION_NOT_COVERED"
+  | "AVIATION_SYMBOLS_FILLED"
+  | "WATER_INSERT_SKIPPED"
+  | "WATER_INSERT_PROUD"
+  | "WATER_INSERT_OVERSIZE";
+
 export interface GeometryWarning {
-  code: "TERRAIN_SOURCE_FALLBACK" | "ELEVATION_REPAIRED" | "LOW_RELIEF" | "EMPTY_LAYER" | "SMALL_FEATURES" | "DATA_FALLBACK" | "VECTOR_DATA_PARTIAL" | "VECTOR_DATA_UNAVAILABLE" | "LAKE_DATA_UNAVAILABLE" | "BATHYMETRY_FALLBACK" | "LAKE_DEPTH_PREDICTED" | "LAKE_DEPTH_FROM_CHART" | "LABEL_OMITTED" | "WATER_DEPTH_CLAMPED" | "WORK_AREA_OVERSIZE" | "WORK_AREA_UNSPLIT" | "GRAPHIC_LOOSE_PIECES" | "SEAM_TABS_OMITTED" | "PAINT_WINDOWS_OMITTED" | "AVIATION_DATA_PARTIAL" | "AVIATION_DATA_UNAVAILABLE" | "AVIATION_NOT_COVERED" | "AVIATION_SYMBOLS_FILLED" | "WATER_INSERT_SKIPPED" | "WATER_INSERT_PROUD" | "WATER_INSERT_OVERSIZE";
+  code: GeometryWarningCode;
   message: string;
   action?: "fit-lake-depth";
 }
