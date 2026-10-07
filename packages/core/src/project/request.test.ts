@@ -159,6 +159,12 @@ describe("describing a project", () => {
     expect(lat).toBeCloseTo(originalLat, 3);
     expect(isMercatorBounds(boundsForProject(again))).toBe(true);
   });
+
+  it("describes a point-only project at the pole as a request it accepts again", () => {
+    const polar: ProjectConfigV1 = { ...DEFAULT_PROJECT, location: { lat: 89, lon: 0, label: "Pole", zoom: 11 } };
+    const again = expandProjectRequest(parsed(describeProject(polar)));
+    expect(isMercatorBounds(boundsForProject(again))).toBe(true);
+  });
 });
 
 describe("request schema", () => {

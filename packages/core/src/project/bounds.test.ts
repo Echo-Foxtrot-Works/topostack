@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT } from "../types.js";
-import { boundsAround, boundsForProject, coverBounds, fitCutBounds, isMercatorBounds, latToWorldY, worldYToLat, zoomForBounds } from "./bounds.js";
+import { boundsAround, boundsForProject, coverBounds, fitCutBounds, isMercatorBounds, latToWorldY, MERCATOR_MAX_LATITUDE, worldYToLat, zoomForBounds } from "./bounds.js";
 
 const mercatorAspect = (bounds: { west: number; east: number; south: number; north: number }) =>
   ((bounds.east - bounds.west) * Math.PI / 180) / (Math.asinh(Math.tan(bounds.north * Math.PI / 180)) - Math.asinh(Math.tan(bounds.south * Math.PI / 180)));
@@ -60,9 +60,9 @@ describe("project bounds", () => {
   });
 
   it("keeps a default window near the pole, or at an extreme zoom, inside the map", () => {
-    // The window slides down to stop at the top edge of the world.
+    // The window slides down to stop where the tiles end.
     const polar = boundsForProject({ ...DEFAULT_PROJECT, location: { lat: 89, lon: 0, label: "Pole", zoom: 11 } });
-    expect(polar.north).toBeCloseTo(worldYToLat(0, 11), 9);
+    expect(polar.north).toBe(MERCATOR_MAX_LATITUDE);
     expect(polar.south).toBeLessThan(polar.north);
     const world = boundsForProject({ ...DEFAULT_PROJECT, location: { lat: 0, lon: 0, label: "World", zoom: -4 } });
     expect(isMercatorBounds(world)).toBe(true);
@@ -70,12 +70,13 @@ describe("project bounds", () => {
     expect(boundsForProject({ ...DEFAULT_PROJECT, location: { ...DEFAULT_PROJECT.location, zoom: 40 } })).toEqual(boundsForProject({ ...DEFAULT_PROJECT, location: { ...DEFAULT_PROJECT.location, zoom: 15 } }));
   });
 
-  // Bug: the top of the Web Mercator world is 85.05112878°, but
-  // MERCATOR_MAX_LATITUDE is rounded down to 85.0511, so a point-only project
-  // near the pole gets bounds that isMercatorBounds (and expandProjectRequest
-  // after describeProject) rejects.
-  it.skip("frames a polar point-only project inside bounds the tiles can serve", () => {
-    expect(isMercatorBounds(boundsForProject({ ...DEFAULT_PROJECT, location: { lat: 89, lon: 0, label: "Pole", zoom: 11 } }))).toBe(true);
+  // The world's top row is 85.05112878°, but the tiles, and isMercatorBounds, stop at 85.0511°.
+  it("frames a polar point-only project inside bounds the tiles can serve", () => {
+    for (const lat of [89, 85.0511, -85.0511, -89]) for (const zoom of [0, 1, 11, 15]) for (const [widthMm, heightMm] of [[300, 200], [200, 300], [250, 250]] as const) {
+      const bounds = boundsForProject({ ...DEFAULT_PROJECT, widthMm, heightMm, location: { lat, lon: 0, label: "Pole", zoom } });
+      expect(isMercatorBounds(bounds)).toBe(true);
+      expect(mercatorAspect(bounds)).toBeCloseTo(widthMm / heightMm, 9);
+    }
   });
 
   it("recognises bounds the tiles can serve", () => {
