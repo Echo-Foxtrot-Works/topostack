@@ -71,6 +71,65 @@ export function clipPolygons(subject: Polygon2D[], clip: Polygon2D[], operation:
 }
 
 /**
+ * The share of `polygons` inside an axis-aligned window, cut ring by ring in
+ * one linear pass (Sutherland–Hodgman), for a `clipPolygons` call that only
+ * needs the neighbourhood of something small: a boolean then pays for the
+ * few edges near it instead of every edge of a sheet-sized ring.
+ *
+ * Only for use as `clipPolygons` input. A ring that leaves and re-enters the
+ * window comes back with zero-width spurs along the window's edge; Clipper's
+ * non-zero fill reads those as nothing, so the region is exact.
+ */
+export function windowPolygons(polygons: Polygon2D[], window: { minX: number; minY: number; maxX: number; maxY: number }): Polygon2D[] {
+  const overlaps = (ring: Point2D[]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const point of ring) {
+      if (point.x < minX) minX = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.y > maxY) maxY = point.y;
+    }
+    if (maxX < window.minX || minX > window.maxX || maxY < window.minY || minY > window.maxY) return "outside";
+    return minX >= window.minX && maxX <= window.maxX && minY >= window.minY && maxY <= window.maxY ? "inside" : "crossing";
+  };
+  const cut = (ring: Point2D[]): Point2D[] => {
+    const edges: Array<[(point: Point2D) => boolean, (from: Point2D, to: Point2D) => Point2D]> = [
+      [(point) => point.x >= window.minX, (from, to) => ({ x: window.minX, y: from.y + ((to.y - from.y) * (window.minX - from.x)) / (to.x - from.x) })],
+      [(point) => point.x <= window.maxX, (from, to) => ({ x: window.maxX, y: from.y + ((to.y - from.y) * (window.maxX - from.x)) / (to.x - from.x) })],
+      [(point) => point.y >= window.minY, (from, to) => ({ x: from.x + ((to.x - from.x) * (window.minY - from.y)) / (to.y - from.y), y: window.minY })],
+      [(point) => point.y <= window.maxY, (from, to) => ({ x: from.x + ((to.x - from.x) * (window.maxY - from.y)) / (to.y - from.y), y: window.maxY })],
+    ];
+    let points = samePoint(ring[0]!, ring.at(-1)!) ? ring.slice(0, -1) : ring;
+    for (const [keeps, crossing] of edges) {
+      const next: Point2D[] = [];
+      points.forEach((point, index) => {
+        const previous = points[(index + points.length - 1) % points.length]!;
+        if (keeps(point)) {
+          if (!keeps(previous)) next.push(crossing(previous, point));
+          next.push(point);
+        } else if (keeps(previous)) next.push(crossing(previous, point));
+      });
+      points = next;
+      if (!points.length) return [];
+    }
+    return points;
+  };
+  return polygons.flatMap((polygon) => {
+    const where = overlaps(polygon.outer);
+    if (where === "outside") return [];
+    const outer = where === "inside" ? polygon.outer : cut(polygon.outer);
+    if (outer.length < 3) return [];
+    const holes = polygon.holes.flatMap((hole) => {
+      const at = overlaps(hole);
+      if (at === "outside") return [];
+      const kept = at === "inside" ? hole : cut(hole);
+      return kept.length >= 3 ? [kept] : [];
+    });
+    return [{ outer, holes }];
+  });
+}
+
+/**
  * The region that closed rings enclose under the non-zero rule, as outers with
  * holes. Winding is taken as drawn, so a font glyph's counter-wound contours
  * become holes and its overlapping strokes merge.

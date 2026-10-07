@@ -1,8 +1,10 @@
+import packageJson from "../../package.json";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { edgeCacheKey, matchEdge, putEdge, teeToEdge } from "../edge-cache";
-import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
+import { hex } from "../hex";
 
 const MAX_TERRAIN_BYTES = 2_000_000;
 // R2 keys are versioned; public tile URLs are mutable across deployments.
@@ -75,7 +77,7 @@ function singleEtag(ifNoneMatch: string | null): string | null {
 // advertise the same validator its cached copy will carry.
 async function r2Etag(body: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest("MD5", body);
-  return `"${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}"`;
+  return `"${hex(digest)}"`;
 }
 
 function readTerrainCache(request: Request, env: Env, key: string): Promise<R2Object | R2ObjectBody | null> {
@@ -87,7 +89,7 @@ async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promis
   let upstream: Response;
   try {
     upstream = await fetch(`${env.TERRAIN_ORIGIN}/${tile.z}/${tile.x}/${tile.y}.png`, {
-      headers: { "user-agent": "TopoStack/0.1 (terrain fabrication generator)" },
+      headers: { "user-agent": `TopoStack/${packageJson.version} (terrain fabrication generator)` },
       signal: upstreamSignal(request),
     });
   } catch (error) {
@@ -95,7 +97,7 @@ async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promis
   }
   if (upstream.status !== 200 || !upstream.body) {
     await upstream.body?.cancel();
-    return json({ error: "Terrain tile unavailable", status: upstream.status }, { status: 502 });
+    return upstreamRejected(upstream, "Terrain origin", "Terrain tile unavailable");
   }
   const contentLength = Number(upstream.headers.get("content-length") ?? 0);
   const contentType = upstream.headers.get("content-type") ?? "";

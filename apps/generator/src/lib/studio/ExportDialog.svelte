@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { Archive, ArrowUpRight, Download, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, SprayCan, X } from "@lucide/svelte";
+  import { Archive, ArrowUpRight, Download, Droplets, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, SprayCan, X } from "@lucide/svelte";
   import { IconButton } from "@loidolt/theme-svelte";
   import type { ProjectConfigV1 } from "@topostack/core";
   import type { Snippet } from "svelte";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { donationUrl } from "$lib/site/support";
 
-  let { open, project, summary, panelCount, nested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout }: {
+  let { open, project, summary, panelCount, nested = false, acrylicCount = 0, acrylicNested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout }: {
     open: boolean;
     project: ProjectConfigV1;
     /** The same counts the top bar shows, e.g. "12 layers · 9 cut panels". */
@@ -14,6 +14,9 @@
     panelCount: number;
     /** The export lays pieces out on nested stock sheets, so it counts sheets, not panels. */
     nested?: boolean;
+    /** Acrylic water insert panels, or acrylic stock sheets when `acrylicNested`; 0 without inserts. */
+    acrylicCount?: number;
+    acrylicNested?: boolean;
     blockedReason: string | undefined;
     preparing: boolean;
     phase: string;
@@ -27,7 +30,8 @@
   let dialog: HTMLDialogElement;
 
   const layered = $derived(project.outputMode === "stack");
-  const panels = $derived(`${panelCount} ${nested ? (panelCount === 1 ? "nested sheet" : "nested sheets") : panelCount === 1 ? "panel" : "panels"}`);
+  const acrylic = $derived(acrylicCount ? ` + ${acrylicCount} acrylic ${acrylicNested ? (acrylicCount === 1 ? "sheet" : "sheets") : acrylicCount === 1 ? "panel" : "panels"}` : "");
+  const panels = $derived(`${panelCount} ${nested ? (panelCount === 1 ? "nested sheet" : "nested sheets") : panelCount === 1 ? "panel" : "panels"}${acrylic}`);
   const heroDescription = $derived(layered
     ? `Everything to cut and build: ${panels}, assembly guide, README, settings, and source credits.`
     : "The engraving SVG with README, settings, and source credits.");
@@ -40,6 +44,7 @@
       { id: "panels", label: "Cut panels", format: "ZIP", icon: Layers3, hint: "One SVG per sheet: cut and engrave together." },
       { id: "engravings", label: "Engraving panels", format: "ZIP", icon: PenTool, hint: "Engraving-only copies, to engrave as a separate job." },
       { id: "paint", label: "Paint templates", format: "ZIP", icon: SprayCan, unavailable: !project.paintTemplates.length, hint: project.paintTemplates.length ? "Paper stencils for painting water." : "Turn on Water paint templates in Fabrication settings to add these." },
+      { id: "acrylic", label: "Acrylic inserts", format: "ZIP", icon: Droplets, unavailable: !project.waterInserts, hint: project.waterInserts ? "Water inserts to cut from acrylic, as their own job." : "Turn on Acrylic water inserts in Fabrication settings to add these." },
       { id: "assembly", label: "Assembly guide", format: "HTML", icon: ListOrdered, hint: "Step-by-step booklet to print or follow on screen." },
     ] : []),
   ] as { id: DownloadOption; label: string; format: string; icon: typeof Archive; hint: string; unavailable?: boolean }[]);

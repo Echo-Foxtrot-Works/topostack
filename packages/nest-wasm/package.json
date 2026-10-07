@@ -11,7 +11,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/build.mjs --check && vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "node scripts/build.mjs --check && vitest run --coverage"
   },
   "sideEffects": false,
   "devDependencies": {

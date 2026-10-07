@@ -1,6 +1,6 @@
 # scripts
 
-Operational tooling, grouped by purpose. `lib/` holds shared helpers, `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
+Operational tooling, grouped by purpose. `lib/` holds shared helpers (among them `pinned-download.mjs` for sha256-pinned source files, `hash.mjs`, and `main-module.mjs` for scripts that are also libraries), `test/` the Node tests (`npm run test:scripts`), and `data/` the source catalogs that the app, the Worker, and these scripts all read.
 
 Every script below says how it is run. "manual" means no npm script or workflow invokes it; the linked runbook does.
 
@@ -58,6 +58,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 | `build-survey-bathymetry.py` | Build surveyed lake-floor archives from registered survey sources | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `chart_records.py` | Turn the published depth chart records in `scripts/data/depth-charts/` into the `community-charts-v1` archive's grids and source pins (library for build-survey-bathymetry.py) | manual: [depth-chart-tracing.md](../docs/depth-chart-tracing.md) |
 | `make-chart-trace-fixture.py` | Regenerate `packages/chart-trace/src/fixtures/tin-parity.json` from `survey_regions.contour_grid`, the parity target for the TypeScript TIN grid | manual, after changing `contour_grid`: [depth-chart-tracing.md](../docs/depth-chart-tracing.md) |
+| `pinned.py` | `download()` (atomic, through a `.part` file) and `file_sha256()` for the builders' pinned sources (library for build-faa-aviation.py, build-noaa-bathymetry.py, tile_writer.py, nbs_inventory.py) | manual |
 | `discover-terrain.py` | Discover and register candidate terrain sources for a region | manual: [terrain-coverage.md](../docs/terrain-coverage.md), [terrain-selection.md](../docs/terrain-selection.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |
 | `nbs_inventory.py` | Inventory NOAA National Bathymetric Source tiles: record the scheme digest and each tile's published SHA-256, classify cells as survey, chart-derived or generalized fill from the attribute tables, and optionally match lake polygons and estimate each lake's surveyed share (`--lakes`, `--measure`) | manual: [noaa-lake-integration-plan.md](../docs/noaa-lake-integration-plan.md) |
 | `select-enc-lakes.py` | Choose the chart-only lakes to build from the chart coverage data, refuse fixed-pool datums, assign regional datasets, and pin every ENC cell by edition and SHA-256 in `scripts/data/noaa-enc-sources.json` | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md#noaa-nautical-chart-lakes) |
@@ -87,6 +88,7 @@ Upload archives and catalogs to R2 and manage their lifecycle. Need Cloudflare c
 | `manage-cache-lifecycle.mjs` | Audit and apply the R2 cache lifecycle rules, with rollback receipts | `npm run data:cache-audit` |
 | `provision-aviation-data.mjs` | Verify the FAA aviation archive against its registration and upload it to R2 | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `provision-lake-data.mjs` | Upload registered lake bathymetry and additional terrain archives to R2 | manual: [hrdem-terrain.md](../docs/hrdem-terrain.md), [data-layer-review.md](../docs/data-layer-review.md), [lake-bathymetry.md](../docs/lake-bathymetry.md), [data-and-fabrication.md](../docs/data-and-fabrication.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md), [data-layer-operations.md](../docs/data-layer-operations.md), [noaa-bathymetry.md](../docs/noaa-bathymetry.md), [development.md](../docs/development.md) |
+| `provision-lake-previews.mjs` | Publish rendered lake-page depth previews: `--prepare` writes the pin for review, `--provision` uploads to the development bucket and `--provision --prod` to production, both before the pin merges | manual: [seo-operations.md](../docs/seo-operations.md) |
 | `provision-lake-outlines.mjs` | Upload a lake-outline release to R2 and promote it | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `provision-vector-data.mjs` | Upload the pinned Protomaps OSM archive to R2 | `npm run data:provision` |
 | `prune-archives.mjs` | Delete superseded archive objects that no release points at | `npm run data:prune-archives` |
@@ -107,6 +109,7 @@ Check deployed services, SEO output, and data quality. CI and the production mon
 | `verify-lake-outlines.mjs` | Compare provider outlines against real survey archives in a browser | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `verify-lake-search.mjs` | Browser check that every surveyed lake is findable in studio search | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `verify-noaa-live.mjs` | Integration check of NOAA depth data against a local app and Worker | manual: [noaa-bathymetry.md](../docs/noaa-bathymetry.md) |
+| `seo-pages.mjs` | Library, not run directly: every indexable page and what the SEO verifiers expect of it | imported by `verify-seo.mjs` and `verify-seo-http.mjs` |
 | `verify-seo-http.mjs` | Check a deployed site's SEO responses (headers, sitemap, robots, redirects) | CI/workflows |
 | `verify-seo.mjs` | Check the built site's metadata, sitemap, and structured data | CI/workflows |
 | `verify-surveys-live.mjs` | Integration check of survey archives against a local app and Worker | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
@@ -124,7 +127,7 @@ The changelog, version consistency, and the Atomm marketplace bundle. See [chang
 | `package-atomm-listing.mjs` | Package the Atomm marketplace listing (copy and cover assets) | `npm run package:atomm-listing` |
 | `package-atomm.mjs` | Build and package the Atomm static artifact as a versioned ZIP | `npm run package:atomm` |
 | `publish-atomm-release.mjs` | Tag, draft, upload, and publish the Atomm GitHub release for a version, with the changelog since the previous one | CI/workflows (automatically after production CI) |
-| `validate-submission-env.mjs` | Fail-closed gate for Atomm packaging: the embedded map API URL must be production | manual |
+| `validate-submission-env.mjs` | Fail-closed gate for Atomm packaging: the embedded map API URL must be production | run by `package-atomm.mjs`; also manual |
 | `versions.mjs` | Check or bump the one release version across workspaces, the lockfile, and the Atomm manifest | `npm run version:check`; `npm run version:main`; CI/workflows |
 - [`verify/chart-accuracy/`](verify/chart-accuracy/README.md): opt-in, pinned USGS charts and independent QA soundings; 20 raster variants, spatial error scoring, appearance diagnostics, and reproducible figures.
 

@@ -452,6 +452,18 @@ export interface ProjectConfigV1 {
    * every project that never opened the setting.
    */
   sheetNesting?: SheetNestSettingsV1;
+  /**
+   * Cuts each lake's shoreline out of the sheet that carries its waterline and
+   * adds a fitted acrylic insert in its place. Layered output with water depth
+   * only. Absent in every project that never turned it on, which keeps their
+   * fingerprints.
+   */
+  waterInserts?: WaterInsertSettingsV1;
+  /**
+   * Acrylic stock sheets for the inserts. An export setting like
+   * `sheetNesting`: the fingerprint ignores it.
+   */
+  waterInsertSheetNesting?: SheetNestSettingsV1;
   showElevationLabels: boolean;
   elevationLabelPosition: Point2D;
   textStyle: TextStyleV1;
@@ -487,6 +499,26 @@ export interface ProjectConfigV1 {
   /** User-authored geographic paths, independent of fetched map-detail toggles. */
   customLines: CustomLineFeatureV1[];
   explodedPreview: number;
+}
+
+/** The acrylic a project's water inserts are cut from, as the maker set it. */
+export interface WaterInsertSettingsV1 {
+  /** Acrylic sheet thickness; absent follows `materialThicknessMm`. */
+  thicknessMm?: number;
+  /** Laser kerf in acrylic; absent follows `laserKerfMm`. */
+  kerfMm?: number;
+  /** Gap left between the insert and the wood opening on each side. */
+  fitClearanceMm: number;
+  /** Lakes that stay wood, by `waterInsertLakeKey`. */
+  excludedLakeIds: string[];
+}
+
+/**
+ * The key a project uses to opt a lake out of acrylic inserts: its HydroLAKES
+ * id, else its lasting `lakeKey`, else (a lake no source names) its surface id.
+ */
+export function waterInsertLakeKey(surface: { id: string; hylakId?: number; lakeKey?: string }): string {
+  return surface.hylakId === undefined ? surface.lakeKey ?? surface.id : String(surface.hylakId);
 }
 
 export interface ElevationGrid {
@@ -551,6 +583,13 @@ export interface WaterAreaV1 {
   outlineSource?: "provider" | "osm";
   outlineSourceId?: string;
   surveyId?: string;
+  /**
+   * A lasting name for a lake HydroLAKES does not know, where `id` is not
+   * one: a map outline is numbered by its place in the tile. Set to
+   * `outline:<chart id>` once a traced chart names the lake (see
+   * OUTLINE_CHART_KEY_PREFIX).
+   */
+  lakeKey?: string;
   /** HydroLAKES `Elevation`; the DEM median inside the polygon is the fallback. */
   surfaceElevationM?: number;
   /** GLOBathy `Dmax_use_m`. */
@@ -607,7 +646,15 @@ export interface WaterSurfaceIR {
   kind: WaterKind;
   name?: string;
   hylakId?: number;
+  /** The source area's `lakeKey`, when it has one. */
+  lakeKey?: string;
   polygons: Polygon2D[];
+  /**
+   * The water still open once acrylic inserts filled part of the lake; absent
+   * when no insert touches it, empty when inserts cover it all. The previews
+   * float the surface over these, the acrylic standing in for the rest.
+   */
+  openPolygons?: Polygon2D[];
   surfaceElevationM: number;
   bedElevationM: number;
   /** Uniform compression applied after the requested depth multiplier; present only when fitted. */
@@ -799,7 +846,8 @@ export interface FabricationPanelV1 {
  * Which rotations sheet nesting may give a part: none, a half turn, quarter
  * turns, or any angle. Parts are never mirrored, since engraving is one-sided.
  */
-export type SheetNestRotation = "none" | "half" | "quarter" | "free";
+export const SHEET_NEST_ROTATIONS = ["none", "half", "quarter", "free"] as const;
+export type SheetNestRotation = typeof SHEET_NEST_ROTATIONS[number];
 
 /** Stock sheets and packing effort for sheet nesting, as the maker set them. */
 export interface SheetNestSettingsV1 {
@@ -884,8 +932,35 @@ export interface ResolvedSheetNestSettings {
   seed: number;
 }
 
+/**
+ * One acrylic piece that fills a lake's opening in the sheet carrying its
+ * waterline. `polygons` is the nominal opening the wood was cut to, islands
+ * as holes; the export shrinks it by the fit clearance and compensates the
+ * acrylic kerf.
+ */
+export interface WaterInsertIR {
+  /** `W1`, `W2`... ordered by layer, then by area, largest first. */
+  id: string;
+  lakeKey: string;
+  surfaceId: string;
+  name?: string;
+  /** The wood layer the insert replaces; it rests on a ledge of the layer below. */
+  layerIndex: number;
+  polygons: Polygon2D[];
+  /** Map detail that crosses the water, engraved on the acrylic's top face. */
+  markings: OperationPath[];
+}
+
+export interface WaterInsertMaterialIR {
+  thicknessMm: number;
+  kerfMm: number;
+  fitClearanceMm: number;
+  /** Width of the wood rim added to the layer below each opening. */
+  ledgeMm: number;
+}
+
 export interface GeometryWarning {
-  code: "TERRAIN_SOURCE_FALLBACK" | "ELEVATION_REPAIRED" | "LOW_RELIEF" | "EMPTY_LAYER" | "SMALL_FEATURES" | "DATA_FALLBACK" | "VECTOR_DATA_PARTIAL" | "VECTOR_DATA_UNAVAILABLE" | "LAKE_DATA_UNAVAILABLE" | "BATHYMETRY_FALLBACK" | "LAKE_DEPTH_PREDICTED" | "LAKE_DEPTH_FROM_CHART" | "LABEL_OMITTED" | "WATER_DEPTH_CLAMPED" | "WORK_AREA_OVERSIZE" | "WORK_AREA_UNSPLIT" | "GRAPHIC_LOOSE_PIECES" | "SEAM_TABS_OMITTED" | "PAINT_WINDOWS_OMITTED" | "AVIATION_DATA_PARTIAL" | "AVIATION_DATA_UNAVAILABLE" | "AVIATION_NOT_COVERED" | "AVIATION_SYMBOLS_FILLED";
+  code: "TERRAIN_SOURCE_FALLBACK" | "ELEVATION_REPAIRED" | "LOW_RELIEF" | "EMPTY_LAYER" | "SMALL_FEATURES" | "DATA_FALLBACK" | "VECTOR_DATA_PARTIAL" | "VECTOR_DATA_UNAVAILABLE" | "LAKE_DATA_UNAVAILABLE" | "BATHYMETRY_FALLBACK" | "LAKE_DEPTH_PREDICTED" | "LAKE_DEPTH_FROM_CHART" | "LABEL_OMITTED" | "WATER_DEPTH_CLAMPED" | "WORK_AREA_OVERSIZE" | "WORK_AREA_UNSPLIT" | "GRAPHIC_LOOSE_PIECES" | "SEAM_TABS_OMITTED" | "PAINT_WINDOWS_OMITTED" | "AVIATION_DATA_PARTIAL" | "AVIATION_DATA_UNAVAILABLE" | "AVIATION_NOT_COVERED" | "AVIATION_SYMBOLS_FILLED" | "WATER_INSERT_SKIPPED" | "WATER_INSERT_PROUD" | "WATER_INSERT_OVERSIZE";
   message: string;
   action?: "fit-lake-depth";
 }
@@ -930,6 +1005,10 @@ export interface GeometryIRV1 {
   fabricationNests: FabricationNest[];
   /** Paint stencil windows per piece; optional so IR recorded before it still renders. */
   paintRegions?: PaintRegionIR[];
+  /** Acrylic pieces that replace lake water on its surface sheet; present only when the project asks for them. */
+  waterInserts?: WaterInsertIR[];
+  /** The resolved acrylic the inserts are cut from; present with `waterInserts`. */
+  waterInsertMaterial?: WaterInsertMaterialIR;
   /** Present only when a machine work area split the layers. */
   splitPlan?: SeamPlanV1;
   warnings: GeometryWarning[];

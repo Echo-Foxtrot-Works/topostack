@@ -50,7 +50,7 @@ function cellName(column: number, row: number): string {
   return `${String.fromCharCode(65 + column)}${row + 1}`;
 }
 
-function panelBounds(ir: GeometryIRV1, layerIndexes: number[], included?: Map<number, Set<number>>): Pick<FabricationPanelV1, "minX" | "minY" | "maxX" | "maxY"> {
+export function panelBounds(ir: GeometryIRV1, layerIndexes: number[], included?: Map<number, Set<number>>): Pick<FabricationPanelV1, "minX" | "minY" | "maxX" | "maxY"> {
   if (!included) {
     // Unsplit panels keep the whole-crop canvas they have always had.
     return { minX: -(ir.widthMm + ir.laserKerfMm) / 2, minY: -(ir.heightMm + ir.laserKerfMm) / 2, maxX: (ir.widthMm + ir.laserKerfMm) / 2, maxY: (ir.heightMm + ir.laserKerfMm) / 2 };

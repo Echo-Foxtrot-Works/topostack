@@ -65,6 +65,8 @@ export interface StudioContext {
   readonly exportReady: boolean;
   /** Sheet nesting for the export: search progress, the layout found, and whether to use it. */
   readonly sheetNesting: SheetNesting;
+  /** Layout of the acrylic water inserts on their own stock sheets. */
+  readonly acrylicSheetNesting: SheetNesting;
   /** Layer, panel and height counts (or contour count) for the preview readout. */
   readonly outputSummary: readonly string[];
   readonly booted: boolean;

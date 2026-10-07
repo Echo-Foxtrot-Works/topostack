@@ -1,7 +1,7 @@
 import { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat, type GeoBounds, type Point2D } from "@topostack/core";
 
 /** Web-mercator tile arithmetic shared by terrain, vector, lake, and survey loaders. The projection itself lives in core. */
-export { latToWorldY, lonToWorldX, TILE_SIZE, worldSize, worldXToLon, worldYToLat } from "@topostack/core";
+export { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat } from "@topostack/core";
 export const MAX_DATA_TILES = 24;
 
 /** The whole zoom the data loaders work at: the map's zoom is fractional, the tile pyramids stop at 15. */
@@ -30,7 +30,7 @@ export function artworkToLonLat(bounds: GeoBounds, widthMm: number, heightMm: nu
 export interface DataTile { x: number; worldX: number; y: number; z: number }
 export interface TileWindow { zoom: number; westX: number; eastX: number; northY: number; southY: number; tiles: DataTile[] }
 
-export function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
+function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
   const westX = lonToWorldX(bounds.west, zoom);
   const eastX = lonToWorldX(bounds.east, zoom);
   const northY = latToWorldY(bounds.north, zoom);
@@ -70,4 +70,13 @@ export function tilePointProjector(window: TileWindow, widthMm: number, heightMm
     x: (((tile.worldX + point.x / extent) * TILE_SIZE - window.westX) / (window.eastX - window.westX) - 0.5) * widthMm,
     y: (((tile.y + point.y / extent) * TILE_SIZE - window.northY) / (window.southY - window.northY) - 0.5) * heightMm,
   });
+}
+
+/**
+ * The tiles covering `bounds` in a vector archive at `zoom`, clamped to the
+ * archive's zoom range, and the projector from those tiles to model millimetres.
+ */
+export function archiveTileWindow(header: { minZoom: number; maxZoom: number }, bounds: GeoBounds, zoom: number, size: { widthMm: number; heightMm: number }): { window: TileWindow; projectPoint: ReturnType<typeof tilePointProjector> } {
+  const window = fittingTileWindow(bounds, Math.max(header.minZoom, Math.min(header.maxZoom, zoom)), header.minZoom);
+  return { window, projectPoint: tilePointProjector(window, size.widthMm, size.heightMm) };
 }

@@ -42,7 +42,8 @@ export default defineConfig({
   webServer: {
     // Build in the dedicated "e2e" Vite mode: the deterministic terrain fixture
     // in data-provider.ts requires both VITE_E2E=1 and a non-production mode.
-    command: "npm run build:e2e -w @topostack/generator && npm run preview -w @topostack/generator -- --host 127.0.0.1 --port 4173",
+    // CI builds once (the e2e-build job) and sets E2E_PREBUILT on every shard.
+    command: `${process.env.E2E_PREBUILT === "1" ? "" : "npm run build:e2e -w @topostack/generator && "}npm run preview -w @topostack/generator -- --host 127.0.0.1 --port 4173`,
     url: "http://127.0.0.1:4173",
     env: { VITE_E2E: "1", VITE_SITE_ENV: "production" },
     reuseExistingServer: !process.env.CI,

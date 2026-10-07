@@ -1,5 +1,7 @@
 # Depth charts: first release implementation plan
 
+> **Status:** shipped in 0.5.0 ([#89](https://github.com/Echo-Foxtrot-Works/topostack/pull/89)). Kept as the design record; the maintained reference is [depth-chart-tracing.md](../depth-chart-tracing.md).
+
 The September 23 accuracy trial rejected unattended raster-to-depth generation. The first release will support flat, georeferenced charts of a single lake without islands, with complete, non-crossing closed depth contours. Photos with perspective, incomplete charts, and island/saddle topology are outside this initial profile.
 
 1. Separate contour preparation from depth generation. Preserve vector PDF paths when available; raster extraction proposes geometry only. Do not silently infer the production contour values.

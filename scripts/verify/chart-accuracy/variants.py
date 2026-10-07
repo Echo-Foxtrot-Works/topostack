@@ -1,4 +1,7 @@
-import json,pathlib,math,io
+import json
+import pathlib
+import math
+import io
 from PIL import Image,ImageFilter
 root=pathlib.Path('.topostack/chart-accuracy');cases=[]
 for c in json.loads((root/'configs.json').read_text()):

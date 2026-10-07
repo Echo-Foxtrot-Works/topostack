@@ -1,6 +1,6 @@
 # Geometry generation performance
 
-`generateGeometry(config, source, { onStage })` optionally reports elapsed milliseconds for preparation, water carving, ladder planning, contours, splitting, nesting, fabrication indexes, feature routing, alignment, assembly labels, elevation labels, and final annotations. Timings are diagnostic only and never enter the geometry IR or fingerprint. They exclude source downloads and preview rendering. Asynchronous stage timings include helper setup and worker messages.
+`generateGeometry(config, source, { onStage })` optionally reports elapsed milliseconds for preparation, water carving, ladder planning, contours, acrylic water inserts, splitting, nesting, fabrication indexes, feature routing, alignment, assembly labels, elevation labels, and final annotations. Timings are diagnostic only and never enter the geometry IR or fingerprint. They exclude source downloads and preview rendering. Asynchronous stage timings include helper setup and worker messages.
 
 `createGeometryGenerator()` returns the same synchronous interface with one worker-local terrain cache. The browser coordinator uses the equivalent asynchronous session; its main-thread fallback uses this synchronous factory. The cache holds only the most recent source/config combination. Source bundles are immutable snapshots: replace the source object when changing elevation, bathymetry, vectors, or metadata, as already required by the worker's source-identity protocol.
 

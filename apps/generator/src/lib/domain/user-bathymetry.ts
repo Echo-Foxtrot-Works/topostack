@@ -80,7 +80,7 @@ const overlaps = (bounds: GeoBounds, grid: UserChartBathymetryV1["grid"]): boole
   bounds.east > grid.bounds.west && bounds.west < grid.bounds.east && bounds.north > grid.bounds.south && bounds.south < grid.bounds.north;
 
 /** A chart keyed by outline takes a lake only when their outlines overlap at least this much. */
-export const OUTLINE_MATCH_MIN_IOU = 0.5;
+const OUTLINE_MATCH_MIN_IOU = 0.5;
 
 type LonLat = [number, number];
 
@@ -203,6 +203,8 @@ export async function applyUserCharts(
     ).map(rings => ({ outer: rings[0]!.map(([x,y]) => ({x,y})), holes: rings.slice(1).map(ring => ring.map(([x,y]) => ({x,y}))) })) : [area.polygon];
     areas = areas.flatMap(item => item.id === area.id ? polygons.map((polygon, index) => ({
       ...item, id: index ? `${item.id}-chart-${index}` : item.id, polygon,
+      // A map outline's id is only its place in the tile; the chart names the lake for good.
+      ...(item.hylakId === undefined ? { lakeKey: `${OUTLINE_CHART_KEY_PREFIX}${loaded.chart.id}` } : {}),
       bathymetryOrigin: "chart" as const, bathymetry: { width: grid.width, height: grid.height, depthsM: samples!, sampleSpacingM: spacingM },
     })) : [item]);
     const version = `userchart-${loaded.contentHash.slice(0, 8)}`;

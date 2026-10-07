@@ -5,7 +5,6 @@ database, then converts and verifies a PMTiles archive with a receipt.
 Has no import-time side effects so either builder can import it directly.
 """
 from contextlib import closing
-import hashlib
 import io
 import json
 import math
@@ -22,13 +21,12 @@ from rasterio.transform import from_bounds
 from rasterio.warp import reproject, Resampling, transform_bounds
 
 from terrain_release import atomic_write
+from pinned import file_sha256
 
 WORLD = 20037508.342789244
 
 
-def digest(path):
-    with path.open('rb') as f:
-        return hashlib.file_digest(f, 'sha256').hexdigest()
+digest = file_sha256
 
 
 def encode(values, elevation=False):

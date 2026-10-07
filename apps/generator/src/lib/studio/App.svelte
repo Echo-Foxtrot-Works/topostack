@@ -36,7 +36,7 @@
   import { placementMarginMm } from "$lib/studio/placement/viewport";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
-  import { activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
+  import { acrylicPanelCount as findAcrylicPanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
   import { retryingLoader } from "$lib/studio/lazy-load";
   import { sameMapArea } from "$lib/studio/project-diff";
   import { pointsToPath } from "$lib/studio/svg-path";
@@ -128,6 +128,7 @@
   let resetOpen = $state(false);
   const exportNotice = new ExportNotice((message) => { status = message; });
   const sheetNesting = new SheetNesting();
+  const acrylicSheetNesting = SheetNesting.forAcrylic();
   const automaticNesting = new AutomaticNesting();
   setContext("atomm-nesting", automaticNesting);
   $effect(() => { if (embeddedInPlatform && previewBusy) automaticNesting.cancel(); });
@@ -147,6 +148,19 @@
       // A layout saved before a reload comes back once the same design is generated again.
       // Only projects that ever used sheet nesting pay for loading the planner.
       if (restore) void sheetNesting.restore(nestGeometry, project);
+    });
+  });
+  // The acrylic inserts' own stock sheets follow the same rules as the wood's.
+  const acrylicNestSettingsKey = $derived(JSON.stringify([project.waterInsertSheetNesting ?? null, project.workAreaWidthMm, project.workAreaHeightMm]));
+  const usesAcrylicSheetNesting = $derived(Boolean(project.waterInsertSheetNesting));
+  $effect(() => {
+    if (embeddedInPlatform) return;
+    const nestGeometry = geometry;
+    void acrylicNestSettingsKey;
+    const restore = usesAcrylicSheetNesting && nestGeometry.sourceKind === "real" && Boolean(nestGeometry.waterInserts?.length);
+    untrack(() => {
+      void acrylicSheetNesting.refresh(nestGeometry, project);
+      if (restore) void acrylicSheetNesting.restore(nestGeometry, project);
     });
   });
   const exportPhase = $derived(exportNotice.phase);
@@ -335,6 +349,7 @@
   const previewBusyLabel = $derived(generationState === "loading" ? "Building your terrain" : terrainRefreshing ? "Loading terrain for this area" : "Refreshing preview");
   const contourInterval = $derived(geometry.landReliefM / (project.engravingContourCount + 1));
   const fabricationPanelCount = $derived(sheetNesting.exportPlan?.sheets.length ?? geometry.layers.length - geometry.fabricationNests.length);
+  const acrylicPanelTotal = $derived(acrylicSheetNesting.exportPlan?.sheets.length ?? findAcrylicPanelCount(geometry, project));
   const getFeedbackContext = () => studioFeedbackContext(project, activeSource, geometry, !sameMapArea(sourceProject, project));
   const terrainDataStale = $derived(!sameMapArea(sourceProject, project));
   const verticalExaggerationStale = $derived(project.outputMode === "stack" && sourceProject.verticalExaggeration !== project.verticalExaggeration);
@@ -467,7 +482,7 @@
     embeddedInPlatform = window.parent !== window;
     if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
-      if (!embeddedInPlatform) return { geometry, project, sheetPlan: sheetNesting.exportPlan };
+      if (!embeddedInPlatform) return { geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan };
       if (exportBlockedBy || previewBusy) throw new Error(exportBlockedBy || "Wait for the preview to finish updating.");
       const snapshot = { geometry, project };
       return automaticNesting.prepare(snapshot.geometry, snapshot.project).then(layout => {
@@ -555,7 +570,7 @@
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
-    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); };
+    return () => { cancelled = true; disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); };
   });
 
   $effect(() => {
@@ -613,7 +628,7 @@
   });
 
   // Sheet nesting only arranges finished parts at export, so it never touches generation.
-  const COSMETIC_KEYS: ReadonlySet<string> = new Set(["name", "explodedPreview", "sheetNesting"]);
+  const COSMETIC_KEYS: ReadonlySet<string> = new Set(["name", "explodedPreview", "sheetNesting", "waterInsertSheetNesting"]);
   /** Keys whose edits refresh the preview as custom data rather than a fabrication change. */
   const CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set(["markers", "markerIcons", "customLines", "customGraphics", "placedGraphics"]);
   // Stroke and text styling never changes the terrain request, so a running
@@ -959,7 +974,7 @@
   }
 
   function downloadProject(option: DownloadOption): Promise<void> {
-    return downloadWithNotice({ option, geometry, project, sheetPlan: sheetNesting.exportPlan, notice: exportNotice, track: (event) => trackUsage(event, project.outputMode, "browser") });
+    return downloadWithNotice({ option, geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan, notice: exportNotice, track: (event) => trackUsage(event, project.outputMode, "browser") });
   }
   async function importProject(file: File | undefined): Promise<void> {
     if (!file) return;
@@ -1065,6 +1080,7 @@
     get exportBlockedBy() { return exportBlockedBy; },
     get exportReady() { return exportReady; },
     sheetNesting,
+    acrylicSheetNesting,
     get outputSummary() { return outputSummary; },
     get booted() { return booted; },
     get historyAvailability() { return historyAvailability; },
@@ -1171,7 +1187,7 @@
           <StudioMenu />
         {/snippet}
       </Topbar>
-      <ContextBar class="terrain-contextbar" section="Terrain" title={project.location.label.split(",")[0]} detail={project.location.label.split(",").slice(1).join(",") || "Selected coordinates"}>
+      <ContextBar class="terrain-contextbar" section="Terrain" title={project.location.label.split(",")[0] ?? project.location.label} detail={project.location.label.split(",").slice(1).join(",") || "Selected coordinates"}>
         {#snippet actions()}
           <OutputSwitch />
         {/snippet}
@@ -1214,8 +1230,8 @@
 
     <PreviewPanel />
   </Workspace>
-  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false}>
-    {#snippet sheetLayout()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{/snippet}
+  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false}>
+    {#snippet sheetLayout()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
   </ExportDialog>
   {@render locationSearch()}
 </AppShell>

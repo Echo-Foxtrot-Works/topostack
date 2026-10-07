@@ -25,16 +25,13 @@ Needs tippecanoe and pmtiles on PATH.
 import argparse
 import csv
 import gzip
-import hashlib
 import io
 import json
 import math
 from pathlib import Path
-import shutil
 import sqlite3
 import subprocess
 import tempfile
-import urllib.request
 import zipfile
 
 import fiona
@@ -42,6 +39,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon, shape
 from shapely.geometry.polygon import orient
 from shapely.ops import linemerge, polylabel, unary_union
+from pinned import download, file_sha256
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / 'scripts/data/faa-aviation-sources.json'
@@ -84,24 +82,15 @@ MIN_OBSTACLE_AGL_FT = 200
 MAX_OBSTACLE_AGL_FT = 3000
 
 
-def digest(path):
-    with path.open('rb') as f:
-        return hashlib.file_digest(f, 'sha256').hexdigest()
-
-
 def fetch(pin, cache):
     """Return a verified local copy of a pinned file, downloading it if absent."""
     path = cache / pin['file']
     if not path.exists():
         if 'url' not in pin:
             raise FileNotFoundError(f'{path} is a service snapshot; capture it with snapshot-survey-service.py --url {pin["service"]}')
-        # FAA hosts reject the default urllib agent.
-        request = urllib.request.Request(pin['url'], headers={'User-Agent': 'TopoStack data build'})
-        partial = path.with_suffix(path.suffix + '.partial')
-        with urllib.request.urlopen(request, timeout=300) as response, partial.open('wb') as out:
-            shutil.copyfileobj(response, out)
-        partial.rename(path)
-    actual = digest(path)
+        # FAA hosts reject the default urllib agent; download() sends its own.
+        download(pin['url'], path)
+    actual = file_sha256(path)
     if actual != pin['sha256']:
         raise ValueError(f'{path.name} SHA-256 {actual} does not match the pinned {pin["sha256"]}')
     return path
@@ -503,7 +492,7 @@ def write_archive(layers, pins, output, work):
     subprocess.run(['pmtiles', 'convert', str(mbtiles), str(partial)], check=True)
     subprocess.run(['pmtiles', 'verify', str(partial)], check=True)
     partial.rename(output)
-    receipt = {'dataset': pins['dataset'], 'sha256': digest(output), 'bytes': output.stat().st_size,
+    receipt = {'dataset': pins['dataset'], 'sha256': file_sha256(output), 'bytes': output.stat().st_size,
                'features': {layer: len(features) for layer, features in layers.items()},
                'sources': {key: pin['sha256'] for key, pin in pins['files'].items()}}
     output.with_suffix('.sources.json').write_text(json.dumps(receipt, indent=2) + '\n')

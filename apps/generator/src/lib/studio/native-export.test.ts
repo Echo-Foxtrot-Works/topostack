@@ -86,6 +86,25 @@ describe("export choices", () => {
     }
   });
 
+  it("offers the acrylic inserts as their own bundle and keeps them out of the wood panels", async () => {
+    const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
+    const acrylic = ["ridge-acrylic-03", "ridge-acrylic-04-w2", "ridge-acrylic-04-w3-2", "ridge-acrylic-sheet-01"];
+    const withInserts: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
+      ...wood.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]),
+      ...acrylic.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]), file("ridge-acrylic-master.svg"),
+      file("ridge-assembly-guide.html"), file("README.txt"), file("ATTRIBUTION.txt"),
+    ] };
+    for (const option of ["panels", "engravings"] as const) {
+      const files = unzipSync(new Uint8Array(await (await prepareSelectedDownload(withInserts, option)).blob.arrayBuffer()));
+      expect(Object.keys(files).some((name) => name.includes("acrylic"))).toBe(false);
+    }
+    const download = await prepareSelectedDownload(withInserts, "acrylic");
+    const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
+    expect(Object.keys(files)).toEqual([...acrylic.flatMap((sheet) => [`${sheet}.svg`, `${sheet}-engrave.svg`]), "ridge-acrylic-master.svg", "README.txt", "ATTRIBUTION.txt"]);
+    expect(download.filename).toBe("ridge-layer-01-acrylic-inserts.zip");
+    await expect(prepareSelectedDownload(output, "acrylic")).rejects.toThrow(/no lake became an acrylic insert/i);
+  });
+
   it("downloads individual files without wrapping them in a ZIP", async () => {
     expect(await prepareSelectedDownload(output, "master")).toEqual({ ...master, fileCount: 1 });
     expect((await prepareSelectedDownload(output, "assembly")).filename).toBe("ridge-layer-01-assembly-guide.html");

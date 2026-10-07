@@ -3,6 +3,7 @@
 // (or a batch manifest's): colours differ between publishers, and the same
 // colour can mean a road on one chart and a contour on the next.
 
+import { pathLength } from "./geometry.ts";
 import type { Point2 } from "./local-frame.ts";
 import { inferLevels } from "./levels.ts";
 import { bridgeGaps, chainPaths, depthLabels, labelChains, styleKey, type Chain, type DepthLabel } from "./vector-chart.ts";
@@ -65,12 +66,6 @@ export interface VectorTrace {
     /** Share of contour length that ended with a level. */
     coverage: number;
   };
-}
-
-function pathLength(points: readonly Point2[]): number {
-  let total = 0;
-  for (let index = 1; index < points.length; index += 1) total += Math.hypot(points[index]![0] - points[index - 1]![0], points[index]![1] - points[index - 1]![1]);
-  return total;
 }
 
 /**

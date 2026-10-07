@@ -22,7 +22,7 @@
    * matching `hiddenPrefixes` are left out while their drafts are drawn above.
    */
   let { geometry, exploded, placement, onUnavailable, rememberCamera = true }: {
-    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle">;
+    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial">;
     /** Isolated representative previews must not replace the project camera. */
     rememberCamera?: boolean;
     exploded: number;
@@ -460,6 +460,8 @@
   // geometry object but keeps these references, so it does not rebuild the scene.
   const layers = $derived(geometry.layers);
   const waterSurfaces = $derived(geometry.waterSurfaces);
+  const waterInserts = $derived(geometry.waterInserts);
+  const waterInsertMaterial = $derived(geometry.waterInsertMaterial);
   const lineStyle = $derived(geometry.lineStyle);
   const widthMm = $derived(geometry.widthMm);
   const heightMm = $derived(geometry.heightMm);
@@ -468,7 +470,7 @@
   const hideMarkings = $derived(placement?.hideMarkings ?? false);
   $effect(() => {
     const omitMarkings = hideMarkings;
-    const activeGeometry = { layers, waterSurfaces, lineStyle, widthMm, heightMm };
+    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, lineStyle, widthMm, heightMm };
     const hiddenPrefixes = hiddenKey ? hiddenKey.split("|") : [];
     const timeout = window.setTimeout(() => {
       if (!runtime) return;
@@ -521,7 +523,13 @@
         color: 0x14536e, transparent: true, opacity: 0.52, roughness: 0.28, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial);
+      // An acrylic insert is a real sheet: clearer and glossier than the
+      // floating surface, so the stepped bed below shows through it.
+      const acrylicMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
@@ -571,12 +579,45 @@
         }
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, baseZ + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.5);
       });
+      // Acrylic inserts fill their opening from the ledge below, riding the
+      // layer they replace when the stack is exploded. Map detail engraved on
+      // them sits on their top face.
+      (activeGeometry.waterInserts ?? []).forEach((insert) => {
+        const layer = activeGeometry.layers[insert.layerIndex];
+        if (!layer) return;
+        const thickness = activeGeometry.waterInsertMaterial?.thicknessMm ?? layer.materialThicknessMm;
+        const baseZ = layer.index * layer.materialThicknessMm;
+        insert.polygons.forEach((polygon) => {
+          const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thickness, bevelEnabled: false, curveSegments: 8 }), acrylicMaterial);
+          mesh.castShadow = false;
+          mesh.receiveShadow = false;
+          mesh.renderOrder = 1;
+          addStacked(runtime!.content, mesh, layer.index, baseZ);
+        });
+        if (omitMarkings) return;
+        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+        const labelBatch: LineBatch = { positions: [] };
+        insert.markings.forEach((marking) => {
+          if (marking.knockout || hiddenByPrefix(marking.id, hiddenPrefixes)) return;
+          if (marking.points.length > 1 && !marking.filled) {
+            const material = lineMaterials[markingStyleKey(marking)];
+            let batch = lineBatches.get(material);
+            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
+            appendPolyline(batch, marking.points);
+          }
+          if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
+        });
+        const top = baseZ + thickness + markingLift(thickness);
+        for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
+        if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
+      });
       // The surface floats on the top face of the layer holding its waterline,
-      // and rides that layer when the stack is exploded.
+      // and rides that layer when the stack is exploded. Where a lake became
+      // acrylic the acrylic stands in, so only its still-open water floats.
       (activeGeometry.waterSurfaces ?? []).forEach((surface) => {
         const layer = activeGeometry.layers[surface.layerIndex] ?? activeGeometry.layers[0];
         if (!layer) return;
-        surface.polygons.forEach((polygon) => {
+        (surface.openPolygons ?? surface.polygons).forEach((polygon) => {
           const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), waterMaterial);
           mesh.castShadow = false;
           mesh.receiveShadow = false;

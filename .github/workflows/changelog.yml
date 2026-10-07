@@ -29,13 +29,9 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.2"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund --ignore-scripts
+          npm-ci-args: --no-audit --no-fund --ignore-scripts
 
       # Feature work must describe itself for users, or say it has nothing to say.
       - name: Require a fragment

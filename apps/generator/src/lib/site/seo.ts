@@ -3,7 +3,7 @@
 import { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, SITE_ORIGIN, socialCard, type SocialImage } from "./site.ts";
 import latestRelease from "../../../../../changelog/latest.json" with { type: "json" };
 
-export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_LOCALE, SITE_ORIGIN, type SocialImage } from "./site.ts";
+export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_ORIGIN, type SocialImage } from "./site.ts";
 
 export interface PageMeta {
   title: string;
@@ -85,7 +85,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Cut a paper stencil for each layer of a topographic map and spray paint only the water that stays visible after the stack is glued.",
     label: "Water paint templates",
     published: "2026-09-18",
-    updated: "2026-09-18",
+    updated: "2026-10-05",
     image: PAINT_IMAGE,
   },
   "/guides/lake-depth-data": {
@@ -189,7 +189,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every TopoStack studio control with its range, default and output type, from vertical exaggeration and kerf to linework widths.",
     label: "Settings reference",
     published: "2026-09-17",
-    updated: "2026-09-23",
+    updated: "2026-10-05",
     image: socialCard("guides-settings-reference", "Settings reference card with the studio's project controls beside a Crater Lake relief."),
   },
   "/guides/use-with-ai-assistants": {
@@ -229,7 +229,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "What each TopoStack download contains: SVG panels, colors and operation groups, kerf compensation, assembly guide, project file and attribution.",
     label: "Export files",
     published: "2026-09-17",
-    updated: "2026-09-18",
+    updated: "2026-10-05",
     image: socialCard("guides-export-files", "Export files card with the studio's export preview of SVG cut panels."),
   },
   "/guides/troubleshooting": {
@@ -278,7 +278,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     updated: "2026-09-25",
   },
 };
-export const STUDIO_META = {
+const STUDIO_META = {
   title: "Studio: Create Your Topographic Map | TopoStack",
   description: "Choose a place, customize layered relief or flat engraving, and generate SVG artwork in the free TopoStack studio.",
   label: "studio",

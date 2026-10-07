@@ -1,7 +1,7 @@
 import { AREA_SCHEMA, cleanRequestText, type ProjectRequestArea } from "@topostack/core/project";
-import { attributionFor, projectDrawsAviation } from "../agent/attribution";
+import { attributionFor } from "../agent/attribution";
 import { areaCoverage, surveyedLakeAt } from "../agent/coverage";
-import { AgentError, areaGround, coverageResult, linkFor, planProject, projectSummary, publicOrigin, resolveProjectRequest, type AgentContext, type ProjectPlan } from "../agent/projects";
+import { AgentError, areaGround, coverageResult, linkFor, planProject, projectAttribution, projectSummary, publicOrigin, resolveProjectRequest, type AgentContext, type ProjectPlan } from "../agent/projects";
 import { ATTRIBUTION_SCHEMA, coverageResultSchema, PLAN_SCHEMA, PROJECT_REQUEST_BODY_SCHEMA, SUMMARY_SCHEMA, type Schema } from "../agent/schemas";
 import { GEOCODE_DEFAULT_RESULTS, GEOCODE_MAX_RESULTS, GEOCODE_QUERY_MAX_CHARS, geocodeResponse } from "../routes/geocode";
 import { PREVIEW_TOOL_META } from "./app-resource";
@@ -85,6 +85,13 @@ async function searchPlaces(args: Record<string, unknown>, context: AgentContext
   return { structured: { places, attribution }, text };
 }
 
+/** plan_model and preview_model return the same plan; the preview differs only in its app metadata. */
+const runPlan: ToolDefinition["run"] = async (args, context) => {
+  const { project } = toolRequest(args);
+  const result = await planProject(project, context);
+  return { structured: result as unknown as Record<string, unknown>, text: planText(result) };
+};
+
 export const TOOLS: ToolDefinition[] = [
   {
     name: "search_places",
@@ -147,11 +154,7 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: TOOL_REQUEST_SCHEMA,
     outputSchema: PLAN_SCHEMA,
     annotations: readOnly("Plan a model"),
-    run: async (args, context) => {
-      const { project } = toolRequest(args);
-      const result = await planProject(project, context);
-      return { structured: result as unknown as Record<string, unknown>, text: planText(result) };
-    },
+    run: runPlan,
   },
   {
     name: "preview_model",
@@ -161,11 +164,7 @@ export const TOOLS: ToolDefinition[] = [
     outputSchema: PLAN_SCHEMA,
     annotations: readOnly("Preview a model"),
     _meta: PREVIEW_TOOL_META,
-    run: async (args, context) => {
-      const { project } = toolRequest(args);
-      const result = await planProject(project, context);
-      return { structured: result as unknown as Record<string, unknown>, text: planText(result) };
-    },
+    run: runPlan,
   },
   {
     name: "create_studio_link",
@@ -183,7 +182,7 @@ export const TOOLS: ToolDefinition[] = [
       const origin = publicOrigin(context);
       const url = linkFor(project, origin);
       const summary = projectSummary(project);
-      const attribution = attributionFor(origin, areaCoverage(summary.bounds), { aviation: projectDrawsAviation(project) });
+      const attribution = projectAttribution(project, origin);
       return {
         structured: { url, length: url.length, project: summary, attribution },
         text: [`Open in TopoStack to generate "${summary.name}" and export the files: ${url}`, `Data: ${attribution.text}`].join("\n"),

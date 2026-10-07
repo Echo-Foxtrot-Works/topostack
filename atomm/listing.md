@@ -48,7 +48,7 @@ Import `media-project-v8.json` to reproduce the starting project: Crater Lake, 4
 
 `media-provenance.json` records the capture source commit, development base, source attribution and file hashes. Capture uses the actual embedded UI with an SDK mount/export stand-in; these images do not claim a native Studio import. Real platform validation is performed separately through Atomm Local Debug. The provenance records the source commit and a SHA-256 of the application/capture source diff. The release receipt records whether the packaged working tree is dirty. See `review-readiness.md` for this revision’s checks and remaining platform validation.
 
-The current upload bundle contains 19 media files. Historical captures and `media-provenance-v5.json` remain in the repository for reference; they are excluded from this refreshed upload set.
+The current upload bundle contains 19 media files. `media-provenance-v5.json` remains in the repository as the record of the earlier captures, which were removed on 2026-10-06 (git history keeps them); none of them is part of this upload set.
 
 Credits: USGS Crater Lake multibeam bathymetry (public domain); Mapzen Terrain Tiles and contributing elevation sources; HydroLAKES / GLOBathy; map data © OpenStreetMap contributors, via Protomaps. Full attribution is retained in the provenance and project export.
 

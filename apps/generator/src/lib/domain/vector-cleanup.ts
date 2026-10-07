@@ -1,4 +1,4 @@
-import type { MarkingFeature, Point2D, Polygon2D } from "@topostack/core";
+import { distanceToSegment, polylineLength, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
 
 /** Pure vector-tile geometry cleanup shared by the data provider and preview refreshes. */
@@ -57,21 +57,6 @@ function pointKey(point: Point2D, toleranceMm = 1e-4): string {
 
 function samePoint(left: Point2D, right: Point2D, tolerance = 1e-7): boolean {
   return Math.hypot(left.x - right.x, left.y - right.y) <= tolerance;
-}
-
-function pathLength(points: Point2D[]): number {
-  let length = 0;
-  for (let index = 0; index < points.length - 1; index += 1) length += Math.hypot(points[index + 1]!.x - points[index]!.x, points[index + 1]!.y - points[index]!.y);
-  return length;
-}
-
-function distanceToSegment(point: Point2D, start: Point2D, end: Point2D): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared <= 1e-12) return Math.hypot(point.x - start.x, point.y - start.y);
-  const ratio = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-  return Math.hypot(point.x - (start.x + dx * ratio), point.y - (start.y + dy * ratio));
 }
 
 function simplifyPath(points: Point2D[], tolerance: number): Point2D[] {
@@ -152,14 +137,6 @@ function closedSimplified(ring: readonly Pair[], tolerance: number): Point2D[] {
   return points;
 }
 
-function signedArea(points: Point2D[]): number {
-  let total = 0;
-  for (let index = 0, previous = points.length - 1; index < points.length; previous = index, index += 1) {
-    total += (points[previous]!.x - points[index]!.x) * (points[previous]!.y + points[index]!.y);
-  }
-  return total / 2;
-}
-
 /** Dissolve vector-tile polygon fragments before extracting their shorelines. */
 export function dissolveWaterPolygons(polygons: Polygon2D[], minimumFeatureMm: number): MarkingFeature[] {
   return shorelineMarkings(dissolveWaterAreas(polygons, minimumFeatureMm));
@@ -238,7 +215,7 @@ export function cleanWaterwayMarkings(markings: MarkingFeature[], minimumFeature
   const result: MarkingFeature[] = [];
   for (const { feature, points } of joinPaths(markings.filter((marking) => marking.points.length >= 2))) {
     const simplified = simplifyPath(points, minimumFeatureMm * 0.18);
-    if (pathLength(simplified) >= minimumFeatureMm) result.push({ ...feature, id: `waterway-${result.length}`, points: simplified });
+    if (polylineLength(simplified) >= minimumFeatureMm) result.push({ ...feature, id: `waterway-${result.length}`, points: simplified });
   }
   return result;
 }

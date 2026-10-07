@@ -50,7 +50,7 @@ export function roundText(style: TextStyleV1 | undefined): boolean {
 }
 
 /** Whether a font engraves filled areas rather than strokes. */
-export function isFilledFont(font: TextFont | undefined): boolean {
+function isFilledFont(font: TextFont | undefined): boolean {
   return font !== undefined && fontEntry(font).kind === "outline";
 }
 

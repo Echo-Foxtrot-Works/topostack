@@ -9,6 +9,7 @@
 import { CHART_BATHYMETRY_LIMITS, CHART_BATHYMETRY_SCHEMA, CHART_UNIT_METRES, chartLabelDepthM, encodeChartDepths, isPublishableChart, parseUserChartBathymetry, type ChartAttestation, type ChartGeorefMethod, type ChartLabelsV1, type ChartUnit, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import { apply, type Matrix3 } from "./georef.ts";
 import { gridDepths, type GridMethod } from "./grid.ts";
+import { ringArea } from "./geometry.ts";
 import type { Point2 } from "./local-frame.ts";
 import { simplify } from "./trace-raster.ts";
 
@@ -58,16 +59,6 @@ export interface ChartRecordReport {
   waterCells: number;
   deepestM: number;
   grid: { width: number; height: number; resolutionM: number };
-}
-
-function ringArea(ring: readonly Point2[]): number {
-  let area = 0;
-  for (let index = 0; index < ring.length; index += 1) {
-    const [x1, y1] = ring[index]!;
-    const [x2, y2] = ring[(index + 1) % ring.length]!;
-    area += x1 * y2 - x2 * y1;
-  }
-  return Math.abs(area) / 2;
 }
 
 /** At most `limit` contours, the longest, in the order they came. */

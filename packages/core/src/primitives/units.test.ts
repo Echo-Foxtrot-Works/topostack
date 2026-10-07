@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { displayLength, millimetersFromDisplay, MM_PER_INCH } from "../index.js";
+import { displayLength, millimetersFromDisplay } from "../index.js";
+import { MM_PER_INCH } from "./units.js";
 
 describe("units", () => {
   it("converts display input to millimeters and back exactly", () => {

@@ -6,7 +6,7 @@ import type { Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
 import { polygonCenter } from "./nesting.js";
 
 /** The parts of `polygon` that something stacked above it hides after assembly. */
-export function coveredParts(polygon: Polygon2D, covering: PreparedPolygons): Polygon2D[] {
+function coveredParts(polygon: Polygon2D, covering: PreparedPolygons): Polygon2D[] {
   if (!covering.polygons.length) return [];
   const box = ringBounds(polygon.outer);
   // Layer 0's covering is every layer above it, so filter before clipping.
@@ -23,7 +23,7 @@ export function coveredParts(polygon: Polygon2D, covering: PreparedPolygons): Po
  * global grid is 10% of the model, far coarser than one piece's covered area,
  * and the alignment guide usually already owns the region's centre.
  */
-export function coveredCandidates(label: string, config: ProjectConfigV1, region: Polygon2D): Point2D[] {
+function coveredCandidates(label: string, config: ProjectConfigV1, region: Polygon2D): Point2D[] {
   const { width, height } = labelDimensions(label, config.textStyle);
   const bounds = ringBounds(region.outer);
   const stepX = (width + 1.6) / 2;

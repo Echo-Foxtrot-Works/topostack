@@ -1,11 +1,9 @@
 import { ARTWORK_CATEGORIES, ASSEMBLY, ASSEMBLY_CATEGORIES, CUT, CUT_LINE, ENGRAVE, SCORE, escapeXml, layerCutPaths, layerMarkingPaths, pathData, svgDocument } from "./svg-primitives.js";
 import { type FabricationPanel, fabricationPanels } from "./panel-layout.js";
 import { formatNumber as format } from "../primitives/format.js";
-import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, toMultiPolygon, toRing } from "../primitives/geometry2d.js";
-import { labelGeometry } from "../annotate/labels.js";
+import { markingsWithin } from "../pipeline/marking-clip.js";
 import { omittedNestHoles, paintStencil } from "../pipeline/paint-regions.js";
-import type { GeometryIRV1, LayerIR, LineStyleV1, PaintRegionKind, Point2D, ProjectConfigV1 } from "../types.js";
+import type { GeometryIRV1, LayerIR, LineStyleV1, PaintRegionKind, ProjectConfigV1 } from "../types.js";
 
 export function layerToSvg(ir: GeometryIRV1, layer: LayerIR): string {
   const width = ir.widthMm + ir.laserKerfMm;
@@ -28,56 +26,15 @@ export type PanelBodies = Record<Operation, string>;
  * `clipPolyline` rejoins intervals that meet at a shared coordinate, so a road
  * crossing a seam stays one continuous path in the IR - which is what the
  * preview and the master layout want. A single sheet must not engrave past its
- * own pieces, so narrow the geometry here instead. A label whose every stroke
- * lies on this sheet ships whole; one a seam cuts through is exploded into its
- * strokes and each stroke clipped, so both sheets carry their share of the
- * glyph. Closed marker artwork and typeface letters are intersected as
- * polygons so a fill stays a closed region rather than an open arc.
+ * own pieces, so narrow the geometry here instead (`markingsWithin`). A halo
+ * is a clearance gap, resolved against the whole layer by `markerClearance`;
+ * it never serializes, so no sheet needs a copy.
  */
 function panelMarkings(layer: LayerIR, included?: Set<number>): LayerIR["markings"] {
   if (!included) return layer.markings;
   const polygons = layer.polygons.filter((_, index) => included.has(index));
   if (!polygons.length) return [];
-  const prepared = preparePolygons(polygons);
-  const inside = (point: Point2D) => pointInPreparedPolygons(point, prepared);
-  const parted = (mark: LayerIR["markings"][number], parts: Point2D[][], whole: boolean): LayerIR["markings"] => {
-    if (whole && parts.length === 1) return [{ ...mark, points: parts[0]! }];
-    return parts.map((points, index) => ({ ...mark, id: `${mark.id}-part-${index + 1}`, points }));
-  };
-  const clippedFill = (mark: LayerIR["markings"][number]): LayerIR["markings"] => {
-    const first = mark.points[0]!;
-    if (mark.points.every(inside) && (mark.holes ?? []).every((hole) => hole.every(inside))) return [mark];
-    try {
-      const clipped = normalizeMultiPolygon(polygonClipping.intersection(
-        [[toRing(mark.points), ...(mark.holes ?? []).map(toRing)]] as MultiPolygon,
-        toMultiPolygon(polygons),
-      ) as MultiPolygon);
-      if (clipped.length === 1) return [{ ...mark, points: clipped[0]!.outer, holes: clipped[0]!.holes }];
-      return clipped.map((polygon, index) => ({ ...mark, id: `${mark.id}-part-${index + 1}`, points: polygon.outer, holes: polygon.holes }));
-    } catch {
-      // A degenerate ring the clipper refuses is not worth losing the sheet over.
-      return inside(first) ? [mark] : [];
-    }
-  };
-  return layer.markings.flatMap((mark) => {
-    const first = mark.points[0];
-    if (!first) return [];
-    if (mark.label) {
-      const { strokes, fills } = labelGeometry(mark.label, first, 0, 0, mark.labelRotationRad, mark.textStyle);
-      if ([...strokes, ...fills.flatMap((fill) => [fill.outer, ...fill.holes])].every((line) => line.every(inside))) return [mark];
-      const { label: _label, labelRotationRad: _rotation, textStyle: _style, ...plain } = mark;
-      return [
-        ...parted(plain, strokes.flatMap((stroke) => clipPolyline(stroke, prepared)), false),
-        ...fills.flatMap((fill, index) => clippedFill({ ...plain, id: `${mark.id}-fill-${index + 1}`, points: fill.outer, holes: fill.holes, filled: true })),
-      ];
-    }
-    // A halo is a clearance gap, resolved against the whole layer by
-    // `markerClearance`; it never serializes, so no sheet needs a copy.
-    if (mark.knockout) return [];
-    if (mark.points.length < 2) return inside(first) ? [mark] : [];
-    if (mark.filled) return clippedFill(mark);
-    return parted(mark, clipPolyline(mark.points, prepared), true);
-  });
+  return markingsWithin(layer.markings, polygons, "inside");
 }
 
 export function panelBodies(ir: GeometryIRV1, panel: FabricationPanel): PanelBodies {
@@ -108,7 +65,7 @@ function panelOperationGroup(ir: GeometryIRV1, panel: FabricationPanel, operatio
   return `<g id="${panelId(panel)}-${operation.toUpperCase()}" data-layers="${escapeXml(layerIds)}"${cell}${transform}>${body}</g>`;
 }
 
-export function operationGroup(operation: Operation, body: string, style: LineStyleV1): string {
+function operationGroup(operation: Operation, body: string, style: LineStyleV1): string {
   if (operation === "assembly") {
     // Omitted entirely when empty: an empty process would still show up as a
     // layer to configure in the machine's software.

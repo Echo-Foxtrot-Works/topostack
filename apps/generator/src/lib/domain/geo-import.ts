@@ -258,13 +258,14 @@ export function countOutside(data: Pick<FittedGeoData, "markers" | "lines">, bou
 }
 
 /** GPS recorders write verbose XML; paths are thinned to the point limits after parsing. */
-export const MAX_GEO_FILE_BYTES = 20_000_000;
+const MAX_GEO_FILE_BYTES = 20_000_000;
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
 /**
  * Reads a dropped or chosen file and fits it to the project's remaining
  * allowance. Returns the features to append, or none with a message saying why.
+ * @public App.svelte loads this lazily, which the unused-export check cannot follow.
  */
 export async function importGeoFile(file: Pick<File, "size" | "name" | "text">, capacity: ImportCapacity, bounds: GeoBounds): Promise<{ patch?: Pick<FittedGeoData, "markers" | "lines">; message: string }> {
   if (file.size > MAX_GEO_FILE_BYTES) return { message: "Map data files must be 20 MB or smaller." };

@@ -26,6 +26,10 @@ The export dialog has a **Sheet layout** section for layered projects. The maker
 
 A plan records the engine that searched. Each sheet's `method` says whether sparrow packed it or the bounding-box layout was kept because sparrow found nothing tighter. Nearly rectangular parts, such as whole layers or seam pieces, often already pack optimally as boxes.
 
+## Acrylic
+
+Acrylic water inserts ([water-inserts.md](water-inserts.md)) nest separately, on acrylic stock: `waterInsertSheetNesting` holds their settings, `acrylicNestableParts` their parts and `PackageOptions.acrylicSheetPlan` their plan. The studio keeps a second `SheetNesting` (material `"acrylic"`) and shows a second sheet layout block in the export dialog when the model has inserts. Acrylic parts carry no engraved ids. Their part ids begin with `acrylic-`, so a cached wood layout can never be taken for acrylic.
+
 ## Planner
 
 1. **Settings** (`resolve.ts`): `ProjectConfigV1.sheetNesting` holds the sheet size, margin, spacing, rotation mode, time budget and seed. A sheet axis left at 0 takes the machine work area on that axis. The fingerprint ignores this field, so changing it never forces a regenerate.

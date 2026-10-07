@@ -1,3 +1,6 @@
+import { EVENTS_PATH, FEEDBACK_PATH, MCP_PATH } from "./paths";
+
+
 const UPSTREAM_TIMEOUT_MS = 10_000;
 const DEFAULT_ALLOWED_ORIGIN_SUFFIXES = ".atomm.com";
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -50,17 +53,17 @@ export function isAllowedOrigin(origin: string | null, env: OriginPolicyEnv): bo
 export function corsHeaders(request: Request, env: Env): Headers {
   const origin = request.headers.get("origin");
   const pathname = new URL(request.url).pathname;
-  const isEvent = pathname === "/v1/events" || pathname === "/v1/feedback";
+  const isEvent = pathname === EVENTS_PATH || pathname === FEEDBACK_PATH;
   // Agent routes take public POSTs with no side effects and no credentials, so
   // they stay open to every origin like the read-only data.
   // The MCP endpoint is the same kind of route, and browser-based MCP clients
   // send its protocol headers.
-  const isAgentPost = pathname.startsWith("/v1/projects/") || pathname === "/mcp";
+  const isAgentPost = pathname.startsWith("/v1/projects/") || pathname === MCP_PATH;
   const headers = new Headers({
     "access-control-allow-methods": isEvent || isAgentPost ? "POST,OPTIONS" : "GET,HEAD,OPTIONS",
-    "access-control-allow-headers": pathname === "/mcp" ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
+    "access-control-allow-headers": pathname === MCP_PATH ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
     // retry-after is readable so browser clients can back off after a 429.
-    "access-control-expose-headers": pathname === "/mcp" ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
+    "access-control-expose-headers": pathname === MCP_PATH ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
     "access-control-max-age": "86400",
     "vary": "Origin",
   });
@@ -91,6 +94,12 @@ export function withCors(response: Response, request: Request, env: Env): Respon
 
 export function upstreamSignal(request: Request): AbortSignal {
   return AbortSignal.any([request.signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]);
+}
+
+/** An upstream that answered with an error status: logged, and reported to the caller as a bad gateway. */
+export function upstreamRejected(response: Response, service: string, error: string): Response {
+  console.warn(JSON.stringify({ message: "upstream_rejected", service, status: response.status }));
+  return json({ error }, { status: 502 });
 }
 
 export function upstreamFailure(error: unknown, service: string): Response {

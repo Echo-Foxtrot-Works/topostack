@@ -1,4 +1,4 @@
-import { nestableParts, resolveSheetNestSettings, sheetNestJobKey, type GeometryIRV1, type NestPartV1, type ProjectConfigV1, type ResolvedSheetNestSettings, type SheetNestPlanV1 } from "@topostack/core";
+import { acrylicNestableParts, nestableParts, resolveAcrylicNestSettings, resolveSheetNestSettings, sheetNestJobKey, type GeometryIRV1, type NestPartV1, type ProjectConfigV1, type ResolvedSheetNestSettings, type SheetNestPlanV1 } from "@topostack/core";
 
 /**
  * The studio's sheet-nesting code, loaded only when the maker opens the
@@ -9,11 +9,14 @@ export { NestClient, NestJobError } from "$lib/workers/nest-client";
 
 export type NestJob = { ok: true; parts: NestPartV1[]; settings: ResolvedSheetNestSettings } | { ok: false; error: string };
 
-export function prepareNestJob(geometry: GeometryIRV1, project: ProjectConfigV1): NestJob {
-  const resolved = resolveSheetNestSettings(project);
+/** Which stock a layout is for: the wood layers, or the acrylic water inserts on their own sheets. */
+export type NestMaterial = "wood" | "acrylic";
+
+export function prepareNestJob(geometry: GeometryIRV1, project: ProjectConfigV1, material: NestMaterial = "wood"): NestJob {
+  const resolved = material === "acrylic" ? resolveAcrylicNestSettings(project) : resolveSheetNestSettings(project);
   if (!resolved.ok) return resolved;
-  const parts = nestableParts(geometry);
-  if (!parts.length) return { ok: false, error: "Generate the terrain before nesting its parts." };
+  const parts = material === "acrylic" ? acrylicNestableParts(geometry) : nestableParts(geometry);
+  if (!parts.length) return { ok: false, error: material === "acrylic" ? "No lake became an acrylic insert, so there is nothing to nest." : "Generate the terrain before nesting its parts." };
   return { ok: true, parts, settings: resolved.settings };
 }
 
@@ -53,7 +56,7 @@ export function jobKeyOf(job: Extract<NestJob, { ok: true }>): string {
 }
 
 /** Whether a plan still fits this geometry and these sheet settings. */
-export function planIsCurrent(plan: SheetNestPlanV1, geometry: GeometryIRV1, project: ProjectConfigV1): boolean {
-  const job = prepareNestJob(geometry, project);
+export function planIsCurrent(plan: SheetNestPlanV1, geometry: GeometryIRV1, project: ProjectConfigV1, material: NestMaterial = "wood"): boolean {
+  const job = prepareNestJob(geometry, project, material);
   return job.ok && sheetNestJobKey(job.parts, job.settings) === plan.jobKey;
 }
