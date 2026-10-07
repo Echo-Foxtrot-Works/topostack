@@ -71,11 +71,11 @@
     "@mixmark-io/domino": "^2.2.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.3",
-    "@vitest/coverage-istanbul": "^4.1.11",
     "@vitest/coverage-v8": "^4.1.11",
     "aws4fetch": "^1.0.20",
     "eslint": "^10.10.0",
     "eslint-plugin-svelte": "^3.23.0",
+    "fflate": "^0.8.3",
     "globals": "^17.12.0",
     "knip": "^5.88.1",
     "opentype.js": "^2.0.0",
@@ -87,8 +87,7 @@
     "turndown-plugin-gfm": "^1.0.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0",
-    "vitest": "^4.1.0",
-    "wrangler": "^4.143.1"
+    "vitest": "^4.1.0"
   },
   "overrides": {
     "cookie": "0.7.2",
