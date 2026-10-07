@@ -140,8 +140,9 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
   if (bbox !== null) {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));
     const [west, south, east, north] = parts as [number, number, number, number];
-    const bounds = { west, south, east, north };
-    if (parts.length !== 4 || !isMercatorBounds(bounds)) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with west < east and south < north.`);
+    // West greater than east crosses the antimeridian, as in GeoJSON.
+    const bounds = { west, south, east: west > east ? east + 360 : east, north };
+    if (parts.length !== 4 || Math.abs(west) > 180 || Math.abs(east) > 180 || !isMercatorBounds(bounds)) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with south < north; west greater than east crosses the antimeridian.`);
     return bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];

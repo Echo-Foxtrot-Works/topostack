@@ -46,7 +46,7 @@ Typical materials: 3 mm plywood or MDF, 1.5–3 mm acrylic, 2 mm chipboard. Many
 - \`{ center: { lat, lon }, widthKm }\`: a place and how much ground to show across. A single mountain is often 10–30 km; a lake 5–40 km; a city 15–30 km.
 - \`{ bounds: { west, south, east, north } }\`: keep a whole box in view; it is widened to the model's proportions.
 
-Coverage is Web Mercator (±85° latitude). Areas cannot cross the antimeridian. Terrain is land elevation; the sea is cut flat, and lakes use surveyed depths where they exist (see check_coverage).
+Coverage is Web Mercator (±85° latitude). A box crossing the antimeridian has west greater than east, as in GeoJSON. Terrain is land elevation; the sea is cut flat, and lakes use surveyed depths where they exist (see check_coverage).
 
 ## Details
 

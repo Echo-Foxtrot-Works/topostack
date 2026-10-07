@@ -125,6 +125,9 @@ export function sampleRelief(bounds: GeoBounds, circle: boolean, tiles: Readonly
 /** Fetch the tiles through `loadTile` (the Worker's own cached terrain route) and sample them. */
 export async function estimateRelief(bounds: GeoBounds, circle: boolean, loadTile: (tile: ReliefTile) => Promise<Uint8Array>): Promise<ReliefEstimate> {
   const tiles = reliefTiles(bounds);
-  const loaded = await Promise.all(tiles.map(async (tile) => ({ tile, png: await loadTile(tile) })));
+  // A crop across the antimeridian has unwrapped longitudes, so its window
+  // runs past the world's last column; those tiles are fetched from the far side.
+  const wrap = (tile: ReliefTile) => ({ ...tile, x: ((tile.x % 2 ** tile.z) + 2 ** tile.z) % 2 ** tile.z });
+  const loaded = await Promise.all(tiles.map(async (tile) => ({ tile, png: await loadTile(wrap(tile)) })));
   return sampleRelief(bounds, circle, loaded);
 }

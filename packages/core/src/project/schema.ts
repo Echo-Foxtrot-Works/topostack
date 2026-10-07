@@ -39,7 +39,7 @@ export const AREA_SCHEMA: Schema = {
           type: "object",
           required: ["west", "south", "east", "north"],
           additionalProperties: false,
-          description: "WGS84 degrees; west < east (the antimeridian cannot be crossed) and south < north.",
+          description: "WGS84 degrees; south < north. West greater than east crosses the antimeridian, as in GeoJSON.",
           properties: { west: longitude, south: latitude, east: longitude, north: latitude },
         },
       },
