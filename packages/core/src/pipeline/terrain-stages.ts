@@ -112,7 +112,9 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
   // smoothing option is applied separately to the resulting geometry below.
   const contourGenerator = contours().size([modelGrid.width, modelGrid.height]).smooth(true).thresholds(thresholds.slice(1));
   const maximumCornerTrimMm = Math.max(config.widthMm / (modelGrid.width - 1), config.heightMm / (modelGrid.height - 1));
-  const generated = contourGenerator(Array.from(modelGrid.values));
+  // d3-contour only indexes the samples, so the typed grid goes in as it is
+  // rather than as a copied 590k-element array (its types ask for number[]).
+  const generated = contourGenerator(modelGrid.values as unknown as number[]);
 
   const layers: LayerIR[] = [{
     id: "layer-01",

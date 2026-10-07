@@ -682,7 +682,8 @@ export function carveWaterDepth(
 
 /** Compress over-budget lakes uniformly around their own waterlines before contouring. */
 export function fitLakesToLadder(carved: CarvedWater, config: ProjectConfigV1, floorM: number): CarvedWater {
-  const values = Float32Array.from(carved.grid.values);
+  // Copied on the first lake that needs fitting; most maps have none.
+  let fitted: Float32Array<ArrayBuffer> | undefined;
   const surfaces = carved.surfaces.map((surface, surfaceIndex) => {
     const depth = surface.surfaceElevationM - surface.bedElevationM;
     const available = surface.surfaceElevationM - floorM;
@@ -690,6 +691,7 @@ export function fitLakesToLadder(carved: CarvedWater, config: ProjectConfigV1, f
     if (surface.kind !== "lake" || !(depth > available && available > 0)) return surface;
     const factor = available / depth;
     const indexes = carved.surfaceCells?.[surfaceIndex] ?? surfaceIndexes(surface.polygons, carved.grid, config);
+    const values = fitted ??= Float32Array.from(carved.grid.values);
     for (const index of indexes) {
       const original = carved.grid.values[index]!;
       if (original >= surface.surfaceElevationM) continue;
@@ -705,6 +707,7 @@ export function fitLakesToLadder(carved: CarvedWater, config: ProjectConfigV1, f
       appliedDepthExaggeration: config.waterDepthExaggeration * factor,
     };
   });
+  const values = fitted ?? carved.grid.values;
   let min = Infinity;
   let max = -Infinity;
   for (const value of values) { min = Math.min(min, value); max = Math.max(max, value); }

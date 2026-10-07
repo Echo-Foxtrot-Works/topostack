@@ -234,7 +234,9 @@ export function cutPlacedGraphics(context: GenerationContext, layers: LayerIR[])
     const cutsByLayer = new Map<number, Polygon2D[]>();
     for (const { outer, holes } of polygons) {
       for (const { layerIndex, polygon } of markerLayerPolygons(outer, materials, holes)) {
-        cutsByLayer.set(layerIndex, [...(cutsByLayer.get(layerIndex) ?? []), polygon]);
+        const cuts = cutsByLayer.get(layerIndex);
+        if (cuts) cuts.push(polygon);
+        else cutsByLayer.set(layerIndex, [polygon]);
         // Islands left inside a cut through the bottom sheet have nothing to rest on.
         if (layerIndex === 0 && polygon.holes.length) loosePieces = true;
       }

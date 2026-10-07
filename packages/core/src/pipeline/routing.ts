@@ -128,8 +128,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
     .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), points }));
 }
 
-function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
-  const layers = clips.map(({ layer }) => layer);
+function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], layers: LayerIR[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
     const outlines = transportationOutlines(feature.points, transportationClass, config);
@@ -223,12 +222,13 @@ export function insertedShorelines({ source }: GenerationContext, inserts: Water
 export function routeMarkings(context: GenerationContext, clips: LayerClip[], ladder: ElevationLadder, excludedFor: (feature: MarkingFeature) => PreparedPolygons | undefined = () => undefined): TransportationLabelCandidates {
   const { config, source, flatEngraving } = context;
   const labels: TransportationLabelCandidates = new Map();
+  const layers = clips.map(({ layer }) => layer);
   for (const { feature, featureId } of mapFeatures(context, ladder.modelGrid)) {
     if (!markingEnabled(feature, config)) continue;
     // Routing every feature through every elevation band of a flat engraving
     // only explodes one road into dozens of DOM/SVG paths before reassembling it.
     if (flatEngraving) routeFlatMarking(config, feature, featureId, clips[0]!, labels);
-    else routeStackMarking(config, feature, featureId, clips, ladder, labels, excludedFor(feature));
+    else routeStackMarking(config, feature, featureId, clips, layers, ladder, labels, excludedFor(feature));
   }
 
   const enabledRoadFeatures = source.markings.filter((feature) => feature.kind === "road" && config.showRoads);
