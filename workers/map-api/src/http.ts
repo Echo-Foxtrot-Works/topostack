@@ -84,6 +84,7 @@ export function withCors(response: Response, request: Request, env: Env): Respon
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-frame-options", "DENY");
+  // Every error answer is uncacheable here, so handlers need not say so themselves.
   if (response.status >= 400) headers.set("cache-control", "no-store");
   if (request.method === "HEAD") {
     void response.body?.cancel().catch(() => {});
@@ -189,5 +190,5 @@ export function methodNotAllowed(allow: string): Response {
 }
 
 export function rateLimitExceeded(message = "Rate limit exceeded. Try again shortly."): Response {
-  return json({ error: message }, { status: 429, headers: { "retry-after": "60", "cache-control": "no-store" } });
+  return json({ error: message }, { status: 429, headers: { "retry-after": "60" } });
 }

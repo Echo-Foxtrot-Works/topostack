@@ -111,7 +111,7 @@ export async function pmtilesResponse(request: Request, env: Env, ctx: Execution
   } catch (error) {
     console.error(JSON.stringify({ message: "archive_release_invalid", key: archive.key, error: error instanceof Error ? error.message : String(error) }));
     return json({ error: `${archive.label} archive is temporarily unavailable. Try again shortly.` }, {
-      status: 503, headers: { "retry-after": String(INVALID_RELEASE_RETRY_SECONDS), "cache-control": "no-store" },
+      status: 503, headers: { "retry-after": String(INVALID_RELEASE_RETRY_SECONDS) },
     });
   }
   const head = resolved.head;
