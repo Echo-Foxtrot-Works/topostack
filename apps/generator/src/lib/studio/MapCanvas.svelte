@@ -6,7 +6,7 @@
   import { LocateFixed, MapPin, Spline } from "@lucide/svelte";
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-  import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from "maplibre-gl";
+  import type { AddLayerObject, GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
   import { boundsForProject, MAX_PROJECT_DIMENSION_MM, MERCATOR_MAX_LATITUDE, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
   import { polygonsPath } from "$lib/studio/svg-path";
   let { lakeSelection, onLakeViewportChange, onLakeMapClick, project, aspectLocked = $bindable(false), placingMarker = false, drawingLine = false, draftPoints = [], framing = true, hint = "Drag the map to choose your terrain", onLocationChange, onSelectionResize, onUnavailable, onPlaceMarker, onMoveMarker, onStopPlacing, onDrawPoint, onFinishDraw, onCancelDraw }: {
@@ -375,6 +375,7 @@
     map.on("zoom", () => { if (map) zoomScale = 2 ** (map.getZoom() - initialZoom); });
     map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="${base}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}" target="_blank" rel="noopener noreferrer">All sources</a>` }), "bottom-left");
     let viewportTimer: ReturnType<typeof setTimeout> | undefined;
+    let moveFrame = 0;
     const reportLakeViewport = () => {
       clearTimeout(viewportTimer);
       if (!onLakeViewportChange) return;
@@ -388,7 +389,9 @@
     };
     map.on("load", () => { styleReady = true; reportLakeViewport(); });
     map.on("moveend", reportLakeViewport);
-    map.on("mousemove", (event) => {
+    // Mouse moves arrive faster than frames; handle only the latest one per frame.
+    let latestMove: MapMouseEvent | undefined;
+    const handleMove = (event: MapMouseEvent) => {
       if (lakeSelection && map?.getLayer("chart-lakes-fill")) {
         const feature = map.queryRenderedFeatures(event.point, { layers: ["chart-lakes-fill"] })[0];
         highlightLake(feature?.id);
@@ -401,8 +404,17 @@
       // Snapping the line to the first point is what shows the shape closing.
       const first = draftPoints[0];
       pointer = closable && first ? { lat: first.lat, lon: first.lon } : { lat: event.lngLat.lat, lon: wrapLongitude(event.lngLat.lng) };
+    };
+    map.on("mousemove", (event) => {
+      latestMove = event;
+      moveFrame ||= requestAnimationFrame(() => {
+        moveFrame = 0;
+        const move = latestMove;
+        latestMove = undefined;
+        if (move) handleMove(move);
+      });
     });
-    map.on("mouseout", () => { highlightLake(); pointer = undefined; closable = false; });
+    map.on("mouseout", () => { cancelAnimationFrame(moveFrame); moveFrame = 0; latestMove = undefined; highlightLake(); pointer = undefined; closable = false; });
     map.on("movestart", () => { if (hoveredLake !== undefined) highlightLake(); });
     map.on("click", (event) => {
       if (onLakeMapClick) {
@@ -465,7 +477,7 @@
     const resizeObserver = new ResizeObserver(() => fitSelection());
     resizeObserver.observe(container);
     fitSelection();
-    return () => { clearTimeout(viewportTimer); resizeObserver.disconnect(); mapMarkers.forEach((marker) => marker.remove()); mapMarkers.clear(); map?.remove(); map = undefined; };
+    return () => { clearTimeout(viewportTimer); cancelAnimationFrame(moveFrame); resizeObserver.disconnect(); mapMarkers.forEach((marker) => marker.remove()); mapMarkers.clear(); map?.remove(); map = undefined; };
   });
 
   $effect(() => {
