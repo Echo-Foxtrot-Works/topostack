@@ -43,6 +43,42 @@ describe("geometry worker client", () => {
     expect(workers[0]!.terminated).toBe(false);
   });
 
+  it("adopts a warm worker and reuses the source it already holds", async () => {
+    const { client, workers, factory } = setup();
+    const warm = new FakeWorker();
+    const bundle = source();
+    client.adopt({ worker: warm as unknown as Worker, source: bundle, sourceId: 0 });
+    const pending = client.run({ ...DEFAULT_PROJECT, materialThicknessMm: 6 }, bundle);
+    expect(factory).not.toHaveBeenCalled();
+    expect(warm.last.sourceId).toBe(0);
+    expect(warm.last.source).toBeUndefined();
+    warm.reply({ id: warm.last.id, result: geometry("warm") });
+    await expect(pending).resolves.toMatchObject({ projectName: "warm" });
+
+    // A crash later is a crash of a proven worker: it fails the request rather than disabling workers.
+    const next = client.run(DEFAULT_PROJECT, source());
+    warm.onerror?.({ message: "out of memory" });
+    await expect(next).rejects.toThrow("out of memory");
+    expect(warm.terminated).toBe(true);
+    void client.run(DEFAULT_PROJECT, bundle);
+    expect(workers).toHaveLength(1);
+    expect(workers[0]!.last.source).toBe(bundle);
+  });
+
+  it("terminates a warm worker it cannot use", () => {
+    const { client, workers } = setup();
+    void client.run(DEFAULT_PROJECT, source());
+    const warm = new FakeWorker();
+    client.adopt({ worker: warm as unknown as Worker, source: source(), sourceId: 0 });
+    expect(warm.terminated).toBe(true);
+    expect(workers[0]!.terminated).toBe(false);
+
+    const fallback = new GeometryWorkerClient(undefined, () => geometry("sync"));
+    const unused = new FakeWorker();
+    fallback.adopt({ worker: unused as unknown as Worker, source: source(), sourceId: 0 });
+    expect(unused.terminated).toBe(true);
+  });
+
   it("resends the source when the worker reports it missing", async () => {
     const { client, workers } = setup();
     const bundle = source();

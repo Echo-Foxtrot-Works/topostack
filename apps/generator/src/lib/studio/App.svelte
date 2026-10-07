@@ -33,7 +33,8 @@
   import { historyShortcut } from "$lib/studio/history-keys";
   import { ATOMM_ENGRAVING_MODE_OPTIONS, ATOMM_STACK_MODE_OPTIONS, ENGRAVING_MODE_OPTIONS, PRESETS, STACK_MODE_OPTIONS } from "$lib/studio/options";
   import * as edits from "$lib/studio/project-edits";
-  import { isAbortError, PreviewPipeline } from "$lib/studio/preview-pipeline";
+  import { isAbortError, loadGeometryClient, PreviewPipeline } from "$lib/studio/preview-pipeline";
+  import type { WarmGeometryWorker } from "$lib/workers/geometry-worker-client";
   import { LazyComponent } from "$lib/studio/lazy-component";
   import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
@@ -58,14 +59,20 @@
   import LayerDock from "$lib/studio/panels/LayerDock.svelte";
   import PreviewPanel from "$lib/studio/panels/PreviewPanel.svelte";
 
-  let { initialPreview }: { initialPreview?: GeometryIRV1 } = $props();
+  let { initialPreview, initialSource, takeWarmWorker }: {
+    initialPreview?: GeometryIRV1;
+    /** The decoded sample `initialPreview` was generated from. */
+    initialSource?: SourceBundleV1;
+    /** Hands over the worker that generated `initialPreview`, if it is still running. */
+    takeWarmWorker?: () => WarmGeometryWorker | undefined;
+  } = $props();
 
   function addPreviewWarning(result: GeometryIRV1, source: SourceBundleV1): void {
     if (source.sourceKind === "real" || result.warnings.some((warning) => warning.code === "DATA_FALLBACK")) return;
     result.warnings.push({ code: "DATA_FALLBACK", message: source.sourceKind === "preview" ? "Bundled real-data preview. Generate fresh terrain before exporting." : "Sample preview only. Generate real terrain before exporting." });
   }
 
-  const defaultPreviewSource = createSamplePreviewSource();
+  const defaultPreviewSource = untrack(() => initialSource) ?? createSamplePreviewSource();
   // A copy with its own warnings: the warning is added here, never to the caller's prop.
   const startupGeometry = untrack(() => initialPreview) ?? generateGeometry(DEFAULT_PROJECT, defaultPreviewSource);
   const defaultPreviewGeometry: GeometryIRV1 = { ...startupGeometry, warnings: [...startupGeometry.warnings] };
@@ -158,7 +165,7 @@
   const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
-  const pipeline = new PreviewPipeline();
+  const pipeline = new PreviewPipeline(() => loadGeometryClient(untrack(() => takeWarmWorker)));
   // The terrain and map-data loaders (pmtiles, vector tiles, polygon
   // clipping, the source catalogs) load with the first Generate or preview
   // edit, not with the studio. A failed load is forgotten, so the next use retries.
