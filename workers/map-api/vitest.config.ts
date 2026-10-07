@@ -12,7 +12,7 @@ export default defineConfig({
     coverage: {
       provider: "istanbul",
       reportsDirectory: "coverage",
-      thresholds: { statements: 80, branches: 72, functions: 95, lines: 84 },
+      thresholds: { statements: 93, branches: 86, functions: 97, lines: 95 },
     },
   },
 });

@@ -34,11 +34,11 @@ export async function immutableObjectResponse(request: Request, env: Env, ctx: E
   const stored = request.method === "HEAD" ? await env.VECTOR_DATA.head(object.key) : await env.VECTOR_DATA.get(object.key, {
     onlyIf: request.headers.has("if-none-match") ? new Headers({ "if-none-match": request.headers.get("if-none-match")! }) : undefined,
   });
-  if (!stored) return json({ error: object.missing }, { status: 404, headers: { "cache-control": "no-store" } });
+  if (!stored) return json({ error: object.missing }, { status: 404 });
   const sha256 = stored.customMetadata?.sha256;
   if (stored.size >= object.maxBytes || !sha256 || !/^[a-f0-9]{64}$/.test(sha256) || !sha256.startsWith(object.hashPrefix)) {
     if ("body" in stored) await (stored as R2ObjectBody).body.cancel();
-    return json({ error: object.invalid }, { status: 503, headers: { "cache-control": "no-store" } });
+    return json({ error: object.invalid }, { status: 503 });
   }
   const headers = new Headers({ "content-type": object.contentType, "content-length": String(stored.size),
     "cache-control": "public, max-age=31536000, immutable", "etag": stored.httpEtag,
@@ -48,6 +48,6 @@ export async function immutableObjectResponse(request: Request, env: Env, ctx: E
     return new Response(null, { status: 304, headers });
   }
   if (request.method === "HEAD") return new Response(null, { headers });
-  if (!("body" in stored)) return new Response(null, { status: 412, headers: { "cache-control": "no-store" } });
+  if (!("body" in stored)) return new Response(null, { status: 412 });
   return new Response(teeToEdge(ctx, edgeKey, (stored as R2ObjectBody).body, headers), { headers });
 }

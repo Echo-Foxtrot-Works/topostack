@@ -170,7 +170,7 @@ export function coverageResult(coverage: AreaCoverage, origin: string) {
 }
 
 export function agentErrorResponse(error: AgentError): Response {
-  return json({ error: error.message, ...(error.errors.length ? { errors: error.errors } : {}) }, { status: error.status, headers: { "cache-control": "no-store" } });
+  return json({ error: error.message, ...(error.errors.length ? { errors: error.errors } : {}) }, { status: error.status });
 }
 
 /** POST /v1/projects/resolve, /plan and /link. */

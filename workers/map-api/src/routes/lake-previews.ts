@@ -7,7 +7,7 @@ const MAX_BYTES = 1_000_000;
 
 export async function previewResponse(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const match = PREVIEW_PATH.exec(new URL(request.url).pathname);
-  if (!match) return json({ error: "Invalid preview path." }, { status: 404, headers: { "cache-control": "no-store" } });
+  if (!match) return json({ error: "Invalid preview path." }, { status: 404 });
   return immutableObjectResponse(request, env, ctx, { key: `lake-previews/${match[1]}.webp`, hashPrefix: match[1]!, contentType: "image/webp",
     maxBytes: MAX_BYTES, missing: "Lake preview not found.", invalid: "Invalid lake preview object." });
 }
