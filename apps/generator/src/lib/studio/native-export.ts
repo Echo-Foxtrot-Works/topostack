@@ -78,21 +78,28 @@ export function prepareProjectSettings(project: ProjectConfigV1, charts: readonl
   };
 }
 
+// The generated part of a wood panel filename. Match only this suffix so
+// project names cannot affect selection. Panels are one layer, several layers,
+// or a nested stock sheet; a work-area split appends the seam cell ("-a1", or
+// "-a1-2" for a piece shipped on its own sheet). Clear acrylic pieces are cut
+// from different stock and never belong in a wood bundle.
+const PANEL_NAME = String.raw`(?<!-acrylic)-(?:layer-\d+|panel-\d+-layers-[\d-]+|sheet-\d+)(?:-[a-z]\d+(?:-\d+)?)?`;
+const PANEL_FILE = new RegExp(`${PANEL_NAME}\\.svg$`);
+const ENGRAVING_FILE = new RegExp(`${PANEL_NAME}-engrave\\.svg$`);
+// A paint stencil is the panel filename plus its region kind.
+const PAINT_FILE = new RegExp(`${PANEL_NAME}-paint-[a-z-]+\\.svg$`);
+
 export async function prepareSelectedDownload(output: FabricationPackageV1, option: Exclude<DownloadOption, "project">): Promise<PreparedDownload> {
   if (option === "all") return prepareProjectDownload(output);
   if (option === "master") return { ...output.master, fileCount: 1 };
   const files = output.files.filter((file) => {
     if (option === "assembly") return file.filename.endsWith("-assembly-guide.html");
-    // Match only the generated suffix so project names cannot affect selection.
-    // A work-area split appends the seam cell ("-a1", or "-a1-2" for a piece
-    // shipped on its own sheet).
-    if (option === "engravings") return /-(?:layer-\d+|panel-\d+-layers-[\d-]+)(?:-[a-z]\d+(?:-\d+)?)?-engrave\.svg$/.test(file.filename);
-    // A paint stencil is the panel filename plus its region kind.
-    if (option === "paint") return /-(?:layer-\d+|panel-\d+-layers-[\d-]+)(?:-[a-z]\d+(?:-\d+)?)?-paint-[a-z-]+\.svg$/.test(file.filename);
+    if (option === "engravings") return ENGRAVING_FILE.test(file.filename);
+    if (option === "paint") return PAINT_FILE.test(file.filename);
     // Acrylic panels are named after the wood layer they fill ("-acrylic-03",
     // "-acrylic-03-w1" for an insert on its own panel) or numbered as stock sheets.
     if (option === "acrylic") return /-acrylic-(?:\d+(?:-w\d+(?:-\d+)?)?|sheet-\d+|master)(?:-engrave)?\.svg$/.test(file.filename);
-    return /-(?:layer-\d+|panel-\d+-layers-[\d-]+)(?:-[a-z]\d+(?:-\d+)?)?\.svg$/.test(file.filename);
+    return PANEL_FILE.test(file.filename);
   });
   const [first] = files;
   if (!first) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."

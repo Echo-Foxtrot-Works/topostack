@@ -72,6 +72,20 @@ describe("export choices", () => {
     await expect(prepareSelectedDownload(output, "paint")).rejects.toThrow(/no paint templates/i);
   });
 
+  it("offers every nested stock sheet in panels, engravings and paint templates", async () => {
+    const sheets = ["ridge-sheet-01", "ridge-sheet-02", "ridge-sheet-12"];
+    const nested: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
+      ...sheets.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`), file(`${sheet}-paint-water.svg`)]),
+      // Clear acrylic water pieces are cut from different stock, so the wood options leave them out.
+      file("ridge-acrylic-sheet-01.svg"), file("ridge-acrylic-sheet-01-engrave.svg"), file("ridge-acrylic-03.svg"),
+      file("ridge-assembly-guide.html"), file("README.txt"), file("ATTRIBUTION.txt"),
+    ] };
+    for (const [option, suffix] of [["panels", ".svg"], ["engravings", "-engrave.svg"], ["paint", "-paint-water.svg"]] as const) {
+      const files = unzipSync(new Uint8Array(await (await prepareSelectedDownload(nested, option)).blob.arrayBuffer()));
+      expect(Object.keys(files)).toEqual([...sheets.map((sheet) => `${sheet}${suffix}`), "README.txt", "ATTRIBUTION.txt"]);
+    }
+  });
+
   it("offers the acrylic inserts as their own bundle and keeps them out of the wood panels", async () => {
     const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
     const acrylic = ["ridge-acrylic-03", "ridge-acrylic-04-w2", "ridge-acrylic-04-w3-2", "ridge-acrylic-sheet-01"];
