@@ -232,7 +232,15 @@ function facingGraph(lines: readonly LevelLine[], { owner, width, height, cellSi
  * surface, which need not fall on it (a reservoir at 322 ft with 5 ft contours).
  */
 class Ladder {
-  constructor(private readonly offset: number, private readonly interval: number, private readonly inward: 1 | -1) {}
+  private readonly offset: number;
+  private readonly interval: number;
+  private readonly inward: 1 | -1;
+
+  constructor(offset: number, interval: number, inward: 1 | -1) {
+    this.offset = offset;
+    this.interval = interval;
+    this.inward = inward;
+  }
 
   same(a: number, b: number): boolean {
     return Math.abs(a - b) < EPSILON * Math.max(1, Math.abs(a), Math.abs(b));
@@ -287,7 +295,16 @@ class LevelSolver {
   /** The water surface: no level lies beyond it. */
   private readonly bound: number | undefined;
 
-  constructor(private readonly input: LevelInput, private readonly regions: Regions, private readonly facing: Facing[], private readonly ladder: Ladder) {
+  private readonly input: LevelInput;
+  private readonly regions: Regions;
+  private readonly facing: Facing[];
+  private readonly ladder: Ladder;
+
+  constructor(input: LevelInput, regions: Regions, facing: Facing[], ladder: Ladder) {
+    this.input = input;
+    this.regions = regions;
+    this.facing = facing;
+    this.ladder = ladder;
     const { lines } = input;
     this.shoreId = lines.length;
     this.values = [...lines.map((line) => line.value), input.shoreline?.value];
