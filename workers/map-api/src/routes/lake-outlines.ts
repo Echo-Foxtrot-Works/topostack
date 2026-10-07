@@ -16,7 +16,7 @@ export async function outlineReadiness(bucket: R2Bucket): Promise<boolean> {
 /** Content-addressed URLs remain valid across app releases; no mutable latest pointer. */
 export async function outlineResponse(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const match = OUTLINE_PATH.exec(new URL(request.url).pathname);
-  if (!match) return json({ error: "Invalid outline path." }, { status: 404, headers: { "cache-control": "no-store" } });
+  if (!match) return json({ error: "Invalid outline path." }, { status: 404 });
   return immutableObjectResponse(request, env, ctx, { key: `lake-outlines/${match[1]}.json`, hashPrefix: match[1]!, contentType: "application/json",
     maxBytes: MAX_BYTES, missing: "Lake outlines have not been provisioned.", invalid: "Invalid lake outline object." });
 }

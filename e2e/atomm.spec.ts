@@ -15,6 +15,9 @@ const PREVIEW_TIMEOUT_MS = 30_000;
  * Hold the studio's geometry worker at its script load until released. The
  * startup preview's worker is refused, so that preview falls back to the main
  * thread and the studio starts the worker this holds instead of adopting it.
+ * The embed can start that worker before its frame finishes loading, and
+ * Firefox counts the held script against the load event, so tests that hold
+ * it wait only for the document, not for `load`.
  */
 async function holdGeometryWorker(page: Page): Promise<() => void> {
   let release!: () => void;
@@ -453,7 +456,7 @@ test("Atomm depth allowance is explicit and fitting actions use readable theme b
   await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: "window.atomm = { lifecycle: { on() {} }, app: { getLocale: async () => 'en', getSupportedLocales: async () => [{ code: 'en', name: 'English' }] } };" }));
   await page.route("**/atomm-test", route => route.fulfill({ contentType: "text/html", body: '<iframe title="Atomm generator" src="/studio" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>' }));
   const releaseTerrain = await holdGeometryWorker(page);
-  await page.goto("/atomm-test");
+  await page.goto("/atomm-test", { waitUntil: "domcontentloaded" });
   const studio = page.frameLocator("iframe");
   await expect(studio.locator(".atomm-workbench")).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
   // Cancelling the automatic load keeps the bundled Crater Lake preview, whose lake this test needs.
@@ -528,7 +531,7 @@ for (const embedded of [true, false]) {
       // The embed starts loading terrain on its own, so it is held from the start.
       const release = await holdGeometryWorker(page);
       void workerGate.then(release);
-      await page.goto(embedded ? "/atomm-test" : "/studio");
+      await page.goto(embedded ? "/atomm-test" : "/studio", { waitUntil: "domcontentloaded" });
       const studio = embedded ? page.frameLocator("iframe") : page;
       if (embedded) await expect(studio.locator(".atomm-workbench")).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
       else {

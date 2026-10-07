@@ -98,6 +98,9 @@ async function answer(message: unknown, context: ServerContext) {
   }
 }
 
+// No Origin check, unlike the transport spec's advice for local servers: the
+// tools only read, take no credentials and are metered per address, so a
+// rebound or cross-origin page gains nothing a plain request would not. See docs/mcp.md.
 export async function mcpResponse(context: AgentContext): Promise<Response> {
   const { request } = context;
   if (request.method !== "POST") {

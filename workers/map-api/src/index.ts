@@ -63,12 +63,6 @@ function agentContext(request: Request, env: Env, ctx: ExecutionContext): AgentC
   return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env), admitAgentCall: () => withinAgentBudget(request, env) };
 }
 
-/** POST routes for agents, answered before the read-only method check. */
-const PROJECT_ROUTES = new Map<string, "resolve" | "plan" | "link">([
-  ["/v1/projects/resolve", "resolve"],
-  ["/v1/projects/plan", "plan"],
-  ["/v1/projects/link", "link"],
-]);
 
 // Range reads of a present archive stay unmetered, including the conditional
 // ones a browser sends to revalidate them. Metadata-only requests (HEAD, or
@@ -87,9 +81,32 @@ async function archiveResponse(request: Request, env: Env, ctx: ExecutionContext
   return response;
 }
 
-function limited(bucket: string, handler: Handler): Handler {
-  return async (request, env, ctx, url) => (await withinRequestBudget(request, env, bucket)) ? handler(request, env, ctx, url) : rateLimitExceeded();
+function limited(bucket: string, handler: Handler, refusal?: string): Handler {
+  return async (request, env, ctx, url) => (await withinRequestBudget(request, env, bucket)) ? handler(request, env, ctx, url) : rateLimitExceeded(refusal);
 }
+
+function agentLimited(handler: Handler): Handler {
+  return async (request, env, ctx, url) => (await withinAgentBudget(request, env)) ? handler(request, env, ctx, url) : rateLimitExceeded();
+}
+
+function postOnly(handler: Handler): Handler {
+  return (request, env, ctx, url) => request.method === "POST" ? handler(request, env, ctx, url) : methodNotAllowed("POST,OPTIONS");
+}
+
+/**
+ * Routes that take POSTs, answered before the read-only method check. The
+ * method is checked before any budget is spent. MCP answers other methods
+ * itself, with an explanation for clients that try to open a stream.
+ */
+const POST_ROUTES = new Map<string, Handler>([
+  [EVENTS_PATH, postOnly(limited("events", (request, env) => collectUsage(request, env.ENVIRONMENT), "Rate limit exceeded."))],
+  [FEEDBACK_PATH, postOnly((request, env) => feedbackResponse(request, env))],
+  [MCP_PATH, agentLimited((request, env, ctx) => mcpResponse(agentContext(request, env, ctx)))],
+  ...(["resolve", "plan", "link"] as const).map((action): [string, Handler] => [
+    `/v1/projects/${action}`,
+    postOnly(agentLimited((request, env, ctx) => projectRouteResponse(action, agentContext(request, env, ctx)))),
+  ]),
+]);
 
 const EXACT_ROUTES = new Map<string, Handler>([
   ["/health", limited("root", (_request, env) => healthResponse(env))],
@@ -114,25 +131,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const isWrite = url.pathname === EVENTS_PATH || url.pathname === FEEDBACK_PATH;
   if (isWrite && !isAllowedOrigin(request.headers.get("origin"), env)) return json({ error: "Origin is not allowed." }, { status: 403 });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request, env) });
-  if (url.pathname === EVENTS_PATH) {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    if (!(await withinRequestBudget(request, env, "events"))) return rateLimitExceeded("Rate limit exceeded.");
-    return collectUsage(request, env.ENVIRONMENT);
-  }
-  if (url.pathname === FEEDBACK_PATH) {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    return feedbackResponse(request, env);
-  }
-  if (url.pathname === MCP_PATH) {
-    if (!(await withinAgentBudget(request, env))) return rateLimitExceeded();
-    return mcpResponse(agentContext(request, env, ctx));
-  }
-  const projectAction = PROJECT_ROUTES.get(url.pathname);
-  if (projectAction) {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    if (!(await withinAgentBudget(request, env))) return rateLimitExceeded();
-    return projectRouteResponse(projectAction, agentContext(request, env, ctx));
-  }
+  const post = POST_ROUTES.get(url.pathname);
+  if (post) return post(request, env, ctx, url);
   if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed("GET,HEAD,OPTIONS");
 
   // Existing browser sessions can still request the former static URLs.

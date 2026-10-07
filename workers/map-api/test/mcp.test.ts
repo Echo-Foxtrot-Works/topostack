@@ -117,6 +117,24 @@ describe("MCP server through the SDK client", () => {
     await client.close();
   });
 
+  it("tells the model to pass coordinates when place search is busy or down", async () => {
+    const client = await connect();
+    const limited = await connect({ ...env, GEOCODE_LIMITER: { limit: vi.fn(async () => ({ success: false })) } } as unknown as Env);
+    const busy = await limited.callTool({ name: "search_places", arguments: { query: "Lake Tahoe" } });
+    expect(busy.isError).toBe(true);
+    expect((busy.content as Array<{ text: string }>)[0]!.text).toMatch(/Place search is busy.*pass coordinates/);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    const down = await client.callTool({ name: "search_places", arguments: { query: "Lake Tahoe" } });
+    expect(down.isError).toBe(true);
+    expect((down.content as Array<{ text: string }>)[0]!.text).toMatch(/Place search is unavailable/);
+    for (const args of [{ query: "x" }, { query: "Lake Tahoe", limit: 0 }, { query: "Lake Tahoe", limit: 2.5 }]) {
+      const invalid = await client.callTool({ name: "search_places", arguments: args });
+      expect(invalid.isError).toBe(true);
+    }
+    await client.close();
+    await limited.close();
+  });
+
   it("checks coverage for an area", async () => {
     const client = await connect();
     const result = await client.callTool({ name: "check_coverage", arguments: { area: { bounds: { west: -78.96, south: 46.45, east: -78.92, north: 46.48 } } } });
@@ -175,6 +193,17 @@ describe("MCP server through the SDK client", () => {
     const prompt = await client.getPrompt({ name: "design_topo_map", arguments: { place: "Mount Hood", style: "flat" } });
     expect((prompt.messages[0]!.content as { text: string }).text).toMatch(/flat engraved topographic model of Mount Hood/);
     await expect(client.getPrompt({ name: "plan_for_my_laser", arguments: {} })).rejects.toThrow(/required/);
+    await client.close();
+  });
+});
+
+describe("MCP prompts", () => {
+  it("refuses an unknown prompt or a missing required argument", async () => {
+    const client = await connect();
+    await expect(client.getPrompt({ name: "make_me_a_sandwich" })).rejects.toThrow(/Unknown prompt/);
+    await expect(client.getPrompt({ name: "plan_for_my_laser", arguments: { bed: "  " } })).rejects.toThrow(/"bed" is required/);
+    const filled = await client.getPrompt({ name: "plan_for_my_laser", arguments: { bed: "400 x 400 mm" } });
+    expect((filled.messages[0]!.content as { text: string }).text).toMatch(/^My laser's work area is 400 x 400 mm\.\nHelp me choose a place/);
     await client.close();
   });
 });
