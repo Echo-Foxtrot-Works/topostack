@@ -104,6 +104,8 @@ export function clusterSmallParts(parts: NestPartV1[]): NestPartV1[] {
     if (taken.has(seed.id)) continue;
     taken.add(seed.id);
     const group = [seed];
+    // Summed in the same order as the group, so the ratio test is unchanged.
+    let groupArea = seed.areaMm2;
     let hull = seed.outline;
     let grown = true;
     while (grown && group.length < MAX_CLUSTER_PARTS) {
@@ -111,9 +113,10 @@ export function clusterSmallParts(parts: NestPartV1[]): NestPartV1[] {
       for (const candidate of small) {
         if (taken.has(candidate.id) || candidate.rootLayerIndex !== seed.rootLayerIndex || boundsGap(hull, candidate.outline) > CLUSTER_GAP_MM) continue;
         const next = convexHull([...hull, ...candidate.outline]);
-        const ownArea = [...group, candidate].reduce((sum, part) => sum + part.areaMm2, 0);
+        const ownArea = groupArea + candidate.areaMm2;
         if (Math.abs(signedArea(next)) > CLUSTER_HULL_RATIO * ownArea) continue;
         group.push(candidate);
+        groupArea = ownArea;
         taken.add(candidate.id);
         hull = next;
         grown = true;
