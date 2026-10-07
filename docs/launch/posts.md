@@ -42,7 +42,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > It's a spare-time solo project, built with a lot of help from AI. Bugs go through the Feedback button (no account needed) or GitHub issues.
 
-**Image:** `atomm/assets/topostack-gallery-02-layers-v6.png` or the 6-second loop. See [media.md](media.md).
+**Image:** `atomm/assets/topostack-gallery-02-layers-v8.png` or the 6-second loop. See [media.md](media.md).
 
 ---
 
@@ -64,7 +64,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > The pictures are screenshots and renders from the software, not photos of a cut piece. I'd really like to hear from anyone who runs one through their machine: whether the scoring and cutting look right in xTool Studio, what material thickness you used, and what went wrong.
 
-**Image:** `atomm/assets/topostack-gallery-06-nesting-v6.png` or `atomm/assets/topostack-gallery-08-material-v6.png`.
+**Image:** `atomm/assets/topostack-gallery-06-nesting-v8.png` or `atomm/assets/topostack-gallery-08-material-v8.png`.
 
 ---
 
@@ -161,7 +161,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > None of this is for navigation. I'd welcome pointers to open lake bathymetry I've missed (especially outside North America and the Nordics), and opinions on the datum handling.
 
-**Image:** `atomm/assets/topostack-gallery-05-depth-v6.png` (lake-floor controls) or `apps/generator/static/images/examples/lake-tahoe.webp`.
+**Image:** `atomm/assets/topostack-gallery-05-depth-v8.png` (lake-floor controls) or `apps/generator/static/images/examples/lake-tahoe.webp`.
 
 ---
 
@@ -182,7 +182,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > The images are software renders. I'd value critique of the linework defaults from people who design maps for a living.
 
-**Image:** `atomm/assets/topostack-gallery-04-flat-v6.png`.
+**Image:** `atomm/assets/topostack-gallery-04-flat-v8.png`.
 
 ---
 
@@ -249,7 +249,7 @@ Alternatives: "Real terrain and lake depths to laser-ready SVGs, free" (54), "Fr
 
 ## X / Bluesky / Mastodon
 
-The draft is 287 characters with the full link. That fits Bluesky's 300 and Mastodon's 500, and X counts any link as 23 characters, so the same text works on all three. Attach the 6-second loop (`atomm/assets/topostack-cover-loop-v6.mp4`) or `apps/generator/static/images/social-crater-lake.png`, with alt text.
+The draft is 287 characters with the full link. That fits Bluesky's 300 and Mastodon's 500, and X counts any link as 23 characters, so the same text works on all three. Attach the 6-second loop (`atomm/assets/topostack-cover-loop-v8.mp4`) or `apps/generator/static/images/social-crater-lake.png`, with alt text.
 
 > I built a free, open-source studio that turns any place into layered laser-cut topo map files: real elevation, lake depths for 8,000+ lakes, splitting for small beds. No account. (Video is a software render.)
 > https://topostack.app/?utm_source=social&utm_medium=social&utm_campaign=launch
