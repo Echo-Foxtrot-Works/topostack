@@ -10,6 +10,7 @@
 - [The Atomm embed](atomm-embed.md) — what the platform build shows differently (automatic terrain, Export view, no depth charts) and why.
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).
+- [Acrylic water inserts](water-inserts.md) — cutting each lake out of its waterline sheet, the fitted acrylic piece and its ledge, map detail on the acrylic, and its own files, nesting and guide steps.
 - [Engraving fonts](fonts.md) — the font kinds, the glyph build, adding a typeface, and why glyph data is immutable.
 - [Geometry generation performance](generation-performance.md) — stage timings, cache ownership, parallel layer workers, boundary indexes, and the Grand Teton stress benchmark.
 - [Terrain source selection](terrain-selection.md)

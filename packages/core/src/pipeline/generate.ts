@@ -31,7 +31,7 @@ import { addLabelObstacles, indexLabelLayer, placeElevationLabelStack, selectEle
 import { geoPointToMapPoint, longitudeInBounds, markerCenterForAnchor, markerPolygons } from "../annotate/markers.js";
 import { markerLayerPolygons } from "../annotate/marker-placement.js";
 import { GRAPHIC_CLEARANCE_MM, placedGraphicMarkingPrefix, placedGraphicPolygons } from "../annotate/graphics.js";
-import { offsetClosedRing } from "../primitives/offset.js";
+import { offsetClosedRing, offsetPolygons } from "../primitives/offset.js";
 import { northArrowMarkings } from "../annotate/north-arrow.js";
 import { scaleBarMarkings } from "../annotate/scale-bar.js";
 import { plaqueFootprint, plaqueMarkings } from "../annotate/plaque.js";
@@ -42,6 +42,7 @@ import { displayElevation, elevationUnit } from "../primitives/units.js";
 import { MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, MIN_LAYER_COUNT, SEA_LEVEL_M } from "../types.js";
 import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, waterSurfaceLevelM } from "../water/water.js";
 import { type FlatWaterArea, paintRegions } from "./paint-regions.js";
+import { cutWaterInserts, takeInsertMarkings, withInsertSurfaces, WATER_INSERT_SHORE_BAND_MM } from "./water-inserts.js";
 import type {
   ElevationGrid,
   GeometryIRV1,
@@ -57,6 +58,7 @@ import type {
   TextStyleV1,
   TransportationClass,
   WaterAreaV1,
+  WaterInsertIR,
   WaterSurfaceIR,
 } from "../types.js";
 
@@ -114,11 +116,22 @@ function unionPrepared(upper: PreparedPolygons, lower: PreparedPolygons): Prepar
   }
 }
 
-/** Built top-down: each layer's covering is the layer above's material plus that layer's covering. */
-function layerClips(layers: LayerIR[], mergeCovering: boolean): LayerClip[] {
+/**
+ * Built top-down: each layer's covering is the layer above's material plus
+ * that layer's covering. `reuse` hands over clips built for the same layers
+ * above `reuse.below`, which then carry over as they are rather than being
+ * prepared and merged again.
+ */
+function layerClips(layers: LayerIR[], mergeCovering: boolean, reuse?: { clips: LayerClip[]; below: number }): LayerClip[] {
   const clips: LayerClip[] = new Array(layers.length);
   let covering = preparePolygons([]);
-  for (let layerIndex = layers.length - 1; layerIndex >= 0; layerIndex -= 1) {
+  let top = layers.length - 1;
+  if (reuse && reuse.below < top) {
+    for (let layerIndex = reuse.below + 1; layerIndex <= top; layerIndex += 1) clips[layerIndex] = reuse.clips[layerIndex]!;
+    covering = reuse.clips[reuse.below]!.covering;
+    top = reuse.below;
+  }
+  for (let layerIndex = top; layerIndex >= 0; layerIndex -= 1) {
     const layer = layers[layerIndex]!;
     const material = preparePolygons(layer.polygons);
     clips[layerIndex] = { layer, material, covering };
@@ -590,7 +603,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
     .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), points }));
 }
 
-function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], ladder: ElevationLadder, labels: TransportationLabelCandidates): void {
+function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
   const layers = clips.map(({ layer }) => layer);
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
@@ -643,7 +656,7 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
     const layer = layers[segment.layer];
     if (!layer) continue;
     const material = clips[segment.layer]!.material;
-    const clipped = clipPolyline(segment.points, material);
+    const clipped = clipPolyline(segment.points, material, excluded);
     if (feature.label && segment.points[0] && pointInPreparedPolygons(segment.points[0], material)) {
       layer.markings.push({ id: `${featureId}-${layer.index}-${segmentIndex}-label`, operation: feature.operation, kind: feature.kind, points: [segment.points[0]], label: feature.label, textStyle: config.textStyle });
     }
@@ -656,8 +669,33 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
   }
 }
 
+/**
+ * Where the shoreline score rings of lakes that became acrylic must not run:
+ * over the acrylic and a hair past its edge. A ring there would follow the
+ * cut that opens the lake, half on the wood and half on the insert; the
+ * stretches along arms that stayed wood keep their score. The rings are the
+ * lake's own outline rings (`smoothLakeShorelines` shares them), so identity
+ * answers for a real source; a copied ring is matched by value.
+ */
+function insertedShorelines({ source }: GenerationContext, inserts: WaterInsertIR[]): (feature: MarkingFeature) => PreparedPolygons | undefined {
+  if (!inserts.length) return () => undefined;
+  const surfaceIds = new Set(inserts.map((insert) => insert.surfaceId));
+  const rings = (source.waterAreas ?? []).filter((area) => surfaceIds.has(area.id)).flatMap((area) => [area.polygon.outer, ...area.polygon.holes]);
+  const byIdentity = new Set<Point2D[]>(rings);
+  let byValue: Set<string> | undefined;
+  let band: PreparedPolygons | undefined;
+  return (feature) => {
+    if (!isClosedWater(feature)) return undefined;
+    if (!byIdentity.has(feature.points)) {
+      byValue ??= new Set(rings.map((ring) => JSON.stringify(ring)));
+      if (!byValue.has(JSON.stringify(feature.points))) return undefined;
+    }
+    return band ??= preparePolygons(offsetPolygons(inserts.flatMap((insert) => insert.polygons), WATER_INSERT_SHORE_BAND_MM, "round"));
+  };
+}
+
 /** Route every enabled map feature onto the layers it is visible on; returns transportation label candidates. */
-function routeMarkings(context: GenerationContext, clips: LayerClip[], ladder: ElevationLadder): TransportationLabelCandidates {
+function routeMarkings(context: GenerationContext, clips: LayerClip[], ladder: ElevationLadder, excludedFor: (feature: MarkingFeature) => PreparedPolygons | undefined = () => undefined): TransportationLabelCandidates {
   const { config, source, flatEngraving } = context;
   const labels: TransportationLabelCandidates = new Map();
   for (const { feature, featureId } of mapFeatures(context, ladder.modelGrid)) {
@@ -665,7 +703,7 @@ function routeMarkings(context: GenerationContext, clips: LayerClip[], ladder: E
     // Routing every feature through every elevation band of a flat engraving
     // only explodes one road into dozens of DOM/SVG paths before reassembling it.
     if (flatEngraving) routeFlatMarking(config, feature, featureId, clips[0]!, labels);
-    else routeStackMarking(config, feature, featureId, clips, ladder, labels);
+    else routeStackMarking(config, feature, featureId, clips, ladder, labels, excludedFor(feature));
   }
 
   const enabledRoadFeatures = source.markings.filter((feature) => feature.kind === "road" && config.showRoads);
@@ -1098,10 +1136,10 @@ function placeGraphics(context: GenerationContext, clips: LayerClip[]): void {
  * human-readable prefixes while guaranteeing valid keyed previews and unique
  * SVG element IDs even when an upstream tile contains a duplicate feature.
  */
-function dedupeMarkingIds(layers: LayerIR[]): void {
+function dedupeMarkingIds(layers: LayerIR[], inserts: WaterInsertIR[] = []): void {
   const markingIds = new Set<string>();
   const duplicateCounts = new Map<string, number>();
-  layers.forEach((layer) => layer.markings.forEach((marking) => {
+  [...layers, ...inserts].forEach((layer) => layer.markings.forEach((marking) => {
     const original = marking.id;
     let occurrence = duplicateCounts.get(original) ?? 0;
     let candidate = occurrence === 0 ? original : `${original}-duplicate-${occurrence}`;
@@ -1115,7 +1153,7 @@ function dedupeMarkingIds(layers: LayerIR[]): void {
   }));
 }
 
-export type GenerationStage = "prepare" | "water" | "ladder" | "contours" | "terrain-cache" | "split" | "nesting" | "fabrication" | "routing" | "alignment" | "assembly-labels" | "elevation-labels" | "annotations";
+export type GenerationStage = "prepare" | "water" | "ladder" | "contours" | "terrain-cache" | "water-inserts" | "split" | "nesting" | "fabrication" | "routing" | "alignment" | "assembly-labels" | "elevation-labels" | "annotations";
 export interface GenerationOptions {
   /** Diagnostic timings only; never included in the geometry or its fingerprint. */
   onStage?: (stage: GenerationStage, durationMs: number) => void;
@@ -1138,7 +1176,7 @@ const TERRAIN_INDEPENDENT_FIELDS = [
   "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
-  "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "showElevationLabels",
+  "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "showElevationLabels",
   "elevationLabelPosition", "textStyle", "showNorthArrow", "northArrowStyle", "northArrowSizeMm",
   "northArrowPlacement", "showScaleBar", "markers", "customLines", "explodedPreview",
   // Placed, engraved or arranged after the cached layers: graphics cut clones of them.
@@ -1259,6 +1297,12 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   }
   cutPlacedGraphics(context, layers);
   const { waterSurfaces, waterPatternAreas } = waterOutputs(context, ladder);
+  const cellPitchMm = config.widthMm / Math.max(1, grid.width - 1);
+  // Openings and their ledges are terrain from here on: the split, nests and
+  // alignment guides below all treat them like any other hole.
+  const water = flatEngraving ? undefined : cutWaterInserts(config, layers, waterSurfaces, cellPitchMm, context.warnings);
+  const waterInserts = water?.inserts ?? [];
+  if (water) stage("water-inserts");
 
   // Before nesting: cavities record indices into a donor's polygons and holes
   // that splitting would renumber, and a seam through a cavity would leave an
@@ -1273,11 +1317,16 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Sparse maps and flat engravings keep the cheap original covering sets.
   const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + config.customLines.length;
   const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= UNION_COVERING_MIN_WORK);
-  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm: config.widthMm / Math.max(1, grid.width - 1) }, fabricationNests, context.warnings);
+  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm }, fabricationNests, context.warnings);
+  // Map detail treats acrylic as the surface it lies on; hidden marks keep the wood `clips`.
+  // Sheets above the highest insert are unchanged, so their clips carry over.
+  const surfaceClips = waterInserts.length
+    ? layerClips(withInsertSurfaces(layers, waterInserts), !flatEngraving && featureCount * layers.length >= UNION_COVERING_MIN_WORK, { clips, below: Math.max(...waterInserts.map((insert) => insert.layerIndex)) })
+    : clips;
   stage("fabrication");
-  const transportationLabels = routeMarkings(context, clips, ladder);
+  const transportationLabels = routeMarkings(context, surfaceClips, ladder, insertedShorelines(context, waterInserts));
   stage("routing");
-  placeAnnotations(context, clips);
+  placeAnnotations(context, surfaceClips);
   // Small maps keep the original path and never start extra workers.
   const usePool = parallel && !flatEngraving && layers.length >= PARALLEL_MIN_LAYERS;
   if (!flatEngraving && config.showAlignmentGuides) {
@@ -1302,7 +1351,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     code: "LABEL_OMITTED",
     message: "Transportation labels do not fit the exposed material. Reduce Text size or Vertical exaggeration, or increase the artwork size.",
   });
-  placeAviationLabels(context, clips);
+  placeAviationLabels(context, surfaceClips);
   if (config.showElevationLabels) {
     if (usePool) {
       const results = yield { config, tasks: layers.map((layer, index) => {
@@ -1322,10 +1371,11 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     } else placeElevationLabels(context, layers);
   }
   stage("elevation-labels");
-  placePlaque(context, clips);
-  placeGraphics(context, clips);
-  placeMarkers(context, clips);
-  dedupeMarkingIds(layers);
+  placePlaque(context, surfaceClips);
+  placeGraphics(context, surfaceClips);
+  placeMarkers(context, surfaceClips);
+  takeInsertMarkings(layers, waterInserts);
+  dedupeMarkingIds(layers, waterInserts);
   stage("annotations");
 
   const { landMin, landMax, visibleMin, visibleMax, ladderBase, modelGrid } = ladder;
@@ -1360,6 +1410,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     waterPatternAreas,
     fabricationNests,
     paintRegions: paintWindows,
+    ...(water ? { waterInserts, waterInsertMaterial: water.material } : {}),
     splitPlan,
     warnings: context.warnings,
     attribution: aviationRequested(config) && source.aviationStatus !== "not-covered" ? [...source.attribution, ...(source.aviationAttribution ?? [])] : source.attribution,

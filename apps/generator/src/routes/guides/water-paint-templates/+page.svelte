@@ -37,6 +37,8 @@
   <h2>With a split map</h2>
   <p>When a <a href={`${base}/guides/split-large-maps`}>work area splits the layers</a>, each piece that shows water gets its own stencil, named after its cell. Register it on the piece's puzzle tabs as well as its outer edges.</p>
 
+  <h2>With acrylic water inserts</h2>
+  <p>With <strong>Acrylic water inserts</strong> on, each lake on the sheet at its waterline becomes clear acrylic, so that sheet has no water left to paint. The lake bed below still gets its stencils: paint it before gluing and the colour shows through the acrylic. The 2 mm ledge the insert rests on is part of the bed's stencil window too.</p>
   <h2>Check before you cut</h2>
   <p class="note">Cut one stencil and test it on a scrap of your material and paint before committing the whole stack. Kerf compensation must be off for the stencil files.</p>
   <h2>Related guides</h2>

@@ -11,6 +11,8 @@
   const submerged = $derived((geometry.waterSurfaces ?? []).filter((surface) => (layer?.index ?? 0) <= surface.layerIndex));
   // The stencil windows for this sheet: exposed water plus the bleed under the layer above.
   const paint = $derived((geometry.paintRegions ?? []).filter((region) => region.layerIndex === (layer?.index ?? 0)));
+  // Acrylic set into this sheet's openings: drawn where it will sit, with the detail engraved on it.
+  const inserts = $derived((geometry.waterInserts ?? []).filter((insert) => insert.layerIndex === (layer?.index ?? 0)));
   // Lays the paper stencil over the sheet as it is cut: the piece less its
   // windows as one outline, so the paint shows only where the paper is gone.
   let showTemplate = $state(false);
@@ -54,6 +56,16 @@
       {/each}
       {#each layer.markings as marking (marking.id)}
         <g data-marking-id={marking.id} data-marking-kind={marking.kind} data-transportation-class={marking.transportationClass}><path d={markingPath(marking)} fill-rule="evenodd" fill={marking.knockout ? "#e7c391" : marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={marking.kind === "road" ? geometry.lineStyle.roadCap : marking.kind === "grid" ? "round" : undefined} stroke-linejoin={marking.kind === "road" ? "round" : undefined} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} stroke-linecap={text.round ? "round" : "butt"} stroke-linejoin={text.round ? "round" : "miter"} />{/if}{/if}</g>
+      {/each}
+      {#each inserts as insert (insert.id)}
+        <g data-water-insert={insert.id}>
+          {#each insert.polygons as polygon}
+            <path d={`${pointsToPath(polygon.outer)} Z ${polygon.holes.map((hole) => `${pointsToPath(hole)} Z`).join(" ")}`} fill="#7fb2cc" fill-opacity="0.45" stroke="#1f5f7d" stroke-width="0.35" stroke-dasharray="1.2 0.8" fill-rule="evenodd" />
+          {/each}
+          {#each insert.markings.filter((marking) => !marking.knockout) as marking (marking.id)}
+            <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} />{/if}{/if}
+          {/each}
+        </g>
       {/each}
       {#if showTemplate}
         {#each templates as template (template.key)}

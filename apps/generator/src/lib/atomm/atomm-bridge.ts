@@ -1,7 +1,7 @@
 import type { GeometryIRV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
 import type { ExportIntent } from "$lib/studio/export-policy";
 
-type ExportSnapshot = { geometry: GeometryIRV1; project: ProjectConfigV1; sheetPlan?: SheetNestPlanV1; layoutNote?: string };
+type ExportSnapshot = { geometry: GeometryIRV1; project: ProjectConfigV1; sheetPlan?: SheetNestPlanV1; acrylicSheetPlan?: SheetNestPlanV1; layoutNote?: string };
 type CurrentExport = () => ExportSnapshot | Promise<ExportSnapshot>;
 
 export type ExportUpdate =
@@ -36,10 +36,13 @@ export function connectAtomm(getCurrent: CurrentExport, onReady: () => void, onE
         if (!currentExport) throw new Error("TopoStack is not ready to export.");
         const fonts = intent === "download" ? await loadGuideFonts() : [];
         const getter = currentExport;
-        const { geometry, project, sheetPlan, layoutNote } = await getter();
+        const { geometry, project, sheetPlan, acrylicSheetPlan, layoutNote } = await getter();
         if (currentExport !== getter) throw new Error("TopoStack disconnected while preparing the export.");
-        const output = await createAtommExport(geometry, project, intent, fonts, sheetPlan);
-        currentExportUpdate?.({ phase: "ready", intent, fileCount: Array.isArray(output) ? output.length : 1, ...(layoutNote ? { layoutNote } : {}) });
+        const output = await createAtommExport(geometry, project, intent, fonts, sheetPlan, acrylicSheetPlan);
+        // Studio opens one file, the wood master; acrylic is another material and another job.
+        const acrylicNote = intent === "openInStudio" && geometry.waterInserts?.length ? "The acrylic water inserts are not in it: download the project files for their own SVGs." : "";
+        const note = [layoutNote, acrylicNote].filter(Boolean).join(" ");
+        currentExportUpdate?.({ phase: "ready", intent, fileCount: Array.isArray(output) ? output.length : 1, ...(note ? { layoutNote: note } : {}) });
         return output;
       } catch (error) {
         const message = error instanceof Error ? error.message : "TopoStack could not prepare this export.";

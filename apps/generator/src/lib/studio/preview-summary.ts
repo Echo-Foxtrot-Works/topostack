@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { acrylicPanelGroups, AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -91,6 +91,36 @@ export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefine
     .slice(0, limit);
 }
 
+export interface InsertLake { key: string; name: string; insertIds: string[]; excluded: boolean }
+
+/**
+ * Every lake an acrylic insert could replace, one row per lake (a lake the
+ * crop or its islands break into several surfaces is still one switch),
+ * largest first. A lake with neither insert nor exclusion was skipped, and
+ * the generation warnings say why.
+ */
+export function insertLakes(geometry: Pick<GeometryIRV1, "waterSurfaces" | "waterInserts">, project: Pick<ProjectConfigV1, "waterInserts">): InsertLake[] {
+  const excluded = new Set(project.waterInserts?.excludedLakeIds ?? []);
+  const rows = new Map<string, InsertLake & { areaMm2: number }>();
+  for (const surface of geometry.waterSurfaces) {
+    if (surface.kind !== "lake") continue;
+    const key = waterInsertLakeKey(surface);
+    const row = rows.get(key) ?? { key, name: surface.name ?? "", insertIds: [], excluded: excluded.has(key), areaMm2: 0 };
+    row.areaMm2 += surface.polygons.reduce((total, polygon) => total + Math.abs(signedArea(polygon.outer)), 0);
+    rows.set(key, row);
+  }
+  for (const insert of geometry.waterInserts ?? []) rows.get(insert.lakeKey)?.insertIds.push(insert.id);
+  // Unnamed lakes are numbered in the order they are listed.
+  let unnamed = 0;
+  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => ({ ...row, name: row.name || `Lake ${++unnamed}` }));
+}
+
+/** How many unnested acrylic panels the export writes, by the grouping the export itself uses. */
+export function acrylicPanelCount(geometry: Pick<GeometryIRV1, "waterInserts" | "waterInsertMaterial">, project: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): number {
+  const material = geometry.waterInsertMaterial;
+  return material ? acrylicPanelGroups(geometry.waterInserts ?? [], material, project).length : 0;
+}
+
 const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
@@ -153,7 +183,8 @@ export function sectionSummary(section: ConfigSectionId, project: ProjectConfigV
       const seams = planSeamGrid(project);
       const contours = project.smoothing === 1 ? "Smooth contours" : "Standard contours";
       const paint = project.outputMode === "stack" && project.paintTemplates.length ? " · Paint templates" : "";
-      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}`;
+      const acrylic = project.outputMode === "stack" && project.waterInserts ? " · Acrylic water" : "";
+      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}${acrylic}`;
     }
   }
 }

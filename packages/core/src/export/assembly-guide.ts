@@ -3,7 +3,7 @@ import { formatNumber as format } from "../primitives/format.js";
 import { pointInPolygon, ringBounds, simplifyClosedRing } from "../primitives/geometry2d.js";
 import { displayElevation, displayLength, elevationUnit, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
-import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
+import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterInsertIR } from "../types.js";
 
 /**
  * A web font to embed in the guide, as WOFF2 bytes in base64. The core cannot
@@ -27,6 +27,16 @@ export interface GuideSheet {
   paintTemplates?: Array<{ kind: PaintRegionKind; filename: string }>;
   /** Where each piece sits on a nested stock sheet, drawn so unlabelled pieces can be told apart. */
   map?: GuideSheetMap;
+}
+
+/** The acrylic water inserts, as the guide refers to them: the files actually written and what each holds. */
+export interface GuideAcrylic {
+  thicknessMm: number;
+  ledgeMm: number;
+  inserts: WaterInsertIR[];
+  sheets: Array<{ filename: string; insertIds: string[]; map?: GuideSheetMap }>;
+  /** Stock sheet size when the acrylic was nested. */
+  sheetSize?: { widthMm: number; heightMm: number };
 }
 
 export interface GuideSheetMap {
@@ -126,7 +136,7 @@ function layerNumber(layer: LayerIR): string {
  * prints from there - and each layer's outline is written once and reused by every step
  * through `<use>`, so the file grows with the layer count rather than its square.
  */
-export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = []): string {
+export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = [], acrylic?: GuideAcrylic): string {
   const units = config.units;
   const unit = lengthUnit(units);
   const amount = (valueMm: number) => format(Number(displayLength(valueMm, units).toFixed(units === "imperial" ? 2 : 1)));
@@ -161,8 +171,15 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   const donorsOf = (index: number) => [...new Set(nests.filter((nest) => nest.nestedLayerIndex === index).map((nest) => nest.donorLayerIndex))];
   const nestedIn = (index: number) => [...new Set(nests.filter((nest) => nest.donorLayerIndex === index).map((nest) => nest.nestedLayerIndex))];
 
-  const defs = layers.map((layer) => `<path id="g-${layer.id}" d="${layer.polygons.map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("");
-  const stack = (upTo: number) => layers.slice(0, upTo).map((layer, index) => `<use href="#g-${layer.id}" fill="${tone(index, count)}"/>`).join("");
+  // Acrylic inserts by the wood layer they sit in; they go in once that layer is glued.
+  const inserts = acrylic?.inserts ?? [];
+  const insertsOn = (layerIndex: number) => inserts.filter((insert) => insert.layerIndex === layerIndex);
+  const insertName = (insert: WaterInsertIR) => `<strong>${escapeXml(insert.id)}</strong>${insert.name ? ` (${escapeXml(insert.name)})` : ""}`;
+  const acrylicSheetsFor = (insert: WaterInsertIR) => (acrylic?.sheets ?? []).filter((sheet) => sheet.insertIds.some((id) => id === insert.id || id.startsWith(`${insert.id}-`)));
+  const defs = layers.map((layer) => `<path id="g-${layer.id}" d="${layer.polygons.map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("")
+    + layers.filter((layer) => insertsOn(layer.index).length).map((layer) => `<path id="g-acrylic-${layer.id}" d="${insertsOn(layer.index).flatMap((insert) => insert.polygons).map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("");
+  const acrylicUse = (layer: LayerIR) => insertsOn(layer.index).length ? `<use href="#g-acrylic-${layer.id}" class="acrylic"/>` : "";
+  const stack = (upTo: number) => layers.slice(0, upTo).map((layer, index) => `<use href="#g-${layer.id}" fill="${tone(index, count)}"/>${acrylicUse(layer)}`).join("");
   const diagram = (body: string, label: string) => `<svg class="diagram" viewBox="${viewBox}" role="img" aria-label="${escapeXml(label)}">${body}</svg>`;
 
   const stepFigure = (layer: LayerIR): string => {
@@ -175,7 +192,11 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
       const ring = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) < small ? `<circle cx="${format(point.x)}" cy="${format(point.y)}" r="${format(small * 0.7)}" class="callout"/>` : "";
       return ring + text;
     }).join("");
-    return diagram(`${stack(layer.index)}<use href="#g-${layer.id}" class="current"/>${callouts}`, `Stack after adding layer ${layerNumber(layer)}`);
+    const insertCallouts = insertsOn(layer.index).map((insert) => {
+      const point = labelPoint(insert.polygons[0]!);
+      return `<text x="${format(point.x)}" y="${format(point.y)}" class="piece-id insert-id">${escapeXml(insert.id)}</text>`;
+    }).join("");
+    return diagram(`${stack(layer.index)}<use href="#g-${layer.id}" class="current"/>${acrylicUse(layer)}${callouts}${insertCallouts}`, `Stack after adding layer ${layerNumber(layer)}`);
   };
 
   const nestedSheet = sheets.find((sheet) => sheet.map)?.map;
@@ -196,6 +217,12 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     if (nestedIn(index).length) notes.push(`<strong>Keep its cutouts.</strong> The pieces that drop out of it belong to layer ${nestedIn(index).map((nested) => layers[nested]).filter((entry): entry is LayerIR => Boolean(entry)).map(layerNumber).join(" and ")}.`);
     if (donors.length) notes.push(`<strong>Nested.</strong> ${pieces === 1 ? "This piece was" : "These pieces were"} cut from inside layer ${donors.map(layerNumber).join(" and ")}; look among that sheet's cutouts.`);
     for (const { kind, files } of templatesFor(index)) notes.push(`<strong>Paint the ${kind} first</strong> with ${files.map(({ filename }) => `<code>${escapeXml(filename)}</code>`).join(", ")}.`);
+    const covering = insertsOn(index + 1);
+    if (covering.length) notes.push(`<strong>Under the water.</strong> Its lake bed shows through acrylic ${covering.length === 1 ? "insert" : "inserts"} ${covering.map(insertName).join(", ")}, set in at step ${index + 2}. The ${length(acrylic!.ledgeMm)} rim just inside the opening above is the ledge ${covering.length === 1 ? "it rests" : "they rest"} on${painted ? "" : "; tint the bed now if you want coloured water"}. Keep glue off the bed: it shows.`);
+    for (const insert of insertsOn(index)) {
+      const files = acrylicSheetsFor(insert);
+      notes.push(`<strong>Set in acrylic ${insertName(insert)}</strong>${files.length ? ` from ${files.map((sheet) => `<code>${escapeXml(sheet.filename)}</code>`).join(", ")}` : ""} once this layer${insert.polygons.some((polygon) => polygon.holes.length) ? " and the islands inside its opening are" : " is"} glued and set. Peel the film from its underside, dry-fit it in the opening, then lift it out, put a few dots of clear acrylic-safe glue (not superglue, which fogs acrylic) on the ledge and press it home. Peel the top film when the model is finished.`);
+    }
     if (index === count - 1 && count > 1) notes.push(`<strong>Top layer.</strong> ${(labelsOn || (nestedSheet && config.showAssemblyLabels)) && pieces > 1 ? `Its pieces carry no id; ${nestedSheet ? "find them on the sheet maps and " : ""}place them by the picture.` : "The last one."}`);
     const facts = [
       ["Cut from", layerSheets.length ? layerSheets.map((sheet) => `<code>${escapeXml(sheet.filename)}</code>${piecesOn(sheet, index)}`).join(" ") : "—"],
@@ -215,6 +242,13 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   }).join("");
 
   const sheetMaps = sheets.map((sheet) => sheet.map ? sheetMapFigure(sheet, sheet.map) : "").join("");
+  const acrylicSheets = acrylic?.sheets ?? [];
+  const acrylicRows = acrylicSheets.map((sheet) => `<tr><td><input type="checkbox" aria-label="Cut ${escapeXml(sheet.filename)}"></td><td><code>${escapeXml(sheet.filename)}</code></td><td>${sheet.insertIds.map(escapeXml).join(", ")}</td></tr>`).join("");
+  const acrylicMaps = acrylicSheets.map((sheet) => sheet.map ? sheetMapFigure({ filename: sheet.filename, layerIndexes: [] }, sheet.map) : "").join("");
+  const acrylicCut = acrylicSheets.length ? `
+<h3 style="margin-top:24px">Acrylic</h3>
+<p class="muted">Cut these as a separate job with your acrylic settings, film left on. The last column names the inserts on each file; acrylic carries no engraved ids${acrylicMaps ? ", so the maps below name them" : ", so keep each with its file"}.</p>
+<table><tbody>${acrylicRows}</tbody></table>${acrylicMaps ? `\n<div class="sheet-maps">${acrylicMaps}</div>` : ""}` : "";
 
   const templateRows = templates.map(({ filename, sheet }) => `<tr><td><input type="checkbox" aria-label="Cut ${escapeXml(filename)}"></td><td><code>${escapeXml(filename)}</code></td><td>for <code>${escapeXml(sheet.filename)}</code></td></tr>`).join("");
   const paintSection = painted ? `<section class="page">
@@ -246,6 +280,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     `<li><span class="swatch swatch-below"></span>Layers already glued</li>`,
     labelsOn ? `<li><span class="swatch swatch-id">B2</span>Piece id, also engraved on the piece</li>` : "",
     `<li><span class="swatch swatch-ring"></span>A small piece, circled so it is not missed</li>`,
+    inserts.length ? `<li><span class="swatch swatch-acrylic"></span>Acrylic water insert, named W1, W2…</li>` : "",
   ].filter(Boolean).join("");
 
   const marks = [
@@ -254,6 +289,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     // Nested sheets mix layers, so the export engraves an id on every covered piece, split or not.
     nestedSheet && config.showAssemblyLabels && !split ? `<li><strong>Piece ids.</strong> Pieces from different layers share each sheet, so every piece carries a green id like <code>L05</code> or <code>L05-2</code> (layer 05, island 2) where the next layer will cover it. Pieces with no covered room, the top layer's among them, are named on the sheet maps.</li>` : "",
     split && !labelsOn ? `<li><strong>Split layers.</strong> Each layer is cut in ${split.columns} × ${split.rows} parts. Use the step pictures to place them.</li>` : "",
+    inserts.some((insert) => insert.markings.some((mark) => !mark.knockout)) ? `<li><strong>On the acrylic.</strong> Map detail that crosses the water is engraved on the inserts' top face.</li>` : "",
     `<li><strong>Everything else</strong> engraved on the pieces (contours, roads, labels) is part of the artwork.</li>`,
   ].filter(Boolean).join("");
 
@@ -264,6 +300,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     ["Layers", `${count} × ${length(thickness)}`],
     ["Pieces", String(pieceTotal)],
     ["Sheets to cut", String(sheets.length)],
+    ...(inserts.length ? [["Acrylic inserts", `${inserts.length} × ${length(acrylic!.thicknessMm)}`]] : []),
     ["Elevation", `${elevation(ir.minElevationM)} – ${elevation(ir.maxElevationM)}`],
     ["Vertical exaggeration", `${ir.verticalExaggeration.toFixed(1)}×`],
   ].map(([term, value]) => `<div><dt>${term}</dt><dd>${value}</dd></div>`).join("");
@@ -311,7 +348,10 @@ figure{margin:0;background:var(--canvas);padding:14px;box-shadow:0 18px 23px rgb
 .sheet-map figcaption{margin-top:6px}` : ""}
 .diagram use{stroke:#847d6a;stroke-width:.6;vector-effect:non-scaling-stroke;fill-rule:evenodd}
 .diagram use.current{fill:#c65224;stroke:#6e2a10;stroke-width:1.4}
-.diagram .callout{fill:none;stroke:#c65224;stroke-width:1.8;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+${inserts.length ? `.diagram use.acrylic{fill:#7fb2cc;fill-opacity:.6;stroke:#1f5f7d;stroke-width:1}
+.diagram .insert-id{stroke:#1f5f7d}
+.swatch-acrylic{background:rgb(127 178 204/.6);border:1px solid #1f5f7d}
+` : ""}.diagram .callout{fill:none;stroke:#c65224;stroke-width:1.8;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
 .diagram .piece-id{font:600 ${format(Math.max(ir.widthMm, ir.heightMm) * 0.035)}px "Archivo","Helvetica Neue",sans-serif;fill:#fff;stroke:#6e2a10;stroke-width:.35em;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
 ul,ol{margin:0;padding-left:1.3em}
@@ -397,6 +437,8 @@ figure,code,.badge,.diagram,.swatch,.numbered>li::before,input{-webkit-print-col
 <li>A flat board to build on and some weights or clamps</li>
 <li>A small bag or tray per layer, and a pencil</li>
 ${painted ? `<li>Paper or stencil film for ${plural(templates.length, "paint template")}, and paint</li>` : ""}
+${inserts.length ? `<li>${plural(acrylicSheets.length, "sheet")} of ${length(acrylic!.thicknessMm)} clear or tinted cast acrylic${acrylic!.sheetSize ? `, each ${length(acrylic!.sheetSize.widthMm)} × ${length(acrylic!.sheetSize.heightMm)}` : ""}, for ${plural(inserts.length, "water insert")}</li>
+<li>Clear, acrylic-safe glue for the inserts (not superglue: it leaves a white haze on acrylic)</li>` : ""}
 </ul>
 </div>
 <div>
@@ -414,7 +456,7 @@ ${nests.length ? `<li><strong>Keep every cutout.</strong> Some small pieces of h
 <p class="label">Section 1</p>
 <h2>Cut the sheets</h2>
 <p class="muted">Tick each file off as it comes off the laser. The last column says which layers are on that sheet.</p>
-<table><tbody>${sheetRows}</tbody></table>${sheetMaps ? `\n<p class="muted">Pieces from different layers share each sheet. Each map shows every piece where the laser cuts it, named by its id; use it for any piece without an engraved id.</p>\n<div class="sheet-maps">${sheetMaps}</div>` : ""}
+<table><tbody>${sheetRows}</tbody></table>${sheetMaps ? `\n<p class="muted">Pieces from different layers share each sheet. Each map shows every piece where the laser cuts it, named by its id; use it for any piece without an engraved id.</p>\n<div class="sheet-maps">${sheetMaps}</div>` : ""}${acrylicCut}
 </section>
 ${paintSection}
 <section class="page build-intro">

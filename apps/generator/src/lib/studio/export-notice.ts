@@ -70,6 +70,8 @@ export interface DownloadRequest {
   project: ProjectConfigV1;
   /** Lay the files out on stock sheets, when the maker nested them. */
   sheetPlan?: SheetNestPlanV1;
+  /** Lay the acrylic water inserts out on acrylic stock sheets, when the maker nested them. */
+  acrylicSheetPlan?: SheetNestPlanV1;
   notice: ExportNotice;
   /** Reports fabrication export outcomes; project settings and assembly guides are not tracked. */
   track: (event: "export_prepared" | "export_failed") => void;
@@ -78,7 +80,7 @@ export interface DownloadRequest {
 }
 
 /** Build and start a browser download, reporting progress and failures through `notice`. */
-export async function downloadProject({ option, geometry, project, sheetPlan, notice, track, nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve())) }: DownloadRequest): Promise<void> {
+export async function downloadProject({ option, geometry, project, sheetPlan, acrylicSheetPlan, notice, track, nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve())) }: DownloadRequest): Promise<void> {
   if (notice.phase === "preparing") return;
   const tracked = option !== "project" && option !== "assembly";
   const reason = option === "project" ? undefined : exportBlockReason(geometry, project);
@@ -99,7 +101,7 @@ export async function downloadProject({ option, geometry, project, sheetPlan, no
         const { buildProjectPackage, loadGuideFonts } = await import("$lib/studio/export-policy");
         // Only the booklet uses the fonts; skip fetching them for files without it.
         const guideFonts = option === "all" || option === "assembly" ? await loadGuideFonts() : [];
-        return prepareSelectedDownload(buildProjectPackage(geometry, project, { guideFonts, sheetPlan }), option);
+        return prepareSelectedDownload(buildProjectPackage(geometry, project, { guideFonts, sheetPlan, acrylicSheetPlan }), option);
       })();
     startBrowserDownload(download);
     if (tracked) track("export_prepared");

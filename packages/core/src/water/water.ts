@@ -499,7 +499,7 @@ export function carveWaterDepth(
           bedElevationM = Math.min(bedElevationM, bed);
         }
         pushSurface({
-          id: area.id, kind: area.kind, name: area.name, hylakId: area.hylakId,
+          id: area.id, kind: area.kind, name: area.name, hylakId: area.hylakId, ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
           polygons: [area.polygon], surfaceElevationM, bedElevationM,
           ...(fallbackCount && area.maxDepthM ? { maxDepthM: area.maxDepthM } : {}),
           // A traced chart is the maker's own depth source, gaps or not.
@@ -539,6 +539,7 @@ export function carveWaterDepth(
         kind: area.kind,
         ...(area.name ? { name: area.name } : {}),
         ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
+        ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
         polygons: [area.polygon],
         surfaceElevationM: surveyedSurfaceM,
         bedElevationM: surveyedBedM,
@@ -599,6 +600,7 @@ export function carveWaterDepth(
       kind: area.kind,
       ...(area.name ? { name: area.name } : {}),
       ...(area.hylakId === undefined ? {} : { hylakId: area.hylakId }),
+      ...(area.lakeKey ? { lakeKey: area.lakeKey } : {}),
       polygons: [area.polygon],
       surfaceElevationM,
       bedElevationM,

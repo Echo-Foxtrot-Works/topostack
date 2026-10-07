@@ -141,6 +141,7 @@ export function validateProject(config: ProjectConfigV1): void {
   if (config.minimumFeatureMm < 0.2 || config.minimumFeatureMm > 5) throw new Error("Minimum feature must be between 0.2 and 5 mm.");
   if (config.glueMarginMm < 2 || config.glueMarginMm > 25) throw new Error("Glue margin must be between 2 and 25 mm.");
   if (config.laserKerfMm < 0 || config.laserKerfMm > 1) throw new Error("Laser kerf must be between 0 and 1 mm.");
+  if (config.waterInserts !== undefined) validateWaterInserts(config.waterInserts);
   for (const [label, value] of [["Work area width", config.workAreaWidthMm], ["Work area height", config.workAreaHeightMm]] as const) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`${label} must be zero or a positive number of millimeters.`);
     if (value > 0 && (value < MIN_WORK_AREA_MM || value > MAX_PROJECT_DIMENSION_MM)) throw new Error(`${label} must be 0 (unlimited) or between ${MIN_WORK_AREA_MM} and ${MAX_PROJECT_DIMENSION_MM} mm.`);
@@ -263,4 +264,21 @@ function validatePlaque(plaque: PlaqueV1): void {
   const placement = plaque.placement;
   if (!placement || typeof placement !== "object" || !NORTH_ARROW_ANCHORS.includes(placement.anchor)) throw new Error("Title anchor is invalid.");
   if (!placement.offset || ![placement.offset.x, placement.offset.y].every(Number.isFinite) || Math.abs(placement.offset.x) > 1 || Math.abs(placement.offset.y) > 1) throw new Error("Title offsets must be between -100% and 100%.");
+}
+
+/**
+ * Lake keys are HydroLAKES ids, `outline:<chart id>` or source ids, which a
+ * data provider names; any printable token is accepted. The caps bound a
+ * project's size, not any real map.
+ */
+const WATER_INSERT_LAKE_KEY = /^[\x21-\x7e]{1,128}$/;
+const MAX_WATER_INSERT_EXCLUSIONS = 500;
+
+function validateWaterInserts(settings: NonNullable<ProjectConfigV1["waterInserts"]>): void {
+  if (!settings || typeof settings !== "object") throw new Error("Acrylic water insert settings are invalid.");
+  const { thicknessMm, kerfMm, fitClearanceMm, excludedLakeIds } = settings;
+  if (thicknessMm !== undefined && !(Number.isFinite(thicknessMm) && thicknessMm >= 0.5 && thicknessMm <= 25)) throw new Error("Acrylic thickness must be between 0.5 and 25 mm.");
+  if (kerfMm !== undefined && !(Number.isFinite(kerfMm) && kerfMm >= 0 && kerfMm <= 1)) throw new Error("Acrylic kerf must be between 0 and 1 mm.");
+  if (!(Number.isFinite(fitClearanceMm) && fitClearanceMm >= 0 && fitClearanceMm <= 0.5)) throw new Error("Acrylic fit clearance must be between 0 and 0.5 mm.");
+  if (!Array.isArray(excludedLakeIds) || excludedLakeIds.length > MAX_WATER_INSERT_EXCLUSIONS || excludedLakeIds.some((id) => typeof id !== "string" || !WATER_INSERT_LAKE_KEY.test(id)) || new Set(excludedLakeIds).size !== excludedLakeIds.length) throw new Error(`Acrylic water insert exclusions must list at most ${MAX_WATER_INSERT_EXCLUSIONS} distinct lake ids.`);
 }

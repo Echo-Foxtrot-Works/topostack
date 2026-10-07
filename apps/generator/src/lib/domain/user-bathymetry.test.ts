@@ -92,6 +92,17 @@ describe("applyUserCharts", () => {
     expect(result.attribution.at(-1)).toEqual({ name: "Depth chart: Lake Viking 2019", url: "https://example.test/sheet.pdf", license: "U.S. Geological Survey; public-domain" });
   });
 
+  it("names a map-only lake by its chart, which lasts where the map's own numbering does not", async () => {
+    const square = [[bounds.west, bounds.south], [bounds.east, bounds.south], [bounds.east, bounds.north], [bounds.west, bounds.north], [bounds.west, bounds.south]] as Array<[number, number]>;
+    const chart = rampChart({ id: "pond-chart-0001", lake: { name: "Pond", outline: square } });
+    const pond = lake({ id: "osm-lake-3", hylakId: undefined, outlineSource: "osm", polygon: { outer: [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }], holes: [] } });
+    const result = await applyUserCharts(surveyed([pond]), new Map([["outline:pond-chart-0001", loaded(chart)]]), bounds, grid, undefined, dimensions);
+    expect(result.areas[0]).toMatchObject({ id: "osm-lake-3", lakeKey: "outline:pond-chart-0001", bathymetryOrigin: "chart" });
+    // HydroLAKES already names its lakes for good.
+    const known = await applyUserCharts(surveyed([lake()]), new Map([["42", loaded(rampChart())]]), bounds, grid, undefined, dimensions);
+    expect(known.areas[0]!.lakeKey).toBeUndefined();
+  });
+
   it("leaves lakes without a chart, and charts for absent lakes, alone", async () => {
     const other = lake({ id: "lake-2", hylakId: 7 });
     const before = surveyed([other]);

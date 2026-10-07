@@ -49,7 +49,7 @@ describe("Atomm bridge", () => {
     const exported = handler?.({ intent: "download" });
     await vi.advanceTimersByTimeAsync(20);
     await exported;
-    expect(createAtommExport).toHaveBeenCalledWith(geometry, project, "download", [], sheetPlan);
+    expect(createAtommExport).toHaveBeenCalledWith(geometry, project, "download", [], sheetPlan, undefined);
     expect(exportUpdate).toHaveBeenNthCalledWith(1, { phase: "preparing", intent: "download" });
     expect(exportUpdate).toHaveBeenNthCalledWith(2, { phase: "ready", intent: "download", fileCount: 0 });
     vi.mocked(createAtommExport).mockImplementationOnce(() => { throw new Error("Package could not be built"); });
