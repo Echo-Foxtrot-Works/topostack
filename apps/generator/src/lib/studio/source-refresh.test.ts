@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSyntheticSource, DEFAULT_PROJECT, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
+import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { dataZoom } from "$lib/domain/tile-math";
-import { markStaleSourceData, refreshRequiredMapData, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
+import { markStaleSourceData, refreshRequiredMapData, resizeSource, SourcePreparationCache, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
 
 const loaded = (overrides: Partial<SourceBundleV1> = {}): SourceBundleV1 => ({ ...createSyntheticSource(DEFAULT_PROJECT, 8), sourceKind: "real", vectorStatus: "available", lakeDataStatus: "available", ...overrides });
 const stale = (source: SourceBundleV1, patch: Partial<ProjectConfigV1>) => markStaleSourceData(source, patch, DEFAULT_PROJECT, { ...DEFAULT_PROJECT, ...patch });
@@ -107,5 +107,253 @@ describe("stale aviation data", () => {
     expect(markStaleSourceData(source, { aviation: none }, withAirspace, { ...withAirspace, aviation: none })).toBe(source);
     const labelled = { ...withAirspace, aviation: { ...none, airspace: true, labels: true } };
     expect(markStaleSourceData(source, { aviation: labelled.aviation }, withAirspace, labelled)).toBe(source);
+  });
+});
+
+const square = (x: number, y: number, size = 10): Polygon2D => ({ outer: [{ x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y }], holes: [] });
+const line = (id: string, kind: MarkingFeature["kind"]): MarkingFeature => ({ id, kind, operation: "engrave", points: [{ x: 0, y: 0 }, { x: 10, y: 5 }] });
+const lake = (id: string, overrides: Partial<WaterAreaV1> = {}): WaterAreaV1 => ({ id, kind: "lake", polygon: square(0, 0), ...overrides });
+
+/** Loaders that succeed with nothing new, and pass-through water helpers. */
+function dependencies(overrides: Partial<SourceRefreshDependencies> = {}): SourceRefreshDependencies {
+  return {
+    loadVectorMarkings: vi.fn(async () => ({ markings: [], inland: [], ocean: [], truncated: false })),
+    loadLakeAreas: vi.fn(async () => []),
+    loadSurveyedLakeDepths: vi.fn(async (_bounds, _elevation, _zoom, areas) => ({ areas, status: "available" as const, datasetVersions: [], attribution: [] })),
+    applySurveyProvenance: vi.fn((source, result) => ({ ...source, bathymetryStatus: result.status })),
+    resolveLakeOutlines: vi.fn((_providers, hydro) => hydro),
+    assembleWater: vi.fn((source, lakes) => ({ ...source, waterAreas: lakes })),
+    loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
+    dataZoom,
+    ...overrides,
+  };
+}
+
+describe("resizing a loaded source", () => {
+  it("keeps the same source when the size is unchanged", () => {
+    const source = loaded();
+    expect(resizeSource(source, DEFAULT_PROJECT, { ...DEFAULT_PROJECT, name: "Renamed" })).toBe(source);
+  });
+
+  it("scales every drawn feature to the new material size", () => {
+    const withHole: Polygon2D = { ...square(10, 10), holes: [square(12, 12, 2).outer] };
+    const source = loaded({
+      markings: [line("road-1", "road")],
+      aviationMarkings: [line("aviation-1", "aviation")],
+      waterAreas: [lake("lake-1", { polygon: withHole })],
+      inlandWaterAreas: [square(10, 10)],
+      waterPatternAreas: [square(-10, -10)],
+    });
+    const resized = resizeSource(source, DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: 600, heightMm: 100 });
+    expect(resized.markings[0]!.points).toEqual([{ x: 0, y: 0 }, { x: 20, y: 2.5 }]);
+    expect(resized.aviationMarkings![0]!.points[1]).toEqual({ x: 20, y: 2.5 });
+    expect(resized.waterAreas![0]!.polygon.outer[2]).toEqual({ x: 40, y: 10 });
+    expect(resized.waterAreas![0]!.polygon.holes[0]![0]).toEqual({ x: 24, y: 6 });
+    expect(resized.inlandWaterAreas![0]!.outer[0]).toEqual({ x: 20, y: 5 });
+    expect(resized.waterPatternAreas![0]!.outer[0]).toEqual({ x: -20, y: -5 });
+    // The source it came from is left as it was.
+    expect(source.markings[0]!.points[1]).toEqual({ x: 10, y: 5 });
+  });
+
+  it("does not invent layers the source never loaded", () => {
+    const resized = resizeSource(loaded({ markings: [] }), DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: 150 });
+    expect(resized).not.toHaveProperty("aviationMarkings");
+    expect(resized).not.toHaveProperty("waterAreas");
+    expect(resized).not.toHaveProperty("inlandWaterAreas");
+    expect(resized).not.toHaveProperty("waterPatternAreas");
+  });
+});
+
+describe("stale water data", () => {
+  it("never marks sample terrain stale", () => {
+    const sample = { ...loaded(), sourceKind: "synthetic" as const };
+    expect(stale(sample, { showRoads: true, showWaterDepth: true })).toBe(sample);
+  });
+
+  it("loads outlines and lake data when depth is turned on without water drawn", () => {
+    const dry: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: false, showWaterDepth: false };
+    const next = markStaleSourceData(loaded(), { showWaterDepth: true }, dry, { ...dry, showWaterDepth: true });
+    expect(next).toMatchObject({ vectorStatus: "not-requested", lakeDataStatus: "not-requested" });
+    // With water already drawn, only the lake data is missing.
+    expect(stale(loaded(), { showWaterDepth: true })).toMatchObject({ vectorStatus: "available", lakeDataStatus: "not-requested" });
+  });
+
+  it("loads lake data when switching an engraving with depth on to a layered stack", () => {
+    const engraving: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving" };
+    expect(markStaleSourceData(loaded(), { outputMode: "stack" }, engraving, DEFAULT_PROJECT)).toMatchObject({ vectorStatus: "available", lakeDataStatus: "not-requested" });
+    const dry = { ...engraving, showWater: false };
+    expect(markStaleSourceData(loaded(), { outputMode: "stack" }, dry, { ...dry, outputMode: "stack" })).toMatchObject({ vectorStatus: "not-requested", lakeDataStatus: "not-requested" });
+  });
+
+  it("reloads a truncated aviation load even for a group that was already on", () => {
+    const airspace = { airspace: true, specialUse: false, runways: false, airports: false, navaids: false, obstacles: false, labels: false };
+    const project = { ...DEFAULT_PROJECT, aviation: airspace };
+    const source = loaded({ aviationStatus: "partial", aviationMarkings: [] });
+    expect(markStaleSourceData(source, { aviation: { ...airspace, labels: true } }, project, { ...project, aviation: { ...airspace, labels: true } }).aviationStatus).toBe("not-requested");
+  });
+});
+
+describe("refreshing map data after a failed or partial load", () => {
+  const signal = () => new AbortController().signal;
+
+  it("returns sample terrain untouched", async () => {
+    const deps = dependencies();
+    const sample = { ...loaded({ vectorStatus: "not-requested" }), sourceKind: "preview" as const };
+    expect(await refreshRequiredMapData(sample, DEFAULT_PROJECT, signal(), deps)).toBe(sample);
+    expect(deps.loadVectorMarkings).not.toHaveBeenCalled();
+  });
+
+  it("marks a truncated vector load partial and keeps both water layers as pattern areas", async () => {
+    const ocean = square(-50, -50), inland = square(20, 20);
+    const deps = dependencies({ loadVectorMarkings: vi.fn(async () => ({ markings: [line("road-1", "road")], inland: [inland], ocean: [ocean], truncated: true })) });
+    const refreshed = await refreshRequiredMapData(loaded({ vectorStatus: "not-requested" }), DEFAULT_PROJECT, signal(), deps);
+    expect(refreshed).toMatchObject({ vectorStatus: "partial", markings: [line("road-1", "road")], inlandWaterAreas: [inland], waterPatternAreas: [ocean, inland] });
+    expect(vi.mocked(deps.assembleWater).mock.calls[0]![2]).toEqual([ocean]);
+    expect(vi.mocked(deps.resolveLakeOutlines).mock.calls[0]![2]).toEqual([inland]);
+  });
+
+  it("drops stale linework but keeps other markings when map details fail to load", async () => {
+    const deps = dependencies({ loadVectorMarkings: vi.fn(async () => { throw new Error("503"); }) });
+    const source = loaded({
+      vectorStatus: "not-requested",
+      markings: ["road", "trail", "water", "boundary", "grid", "label"].map((kind) => line(`${kind}-1`, kind as MarkingFeature["kind"])),
+      waterAreas: [{ id: "sea", kind: "ocean", polygon: square(-50, -50) }],
+      inlandWaterAreas: [square(20, 20)],
+      waterPatternAreas: [square(20, 20)],
+    });
+    const refreshed = await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), deps);
+    expect(refreshed.vectorStatus).toBe("unavailable");
+    expect(refreshed.markings.map((marking) => marking.kind)).toEqual(["grid", "label"]);
+    expect(refreshed).toMatchObject({ inlandWaterAreas: [], waterPatternAreas: [] });
+    // Neither the old ocean nor old inland water survive into assembly.
+    expect(vi.mocked(deps.assembleWater).mock.calls[0]![2]).toEqual([]);
+    expect(vi.mocked(deps.resolveLakeOutlines).mock.calls[0]![2]).toEqual([]);
+  });
+
+  it("propagates a cancelled load instead of reporting the data unavailable", async () => {
+    const controller = new AbortController();
+    const cancelled = new DOMException("Aborted", "AbortError");
+    const failVectors = dependencies({ loadVectorMarkings: vi.fn(async () => { controller.abort(); throw cancelled; }) });
+    await expect(refreshRequiredMapData(loaded({ vectorStatus: "not-requested" }), DEFAULT_PROJECT, controller.signal, failVectors)).rejects.toBe(cancelled);
+    const lakesController = new AbortController();
+    const failLakes = dependencies({ loadLakeAreas: vi.fn(async () => { lakesController.abort(); throw cancelled; }) });
+    await expect(refreshRequiredMapData(loaded({ lakeDataStatus: "not-requested" }), DEFAULT_PROJECT, lakesController.signal, failLakes)).rejects.toBe(cancelled);
+    const aviationController = new AbortController();
+    const aviation = dependencies({ loadAviation: vi.fn(async () => { aviationController.abort(); return { aviationStatus: "unavailable" as const }; }) });
+    const withAirports = { ...DEFAULT_PROJECT, aviation: { airspace: false, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false } };
+    await expect(refreshRequiredMapData(loaded({ aviationStatus: "unavailable" }), withAirports, aviationController.signal, aviation)).rejects.toThrow();
+    expect(aviation.assembleWater).not.toHaveBeenCalled();
+  });
+
+  it("keeps generating without lakes when the lake archive fails", async () => {
+    const deps = dependencies({ loadLakeAreas: vi.fn(async () => { throw new Error("archive offline"); }) });
+    const source = loaded({ lakeDataStatus: "not-requested", waterAreas: [lake("lake-old")] });
+    const refreshed = await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), deps);
+    expect(refreshed.lakeDataStatus).toBe("unavailable");
+    expect(refreshed.waterAreas).toEqual([]);
+    expect(vi.mocked(deps.loadSurveyedLakeDepths).mock.calls[0]![3]).toEqual([]);
+  });
+
+  it("rebuilds OSM outlines, carries each lake's survey over, and reloads depths when the lake set changes", async () => {
+    const survey = { width: 2, height: 2, depthsM: new Float32Array(4) };
+    const source = loaded({ bathymetryStatus: "available", waterAreas: [lake("hylak-1", { bathymetry: survey }), lake("osm-1", { outlineSource: "osm" })] });
+    // The OSM outline is resolved again from inland water, under a new id.
+    const deps = dependencies({ resolveLakeOutlines: vi.fn((_providers, hydro) => [...hydro, lake("osm-2", { outlineSource: "osm" })]) });
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), deps);
+    expect(vi.mocked(deps.resolveLakeOutlines).mock.calls[0]![1].map((area) => area.id)).toEqual(["hylak-1"]);
+    const surveyed = vi.mocked(deps.loadSurveyedLakeDepths).mock.calls[0]![3];
+    expect(surveyed.map((area) => [area.id, area.bathymetry])).toEqual([["hylak-1", survey], ["osm-2", undefined]]);
+  });
+
+  it("reuses loaded depths while the lakes are unchanged, and retries a partial survey", async () => {
+    const source = loaded({ bathymetryStatus: "available", waterAreas: [lake("hylak-1")] });
+    const deps = dependencies();
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), deps);
+    expect(deps.loadSurveyedLakeDepths).not.toHaveBeenCalled();
+    await refreshRequiredMapData({ ...source, bathymetryStatus: "partial" }, DEFAULT_PROJECT, signal(), deps);
+    expect(deps.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts resolved outlines as lake data even when the archive was unavailable", async () => {
+    const deps = dependencies({
+      loadLakeAreas: vi.fn(async () => { throw new Error("offline"); }),
+      resolveLakeOutlines: vi.fn(() => [lake("osm-1", { outlineSource: "osm" })]),
+    });
+    const refreshed = await refreshRequiredMapData(loaded({ lakeDataStatus: "unavailable", bathymetryStatus: "available" }), DEFAULT_PROJECT, signal(), deps);
+    expect(refreshed.lakeDataStatus).toBe("available");
+    // A new lake set has no survey yet.
+    expect(deps.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
+  });
+
+  it("records no survey when the project does not carve water depth", async () => {
+    const deps = dependencies();
+    const flat: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWaterDepth: false };
+    const refreshed = await refreshRequiredMapData(loaded({ waterAreas: [lake("hylak-1")] }), flat, signal(), deps);
+    expect(deps.loadSurveyedLakeDepths).not.toHaveBeenCalled();
+    expect(vi.mocked(deps.applySurveyProvenance).mock.calls[0]![1]).toEqual({ areas: [expect.objectContaining({ id: "hylak-1" })], status: "not-covered", datasetVersions: [], attribution: [] });
+    expect(refreshed.bathymetryStatus).toBe("not-covered");
+  });
+});
+
+describe("source preparation cache", () => {
+  const signal = () => new AbortController().signal;
+  const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWaterDepth: false };
+
+  it("reuses the prepared source for edits that do not change what is loaded", async () => {
+    const deps = dependencies();
+    const cache = new SourcePreparationCache(deps);
+    const active = loaded();
+    const first = await cache.prepare(active, project, project, project, signal());
+    const thicker = { ...project, materialThicknessMm: 6 };
+    expect(await cache.prepare(active, project, thicker, thicker, signal())).toBe(first);
+    expect(deps.assembleWater).toHaveBeenCalledTimes(1);
+    // The committed output, handed back as the next active source, is its own fixed point.
+    expect(await cache.prepare(first, thicker, thicker, thicker, signal())).toBe(first);
+    expect(deps.assembleWater).toHaveBeenCalledTimes(1);
+  });
+
+  it("prepares again when the edit changes the data, the input, or the cache is cleared", async () => {
+    const deps = dependencies();
+    const cache = new SourcePreparationCache(deps);
+    const active = loaded();
+    const first = await cache.prepare(active, project, project, project, signal());
+    const zoomed = { ...project, location: { ...project.location, zoom: 13 } };
+    expect(await cache.prepare(active, project, zoomed, zoomed, signal())).not.toBe(first);
+    expect(deps.assembleWater).toHaveBeenCalledTimes(2);
+    const other = loaded();
+    await cache.prepare(other, project, project, project, signal());
+    expect(deps.assembleWater).toHaveBeenCalledTimes(3);
+    cache.clear();
+    await cache.prepare(other, project, project, project, signal());
+    expect(deps.assembleWater).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not treat the committed output as fixed when the edit asks for data it lacks", async () => {
+    const deps = dependencies();
+    const cache = new SourcePreparationCache(deps);
+    const first = await cache.prepare(loaded(), project, project, project, signal());
+    // Turning water off and on again keeps the key, but water changes reload map details.
+    const dry = { ...project, showWater: false };
+    await cache.prepare(first, dry, project, project, signal());
+    expect(deps.loadVectorMarkings).toHaveBeenCalledTimes(1);
+  });
+
+  it("resizes the source to the previewed size before preparing it", async () => {
+    const deps = dependencies();
+    const cache = new SourcePreparationCache(deps);
+    const wider = { ...project, widthMm: 600 };
+    const prepared = await cache.prepare(loaded({ markings: [line("road-1", "road")] }), project, wider, wider, signal());
+    expect(prepared.markings[0]!.points[1]).toEqual({ x: 20, y: 5 });
+  });
+
+  it("does not remember a preparation that was cancelled", async () => {
+    const deps = dependencies();
+    const cache = new SourcePreparationCache(deps);
+    const controller = new AbortController();
+    controller.abort();
+    const active = loaded();
+    await cache.prepare(active, project, project, project, controller.signal);
+    await cache.prepare(active, project, project, project, signal());
+    expect(deps.assembleWater).toHaveBeenCalledTimes(2);
   });
 });

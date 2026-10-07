@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, validateProject, type ProjectConfigV1 } from "@topostack/core";
+import { DEFAULT_PROJECT, GRAPHIC_MIN_SIZE_MM, generateGeometry, groundWidthMFor, MAX_PLACED_GRAPHICS, PLAQUE_MIN_SIZE_MM, validateProject, type Point2D, type ProjectConfigV1 } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-import { addGraphicToSession, availablePlaceables, canPlace, draftProject, graphicPlaceableId, hiddenByPrefix, hiddenMarkingPrefixes, movePlaceable, placeableFor, placementPatch, PLACEABLES, PLACEABLE_ORDER, removePlaceable, resizePlaceable, rotatePlaceable, setPlaceableOperation, type PlacementSession } from "./placeables";
+import { addGraphicToSession, availablePlaceables, canPlace, draftProject, graphicPlaceableId, hiddenByPrefix, hiddenMarkingPrefixes, movePlaceable, placeableFor, placementContext, placementPatch, PLACEABLES, PLACEABLE_ORDER, removePlaceable, resizePlaceable, rotatePlaceable, setPlaceableOperation, type PlacementSession } from "./placeables";
 
 const context = { groundWidthM: 20_000 };
 import { placementFrustum, placementViewBox } from "./viewport";
@@ -87,6 +87,61 @@ describe("placeables", () => {
   });
 });
 
+describe("fixed placeable outlines and controls", () => {
+  const extent = (ring: Point2D[]) => ({ minX: Math.min(...ring.map(({ x }) => x)), maxX: Math.max(...ring.map(({ x }) => x)), minY: Math.min(...ring.map(({ y }) => y)), maxY: Math.max(...ring.map(({ y }) => y)) });
+
+  it("sizes the scale bar from the generated map's ground width", () => {
+    const bounds = { west: -122.3, south: 42.8, east: -121.9, north: 43.1 };
+    expect(placementContext({ bounds })).toEqual({ groundWidthM: groundWidthMFor(bounds) });
+  });
+
+  it("outlines the title's text block with the edge clearance, as a closed ring around its center", () => {
+    const outline = PLACEABLES.plaque.outline(project, context);
+    expect(outline).toHaveLength(5);
+    expect(outline[0]).toEqual(outline[4]);
+    const box = extent(outline);
+    const center = PLACEABLES.plaque.center(project, context);
+    expect((box.minX + box.maxX) / 2).toBeCloseTo(center.x, 6);
+    expect((box.minY + box.maxY) / 2).toBeCloseTo(center.y, 6);
+    // Small letters get half their height as clearance rather than the full 3 mm.
+    const small = { ...project, plaque: { ...project.plaque!, sizeMm: 4 } };
+    const large = extent(PLACEABLES.plaque.outline(project, context));
+    const tight = extent(PLACEABLES.plaque.outline(small, context));
+    expect(tight.maxY - tight.minY).toBeLessThan(large.maxY - large.minY);
+  });
+
+  it("gives a switched-off title no outline and no move", () => {
+    const off = { ...project, plaque: { ...project.plaque!, enabled: false } };
+    expect(PLACEABLES.plaque.outline(off, context)).toEqual([]);
+    expect(PLACEABLES.plaque.center(off, context)).toEqual({ x: 0, y: 0 });
+    expect(PLACEABLES.plaque.moveTo(off, { x: 10, y: 10 }, context)).toEqual({});
+    expect(PLACEABLES.plaque.resize!.value(DEFAULT_PROJECT)).toBe(PLAQUE_MIN_SIZE_MM);
+    expect(PLACEABLES.plaque.resize!.value(project)).toBe(6);
+  });
+
+  it("outlines the scale bar around where it is drawn", () => {
+    const box = extent(PLACEABLES.scale.outline(project, context));
+    const center = PLACEABLES.scale.center(project, context);
+    expect(center.x).toBeGreaterThan(box.minX);
+    expect(center.x).toBeLessThan(box.maxX);
+    expect(center.y).toBeGreaterThanOrEqual(box.minY);
+    expect(center.y).toBeLessThanOrEqual(box.maxY);
+  });
+
+  it("reads the north arrow's diameter and caps it by the material", () => {
+    expect(PLACEABLES.north.resize!.value(project)).toBe(project.northArrowSizeMm);
+    expect(PLACEABLES.north.resize!.range({ ...project, widthMm: 60, heightMm: 300 }).max).toBeLessThan(PLACEABLES.north.resize!.range(project).max);
+  });
+
+  it("leaves the session alone for controls a fixed annotation does not have", () => {
+    const session: PlacementSession = { selected: "north", draft: {} };
+    expect(rotatePlaceable(project, session, "north", 45)).toBe(session);
+    expect(setPlaceableOperation(project, session, "scale", "cut")).toBe(session);
+    expect(removePlaceable(project, session, "plaque")).toBe(session);
+    expect(resizePlaceable(project, session, "north", Number.NaN, context)).toBe(session);
+  });
+});
+
 describe("graphic placeables", () => {
   const graphic = { id: "graphic-0001", name: "Badge", shapes: [{ outer: [-500, -250, 500, -250, 500, 250, -500, 250] }] };
   const withLibrary: ProjectConfigV1 = { ...project, customGraphics: [graphic] };
@@ -128,6 +183,54 @@ describe("graphic placeables", () => {
     expect(draft.placedGraphics).toBeUndefined();
     expect(canPlace({ ...draft, showNorthArrow: false, showScaleBar: false, plaque: undefined })).toBe(true);
     expect(canPlace({ ...draft, showNorthArrow: false, showScaleBar: false, plaque: undefined, customGraphics: undefined })).toBe(false);
+  });
+
+  it("draws a placed graphic's markings where it is placed", () => {
+    const draft = draftProject(withLibrary, added);
+    const markings = placeableFor(id).markings(draft, context);
+    expect(markings.length).toBeGreaterThan(0);
+    expect(markings.every((marking) => hiddenByPrefix(marking.id, placeableFor(id).bakedMarkingPrefixes))).toBe(true);
+  });
+
+  it("treats a graphic missing from the project as an inert placeholder", () => {
+    const ghost = placeableFor(graphicPlaceableId("placed-gone"));
+    expect(ghost.available(withLibrary)).toBe(false);
+    expect(ghost.name?.(withLibrary)).toBe("Graphic");
+    expect(ghost.center(withLibrary, context)).toEqual({ x: 0, y: 0 });
+    expect(ghost.outline(withLibrary, context)).toEqual([]);
+    expect(ghost.markings(withLibrary, context)).toEqual([]);
+    expect(ghost.resize!.value(withLibrary)).toBe(GRAPHIC_MIN_SIZE_MM);
+    expect(ghost.rotate!.value(withLibrary)).toBe(0);
+    expect(ghost.operation!.value(withLibrary)).toBe("engrave");
+    expect(ghost.rotate!.set(withLibrary, 90)).toEqual({});
+    // A graphic whose artwork left the library is not offered either.
+    const orphaned = { ...draftProject(withLibrary, added), customGraphics: undefined };
+    expect(placeableFor(id).available(orphaned)).toBe(false);
+    expect(placeableFor(id).name?.(orphaned)).toBe("Graphic");
+  });
+
+  it("ignores a turn to an angle that is not a number", () => {
+    expect(rotatePlaceable(withLibrary, added, id, Number.POSITIVE_INFINITY)).toBe(added);
+  });
+
+  it("keeps the selection when removing the only item leaves nothing to select", () => {
+    const bare = { ...withLibrary, showNorthArrow: false, showScaleBar: false, plaque: undefined };
+    const session = addGraphicToSession(bare, undefined, graphic.id, "placed-0001")!;
+    const removed = removePlaceable(bare, session, id);
+    expect(removed.selected).toBe(id);
+    expect(availablePlaceables(draftProject(bare, removed))).toEqual([]);
+  });
+
+  it("selects the next item after removing a graphic from the middle", () => {
+    let session = addGraphicToSession(withLibrary, added, graphic.id, "placed-0002")!;
+    session = addGraphicToSession(withLibrary, session, graphic.id, "placed-0003")!;
+    expect(removePlaceable(withLibrary, session, graphicPlaceableId("placed-0002")).selected).toBe(graphicPlaceableId("placed-0003"));
+  });
+
+  it("refuses another graphic once the piece holds the most it can", () => {
+    const placed = draftProject(withLibrary, added).placedGraphics![0]!;
+    const full = { ...withLibrary, placedGraphics: Array.from({ length: MAX_PLACED_GRAPHICS }, (_, index) => ({ ...placed, id: `placed-${index}` })) };
+    expect(addGraphicToSession(full, undefined, graphic.id, "placed-extra")).toBeUndefined();
   });
 
   it("drops drafts of artwork removed from the library before committing", () => {
