@@ -15,9 +15,9 @@ test("opens an assistant's studio link and generates it straight away", async ({
   const link = new URL(shareUrl(design, "http://127.0.0.1:4173/studio", "?generate=1"));
   await page.goto(`${link.pathname}${link.search}${link.hash}`);
   // The link is consumed so a refresh restores later edits rather than generating again.
-  // Read the document's own location: the studio can rewrite it before the
-  // initial navigation settles, and page.url() may not see that rewrite.
-  await expect.poll(() => page.evaluate(() => location.search)).toBe("");
+  // That happens once the studio has started, which takes about five seconds on
+  // a slow CI runner, so the default five-second poll is not enough.
+  await expect.poll(() => page.evaluate(() => location.search), { timeout: 30_000 }).toBe("");
   await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
   // Export stays closed until fresh terrain is generated, so an enabled package proves the link generated.
   await page.getByRole("button", { name: "Export", exact: true }).click();
