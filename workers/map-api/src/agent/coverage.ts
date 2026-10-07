@@ -22,6 +22,13 @@ const intersects = (source: Pick<SurveySource, "bounds">, bounds: GeoBounds) => 
   return west < bounds.east && east > bounds.west && south < bounds.north && north > bounds.south;
 };
 
+/**
+ * A crop across the antimeridian keeps unwrapped longitudes (one edge past
+ * ±180°); its copies a world east and west reach the sources on the other side.
+ */
+const worldCopies = (bounds: GeoBounds): GeoBounds[] =>
+  [0, -360, 360].map((shift) => ({ ...bounds, west: bounds.west + shift, east: bounds.east + shift }));
+
 /** Whether a lake survey's box holds this point, to flag search results with surveyed depths nearby. */
 export function surveyedLakeAt(lat: number, lon: number, surveys: ReadonlyArray<{ source: Pick<SurveySource, "bounds"> }> = bathymetryArchives): boolean {
   return surveys.some(({ source }) => {
@@ -35,12 +42,13 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   surveys?: ReadonlyArray<{ source: SurveySource }>;
   aviation?: AviationSources;
 } = {}): AreaCoverage {
-  const terrain = (sources.terrain ?? terrainArchives).filter(({ source }) => intersects(source, bounds))
+  const copies = worldCopies(bounds);
+  const terrain = (sources.terrain ?? terrainArchives).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, resolutionM: source.nativeResolutionM, license: source.license }));
-  const surveys = (sources.surveys ?? bathymetryArchives).filter(({ source }) => intersects(source, bounds))
+  const surveys = (sources.surveys ?? bathymetryArchives).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, license: source.license }));
   const faa = sources.aviation ?? aviationSources;
-  const aviation = aviationCovers(faa, bounds) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;
+  const aviation = copies.some((copy) => aviationCovers(faa, copy)) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;
   const notes = [
     "Terrain is land elevation; open sea is flat at sea level and lakes use survey or modeled depths.",
     ...(terrain.length ? ["High-resolution terrain is used where it covers the area."] : []),

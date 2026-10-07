@@ -81,7 +81,10 @@ describe("project bounds", () => {
 
   it("recognises bounds the tiles can serve", () => {
     expect(isMercatorBounds({ west: -10, south: -10, east: 10, north: 10 })).toBe(true);
-    expect(isMercatorBounds({ west: 170, south: 0, east: 190, north: 1 })).toBe(false);
+    // Across the antimeridian, east is unwrapped past 180°.
+    expect(isMercatorBounds({ west: 170, south: 0, east: 190, north: 1 })).toBe(true);
+    expect(isMercatorBounds({ west: -190, south: 0, east: -170, north: 1 })).toBe(true);
+    expect(isMercatorBounds({ west: -180, south: 0, east: 180.5, north: 1 })).toBe(false);
     expect(isMercatorBounds({ west: 0, south: 80, east: 1, north: 86 })).toBe(false);
     expect(isMercatorBounds({ west: 1, south: 0, east: 0, north: 1 })).toBe(false);
   });
