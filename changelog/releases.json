@@ -54,6 +54,12 @@
           "pr": 201
         },
         {
+          "type": "improvement",
+          "title": "Lake finishes match the homepage linework",
+          "body": "The homepage now compares painted wood and acrylic inserts with orange line illustrations that blend with both light and dark themes. Headings and instructions stay readable page text; the guides keep their detailed finish illustrations.",
+          "pr": 212
+        },
+        {
           "type": "fix",
           "title": "Cut, engraving and paint downloads work with nested sheets",
           "body": "With **Nested sheets** selected, choosing **Cut panels**, **Engraving panels** or **Paint templates** in the export dialog now downloads one file per stock sheet instead of saying the export is not available.",
