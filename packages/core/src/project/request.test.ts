@@ -77,13 +77,28 @@ describe("project requests", () => {
     ]);
   });
 
-  it("requires an area and rejects boxes that are unordered or cross the antimeridian", () => {
+  it("requires an area and rejects boxes that are empty or upside down", () => {
     const missing = parseProjectRequest({ requestVersion: 1 });
     expect(missing.ok || missing.errors).toEqual([{ path: "area", message: expect.stringMatching(/required/i) }]);
-    const crossing = parseProjectRequest({ requestVersion: 1, area: { bounds: { west: 179, south: -17, east: -179, north: -16 } } });
-    expect(crossing.ok || crossing.errors[0]!.path).toBe("area.bounds");
+    const empty = parseProjectRequest({ requestVersion: 1, area: { bounds: { west: 179, south: -17, east: 179, north: -16 } } });
+    expect(empty.ok || empty.errors[0]!.path).toBe("area.bounds");
     const upsideDown = parseProjectRequest({ requestVersion: 1, area: { bounds: { west: 1, south: 2, east: 2, north: 1 } } });
     expect(upsideDown.ok || upsideDown.errors[0]!.message).toMatch(/south/i);
+  });
+
+  it("crosses the antimeridian when west is greater than east, as GeoJSON does", () => {
+    const fiji = expandProjectRequest(parsed({ requestVersion: 1, area: { bounds: { west: 177, south: -19.2, east: -178, north: -16 } } }));
+    const bounds = fiji.location.bounds!;
+    expect(bounds.west).toBeLessThanOrEqual(177);
+    expect(bounds.east).toBeGreaterThanOrEqual(182);
+    expect(fiji.location.lon).toBeCloseTo(179.5, 9);
+    expect(isMercatorBounds(boundsForProject(fiji))).toBe(true);
+    // A center beside the antimeridian frames ground on both sides of it.
+    const taveuni = expandProjectRequest(parsed({ requestVersion: 1, area: { center: { lat: -16.8, lon: -179.95 }, widthKm: 60 } }));
+    expect(taveuni.location.bounds!.west).toBeLessThan(-180);
+    expect(taveuni.location.lon).toBe(-179.95);
+    // Requests that never cross keep the bounds they always had.
+    expect(expandProjectRequest(parsed(rainier)).location.bounds!.east).toBeLessThan(180);
   });
 
   it("refuses an area that, once fitted to the cut, leaves the mapped world", () => {
@@ -158,6 +173,24 @@ describe("describing a project", () => {
     expect(location).toEqual(originalLocation);
     expect(lat).toBeCloseTo(originalLat, 3);
     expect(isMercatorBounds(boundsForProject(again))).toBe(true);
+  });
+
+  it("describes a design across the antimeridian as a request it accepts again", () => {
+    for (const bounds of [{ west: 179.5, south: -17.2, east: 180.5, north: -16.5 }, { west: -180.5, south: -17.2, east: -179.5, north: -16.5 }]) {
+      const fiji: ProjectConfigV1 = { ...DEFAULT_PROJECT, location: { lat: -16.85, lon: 180, label: "Fiji", zoom: 9, bounds } };
+      const described = describeProject(fiji).area;
+      expect(described).toEqual({ bounds: { west: 179.5, south: expect.any(Number), east: -179.5, north: expect.any(Number) } });
+      const again = boundsForProject(expandProjectRequest(parsed(describeProject(fiji))));
+      const original = boundsForProject(fiji);
+      const shift = original.west < -180 ? 360 : 0;
+      expect(again.west).toBeCloseTo(original.west + shift, 9);
+      expect(again.east).toBeCloseTo(original.east + shift, 9);
+      expect(again.south).toBeCloseTo(original.south, 9);
+    }
+    // A point-only design beside the antimeridian, or one a whole world wide.
+    for (const location of [{ lat: -16.8, lon: 179.9, label: "Taveuni", zoom: 9 }, { lat: 10, lon: -10, label: "World", zoom: 0 }]) {
+      expect(() => expandProjectRequest(parsed(describeProject({ ...DEFAULT_PROJECT, location })))).not.toThrow();
+    }
   });
 
   it("describes a point-only project at the pole as a request it accepts again", () => {

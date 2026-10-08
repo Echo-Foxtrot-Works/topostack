@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, writeFile, readFile, copyFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { join } from "node:path";
 import { chromium } from "playwright";
+import { appUrl } from "../lib/app-url.mjs";
 
 // Captures the illustration band of each Atomm Tips slide from the real studio,
 // running as the embed does (inside a frame) so it uses the platform's light
@@ -12,7 +13,7 @@ import { chromium } from "playwright";
 // frontend with a working map API (npm run dev):
 //   node scripts/dev/capture-atomm-tips.mjs
 // Needs cwebp on PATH. Commit the files it writes under apps/generator/src/lib/atomm/tips/.
-const origin = process.env.TOPOSTACK_CAPTURE_URL ?? "http://127.0.0.1:5273";
+const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const output = new URL("../../apps/generator/src/lib/atomm/tips/", import.meta.url);
 await mkdir(output, { recursive: true });
 const scratch = await mkdtemp(join(tmpdir(), "topostack-tips-"));
@@ -178,7 +179,7 @@ try {
   for (const id of ["place", "layers", "size", "lakes", "export", "processing", "assembly"]) {
     const bytes = await readFile(join(scratch, `${id}.webp`));
     await copyFile(join(scratch, `${id}.webp`), new URL(`${id}.webp`, output));
-    images.push({ file: `${id}.webp`, width: 960, height: 534, sha256: createHash("sha256").update(bytes).digest("hex") });
+    images.push({ file: `${id}.webp`, width: 960, height: 534, sha256: sha256Hex(bytes) });
   }
   await writeFile(new URL("media-provenance.json", output), JSON.stringify({ capturedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), origin, method: "Real-data embedded studio captures; no fixtures. Artwork crops, resized to the Tips media band. Files replaced only after every capture completes.", images }, null, 2) + "\n");
 } finally {

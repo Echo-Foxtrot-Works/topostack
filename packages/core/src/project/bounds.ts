@@ -75,10 +75,19 @@ export function boundsAround(center: GeoPoint, widthKm: number, widthMm: number,
   };
 }
 
-/** Whether `bounds` is ordered and lies inside the Web Mercator world without crossing the antimeridian. */
+/** `lon` wrapped into [-180, 180], unchanged when it already lies there. */
+export function wrapLongitude(lon: number): number {
+  return lon >= -180 && lon <= 180 ? lon : ((lon + 180) % 360 + 360) % 360 - 180;
+}
+
+/**
+ * Whether the tiles can serve `bounds`: ordered, inside the latitude limit, and
+ * at most one world wide. As in the studio, an area across the antimeridian
+ * keeps unwrapped longitudes, one edge past ±180°.
+ */
 export function isMercatorBounds(bounds: GeoBounds): boolean {
   const { west, south, east, north } = bounds;
-  return [west, south, east, north].every(Number.isFinite) && west >= -180 && east <= 180 && west < east
+  return [west, south, east, north].every(Number.isFinite) && west >= -540 && east <= 540 && west < east && east - west <= 360
     && south >= -MERCATOR_MAX_LATITUDE && north <= MERCATOR_MAX_LATITUDE && south < north;
 }
 

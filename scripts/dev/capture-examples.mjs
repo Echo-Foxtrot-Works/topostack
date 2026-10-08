@@ -5,13 +5,14 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 import { captureSocialCard, socialCardHtml } from "../lib/social-card.mjs";
 import { ALL_EXAMPLES, EXAMPLES, exampleProject } from "../../apps/generator/src/lib/site/examples.ts";
+import { appUrl } from "../lib/app-url.mjs";
 
 // Generates each example in the real studio and saves what the example pages
 // publish: a render, a smaller render, a sharing card and the project file with
 // the measured layer count. Run against the normal frontend (npm run dev):
 //   node scripts/dev/capture-examples.mjs [slug ...]
 // Needs cwebp on PATH. Commit the files it writes under apps/generator/static.
-const origin = process.env.TOPOSTACK_CAPTURE_URL ?? "http://127.0.0.1:5273";
+const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const only = process.argv.slice(2);
 const staticDir = new URL("../../apps/generator/static/", import.meta.url);
 const imageDir = new URL("images/examples/", staticDir);

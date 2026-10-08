@@ -66,6 +66,16 @@ describe("relief sampling", () => {
     expect(sampleRelief(bounds, false, [{ tile, png: elevationPng(() => 812) }])).toMatchObject({ minM: 812, maxM: 812 });
   });
 
+  it("fetches the far side of a crop across the antimeridian", async () => {
+    const bounds = { west: 179.9, south: -16.9, east: 180.1, north: -16.8 };
+    const requested: string[] = [];
+    await estimateRelief(bounds, false, async (tile) => { requested.push(`${tile.z}/${tile.x}/${tile.y}`); return elevationPng(() => 42); });
+    const window = reliefWindow(bounds);
+    expect(window.maxX).toBe(2 ** window.zoom);
+    expect(requested).toEqual(expect.arrayContaining([`${window.zoom}/0/${window.minY}`, `${window.zoom}/${2 ** window.zoom - 1}/${window.minY}`]));
+    expect(requested.every((tile) => Number(tile.split("/")[1]) < 2 ** window.zoom)).toBe(true);
+  });
+
   it("loads each tile the window names", async () => {
     const bounds = tileBounds(12, 655, 1415, 32);
     const requested: string[] = [];

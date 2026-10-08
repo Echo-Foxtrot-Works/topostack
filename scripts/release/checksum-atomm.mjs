@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
@@ -26,7 +26,7 @@ const versions = await readVersions();
 const files = atommReleaseFiles(versions.atommVersion);
 const archiveUrl = new URL(`../../apps/generator/${files.archive}`, import.meta.url);
 const archive = await readFile(archiveUrl);
-const digest = createHash("sha256").update(archive).digest("hex");
+const digest = sha256Hex(archive);
 
 async function readApi(path) {
   const response = await fetch(new URL(path, apiOrigin), { signal: AbortSignal.timeout(15_000) });

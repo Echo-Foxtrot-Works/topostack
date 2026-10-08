@@ -4,7 +4,7 @@ import { validateVersion } from "./versions.mjs";
 import { notesBetween, readChangelog } from "./changelog.mjs";
 import { compareVersions } from "@topostack/data-contracts/changelog";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,7 +32,7 @@ export function validatePackage(receipt, archive, checksum, commit, tag) {
   const files = atommReleaseFiles(receipt.atommVersion);
   assert.equal(receipt.archive, files.archive);
   assert.equal(receipt.bytes, archive.length, "Archive size does not match its receipt");
-  const digest = createHash("sha256").update(archive).digest("hex");
+  const digest = sha256Hex(archive);
   assert.equal(receipt.sha256, digest, "Archive checksum does not match its receipt");
   assert.equal(checksum.trim(), `${digest}  ${files.archive}`, "Checksum file does not match the archive");
   return digest;

@@ -1,12 +1,13 @@
 // Optional live-map integration: imports the exported reviewed chart in fresh storage.
 import { readFile, writeFile } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
+import { appUrl } from '../../lib/app-url.mjs';
 const project = await readFile('.topostack/chart-release/king-project.json');
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(process.env.CHART_STRESS_URL ?? 'http://127.0.0.1:5278/studio');
+  await page.goto(`${appUrl('CHART_STRESS_URL')}/studio`);
   await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles({ name: 'king-project.json', mimeType: 'application/json', buffer: project });
   await expect(page.getByText('Project imported with its depth chart · generate to refresh its terrain', { exact: true }).first()).toBeVisible({ timeout: 30000 });
   await page.getByRole('button', { name: 'Generate terrain', exact: true }).click();

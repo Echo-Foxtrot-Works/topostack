@@ -2,7 +2,7 @@ import { readVersions } from "./versions.mjs";
 import { atommReleaseFiles } from "../lib/atomm-release-files.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { readFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -18,7 +18,7 @@ for (const item of provenance.media) {
   assert.match(item.file, /^assets\/[a-z0-9-]+\.(png|mp4)$/);
   const data = await readFile(new URL(item.file, root));
   const video = item.file.endsWith(".mp4");
-  assert.equal(createHash("sha256").update(data).digest("hex"), item.sha256, `${item.file}: stale media provenance`);
+  assert.equal(sha256Hex(data), item.sha256, `${item.file}: stale media provenance`);
   assert.equal(data.length, item.bytes, `${item.file}: stale byte count`);
   assert.ok(data.length <= (video ? 70_000_000 : 15_000_000), `${item.file}: exceeds Atomm's ${video ? "video" : "image"} limit`);
   if (video) {

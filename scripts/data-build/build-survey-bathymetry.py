@@ -10,7 +10,6 @@ import gzip
 import json
 import math
 from pathlib import Path
-import subprocess
 import tarfile
 import zipfile
 
@@ -20,6 +19,8 @@ from rasterio.features import geometry_mask
 from rasterio.merge import merge
 from rasterio.transform import from_bounds, from_origin
 from rasterio.warp import Resampling
+
+from pinned import download as pinned_download
 
 # Shared with build-hrdem-terrain.py; re-exported for existing callers and tests.
 from tile_writer import WORLD, TileWriter, digest, encode, write_grid  # noqa: F401
@@ -37,9 +38,7 @@ def download(item, cache):
         snapshot = import_module('snapshot-survey-service').snapshot
         snapshot(item['url'], path, item.get('where', '1=1'))
     if not path.exists():
-        partial = path.with_suffix(path.suffix + '.part')
-        subprocess.run(['curl', '-fLsS', '--retry', '2', '--max-time', '600', item['url'], '-o', str(partial)], check=True)
-        partial.replace(path)
+        pinned_download(item['url'], path, timeout=600, retries=2)
     if digest(path) != item['sha256']:
         raise ValueError(f"Source checksum changed: {item['id']}. Review before updating pins.")
     return path

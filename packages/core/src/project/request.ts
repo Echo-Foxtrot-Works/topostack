@@ -1,6 +1,6 @@
 import { DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
 import { fnv1aHex, stableStringify } from "../primitives/hash.js";
-import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, MERCATOR_MAX_LATITUDE, zoomForBounds } from "./bounds.js";
+import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, MERCATOR_MAX_LATITUDE, wrapLongitude, zoomForBounds } from "./bounds.js";
 import { parseProject } from "./parse.js";
 
 /**
@@ -181,7 +181,7 @@ function areaValue(value: unknown, issues: Issues): ProjectRequestArea | undefin
     const south = latitude(bounds.south, "area.bounds.south", issues);
     const north = latitude(bounds.north, "area.bounds.north", issues);
     if (west === undefined || east === undefined || south === undefined || north === undefined) return undefined;
-    if (west >= east) return issues.add("area.bounds", "West must be less than east; areas crossing the antimeridian are not supported.");
+    if (west === east) return issues.add("area.bounds", "West and east must differ; west greater than east crosses the antimeridian.");
     if (south >= north) return issues.add("area.bounds", "South must be less than north.");
     return { bounds: { west, south, east, north } };
   }
@@ -312,7 +312,10 @@ function tryExpand(request: ProjectRequestV1): RequestResult<ProjectConfigV1> {
 
 /** The geographic crop an area asks for, fitted to the cut's aspect ratio. */
 export function areaBounds(area: ProjectRequestArea, widthMm: number, heightMm: number): GeoBounds {
-  return "bounds" in area ? coverBounds(area.bounds, widthMm, heightMm) : boundsAround(area.center, area.widthKm, widthMm, heightMm);
+  if (!("bounds" in area)) return boundsAround(area.center, area.widthKm, widthMm, heightMm);
+  // West greater than east crosses the antimeridian; the crop unwraps east past 180°.
+  const { west, east } = area.bounds;
+  return coverBounds(west > east ? { ...area.bounds, east: east + 360 } : area.bounds, widthMm, heightMm);
 }
 
 /**
@@ -328,7 +331,7 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
   if (change.widthMm !== undefined || change.heightMm !== undefined) patch.northArrowSizeMm = Math.min(project.northArrowSizeMm, northArrowMaximumMm(widthMm, heightMm));
   if (change.area || change.placeLabel !== undefined) {
     const bounds = change.area ? areaBounds(change.area, widthMm, heightMm) : project.location.bounds;
-    const center = change.area ? ("center" in change.area ? change.area.center : { lat: (bounds!.south + bounds!.north) / 2, lon: (bounds!.west + bounds!.east) / 2 }) : project.location;
+    const center = change.area ? ("center" in change.area ? change.area.center : { lat: (bounds!.south + bounds!.north) / 2, lon: wrapLongitude((bounds!.west + bounds!.east) / 2) }) : project.location;
     patch.location = {
       lat: center.lat, lon: center.lon,
       label: change.placeLabel || (change.area ? DEFAULT_PLACE_LABEL : project.location.label),
@@ -377,7 +380,7 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
 export function expandProjectRequest(request: ProjectRequestV1): ProjectConfigV1 {
   const patch = requestPatch(DEFAULT_PROJECT, request);
   const bounds = patch.location?.bounds;
-  if (!bounds || !isMercatorBounds(bounds)) throw new Error("The area, fitted to the model's proportions, extends beyond the mapped world (±85° latitude, ±180° longitude). Choose a smaller area or move it away from the poles and the antimeridian.");
+  if (!bounds || !isMercatorBounds(bounds)) throw new Error("The area, fitted to the model's proportions, extends beyond the mapped world (±85° latitude) or is wider than the whole world. Choose a smaller area or move it away from the poles.");
   const name = request.name || cleanRequestText(request.placeLabel?.split(",")[0] ?? "", MAX_PROJECT_NAME_LENGTH) || DEFAULT_NAME;
   const { explodedPreview: _preview, ...design } = DEFAULT_PROJECT;
   return parseProject({
@@ -389,12 +392,21 @@ export function expandProjectRequest(request: ProjectRequestV1): ProjectConfigV1
   });
 }
 
+/**
+ * A crop as request bounds: longitudes within ±180°, west greater than east
+ * across the antimeridian, and a crop a whole world wide from -180° to 180°.
+ */
+function requestBounds(bounds: GeoBounds): GeoBounds {
+  if (bounds.east - bounds.west >= 360) return { ...bounds, west: -180, east: 180 };
+  return { ...bounds, west: wrapLongitude(bounds.west), east: wrapLongitude(bounds.east) };
+}
+
 /** A project described as request settings, for agents reading a design they did not write. */
 export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
   const details = Object.fromEntries(PROJECT_REQUEST_DETAIL_KEYS.map((key) => [key, project[DETAIL_FIELDS[key]] as boolean])) as Required<ProjectRequestDetails>;
   return {
     requestVersion: 1,
-    area: { bounds: boundsForProject(project) },
+    area: { bounds: requestBounds(boundsForProject(project)) },
     placeLabel: project.location.label,
     name: project.name,
     widthMm: project.widthMm,

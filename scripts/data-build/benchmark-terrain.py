@@ -2,7 +2,6 @@
 """Bounded MRDEM packaging experiment; never registers, uploads or promotes data."""
 import argparse
 import hashlib
-import importlib
 import io
 import json
 from pathlib import Path
@@ -20,7 +19,9 @@ import rasterio
 from rasterio.transform import from_bounds
 from rasterio.warp import reproject, Resampling
 
-builder = importlib.import_module('build-hrdem-terrain')
+import hrdem
+import tile_writer
+
 REGIONS = {
     'ontario': [-79.0, 46.44, -78.94, 46.50],
     'rockies': [-115.60, 51.16, -115.54, 51.22],
@@ -36,11 +37,11 @@ def worker(config_path):
     root = config_path.parent
     snapshot, output = root / 'snapshot.tif', root / 'archive.pmtiles'
     started = time.monotonic()
-    samples = builder.snapshot(source, pin, snapshot)
+    samples = hrdem.snapshot(source, pin, snapshot)
     read_seconds = time.monotonic() - started
-    pin = {**pin, 'snapshotSha256': builder.tile_writer.digest(snapshot), 'samplesSha256': samples}
+    pin = {**pin, 'snapshotSha256': tile_writer.digest(snapshot), 'samplesSha256': samples}
     build_start = time.monotonic()
-    builder.build(source, pin, snapshot, output)
+    hrdem.build(source, pin, snapshot, output)
     build_seconds = time.monotonic() - build_start
     receipt = json.loads(output.with_suffix('.sources.json').read_text())
     with sqlite3.connect(root / 'archive.mbtiles') as db:
@@ -68,9 +69,9 @@ def decoded_mosaic(root, zoom):
         decoded = rgba[:,:,0].astype(np.float32)*256 + rgba[:,:,1] + rgba[:,:,2]/256 - 32768
         decoded[rgba[:,:,3] == 0] = np.nan
         values[(y-top)*256:(y-top+1)*256,(x-left)*256:(x-left+1)*256] = decoded
-    span = 2*builder.tile_writer.WORLD/2**zoom
-    transform = from_bounds(left*span-builder.tile_writer.WORLD, builder.tile_writer.WORLD-bottom*span,
-                            right*span-builder.tile_writer.WORLD, builder.tile_writer.WORLD-top*span,
+    span = 2*tile_writer.WORLD/2**zoom
+    transform = from_bounds(left*span-tile_writer.WORLD, tile_writer.WORLD-bottom*span,
+                            right*span-tile_writer.WORLD, tile_writer.WORLD-top*span,
                             values.shape[1], values.shape[0])
     return values, transform
 

@@ -61,7 +61,7 @@ EOF`;
     <li><code>widthKm</code> is the ground distance from west to east, from 0.1 to 2,000 km.</li>
     <li>With <code>bounds</code>, the whole box stays in view, and the crop is fitted to the model's proportions.</li>
     <li>Latitudes must lie within ±85.0511°, the limit of Web Mercator.</li>
-    <li>An area cannot cross the antimeridian: west must be less than east.</li>
+    <li>A box can cross the antimeridian: give west greater than east, as GeoJSON does (for Fiji, <code>west: 177</code>, <code>east: -178</code>).</li>
   </ul>
   <p>Notes on text fields:</p>
   <ul>
