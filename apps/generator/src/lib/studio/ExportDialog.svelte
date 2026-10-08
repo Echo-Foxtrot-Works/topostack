@@ -5,8 +5,9 @@
   import type { Snippet } from "svelte";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { donationUrl } from "$lib/site/support";
+  import { base } from "$app/paths";
 
-  let { open, project, summary, panelCount, nested = false, acrylicCount = 0, acrylicNested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout }: {
+  let { open, project, summary, panelCount, nested = false, acrylicCount = 0, acrylicNested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout, onSavePreview, onCopyLink, onShare, previewImageBusy = false, previewImageStatus = "" }: {
     open: boolean;
     project: ProjectConfigV1;
     /** The same counts the top bar shows, e.g. "12 layers · 9 cut panels". */
@@ -26,6 +27,11 @@
     onClose: () => void;
     /** The sheet-nesting controls, shown for layered projects. */
     sheetLayout?: Snippet;
+    onSavePreview?: () => void;
+    onCopyLink?: () => void;
+    onShare?: () => void;
+    previewImageBusy?: boolean;
+    previewImageStatus?: string;
   } = $props();
   let dialog: HTMLDialogElement;
 
@@ -103,6 +109,19 @@
       <span class="export-row-copy"><strong>Project settings</strong><span>Continue later; works before generating. Regenerate terrain after importing.</span></span>
       <span class="export-row-format">JSON <Download size={14} aria-hidden="true" /></span>
     </button>
+    <p class="export-guide">Using LightBurn? <a href={`${base}/guides/lightburn`} target="_blank" rel="noopener noreferrer">Check size and processing layers<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>.</p>
+    {#if onSavePreview}
+      <section class="export-share" aria-labelledby="export-share-title">
+        <h3 id="export-share-title">Share your design</h3>
+        <p>Save a top-down software preview for a post, and include a design link so others can open your settings.</p>
+        <div class="export-share-actions">
+          <button type="button" class="btn btn-secondary" disabled={artworkDisabled || previewImageBusy} onclick={onSavePreview}>{previewImageBusy ? "Preparing image…" : "Save preview image"}</button>
+          {#if onCopyLink}<button type="button" class="btn btn-secondary" onclick={onCopyLink}>Copy design link</button>{/if}
+          {#if onShare}<button type="button" class="btn btn-secondary" onclick={onShare}>Share design</button>{/if}
+        </div>
+        {#if previewImageStatus}<p role="status" aria-live="polite">{previewImageStatus}</p>{/if}
+      </section>
+    {/if}
     <section class="export-support" aria-labelledby="export-support-title">
       <span class="export-support-icon"><Heart size={22} strokeWidth={1.6} /></span>
       <div class="export-support-copy"><h3 id="export-support-title">Help keep TopoStack growing</h3><p>If TopoStack has been useful to you, or you use it for commercial projects, consider a donation to support its development.</p><small>Donations are optional. Every export is available without donating.</small></div>

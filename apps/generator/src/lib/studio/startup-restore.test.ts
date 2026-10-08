@@ -19,6 +19,8 @@ function host(overrides: Partial<StartupRestoreHost> = {}) {
     consumeShareLink: vi.fn(async () => undefined),
     loadExample: vi.fn<(slug: string) => Promise<unknown>>(async () => undefined),
     consumeExampleLink: vi.fn(async () => undefined),
+    consumeStarterLink: vi.fn(async () => undefined),
+    onStarterOpened: vi.fn(() => undefined),
     isCancelled: () => false,
     currentProject: () => project,
     restoreSaved: vi.fn((saved: ProjectConfigV1) => { project = saved; }),
@@ -33,6 +35,31 @@ function host(overrides: Partial<StartupRestoreHost> = {}) {
 }
 
 describe("startup restore", () => {
+  it("opens a starter over a saved design, waits for reviewed settings and consumes the link", async () => {
+    const saved = { ...DEFAULT_PROJECT, name: "Saved design", workAreaWidthMm: 50 };
+    const { value, loadProject, project } = host({ search: "?starter=engraving" });
+    loadProject.mockResolvedValueOnce(saved);
+    await restoreStartupProject(value);
+    expect(value.openExample).toHaveBeenCalledWith(expect.objectContaining({ outputMode: "engraving", widthMm: 150, workAreaWidthMm: 0 }), saved);
+    expect(value.onStarterOpened).toHaveBeenCalledWith("engraving");
+    expect(value.consumeStarterLink).toHaveBeenCalledOnce();
+    expect(value.generate).not.toHaveBeenCalled();
+    expect(project().name).toContain("Flat contour engraving");
+  });
+
+  it("keeps the saved project for unknown starters and gives shared designs precedence", async () => {
+    const saved = { ...DEFAULT_PROJECT, name: "Saved design" };
+    const invalid = host({ search: "?starter=../missing" });
+    invalid.loadProject.mockResolvedValueOnce(saved);
+    await restoreStartupProject(invalid.value);
+    expect(invalid.project()).toBe(saved);
+    expect(invalid.value.onStarterOpened).not.toHaveBeenCalled();
+    expect(invalid.value.consumeStarterLink).toHaveBeenCalledOnce();
+    const shared = host({ search: "?starter=relief", hash: new URL(shareLinkFor(saved, "https://topostack.app/studio")).hash });
+    await restoreStartupProject(shared.value);
+    expect(shared.value.openSharedProject).toHaveBeenCalledOnce();
+    expect(shared.value.onStarterOpened).not.toHaveBeenCalled();
+  });
   it("opens a shared design on top of the saved project and clears the fragment", async () => {
     const shared = { ...DEFAULT_PROJECT, name: "Shared ridge", widthMm: 420 };
     const hash = `#${new URL(shareLinkFor(shared, "https://topostack.app/studio")).hash.slice(1)}`;

@@ -19,6 +19,7 @@ TopoStack is already being shared and used by makers. This kit supports the next
 - The original ordinary Hacker News submission is verified; a separate Show HN launch remains unverified. Product Hunt, creator outreach and other venues remain unverified. Unknown does not mean not done.
 - Week 1 adds a fixed `channel` field using `utm_content`. **Publish the compatible Worker schema before, or together with, the browser build.** Until then, new links cannot reliably report individual channels.
 - The [initial baseline](../reports/growth-baseline-2026-10-08.md) captures production traffic and use for October 2–7. Counts are sampled; Search Console data remains awaiting export.
+- The next repository improvement adds homepage starters with a first-export checklist, a documented LightBurn workflow, local preview-image sharing, curated next-project links and offline snapshot comparisons. These changes are prepared for review, not yet published. Preview images report `share_preview_prepared`; release the compatible event contract with the browser.
 
 ## Ground rules
 

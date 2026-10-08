@@ -11,18 +11,23 @@ describe("ExportDialog", () => {
   });
   afterEach(async () => { if (component) await unmount(component); component = undefined; });
 
-  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean } = {}) {
+  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean; sharing?: boolean; previewImageStatus?: string } = {}) {
     const onDownload = vi.fn();
+    const onSavePreview = vi.fn();
+    const onCopyLink = vi.fn();
     const target = document.createElement("div");
     component = mount(ExportDialog, { target, props: {
       open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested, acrylicCount: props.acrylicCount, acrylicNested: props.acrylicNested,
       blockedReason: props.blockedReason, preparing: false, phase: "idle", title: "", detail: "",
       onDownload, onClose: () => undefined,
+      onSavePreview: props.sharing ? onSavePreview : undefined,
+      onCopyLink: props.sharing ? onCopyLink : undefined,
+      previewImageStatus: props.previewImageStatus,
     } });
     await tick();
     const button = (name: string) => [...target.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.querySelector("strong")?.textContent === name);
     const rows = () => [...target.querySelectorAll(".export-more .export-row strong")].map((node) => node.textContent);
-    return { target, onDownload, button, rows };
+    return { target, onDownload, onSavePreview, onCopyLink, button, rows };
   }
 
   it("counts nested stock sheets instead of panels once the parts are nested", async () => {
@@ -64,5 +69,16 @@ describe("ExportDialog", () => {
     expect(button("Master SVG")?.disabled).toBe(true);
     button("Project settings")!.click();
     expect(onDownload).toHaveBeenCalledWith("project");
+  });
+
+  it("blocks stale preview images while allowing design links and announces sharing feedback inside the dialog", async () => {
+    const { target, onSavePreview, onCopyLink } = await render({}, { blockedReason: "Generate real terrain first.", sharing: true, previewImageStatus: "Share link copied" });
+    const buttons = [...target.querySelectorAll<HTMLButtonElement>("button")];
+    expect(buttons.find((button) => button.textContent === "Save preview image")!.disabled).toBe(true);
+    buttons.find((button) => button.textContent === "Copy design link")!.click();
+    expect(onCopyLink).toHaveBeenCalledOnce();
+    expect(onSavePreview).not.toHaveBeenCalled();
+    expect(target.querySelector('.export-share [role="status"]')?.textContent).toBe("Share link copied");
+    expect(target.querySelector('.export-guide a')?.getAttribute("target")).toBe("_blank");
   });
 });

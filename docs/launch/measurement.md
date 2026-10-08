@@ -33,6 +33,16 @@ Missing account data stays **awaiting export**, never zero. Search Console figur
 
 ## Weekly scorecard
 
+Compare two saved snapshots without credentials or network requests:
+
+```sh
+node scripts/verify/growth-compare.mjs \
+  .topostack/growth/previous.json .topostack/growth/current.json \
+  .topostack/growth/comparison.md
+```
+
+The comparison never overwrites a report. It retains unknown events/categories, reports sampling and Search Console availability, and suppresses changes for unequal or overlapping windows and clipped/unknown effective usage timeframes. Separate channel, source, landing, device and output tables show studio entries, generation outcomes and prepared exports. Channel-coverage changes flag the attribution release and broad-source classification discontinuity. No channel performance ranking or joined conversion funnel is inferred.
+
 | Measure | Meaning |
 | --- | --- |
 | Web Analytics visits / page views | Provider traffic measures; retain its sampling information |
@@ -40,6 +50,7 @@ Missing account data stays **awaiting export**, never zero. Search Console figur
 | `generation_started`, succeeded, failed, cancelled | Explicit generation outcomes; repeated attempts count separately |
 | `export_prepared` / `export_failed` | Fabrication file handoffs or preparation failures |
 | Share copied / shared / opened | Design-link distribution and opens; no joined referral funnel |
+| `share_preview_prepared` | A local software-preview PNG prepared for sharing; not a fabrication export or proof of a published post |
 | Source + channel + campaign + medium | Where tracked activity came from; `none` is missing/legacy, `other` unrecognized |
 | Landing + device + output + delivery | Content category, viewport category, layered/engraved output and browser/Atomm handoff |
 

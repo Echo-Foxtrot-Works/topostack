@@ -46,7 +46,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Create layered terrain maps and flat topographic engravings from real elevation data. Customize your design and export SVG files free in your browser.",
     label: "Home",
     published: "2026-08-19",
-    updated: "2026-09-17",
+    updated: "2026-10-08",
   },
   "/guides": {
     title: "Topographic Map Guides and Documentation | TopoStack",
@@ -63,6 +63,14 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     published: "2026-09-15",
     updated: "2026-09-18",
     image: socialCard("guides-laser-cut-topographic-map", "Laser-cut topographic map guide card with an exploded stack of Crater Lake layers rendered in the studio."),
+  },
+  "/guides/lightburn": {
+    title: "Import Topographic Map SVGs into LightBurn | TopoStack",
+    description: "Use TopoStack SVGs in LightBurn: check size, assign cut and marking layers, avoid duplicate engraving, apply kerf once, and preview the job.",
+    label: "LightBurn workflow",
+    published: "2026-10-08",
+    updated: "2026-10-08",
+    image: socialCard("guides-lightburn", "LightBurn workflow guide card showing TopoStack’s export dialog, not a LightBurn screenshot."),
   },
   "/guides/topographic-map-engraving": {
     title: "Create a Topographic Map SVG for Laser Engraving | TopoStack",

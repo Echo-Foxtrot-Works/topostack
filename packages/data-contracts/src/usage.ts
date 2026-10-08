@@ -1,5 +1,5 @@
 // Fixed categories only: never send project names, coordinates, queries or user IDs.
-export const USAGE_EVENTS = ["landing_view", "studio_open", "generation_started", "generation_succeeded", "generation_failed", "generation_cancelled", "export_prepared", "export_failed", "share_link_copied", "share_link_opened", "share_link_shared"] as const;
+export const USAGE_EVENTS = ["landing_view", "studio_open", "generation_started", "generation_succeeded", "generation_failed", "generation_cancelled", "export_prepared", "export_failed", "share_link_copied", "share_link_opened", "share_link_shared", "share_preview_prepared"] as const;
 // Every public page, so a search landing on any guide is attributed to it.
 // Generated pages below /lakes and /examples report "/lakes" and "/examples".
 // Additions are compatible; removing a path rejects events from open tabs.
@@ -10,7 +10,7 @@ export const USAGE_LANDINGS = [
   "/guides/troubleshooting", "/lakes", "/guides/custom-lake-depth-map", "/examples", "/changelog", "/guides/custom-graphics",
   "/guides/custom-data", "/guides/trace-a-depth-chart",
   "/guides/how-depth-chart-tracing-works", "/guides/how-terrain-generation-works", "/guides/use-with-ai-assistants",
-  "/guides/browser-agents", "/guides/mcp-server", "/guides/agent-api",
+  "/guides/browser-agents", "/guides/mcp-server", "/guides/agent-api", "/guides/lightburn",
 ] as const;
 // "ai" covers assistant and answer-engine referrers, which send a visitor who
 // already read a description of the tool rather than a search result snippet.

@@ -59,6 +59,8 @@
   import GenerationDock from "$lib/studio/panels/GenerationDock.svelte";
   import LayerDock from "$lib/studio/panels/LayerDock.svelte";
   import PreviewPanel from "$lib/studio/panels/PreviewPanel.svelte";
+  import StarterSteps from "$lib/studio/panels/StarterSteps.svelte";
+  import type { StarterId } from "$lib/site/starters";
 
   let { initialPreview, initialSource, takeWarmWorker }: {
     initialPreview?: GeometryIRV1;
@@ -118,6 +120,10 @@
   let embeddedInPlatform = $state(false);
   provideEmbedded(() => embeddedInPlatform);
   let exportOpen = $state(false);
+  let starterId = $state<StarterId>();
+  let exportedFingerprint = $state<string>();
+  let previewImageBusy = $state(false);
+  let previewImageStatus = $state("");
   let resetOpen = $state(false);
   const exportNotice = new ExportNotice((message) => { status = message; });
   const sheetNesting = new SheetNesting();
@@ -445,6 +451,8 @@
         return response.json();
       },
       consumeExampleLink: () => cleanStudioUrl((url) => { url.searchParams.delete("example"); }),
+      consumeStarterLink: () => cleanStudioUrl((url) => { url.searchParams.delete("starter"); url.searchParams.delete("example"); url.searchParams.delete("lake"); url.searchParams.delete("bounds"); }),
+      onStarterOpened: (id) => { starterId = id; },
       isCancelled: () => cancelled,
       currentProject: () => project,
       restoreSaved: (saved) => {
@@ -835,7 +843,11 @@
   }
 
   function downloadProject(option: DownloadOption): Promise<void> {
-    return downloadWithNotice({ option, geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan, notice: exportNotice, track: (event) => trackUsage(event, project.outputMode, "browser") });
+    const fingerprint = projectFingerprint(project);
+    return downloadWithNotice({ option, geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan, notice: exportNotice, track: (event) => {
+      if (event === "export_prepared") exportedFingerprint = fingerprint;
+      trackUsage(event, project.outputMode, "browser");
+    } });
   }
   async function importProject(file: File | undefined): Promise<void> {
     if (!file) return;
@@ -851,8 +863,27 @@
     }
   }
 
-  async function copyShareLink(): Promise<void> { status = await copyDesignLink(project); }
-  async function shareDesign(): Promise<void> { const message = await shareDesignLink(project); if (message) status = message; }
+  async function copyShareLink(): Promise<void> {
+    status = await copyDesignLink(project);
+    if (exportOpen) previewImageStatus = status;
+  }
+  async function shareDesign(): Promise<void> {
+    const message = await shareDesignLink(project);
+    if (message) { status = message; if (exportOpen) previewImageStatus = message; }
+  }
+
+  async function savePreviewImage(): Promise<void> {
+    if (previewImageBusy || previewBusy || exportBlockedBy) return;
+    previewImageBusy = true; previewImageStatus = "Preparing preview image…";
+    const snapshot = { geometry, project };
+    try {
+      const { saveSharePreview } = await import("$lib/studio/share-preview");
+      await saveSharePreview(snapshot.geometry, snapshot.project);
+      previewImageStatus = "Preview image prepared · pair it with your design link when sharing";
+      trackUsage("share_preview_prepared", snapshot.project.outputMode);
+    } catch (error) { previewImageStatus = error instanceof Error ? error.message : "Could not prepare the preview image."; }
+    finally { previewImageBusy = false; }
+  }
 
   async function importCustomData(file: File | undefined): Promise<void> {
     if (!file) return;
@@ -1044,6 +1075,7 @@
               <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !menuSections.open[section])}>Collapse all</button>
             </div>
           </div>
+          {#if starterId && project.id === `topostack-starter-${starterId}`}<StarterSteps id={starterId} ready={exportReady} busy={previewBusy} exported={exportedFingerprint === projectFingerprint(project)} onGenerate={() => void generate()} onExport={() => exportOpen = true} onDismiss={() => starterId = undefined} />{/if}
           <SetupSection />
 
           <ParameterSections />
@@ -1055,7 +1087,7 @@
 
     <PreviewPanel />
   </Workspace>
-  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false}>
+  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false} onSavePreview={() => void savePreviewImage()} onCopyLink={() => void copyShareLink()} onShare={() => void shareDesign()} {previewImageBusy} {previewImageStatus}>
     {#snippet sheetLayout()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
   </ExportDialog>
   {@render locationSearch()}

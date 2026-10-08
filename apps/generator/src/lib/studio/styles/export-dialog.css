@@ -22,6 +22,12 @@
 .export-dialog .ldt-dialog__title { font-size: 26px; line-height: 1.2; }
 .export-dialog-body { display: grid; grid-auto-rows: max-content; gap: 16px; min-height: 0; padding: 20px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
 .export-blocked { margin: 0; padding: 12px 14px; border-left: 3px solid var(--loidolt-accent); background: var(--loidolt-surface-alt); color: var(--loidolt-text-muted); font-size: 12px; line-height: 1.6; }
+.export-guide { margin: 0; font-size: 12px; line-height: 1.6; color: var(--loidolt-text-muted); }
+.export-guide a { color: var(--loidolt-text-accent); text-underline-offset: 3px; }
+.export-share { padding-top: 16px; border-top: 1px solid var(--loidolt-border); }
+.export-share h3 { margin: 0 0 8px; font-size: 14px; }
+.export-share p { font-size: 12px; line-height: 1.6; color: var(--loidolt-text-muted); }
+.export-share-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Download buttons: the recommended hero and the smaller rows share one layout. */
 .export-hero, .export-row {
