@@ -33,6 +33,7 @@ export function openCustomDataSection(section: CustomDataSectionId): void {
   nav.expanded = true;
 }
 
+/** @public CustomDataNav.svelte calls this only from its markup, which knip does not read. */
 export function toggleCustomDataSection(section: CustomDataSectionId): void {
   if (nav.section === section) nav.expanded = !nav.expanded;
   else openCustomDataSection(section);
