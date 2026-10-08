@@ -23,7 +23,7 @@ describe("usage collection", () => {
   });
   it("logs campaign and medium when the page sends them", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const attributed = { ...event, campaign: "launch", medium: "forum" };
+    const attributed = { ...event, campaign: "launch", medium: "forum", channel: "lightburn-forum" };
     expect((await collectUsage(request(attributed), "production")).status).toBe(204);
     expect(JSON.parse(log.mock.calls[0]![0])).toEqual({ message: "usage_event", environment: "production", ...attributed });
   });
@@ -35,6 +35,7 @@ describe("usage collection", () => {
     { ...event, event: "arbitrary" },
     { ...event, campaign: "launch" },
     { ...event, campaign: "private campaign", medium: "forum" },
+    { ...event, channel: "private-person" },
     null, [], {},
   ])("rejects unrecognized or private fields: %j", async (payload) => {
     const log = vi.spyOn(console, "log");
