@@ -4,11 +4,11 @@ import { validateVersion } from "./versions.mjs";
 import { notesBetween, readChangelog } from "./changelog.mjs";
 import { compareVersions } from "@topostack/data-contracts/changelog";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../lib/hash.mjs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isMainModule } from "../lib/main-module.mjs";
 
 export function validateRun(run, repository) {
   assert.equal(run.repository.full_name, repository, "CI must belong to this repository");
@@ -32,7 +32,7 @@ export function validatePackage(receipt, archive, checksum, commit, tag) {
   const files = atommReleaseFiles(receipt.atommVersion);
   assert.equal(receipt.archive, files.archive);
   assert.equal(receipt.bytes, archive.length, "Archive size does not match its receipt");
-  const digest = createHash("sha256").update(archive).digest("hex");
+  const digest = sha256Hex(archive);
   assert.equal(receipt.sha256, digest, "Archive checksum does not match its receipt");
   assert.equal(checksum.trim(), `${digest}  ${files.archive}`, "Checksum file does not match the archive");
   return digest;
@@ -154,4 +154,4 @@ async function main() {
     title: `TopoStack ${tag.slice("atomm-".length)} for Atomm`, notesFile: notes, prerelease }));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (isMainModule(import.meta.url)) await main();

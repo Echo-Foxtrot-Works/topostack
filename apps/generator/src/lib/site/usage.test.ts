@@ -19,7 +19,7 @@ describe("usage privacy and attribution", () => {
     trackPageView("/studio");
     trackUsage("export_prepared", "engraving", "browser");
     expect(sent().map((event) => event.event)).toEqual(["landing_view", "studio_open", "export_prepared"]);
-    expect(sent()[2]).toEqual({ event: "export_prepared", source: "github", landing: "/examples/crater-lake", device: "large", output: "engraving", delivery: "browser", campaign: "none", medium: "none" });
+    expect(sent()[2]).toEqual({ event: "export_prepared", source: "github", landing: "/examples/crater-lake", device: "large", output: "engraving", delivery: "browser", campaign: "none", medium: "none", channel: "none" });
     expect(JSON.stringify(sent())).not.toContain("secret");
   });
   it("attributes every generated lake page to the lakes landing", () => {
@@ -56,7 +56,48 @@ describe("usage privacy and attribution", () => {
   it("keeps a session saved before campaigns were recorded", () => {
     sessionStorage.setItem("topostack-usage-session", JSON.stringify({ landing: "/guides", source: "bing", updatedAt: Date.now(), landingSeen: true, studioSeen: false }));
     trackPageView("/studio");
-    expect(sent()[0]).toMatchObject({ event: "studio_open", landing: "/guides", source: "bing", campaign: "none", medium: "none" });
+    expect(sent()[0]).toMatchObject({ event: "studio_open", landing: "/guides", source: "bing", campaign: "none", medium: "none", channel: "none" });
+  });
+  it("keeps a published venue or creator slot through generation and export", () => {
+    vi.stubGlobal("location", new URL("https://topostack.app/?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=LightBurn-Forum"));
+    trackPageView("/");
+    vi.stubGlobal("location", new URL("https://topostack.app/studio?utm_content=creator-02"));
+    trackPageView("/studio");
+    trackUsage("generation_succeeded", "stack");
+    trackUsage("export_prepared", "stack", "browser");
+    expect(sent()).toHaveLength(4);
+    expect(sent().every((event) => event.channel === "lightburn-forum" && event.source === "social")).toBe(true);
+    sessionStorage.clear();
+    trackPageView("/studio");
+    expect(sent().at(-1)).toMatchObject({ channel: "creator-02" });
+  });
+  it("recovers allowlisted tags from a script-free lake entry without sending its URL", () => {
+    vi.stubGlobal("location", new URL("https://topostack.app/studio?lake=private-lake"));
+    vi.stubGlobal("document", { ...document, referrer: "https://topostack.app/lake/private-lake?utm_source=social&utm_campaign=launch&utm_medium=forum&utm_content=reddit-lasercutting&private=secret" });
+    trackPageView("/studio");
+    expect(sent()[0]).toMatchObject({ landing: "/lakes", source: "social", campaign: "launch", medium: "forum", channel: "reddit-lasercutting" });
+    expect(JSON.stringify(sent())).not.toMatch(/private|secret/);
+  });
+  it("prefers explicit studio tags to lake referrer tags and rejects private channel text", () => {
+    vi.stubGlobal("document", { ...document, referrer: "https://topostack.app/lake/test?utm_content=reddit-gis" });
+    vi.stubGlobal("location", new URL("https://topostack.app/studio?utm_content=private-person"));
+    trackPageView("/studio");
+    expect(sent()[0].channel).toBe("other");
+    expect(JSON.stringify(sent())).not.toContain("private-person");
+  });
+  it("infers venues from referrer hosts without using private paths or lookalike hosts", () => {
+    const from = (referrer: string) => {
+      sessionStorage.clear();
+      vi.stubGlobal("location", new URL("https://topostack.app/"));
+      vi.stubGlobal("document", { ...document, referrer });
+      trackPageView("/");
+      return sent().at(-1);
+    };
+    expect(from("https://forum.lightburnsoftware.com/t/private-topic")).toMatchObject({ source: "social", channel: "lightburn-forum" });
+    expect(from("https://news.ycombinator.com/item?id=123")).toMatchObject({ source: "social", channel: "hacker-news" });
+    expect(from("https://old.reddit.com/r/private-community")).toMatchObject({ source: "social", channel: "reddit" });
+    expect(from("https://reddit.com.evil.invalid/")).toMatchObject({ source: "other", channel: "other" });
+    expect(JSON.stringify(sent())).not.toContain("private");
   });
   it("separates assistant referrers from search engines and keeps unknown hosts uncategorized", () => {
     const from = (referrer: string) => {

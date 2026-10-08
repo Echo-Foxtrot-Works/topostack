@@ -1,7 +1,8 @@
 import packageJson from "../package.json";
 import { coverageRouteResponse, projectRouteResponse, publicOrigin, type AgentContext } from "./agent/projects";
 import { openApiDocument } from "./agent/openapi";
-import { MCP_PATH, mcpResponse, serverCard } from "./mcp/server";
+import { mcpResponse, serverCard } from "./mcp/server";
+import { EVENTS_PATH, FEEDBACK_PATH, MCP_PATH, PUBLIC_HOUR_CACHE } from "./paths";
 import { OUTLINE_INDEX_FILE, OUTLINE_PATH, outlineResponse } from "./routes/lake-outlines";
 import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
@@ -9,7 +10,7 @@ import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLi
 import { buildManifest } from "./manifest";
 import { ARCHIVE_ROUTES, aviationSources, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse, terrainArchives } from "./routes/archive";
 import { API_CATALOG_PATH, apiCatalogResponse, ARD_PATHS, ardResponse, SKILL_PATH, skillResponse, SKILLS_INDEX_PATH, skillsIndexResponse } from "./routes/discovery";
-import { FEEDBACK_PATH, feedbackResponse } from "./routes/feedback";
+import { feedbackResponse } from "./routes/feedback";
 import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
 import { isSitePage, sitePageResponse } from "./routes/pages";
@@ -62,12 +63,6 @@ function agentContext(request: Request, env: Env, ctx: ExecutionContext): AgentC
   return { request, env, ctx, admitTerrainUpstream: () => withinTerrainUpstreamBudget(request, env), admitAgentCall: () => withinAgentBudget(request, env) };
 }
 
-/** POST routes for agents, answered before the read-only method check. */
-const PROJECT_ROUTES = new Map<string, "resolve" | "plan" | "link">([
-  ["/v1/projects/resolve", "resolve"],
-  ["/v1/projects/plan", "plan"],
-  ["/v1/projects/link", "link"],
-]);
 
 // Range reads of a present archive stay unmetered, including the conditional
 // ones a browser sends to revalidate them. Metadata-only requests (HEAD, or
@@ -86,9 +81,32 @@ async function archiveResponse(request: Request, env: Env, ctx: ExecutionContext
   return response;
 }
 
-function limited(bucket: string, handler: Handler): Handler {
-  return async (request, env, ctx, url) => (await withinRequestBudget(request, env, bucket)) ? handler(request, env, ctx, url) : rateLimitExceeded();
+function limited(bucket: string, handler: Handler, refusal?: string): Handler {
+  return async (request, env, ctx, url) => (await withinRequestBudget(request, env, bucket)) ? handler(request, env, ctx, url) : rateLimitExceeded(refusal);
 }
+
+function agentLimited(handler: Handler): Handler {
+  return async (request, env, ctx, url) => (await withinAgentBudget(request, env)) ? handler(request, env, ctx, url) : rateLimitExceeded();
+}
+
+function postOnly(handler: Handler): Handler {
+  return (request, env, ctx, url) => request.method === "POST" ? handler(request, env, ctx, url) : methodNotAllowed("POST,OPTIONS");
+}
+
+/**
+ * Routes that take POSTs, answered before the read-only method check. The
+ * method is checked before any budget is spent. MCP answers other methods
+ * itself, with an explanation for clients that try to open a stream.
+ */
+const POST_ROUTES = new Map<string, Handler>([
+  [EVENTS_PATH, postOnly(limited("events", (request, env) => collectUsage(request, env.ENVIRONMENT), "Rate limit exceeded."))],
+  [FEEDBACK_PATH, postOnly((request, env) => feedbackResponse(request, env))],
+  [MCP_PATH, agentLimited((request, env, ctx) => mcpResponse(agentContext(request, env, ctx)))],
+  ...(["resolve", "plan", "link"] as const).map((action): [string, Handler] => [
+    `/v1/projects/${action}`,
+    postOnly(agentLimited((request, env, ctx) => projectRouteResponse(action, agentContext(request, env, ctx)))),
+  ]),
+]);
 
 const EXACT_ROUTES = new Map<string, Handler>([
   ["/health", limited("root", (_request, env) => healthResponse(env))],
@@ -96,49 +114,32 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/v1/upstream-health", limited("upstream-health", (_request, env) => upstreamHealth(env))],
   ["/v1/manifest", limited("manifest", (_request, env) => json(
     buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives, aviationSources),
-    { headers: { "cache-control": "public, max-age=3600" } },
+    { headers: { "cache-control": PUBLIC_HOUR_CACHE } },
   ))],
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],
   ["/v1/coverage", limited("coverage", (request, env, _ctx, url) => coverageRouteResponse(url, { request, env }))],
-  ["/.well-known/mcp/server-card.json", limited("mcp-card", (request, env) => json(serverCard({ request, env }), { headers: { "cache-control": "public, max-age=3600" } }))],
+  ["/.well-known/mcp/server-card.json", limited("mcp-card", (request, env) => json(serverCard({ request, env }), { headers: { "cache-control": PUBLIC_HOUR_CACHE } }))],
   [API_CATALOG_PATH, limited("discovery", (request, env) => apiCatalogResponse({ request, env }))],
   [SKILLS_INDEX_PATH, limited("discovery", (request, env) => skillsIndexResponse({ request, env }))],
   [SKILL_PATH, limited("discovery", (request, env) => skillResponse({ request, env }))],
   ...ARD_PATHS.map((path): [string, Handler] => [path, limited("discovery", (request, env) => ardResponse({ request, env }))]),
-  ["/v1/openapi.json", limited("openapi", (request, env) => json(openApiDocument(new URL(request.url).origin, publicOrigin({ request, env }), packageJson.version), { headers: { "cache-control": "public, max-age=3600" } }))],
+  ["/v1/openapi.json", limited("openapi", (request, env) => json(openApiDocument(new URL(request.url).origin, publicOrigin({ request, env }), packageJson.version), { headers: { "cache-control": PUBLIC_HOUR_CACHE } }))],
 ]);
 
 async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
-  const isWrite = url.pathname === "/v1/events" || url.pathname === FEEDBACK_PATH;
+  const isWrite = url.pathname === EVENTS_PATH || url.pathname === FEEDBACK_PATH;
   if (isWrite && !isAllowedOrigin(request.headers.get("origin"), env)) return json({ error: "Origin is not allowed." }, { status: 403 });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request, env) });
-  if (url.pathname === "/v1/events") {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    if (!(await withinRequestBudget(request, env, "events"))) return rateLimitExceeded("Rate limit exceeded.");
-    return collectUsage(request, env.ENVIRONMENT);
-  }
-  if (url.pathname === FEEDBACK_PATH) {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    return feedbackResponse(request, env);
-  }
-  if (url.pathname === MCP_PATH) {
-    if (!(await withinAgentBudget(request, env))) return rateLimitExceeded();
-    return mcpResponse(agentContext(request, env, ctx));
-  }
-  const projectAction = PROJECT_ROUTES.get(url.pathname);
-  if (projectAction) {
-    if (request.method !== "POST") return methodNotAllowed("POST,OPTIONS");
-    if (!(await withinAgentBudget(request, env))) return rateLimitExceeded();
-    return projectRouteResponse(projectAction, agentContext(request, env, ctx));
-  }
+  const post = POST_ROUTES.get(url.pathname);
+  if (post) return post(request, env, ctx, url);
   if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed("GET,HEAD,OPTIONS");
 
   // Existing browser sessions can still request the former static URLs.
   const legacyOutline = /^\/data\/lake-outlines\/(index|[a-f0-9]{24})\.json$/.exec(url.pathname);
   if (legacyOutline) {
     const file = legacyOutline[1] === "index" ? OUTLINE_INDEX_FILE : `${legacyOutline[1]}.json`;
-    return new Response(null, { status: 307, headers: { location: `/v1/lake-outlines/${file}`, "cache-control": "public, max-age=3600" } });
+    return new Response(null, { status: 307, headers: { location: `/v1/lake-outlines/${file}`, "cache-control": PUBLIC_HOUR_CACHE } });
   }
   const exact = EXACT_ROUTES.get(url.pathname);
   if (exact) return exact(request, env, ctx, url);

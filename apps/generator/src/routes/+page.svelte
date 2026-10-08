@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import SiteHeader from "$lib/site/SiteHeader.svelte";
   import SiteFooter from "$lib/site/SiteFooter.svelte";
   import { base } from "$app/paths";
@@ -7,6 +8,7 @@
   import { REPOSITORY_URL } from "$lib/site/site";
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import TerrainIllustration from "$lib/studio/TerrainIllustration.svelte";
+  import { STARTERS } from "$lib/site/starters";
 
   const atommBuild = import.meta.env.VITE_SITE_ENV === "atomm";
 
@@ -27,6 +29,7 @@
         <p class="intro">A place you love. A thing you make. Create layered terrain reliefs and flat topographic engravings from real elevation data, then export SVG files for your laser software.</p>
         <div class="hero-actions">
           <a class="primary-link" href={studioUrl}>Start creating <ArrowRight size={18} aria-hidden="true" /></a>
+          <a class="secondary-link" href="#first-project">Choose a first project</a>
           <a class="secondary-link" href="#how-it-works">See how it works</a>
         </div>
         <p class="cta-note">Free to use · No account required · SVG exports · Step-by-step assembly guide</p>
@@ -35,6 +38,15 @@
         <TerrainIllustration variant="hero" />
         <figcaption>Inspired by the landscape. Made by you.</figcaption>
       </figure>
+    </section>
+
+    <section id="first-project" class="section" aria-labelledby="first-project-title">
+      <div class="section-heading"><p class="eyebrow">A place to begin</p><h2 id="first-project-title">Choose your first project.</h2><p>Start with prepared Crater Lake settings, review your size and material, then generate and export. You can undo back to your previous design.</p></div>
+      <div class="starter-grid">
+        {#each STARTERS as starter (starter.id)}
+          <article class="starter-card"><h3>{starter.title}</h3><p>{starter.description}</p><p class="card-detail">{starter.size}</p><a class="primary-link" href={`${studioUrl}?starter=${starter.id}`}>Start {starter.title.toLowerCase()} <ArrowRight size={16} aria-hidden="true" /></a></article>
+        {/each}
+      </div>
     </section>
 
     <section class="workflows section" aria-labelledby="workflows-title">
@@ -57,6 +69,11 @@
           <a class="secondary-link" href={`${base}/guides/topographic-map-engraving`}>Create a contour map for engraving</a>
         </article>
       </div>
+    </section>
+
+    <section id="water-finishes" class="section" aria-labelledby="water-finishes-title">
+      <div class="section-heading"><p class="eyebrow">Water, made your way</p><h2 id="water-finishes-title">Two ways to finish your lake.</h2><p>Color the wooden lake bed, or add a fitted acrylic surface. Both finishes start with the same layered terrain.</p></div>
+      <WaterFinishComparison links />
     </section>
 
     <section id="how-it-works" class="section process" aria-labelledby="process-title">
@@ -161,7 +178,7 @@
   .secondary-link, .primary-link, .support-link { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
   .star-link :global(svg:first-child) { transition: fill 160ms ease, color 160ms ease; }
   .star-link:hover :global(svg:first-child), .star-link:focus-visible :global(svg:first-child) { color: var(--loidolt-text-accent); fill: currentColor; }
-  #how-it-works, #assembly-guide, #open-source { scroll-margin-top: 100px; }
+  #first-project, #how-it-works, #assembly-guide, #water-finishes, #open-source { scroll-margin-top: 100px; }
   .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px 24px; }
   .secondary-link { min-height: 48px; color: var(--loidolt-text); font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
   .cta-note { margin: 16px 0 0; font-size: 12px; }
@@ -193,6 +210,10 @@
   h2 { font-size: clamp(25px, 3vw, 32px); line-height: 1.2; letter-spacing: -0.025em; font-weight: 550; margin-bottom: 26px; }
   h3 { font-size: 19px; font-weight: 550; line-height: 1.3; margin-bottom: 12px; }
   .workflow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .starter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .starter-card { display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); background: var(--loidolt-surface); }
+  .starter-card .primary-link { margin-top: auto; font-size: 13px; padding-inline: 12px; }
+  @media (max-width: 900px) { .starter-grid { grid-template-columns: 1fr; } }
   .workflow-card { padding: 30px; border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); background: var(--loidolt-surface); }
   .workflow-art { max-width: 400px; margin: 0 auto 30px; }
   .section-art { max-width: 400px; margin: 32px auto 0; }

@@ -1,3 +1,6 @@
+import { EVENTS_PATH, FEEDBACK_PATH, MCP_PATH } from "./paths";
+
+
 const UPSTREAM_TIMEOUT_MS = 10_000;
 const DEFAULT_ALLOWED_ORIGIN_SUFFIXES = ".atomm.com";
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -50,17 +53,17 @@ export function isAllowedOrigin(origin: string | null, env: OriginPolicyEnv): bo
 export function corsHeaders(request: Request, env: Env): Headers {
   const origin = request.headers.get("origin");
   const pathname = new URL(request.url).pathname;
-  const isEvent = pathname === "/v1/events" || pathname === "/v1/feedback";
+  const isEvent = pathname === EVENTS_PATH || pathname === FEEDBACK_PATH;
   // Agent routes take public POSTs with no side effects and no credentials, so
   // they stay open to every origin like the read-only data.
   // The MCP endpoint is the same kind of route, and browser-based MCP clients
   // send its protocol headers.
-  const isAgentPost = pathname.startsWith("/v1/projects/") || pathname === "/mcp";
+  const isAgentPost = pathname.startsWith("/v1/projects/") || pathname === MCP_PATH;
   const headers = new Headers({
     "access-control-allow-methods": isEvent || isAgentPost ? "POST,OPTIONS" : "GET,HEAD,OPTIONS",
-    "access-control-allow-headers": pathname === "/mcp" ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
+    "access-control-allow-headers": pathname === MCP_PATH ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
     // retry-after is readable so browser clients can back off after a 429.
-    "access-control-expose-headers": pathname === "/mcp" ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
+    "access-control-expose-headers": pathname === MCP_PATH ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
     "access-control-max-age": "86400",
     "vary": "Origin",
   });
@@ -81,6 +84,7 @@ export function withCors(response: Response, request: Request, env: Env): Respon
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-frame-options", "DENY");
+  // Every error answer is uncacheable here, so handlers need not say so themselves.
   if (response.status >= 400) headers.set("cache-control", "no-store");
   if (request.method === "HEAD") {
     void response.body?.cancel().catch(() => {});
@@ -93,10 +97,30 @@ export function upstreamSignal(request: Request): AbortSignal {
   return AbortSignal.any([request.signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]);
 }
 
-export function upstreamFailure(error: unknown, service: string): Response {
+/**
+ * An upstream service that could not give a usable answer. Fetch helpers throw
+ * it; the route that called them turns it into a response with
+ * `upstreamErrorResponse`, so no helper returns either data or a Response.
+ */
+export class UpstreamError extends Error {
+  constructor(readonly status: 502 | 504, message: string) { super(message); this.name = "UpstreamError"; }
+}
+
+/** An upstream that answered with an error status: logged, and reported to the caller as a bad gateway. */
+export function upstreamRejected(response: Response, service: string, error: string): UpstreamError {
+  console.warn(JSON.stringify({ message: "upstream_rejected", service, status: response.status }));
+  return new UpstreamError(502, error);
+}
+
+/** An upstream that could not be reached, or did not answer in time. */
+export function upstreamFailure(error: unknown, service: string): UpstreamError {
   const timedOut = error instanceof DOMException && error.name === "TimeoutError";
   console.warn(JSON.stringify({ message: "upstream_failed", service, reason: timedOut ? "timeout" : "network" }));
-  return json({ error: timedOut ? `${service} timed out` : `${service} unavailable` }, { status: timedOut ? 504 : 502 });
+  return new UpstreamError(timedOut ? 504 : 502, timedOut ? `${service} timed out` : `${service} unavailable`);
+}
+
+export function upstreamErrorResponse(error: UpstreamError): Response {
+  return json({ error: error.message }, { status: error.status });
 }
 
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -166,5 +190,5 @@ export function methodNotAllowed(allow: string): Response {
 }
 
 export function rateLimitExceeded(message = "Rate limit exceeded. Try again shortly."): Response {
-  return json({ error: message }, { status: 429, headers: { "retry-after": "60", "cache-control": "no-store" } });
+  return json({ error: message }, { status: 429, headers: { "retry-after": "60" } });
 }

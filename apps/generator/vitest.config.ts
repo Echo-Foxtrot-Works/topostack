@@ -11,7 +11,7 @@ export default mergeConfig(viteConfig, defineConfig({
     exclude: [...configDefaults.exclude, "src/**/*.client.test.ts"],
     coverage: {
       reportsDirectory: "coverage/node",
-      thresholds: { statements: 60, branches: 55, functions: 65, lines: 65 },
+      thresholds: { statements: 90, branches: 84, functions: 91, lines: 94 },
     },
   },
 }));

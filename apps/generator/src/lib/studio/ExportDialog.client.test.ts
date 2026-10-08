@@ -11,23 +11,35 @@ describe("ExportDialog", () => {
   });
   afterEach(async () => { if (component) await unmount(component); component = undefined; });
 
-  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean } = {}) {
+  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean; sharing?: boolean; previewImageStatus?: string } = {}) {
     const onDownload = vi.fn();
+    const onSavePreview = vi.fn();
+    const onCopyLink = vi.fn();
     const target = document.createElement("div");
     component = mount(ExportDialog, { target, props: {
-      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested,
+      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested, acrylicCount: props.acrylicCount, acrylicNested: props.acrylicNested,
       blockedReason: props.blockedReason, preparing: false, phase: "idle", title: "", detail: "",
       onDownload, onClose: () => undefined,
+      onSavePreview: props.sharing ? onSavePreview : undefined,
+      onCopyLink: props.sharing ? onCopyLink : undefined,
+      previewImageStatus: props.previewImageStatus,
     } });
     await tick();
     const button = (name: string) => [...target.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.querySelector("strong")?.textContent === name);
     const rows = () => [...target.querySelectorAll(".export-more .export-row strong")].map((node) => node.textContent);
-    return { target, onDownload, button, rows };
+    return { target, onDownload, onSavePreview, onCopyLink, button, rows };
   }
 
   it("counts nested stock sheets instead of panels once the parts are nested", async () => {
     const { target } = await render({ outputMode: "stack" }, { panelCount: 2, nested: true });
     expect(target.querySelector(".export-hero")?.textContent).toContain("2 nested sheets");
+  });
+
+  it("adds the acrylic insert panels or sheets to the complete project's count", async () => {
+    const panels = await render({ outputMode: "stack" }, { acrylicCount: 1 });
+    expect(panels.target.querySelector(".export-hero")?.textContent).toContain("9 panels + 1 acrylic panel,");
+    const sheets = await render({ outputMode: "stack" }, { panelCount: 2, nested: true, acrylicCount: 2, acrylicNested: true });
+    expect(sheets.target.querySelector(".export-hero")?.textContent).toContain("2 nested sheets + 2 acrylic sheets,");
   });
 
   it("leads layered projects with the complete project and lists specialist files behind a disclosure", async () => {
@@ -36,8 +48,9 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels");
     expect(target.textContent).toContain("Crater Lake · 12 layers · 9 cut panels");
     expect(target.querySelector<HTMLDetailsElement>(".export-more")?.open).toBe(false);
-    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Assembly guide"]);
+    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Assembly guide"]);
     expect(button("Paint templates")?.disabled).toBe(true);
+    expect(button("Acrylic inserts")?.disabled).toBe(true);
     button("Complete project")!.click();
     button("Cut panels")!.click();
     expect(onDownload.mock.calls).toEqual([["all"], ["panels"]]);
@@ -56,5 +69,16 @@ describe("ExportDialog", () => {
     expect(button("Master SVG")?.disabled).toBe(true);
     button("Project settings")!.click();
     expect(onDownload).toHaveBeenCalledWith("project");
+  });
+
+  it("blocks stale preview images while allowing design links and announces sharing feedback inside the dialog", async () => {
+    const { target, onSavePreview, onCopyLink } = await render({}, { blockedReason: "Generate real terrain first.", sharing: true, previewImageStatus: "Share link copied" });
+    const buttons = [...target.querySelectorAll<HTMLButtonElement>("button")];
+    expect(buttons.find((button) => button.textContent === "Save preview image")!.disabled).toBe(true);
+    buttons.find((button) => button.textContent === "Copy design link")!.click();
+    expect(onCopyLink).toHaveBeenCalledOnce();
+    expect(onSavePreview).not.toHaveBeenCalled();
+    expect(target.querySelector('.export-share [role="status"]')?.textContent).toBe("Share link copied");
+    expect(target.querySelector('.export-guide a')?.getAttribute("target")).toBe("_blank");
   });
 });

@@ -1,7 +1,7 @@
-import { addLabelObstacles, indexLabelLayer, placeLabel } from "../annotate/label-placement.js";
+import { addLabelObstacles, indexLabelLayer } from "../annotate/label-placement.js";
 import { clipPolyline, preparePolygons } from "../primitives/geometry2d.js";
 import { offsetClosedRing } from "../primitives/offset.js";
-import { polygonCenter } from "./nesting.js";
+import { alignmentOutlineInsetMm, hiddenLabelMarking, placeHiddenLabel } from "./hidden-marks.js";
 import type { LayerIR, OperationPath, Polygon2D, ProjectConfigV1 } from "../types.js";
 
 /** One layer's guides; read-only inputs make this safe to retry or execute in another worker. */
@@ -12,10 +12,11 @@ export function alignmentGuideMarkings(config: ProjectConfigV1, layer: LayerIR, 
   const layerNumber = String(layer.index + 1).padStart(2, "0");
   const nextLayerNumber = String(nextLayer.index + 1).padStart(2, "0");
   const labelIndex = indexLabelLayer(layer.polygons, layer.markings);
+  const inset = alignmentOutlineInsetMm(config);
   const outline = (polygon: Polygon2D, polygonIndex: number) => {
     const guides: OperationPath[] = [];
-    offsetClosedRing(polygon.outer, -config.laserKerfMm, "round").forEach((inset, insetIndex) => {
-      clipPolyline(inset, material).forEach((points, clipIndex) => guides.push({
+    offsetClosedRing(polygon.outer, -inset, "round").forEach((ring, insetIndex) => {
+      clipPolyline(ring, material).forEach((points, clipIndex) => guides.push({
         id: `alignment-layer-${layerNumber}-to-${nextLayerNumber}-${polygonIndex}-inset-${insetIndex}-outline-${clipIndex}`,
         operation: "engrave",
         kind: "guide",
@@ -29,9 +30,10 @@ export function alignmentGuideMarkings(config: ProjectConfigV1, layer: LayerIR, 
     // After a work-area split the next layer is many pieces, so a repeated
     // "L03" on one sheet says nothing; name the piece that belongs here.
     const text = nextLayer.pieces[polygonIndex]?.id ?? `L${nextLayerNumber}`;
-    const point = placeLabel(text, config, labelIndex, polygonCenter(polygon, config), [polygon]);
+    // The piece above glues down onto exactly this region, so it hides the id.
+    const point = placeHiddenLabel(text, config, labelIndex, [polygon]);
     if (!point) return;
-    const guideLabel: OperationPath = { id: `alignment-layer-${layerNumber}-to-${nextLayerNumber}-${polygonIndex}-label`, operation: "engrave", kind: "guide", points: [point], label: text, textStyle: config.textStyle };
+    const guideLabel = hiddenLabelMarking(`alignment-layer-${layerNumber}-to-${nextLayerNumber}-${polygonIndex}-label`, text, point, config);
     addLabelObstacles(labelIndex, [guideLabel]);
     markings.push(guideLabel);
   };

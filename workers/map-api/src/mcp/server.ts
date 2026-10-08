@@ -6,6 +6,7 @@ import { getPrompt, promptListing, PROMPTS } from "./prompts";
 import { isJsonRpcMessage, isSupportedVersion, negotiateVersion, paramsRecord, RPC_ERRORS, rpcError, RpcError, rpcResult, SUPPORTED_PROTOCOL_VERSIONS, type JsonRpcMessage } from "./protocol";
 import { readResource, resourceListings, RESOURCES } from "./resources";
 import { callTool, toolListing, TOOLS } from "./tools";
+import { MCP_PATH } from "../paths";
 
 /**
  * TopoStack's remote MCP server: stateless Streamable HTTP at `/mcp`. Each POST
@@ -14,7 +15,6 @@ import { callTool, toolListing, TOOLS } from "./tools";
  * so GET and DELETE are 405. Nothing here needs credentials: the tools only
  * read, and the agent budget limits every call.
  */
-export const MCP_PATH = "/mcp";
 
 const INSTRUCTIONS = [
   "TopoStack plans laser-cut terrain models: layered stacks of sheets or flat engravings.",
@@ -26,7 +26,7 @@ const INSTRUCTIONS = [
 ].join(" ");
 
 /** Batch entries run concurrently, so a batch is kept short. */
-export const MAX_BATCH_MESSAGES = 8;
+const MAX_BATCH_MESSAGES = 8;
 
 const AGENT_BUDGET_SPENT = { content: [{ type: "text", text: "The agent budget for this client is used up. Try again in a minute." }], isError: true };
 
@@ -98,6 +98,9 @@ async function answer(message: unknown, context: ServerContext) {
   }
 }
 
+// No Origin check, unlike the transport spec's advice for local servers: the
+// tools only read, take no credentials and are metered per address, so a
+// rebound or cross-origin page gains nothing a plain request would not. See docs/mcp.md.
 export async function mcpResponse(context: AgentContext): Promise<Response> {
   const { request } = context;
   if (request.method !== "POST") {

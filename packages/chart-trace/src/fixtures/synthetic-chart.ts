@@ -7,7 +7,7 @@ import type { Point2 } from "../local-frame.ts";
 import type { VectorPage, VectorPath, VectorText } from "../vector-page.ts";
 
 /** Deterministic pseudo-random numbers (mulberry32). */
-export function random(seed: number): () => number {
+function random(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -18,7 +18,7 @@ export function random(seed: number): () => number {
   };
 }
 
-export const CENTRE: Point2 = [600, 500];
+const CENTRE: Point2 = [600, 500];
 
 /** The lake at a fraction of its shoreline radius: nested, lopsided rings. */
 export function ring(fraction: number, count = 240): Point2[] {

@@ -126,7 +126,7 @@
   <ul>
     <li>an invalid request;</li>
     <li>an unknown argument;</li>
-    <li>an area outside Web Mercator or across the antimeridian;</li>
+    <li>an area outside Web Mercator or wider than the whole world;</li>
     <li>a link over 8,000 characters;</li>
     <li>a busy geocoder;</li>
     <li>a spent terrain budget.</li>

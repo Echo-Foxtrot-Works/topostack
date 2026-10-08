@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { Archive, ArrowUpRight, Download, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, SprayCan, X } from "@lucide/svelte";
+  import { Archive, ArrowUpRight, Download, Droplets, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, SprayCan, X } from "@lucide/svelte";
   import { IconButton } from "@loidolt/theme-svelte";
   import type { ProjectConfigV1 } from "@topostack/core";
   import type { Snippet } from "svelte";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { donationUrl } from "$lib/site/support";
+  import { base } from "$app/paths";
 
-  let { open, project, summary, panelCount, nested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout }: {
+  let { open, project, summary, panelCount, nested = false, acrylicCount = 0, acrylicNested = false, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout, onSavePreview, onCopyLink, onShare, previewImageBusy = false, previewImageStatus = "" }: {
     open: boolean;
     project: ProjectConfigV1;
     /** The same counts the top bar shows, e.g. "12 layers · 9 cut panels". */
@@ -14,6 +15,9 @@
     panelCount: number;
     /** The export lays pieces out on nested stock sheets, so it counts sheets, not panels. */
     nested?: boolean;
+    /** Acrylic water insert panels, or acrylic stock sheets when `acrylicNested`; 0 without inserts. */
+    acrylicCount?: number;
+    acrylicNested?: boolean;
     blockedReason: string | undefined;
     preparing: boolean;
     phase: string;
@@ -23,11 +27,17 @@
     onClose: () => void;
     /** The sheet-nesting controls, shown for layered projects. */
     sheetLayout?: Snippet;
+    onSavePreview?: () => void;
+    onCopyLink?: () => void;
+    onShare?: () => void;
+    previewImageBusy?: boolean;
+    previewImageStatus?: string;
   } = $props();
   let dialog: HTMLDialogElement;
 
   const layered = $derived(project.outputMode === "stack");
-  const panels = $derived(`${panelCount} ${nested ? (panelCount === 1 ? "nested sheet" : "nested sheets") : panelCount === 1 ? "panel" : "panels"}`);
+  const acrylic = $derived(acrylicCount ? ` + ${acrylicCount} acrylic ${acrylicNested ? (acrylicCount === 1 ? "sheet" : "sheets") : acrylicCount === 1 ? "panel" : "panels"}` : "");
+  const panels = $derived(`${panelCount} ${nested ? (panelCount === 1 ? "nested sheet" : "nested sheets") : panelCount === 1 ? "panel" : "panels"}${acrylic}`);
   const heroDescription = $derived(layered
     ? `Everything to cut and build: ${panels}, assembly guide, README, settings, and source credits.`
     : "The engraving SVG with README, settings, and source credits.");
@@ -40,6 +50,7 @@
       { id: "panels", label: "Cut panels", format: "ZIP", icon: Layers3, hint: "One SVG per sheet: cut and engrave together." },
       { id: "engravings", label: "Engraving panels", format: "ZIP", icon: PenTool, hint: "Engraving-only copies, to engrave as a separate job." },
       { id: "paint", label: "Paint templates", format: "ZIP", icon: SprayCan, unavailable: !project.paintTemplates.length, hint: project.paintTemplates.length ? "Paper stencils for painting water." : "Turn on Water paint templates in Fabrication settings to add these." },
+      { id: "acrylic", label: "Acrylic inserts", format: "ZIP", icon: Droplets, unavailable: !project.waterInserts, hint: project.waterInserts ? "Water inserts to cut from acrylic, as their own job." : "Turn on Acrylic water inserts in Fabrication settings to add these." },
       { id: "assembly", label: "Assembly guide", format: "HTML", icon: ListOrdered, hint: "Step-by-step booklet to print or follow on screen." },
     ] : []),
   ] as { id: DownloadOption; label: string; format: string; icon: typeof Archive; hint: string; unavailable?: boolean }[]);
@@ -98,6 +109,19 @@
       <span class="export-row-copy"><strong>Project settings</strong><span>Continue later; works before generating. Regenerate terrain after importing.</span></span>
       <span class="export-row-format">JSON <Download size={14} aria-hidden="true" /></span>
     </button>
+    <p class="export-guide">Using LightBurn? <a href={`${base}/guides/lightburn`} target="_blank" rel="noopener noreferrer">Check size and processing layers<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>.</p>
+    {#if onSavePreview}
+      <section class="export-share" aria-labelledby="export-share-title">
+        <h3 id="export-share-title">Share your design</h3>
+        <p>Save a top-down software preview for a post, and include a design link so others can open your settings.</p>
+        <div class="export-share-actions">
+          <button type="button" class="btn btn-secondary" disabled={artworkDisabled || previewImageBusy} onclick={onSavePreview}>{previewImageBusy ? "Preparing image…" : "Save preview image"}</button>
+          {#if onCopyLink}<button type="button" class="btn btn-secondary" onclick={onCopyLink}>Copy design link</button>{/if}
+          {#if onShare}<button type="button" class="btn btn-secondary" onclick={onShare}>Share design</button>{/if}
+        </div>
+        {#if previewImageStatus}<p role="status" aria-live="polite">{previewImageStatus}</p>{/if}
+      </section>
+    {/if}
     <section class="export-support" aria-labelledby="export-support-title">
       <span class="export-support-icon"><Heart size={22} strokeWidth={1.6} /></span>
       <div class="export-support-copy"><h3 id="export-support-title">Help keep TopoStack growing</h3><p>If TopoStack has been useful to you, or you use it for commercial projects, consider a donation to support its development.</p><small>Donations are optional. Every export is available without donating.</small></div>

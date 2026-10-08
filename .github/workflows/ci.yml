@@ -11,7 +11,6 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "22.22.2"
   PYTHON_VERSION: "3.13"
   DEVELOPMENT_URL: https://dev.topostack.app
   PRODUCTION_URL: https://topostack.app
@@ -31,14 +30,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Check release version consistency
         run: npm run version:check
@@ -57,6 +50,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: No unused exports
+        run: npm run lint:exports
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -73,14 +69,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Test provisioning and lifecycle safeguards
         run: npm run test:scripts
@@ -103,9 +93,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          install: "false"
 
       - name: Audit all dependencies
         run: npm audit --audit-level=moderate
@@ -133,6 +123,9 @@ jobs:
       - name: Install pinned builder dependencies
         run: python -m pip install -r scripts/data-build/requirements.txt
 
+      - name: Lint Python builders
+        run: pipx run ruff==0.14.0 check scripts
+
       - name: Test bathymetry, terrain, and lake outline builders
         # Same command developers run locally; package.json is the single source.
         run: npm run test:python
@@ -150,14 +143,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Build
         run: npm run build
@@ -195,8 +182,48 @@ jobs:
         env:
           VITE_SITE_ENV: atomm
 
+  # One E2E build for all nine browser shards; each used to build its own.
+  e2e-build:
+    name: Build the E2E app
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: e2e-build-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      VITE_MAP_API_URL: https://ci.invalid
+      # The deterministic terrain fixture needs both, as in playwright.config.ts.
+      VITE_E2E: "1"
+      VITE_SITE_ENV: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
+
+      - name: Build in the E2E mode
+        run: npm run build:e2e -w @topostack/generator
+
+      # `vite preview` serves SvelteKit's .svelte-kit/output; dist holds the
+      # post-processed static files. Both are needed, and .svelte-kit is hidden.
+      # Named by run only: re-running just the failed shards skips this job,
+      # and those shards must still find the build an earlier attempt made.
+      - name: Upload the build for the browser shards
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-build-${{ github.run_id }}
+          overwrite: true
+          path: |
+            apps/generator/.svelte-kit/output
+            apps/generator/dist
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
   browser-tests:
     name: Browser E2E (${{ matrix.browser }}, shard ${{ matrix.shard }}/3)
+    needs: e2e-build
     strategy:
       fail-fast: false
       matrix:
@@ -204,7 +231,11 @@ jobs:
         # Separate runners keep WebGL tests serial without exceeding the job limit.
         shard: [1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Playwright shards by test count, not duration, so the Atomm workbench
+    # specs all land in shard 1: on Chromium that shard took 9-15 minutes
+    # (about 4 of setup and the E2E build, up to 11 of tests) against 4-9 for
+    # the rest, and at 15 a run whose 29 tests had all passed was cancelled.
+    timeout-minutes: 25
     concurrency:
       group: browser-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -214,14 +245,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Resolve Playwright version
         id: playwright
@@ -250,18 +275,22 @@ jobs:
           path: ~/system-packages
           key: system-packages-${{ runner.os }}-${{ steps.playwright.outputs.image }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
 
+      # A stalled Ubuntu mirror once held apt-get update until the job's 25
+      # minutes ran out. Connections now time out and retry, and the whole
+      # install gets three bounded attempts.
       - name: Restore browser system packages to apt
         run: |
           echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages > /dev/null
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99network-timeouts > /dev/null
           if [ -d ~/system-packages ]; then sudo find ~/system-packages -name '*.deb' -exec cp -t /var/cache/apt/archives/ {} +; fi
 
       - name: Install browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: for attempt in 1 2 3; do timeout 420 npx playwright install --with-deps ${{ matrix.browser }} && exit 0; echo "Browser install attempt $attempt failed."; sudo pkill -f apt-get || true; done; exit 1
 
       - name: Install browser system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps ${{ matrix.browser }}
+        run: for attempt in 1 2 3; do timeout 300 npx playwright install-deps ${{ matrix.browser }} && exit 0; echo "System dependency install attempt $attempt failed."; sudo pkill -f apt-get || true; done; exit 1
 
       - name: Keep browser system packages for the cache
         if: steps.system-packages-cache.outputs.cache-hit != 'true'
@@ -270,8 +299,16 @@ jobs:
           find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/system-packages/ {} +
           echo "Cached $(find ~/system-packages -name '*.deb' | wc -l) packages ($(du -sh ~/system-packages | cut -f1))."
 
+      - name: Download the E2E build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-build-${{ github.run_id }}
+          path: apps/generator
+
       - name: Test browser generation and export
         run: xvfb-run --auto-servernum npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/3
+        env:
+          E2E_PREBUILT: "1"
 
       - name: Upload browser diagnostics
         if: failure()
@@ -311,14 +348,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Build frontend for same-origin deployment
         run: npm run build -w @topostack/generator
@@ -344,6 +375,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # Deploy with the wrangler the lockfile pins, the one every build and
+      # dry run in CI used, rather than a second hand-maintained version.
+      - name: Resolve wrangler version
+        id: wrangler
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/wrangler'].version")" >> "$GITHUB_OUTPUT"
+
       - name: Deploy app, map API, and synchronize Worker secrets
         id: deploy
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
@@ -351,7 +388,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/map-api
-          wranglerVersion: "4.131.1"
+          wranglerVersion: ${{ steps.wrangler.outputs.version }}
           environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
           command: deploy --env ${{ github.ref_name == 'main' && 'production' || 'development' }}
           secrets: |
@@ -401,14 +438,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Tag and publish the release
         env:
@@ -439,14 +470,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Set up Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
 
       - name: Build production Atomm release
         run: npm run release:atomm && npm run package:atomm-listing

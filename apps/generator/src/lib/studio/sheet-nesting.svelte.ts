@@ -1,5 +1,5 @@
 import type { GeometryIRV1, NestPartV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
-import type { SheetPreview } from "$lib/studio/sheet-nest-runner";
+import type { NestMaterial, SheetPreview } from "$lib/studio/sheet-nest-runner";
 import type { NestClient } from "$lib/workers/nest-client";
 
 export type SheetNestStatus = "idle" | "running" | "done" | "error";
@@ -15,10 +15,10 @@ type Cache = typeof import("$lib/storage/nest-cache");
  */
 export class SheetNesting {
   status = $state<SheetNestStatus>("idle");
-  /** Best layout so far while running, the final one after. */
-  plan = $state<SheetNestPlanV1 | undefined>(undefined);
+  /** Best layout so far while running, the final one after. Replaced whole, never edited, so not deeply reactive. */
+  plan = $state.raw<SheetNestPlanV1 | undefined>(undefined);
   /** The plan's sheets drawn as outlines, for the dialog. */
-  previews = $state<SheetPreview[]>([]);
+  previews = $state.raw<SheetPreview[]>([]);
   /** Whether the plan matches the current geometry and settings. */
   current = $state(false);
   error = $state<string | undefined>(undefined);
@@ -42,7 +42,14 @@ export class SheetNesting {
     private readonly loadRunner: () => Promise<Runner> = () => import("$lib/studio/sheet-nest-runner"),
     private readonly now: () => number = () => performance.now(),
     private readonly loadCache: () => Promise<Cache> = () => import("$lib/storage/nest-cache"),
+    /** Acrylic inserts nest on their own stock, under their own settings and plan. */
+    readonly material: NestMaterial = "wood",
   ) {}
+
+  /** The layout of the acrylic water inserts on their own stock sheets. */
+  static forAcrylic(): SheetNesting {
+    return new SheetNesting(undefined, undefined, undefined, "acrylic");
+  }
 
   /** The plan to export with: only when chosen and still current. */
   get exportPlan(): SheetNestPlanV1 | undefined {
@@ -52,7 +59,7 @@ export class SheetNesting {
   async start(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
     this.#latest = { geometry, project };
     const runner = await this.#load();
-    const job = runner.prepareNestJob(geometry, project);
+    const job = runner.prepareNestJob(geometry, project, this.material);
     if (!job.ok) {
       this.status = "error";
       this.error = job.error;
@@ -75,7 +82,7 @@ export class SheetNesting {
       this.#show(plan);
       // The design may have changed while the search ran; refresh() waited for it.
       const latest = this.#latest;
-      if (latest) this.current = runner.planIsCurrent(plan, latest.geometry, latest.project);
+      if (latest) this.current = runner.planIsCurrent(plan, latest.geometry, latest.project, this.material);
       this.useSheets = true;
       this.status = "done";
       void this.#storage().then((cache) => cache.saveNestPlan(plan, true));
@@ -104,7 +111,7 @@ export class SheetNesting {
   async restore(geometry: GeometryIRV1, project: ProjectConfigV1): Promise<void> {
     if (this.#busy()) return;
     const runner = await this.#load();
-    const job = runner.prepareNestJob(geometry, project);
+    const job = runner.prepareNestJob(geometry, project, this.material);
     if (!job.ok) return;
     const key = runner.jobKeyOf(job);
     // One lookup per job, however often the studio asks.
@@ -141,7 +148,7 @@ export class SheetNesting {
     if (!plan || this.status === "running") return;
     const runner = await this.#load();
     // A newer plan may have landed while the runner loaded.
-    if (this.plan === plan) this.current = runner.planIsCurrent(plan, geometry, project);
+    if (this.plan === plan) this.current = runner.planIsCurrent(plan, geometry, project, this.material);
   }
 
   dispose(): void {

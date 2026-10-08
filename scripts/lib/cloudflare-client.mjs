@@ -1,4 +1,4 @@
-const CLOUDFLARE_TIMEOUT_MS = 30_000;
+export const CLOUDFLARE_TIMEOUT_MS = 30_000;
 
 /** Do not include provider response bodies in errors: some APIs return credentials. */
 export function cloudflareClient(accountId = process.env.CLOUDFLARE_ACCOUNT_ID, token = process.env.CLOUDFLARE_API_TOKEN, request = fetch) {

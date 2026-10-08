@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { isMainModule } from "../lib/main-module.mjs";
 
 const root = new URL("../../", import.meta.url);
 const workspaces = ["apps/generator", "packages/chart-trace", "packages/core", "packages/data-contracts", "packages/nest-wasm", "workers/map-api"];
@@ -63,7 +63,7 @@ export async function bumpVersion(target, bump, base = root) {
   return version;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   const [target, bump, ...extra] = process.argv.slice(2);
   assert.equal(extra.length, 0, "Too many arguments");
   if (target === "check" && !bump) {

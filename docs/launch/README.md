@@ -1,111 +1,94 @@
 # Launch kit
 
-This folder holds what the maintainer needs to introduce TopoStack to the people who would use it: where to post, what to say, which pictures to use, and how to tell afterwards whether any of it worked. It turns item 7 of the [SEO discoverability audit](../reports/seo-discoverability-audit-2026-09-15.md#7-finish-repository-and-platform-discovery-surfaces) into steps: share a project, the steps to reproduce it and the relevant guide with maker communities and tutorial creators, and measure visits and completed exports from each source.
+TopoStack is already being shared and used by makers. This kit supports the next round of promotion and measures whether it brings people into the studio and leads to fabrication exports. Reconciled on **2026-10-08**; dated evidence and remaining unknowns are in [activity.md](activity.md).
 
-Nothing in this folder has been posted anywhere. Every post is a draft for the maintainer to check, adjust and send by hand.
-
-| File | What it is for |
+| File | Purpose |
 | --- | --- |
-| [channels.md](channels.md) | Each venue: who reads it, its self-promotion rules (and whether they were verified), the angle that fits, and the link to use |
-| [posts.md](posts.md) | Ready-to-paste titles and bodies for each channel |
-| [creator-pitch.md](creator-pitch.md) | A short email or DM for tutorial creators, and what to attach |
-| [media.md](media.md) | Which existing images and videos suit which channel, their honest captions, and a shot list for real build photos |
+| [activity.md](activity.md) | Confirmed public posts and physical builds, reported activity, and remaining verification |
+| [channels.md](channels.md) | Audiences, posting rules, useful angles and destination pages |
+| [posts.md](posts.md) | Drafts to adapt for a specific venue; they are not a publication log |
+| [creator-pitch.md](creator-pitch.md) | Individual creator outreach and numbered attribution slots |
+| [media.md](media.md) | Repository media, honest captions and physical-build shot list |
+| [measurement.md](measurement.md) | Baseline capture, weekly comparisons, definitions and deployment checks |
+
+## Current status
+
+- Campaign/medium attribution (#118), export credits (#119), native design sharing (#120), and the README storefront (#117) are merged and present in this checkout. Production logs confirm campaign/medium fields; mobile sharing and import checks remain separate verification tasks.
+- Individual lake routes and child sitemaps exist. They are no longer a prerequisite to start a launch.
+- The maintainer's LightBurn introduction and community Reddit recommendations are public. Users have posted physical builds. These are evidence of use, not permission to republish their photos.
+- The original ordinary Hacker News submission is verified; a separate Show HN launch remains unverified. Product Hunt, creator outreach and other venues remain unverified. Unknown does not mean not done.
+- Week 1 adds a fixed `channel` field using `utm_content`. **Publish the compatible Worker schema before, or together with, the browser build.** Until then, new links cannot reliably report individual channels.
+- The [initial baseline](../reports/growth-baseline-2026-10-08.md) captures production traffic and use for October 2–7. Counts are sampled; Search Console data remains awaiting export.
+- The next repository improvement adds homepage starters with a first-export checklist, a documented LightBurn workflow, local preview-image sharing, curated next-project links and offline snapshot comparisons. These changes are prepared for review, not yet published. Preview images report `share_preview_prepared`; release the compatible event contract with the browser.
 
 ## Ground rules
 
-- **Say that the pictures are renders.** There are no photos of a finished physical piece yet. Every image and video in the repository is a screenshot or a render from the studio. Each post says so in plain words, and none may suggest a physical build. Three older Atomm covers are AI-edited "workshop" images that look like photographs; [media.md](media.md#do-not-use) lists them, and they must not be used.
-- **Only cite numbers the repository supports.** For example, 8,147 lakes in [the lake depth directory](../../apps/generator/static/data/lake-depth-directory.json) (updated 2026-09-24) supports "more than 8,000 lakes". A post must not claim user counts, cut counts or compatibility with a laser program nobody has tested. The repository records one master-SVG import into xTool Studio (for the v5 Atomm media) and Atomm Open in Studio validation. It records nothing for LightBurn, the Glowforge app or Inkscape, so posts can describe the SVG format and ask for import reports, but must not promise compatibility.
-- **Disclose that you built it,** in the first line of every post.
-- **Ask for feedback, never for upvotes.** Hacker News and Product Hunt both say so explicitly, and on Reddit, asking for votes is vote manipulation.
-- **Post one venue at a time** and stay in the thread for the first few hours to answer questions.
-
-## Sequencing
-
-1. **Ship the measurement and sharing work first.** Merge and promote to production:
-   - #118: records `utm_campaign` and `utm_medium`, and attributes studio visits that start from lake pages;
-   - #119: puts a "Made with TopoStack" credit in exported SVGs and READMEs;
-   - #120: adds a system share sheet for designs;
-   - #117: turns the README into a storefront, because Show HN readers will open the repository.
-
-   Until #118 is live on `topostack.app`, campaign and medium are not recorded and a launch cannot be told apart from ordinary social traffic. Usage events are only collected on the production host.
-2. **Soft launch on maker communities, one venue every few days.** Suggested order: r/lasercutting, then the LightBurn forum, r/xToolOfficial or the xTool community, r/glowforge and the Glowforge forum. Wait at least three days between venues. Venues that share a UTM combination can only be told apart by date, so spacing the posts is also what keeps the numbers readable. Fix whatever the first threads turn up before moving on.
-3. **Data and mapping communities.** r/gis and r/cartography, with the data-pipeline angle. Watch lake-page traffic (landing `/lakes`) in particular.
-4. **Creator outreach.** Start in parallel with step 2, once a few forum threads show which parts people ask about. Use [creator-pitch.md](creator-pitch.md). Send a handful at a time, not a mass mailing.
-5. **Show HN, after per-lake pages ship.** Per-lake pages (`/lake/*`, already anticipated by #118's attribution) give Hacker News readers something concrete to open for their own lake. Post on a weekday morning (US Eastern time) when you can stay in the thread all day.
-6. **Product Hunt, last.** It needs gallery images cropped to its format ([media.md](media.md#product-hunt-gallery)), a first comment and a free day. Ideally real build photos exist by then.
-
-X, Bluesky and Mastodon posts can go out alongside any step. They are low-stakes and use their own UTM medium.
+- Label every image accurately. Repository launch assets are screenshots or software renders. For a community build, obtain permission, credit the maker and retain its original caption and limitations.
+- Use supported facts. The lake directory contained 8,147 records on 2026-09-24. Do not invent user counts, cut counts or broad machine compatibility from one community report.
+- Disclose that you built the app in maintainer posts. Ask for feedback, never votes.
+- Read the venue's current rules. A Reddit maker reports that a link-containing post was removed; an organic build post is not blanket permission for promotion.
+- Publish one useful project or tutorial at a time and stay available to answer questions. Add its actual date and URL to the activity log.
 
 ## Link scheme
 
-Every `topostack.app` link in this kit carries three UTM parameters from fixed allowlists. Any other value is recorded as `other` and a missing one as `none`, so a typo quietly loses the attribution. Check links before pasting.
+Keep `utm_source` broad for comparison with older reports. `utm_medium` describes the format, `utm_campaign` the initiative, and **`utm_content` identifies the channel**. Values are fixed allowlists in `packages/data-contracts/src/usage.ts`; unknown values become `other`, absent values `none`. Never put a person's name, private note or full post URL into tags.
 
-| Placement | `utm_source` | `utm_medium` | `utm_campaign` |
-| --- | --- | --- | --- |
-| Reddit, Hacker News, Glowforge / LightBurn / xTool forums | `social` | `forum` | `launch` |
-| X, Bluesky, Mastodon, Facebook groups, Instagram | `social` | `social` | `launch` |
-| Product Hunt | `other` | `referral` | `launch` |
-| Creator emails and DMs | `other` | `email` | `creator` |
-| Links a creator puts in a video description | `social` | `video` | `creator` |
-| Atomm listing text | `atomm` | `referral` | `atomm` |
-| GitHub README (handled by #117) | `github` | `referral` | `readme` |
+| Placement | Source | Medium | Campaign | Content / channel |
+| --- | --- | --- | --- | --- |
+| r/lasercutting | social | forum | launch | reddit-lasercutting |
+| r/Laserengraving | social | forum | launch | reddit-laserengraving |
+| r/cartography / r/gis | social | forum | launch | reddit-cartography / reddit-gis |
+| xTool / Glowforge / Creality subreddits | social | forum | launch | reddit-xtool / reddit-glowforge / reddit-crealityfalcon |
+| LightBurn / Glowforge forums | social | forum | launch | lightburn-forum / glowforge-forum |
+| xTool community | social | forum | launch | xtool-community |
+| Hacker News | social | forum | launch | hacker-news |
+| Product Hunt | other | referral | launch | product-hunt |
+| Social accounts | social | social | launch | x / bluesky / mastodon / facebook / instagram / pinterest |
+| Creator outreach | other | email | creator | creator-01 through creator-10 |
+| Creator video description | social | video | creator | the same creator slot as the outreach |
+| Atomm listing | atomm | referral | atomm | atomm |
+| GitHub README | github | referral | readme | github |
 
-Allowed values: `utm_source` is `direct, google, bing, duckduckgo, ai, github, atomm, social, other`; `utm_campaign` is `none, launch, readme, newsletter, creator, atomm, other`; `utm_medium` is `none, social, forum, email, video, referral, other`. Links to github.com or atomm.com carry no UTMs, because only `topostack.app` pages record them.
+Example:
 
-## Weekly measurement routine
+`https://topostack.app/guides/export-files?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=lightburn-forum`
 
-Do this every Monday during the launch, and keep one row per week in a spreadsheet so the baseline stays visible. It follows the "following 30 days" step of the audit and the [usage measurement notes](../seo-operations.md#usage-measurement).
+Known referrer hosts supply a channel when `utm_content` is absent. Referrers commonly omit paths, so only an explicit `reddit-lasercutting` tag identifies that subreddit; a reddit.com referrer reports `reddit`. Mastodon requires an explicit tag because instances use different hosts. Creator slots are assigned once and recorded in the maintainer's private outreach log; never recycle a slot during a campaign. Adding more slots requires a contract update and deployment.
 
-1. **Search Console** (`https://topostack.app` property):
-   - Sitemaps report for `https://topostack.app/sitemap.xml`: submitted vs indexed count, and any errors. If per-lake pages get their own sitemap, check each one separately.
-   - Pages report, filtered by prefix (`/guides/`, `/examples/`, `/lakes/`, later `/lake/`): indexed vs "Discovered / Crawled – currently not indexed".
-   - Performance for the last 7 days: impressions, clicks and CTR by page, and the top non-brand queries (exclude "topostack").
-2. **Workers Logs** (production Worker `topostack`): filter `message = "usage_event"` and `environment = production`, then:
-   - count by `event`, grouped by `source`, `campaign` and `medium`;
-   - for `campaign = launch`, the ratio of `studio_open` → `generation_succeeded` → `export_prepared`, split by `output` (`stack` / `engraving`) and `device`;
-   - `landing` for launch sessions, to see which linked page actually converted.
+First entry wins for the tab session (30-minute inactivity expiry). Static lake pages collect no browser events; the studio can recover allowlisted tags from their same-origin referrer, when provided. If that referrer is stripped, original acquisition cannot be recovered. Links to Atomm or GitHub need no TopoStack tags. Direct JSON asset downloads collect no usage event; use the example page as the measured entry point.
 
-   Workers Logs retention depends on the plan, so copy the weekly aggregates out.
-3. **Cloudflare Web Analytics:** top referrers for the week. This is the only place individual subreddits or forums show up by name, and even then only when the browser sends a referrer.
-4. **Feedback and issues:** the Feedback inbox and new GitHub issues. Tag anything that came from a launch thread.
-5. **Write down** what was posted that week, where, and when. Without that log the numbers cannot be matched to posts.
+## Next promotion cycle
 
-Remember what these counts are: aggregate events, not unique users. `export_prepared` means files were handed to the browser, not that anything was cut (see [seo-operations.md](../seo-operations.md#usage-measurement)). Visitors with DNT or GPC enabled are not counted.
+1. Capture a baseline using [measurement.md](measurement.md), then deploy and verify channel attribution. Preserve the baseline as a dated snapshot.
+2. Refresh existing community conversations with meaningful improvements or a reproducible build, where allowed. Do not repeat an introduction solely because an old checkbox was empty.
+3. Prepare one physical-build tutorial with a project file and measured material/machine details. Obtain permission for third-party photos first.
+4. Approach a small batch of relevant creators with numbered links and a project suited to their machine. No outreach is authorized by this document itself.
+5. Compare traffic, studio entries, generation outcomes and prepared exports by channel. Choose the next venue from the results and maker feedback.
 
 ## Checklist
 
-Before the first post:
+Confirmed:
 
-- [ ] #118 (campaign/medium attribution) merged and live on production; a test visit with `?utm_source=social&utm_medium=forum&utm_campaign=launch` shows up in Workers Logs with those values
-- [ ] #119 (export credit) merged and live; spot-check the credit line in LightBurn / xTool Studio / Inkscape
-- [ ] #120 (share sheet) merged and live; checked on iOS Safari and Android Chrome
-- [ ] #117 (README storefront) merged; GitHub social preview uploaded; Discussions enabled if wanted
-- [ ] Studio generates and exports cleanly on production for Crater Lake and one example project
-- [ ] Baseline week recorded (Search Console + Workers Logs) before any post
-- [ ] Subreddit rules and forum categories re-read for each venue ([channels.md](channels.md) lists what was not verified)
+- [x] #117–#120 merged; implementations present in the repository
+- [x] Production campaign/medium fields observed in usage logs
+- [x] Per-lake routes implemented
+- [x] Public LightBurn introduction and original Hacker News submission verified
+- [x] Community Reddit recommendations and physical build posts verified
 
-Soft launch:
+Release and account checks:
 
-- [ ] r/lasercutting
-- [ ] LightBurn forum
-- [ ] r/xToolOfficial or the xTool community (confirm which is active)
-- [ ] r/glowforge
-- [ ] Glowforge community forum
-- [ ] r/gis
-- [ ] r/cartography
-- [ ] X / Bluesky / Mastodon
-- [ ] First 5 creator pitches sent; replies logged
-
-Later:
-
-- [ ] Per-lake pages shipped and in the sitemap
-- [ ] Show HN posted; stayed in the thread
-- [ ] First real build photographed ([shot list](media.md#shot-list-for-real-builds)); media captions updated
-- [ ] Product Hunt gallery prepared; launched
-- [ ] r/woodworking and r/MapPorn only with a real build photo, if their rules allow
+- [ ] Week 1 channel schema and frontend published together
+- [ ] Tagged LightBurn, subreddit and creator test visits retain channel through studio and export in production logs
+- [ ] Native sharing verified on iOS Safari and Android Chrome
+- [ ] Production generation/export checked for Crater Lake and one other example
+- [ ] Search Console clicks, impressions and indexed counts added to the baseline
+- [ ] GitHub custom social preview and Discussions status verified if wanted
+- [ ] Remaining promotion history reconciled, including any separate Show HN launch
+- [ ] Permission and reusable files obtained for community builds
 
 Every week:
 
-- [ ] Weekly measurement row filled in
-- [ ] Post log updated
-- [ ] Questions from threads turned into guide fixes or issues
+- [ ] Dated baseline captured and compared with an equal-length prior window
+- [ ] Search Console and feedback notes added
+- [ ] Published post URLs and creator slot assignments logged
+- [ ] Questions from makers turned into guide fixes or product issues

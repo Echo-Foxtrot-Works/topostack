@@ -13,8 +13,9 @@ const dist = new URL("../../apps/generator/dist/", import.meta.url);
 const budgets = {
   // JavaScript the homepage preloads. 58,053 when set.
   landingJavaScriptGzip: 64_000,
-  // Prerendered homepage HTML. 9,579 when set.
-  landingHtmlGzip: 10_500,
+  // Prerendered homepage HTML. 9,579 when set; 11,142 after adding the
+  // accessible water-finish comparison with responsive images (2026-10-08).
+  landingHtmlGzip: 12_300,
   // JavaScript studio.html preloads before the studio can render. 130,547 when set.
   // 145,307 when raised 2026-09-29 (from 143,137): the VFR sectional legend
   // symbols are geometry in core, whose chunk studio.html preloads.
@@ -35,8 +36,9 @@ const budgets = {
   // the maker nests parts, and never on startup (asserted below). 309,153 when set.
   nestEngineWasmGzip: 340_000,
   // The in-chat preview (MCP App): one self-contained page a chat host loads
-  // when an assistant previews a model. It never loads on the site. 117,290 when set.
-  mcpAppHtmlGzip: 129_000,
+  // when an assistant previews a model. It never loads on the site. 117,290 when set;
+  // 130,596 once generation gained acrylic water inserts (dev was 128,227).
+  mcpAppHtmlGzip: 143_000,
 };
 
 // Reported, never enforced: totals across every route, lazy tool and worker

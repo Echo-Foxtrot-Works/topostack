@@ -401,10 +401,6 @@
   color: var(--loidolt-text);
 }
 
-.custom-data-import__button {
-  margin-top: 0;
-}
-
 .custom-data-import__button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -475,6 +471,7 @@
 }
 
 .custom-data-import__button {
+  margin-top: 0;
   padding: 12px;
   border-style: solid;
   background: var(--loidolt-surface-alt);

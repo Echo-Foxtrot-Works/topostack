@@ -1,4 +1,4 @@
-import { EARTH_RADIUS_M } from "../primitives/units.js";
+import { EARTH_RADIUS_M, MERCATOR_MAX_LATITUDE } from "../primitives/units.js";
 import type { GeoBounds, GeoPoint, ProjectConfigV1 } from "../types.js";
 
 /**
@@ -7,8 +7,7 @@ import type { GeoBounds, GeoPoint, ProjectConfigV1 } from "../types.js";
  * design reopened anywhere covers the same ground.
  */
 export const TILE_SIZE = 256;
-/** The Web Mercator latitude limit; terrain and vector tiles end here. */
-export const MERCATOR_MAX_LATITUDE = 85.0511;
+export { MERCATOR_MAX_LATITUDE };
 
 const RADIANS = Math.PI / 180;
 
@@ -76,10 +75,19 @@ export function boundsAround(center: GeoPoint, widthKm: number, widthMm: number,
   };
 }
 
-/** Whether `bounds` is ordered and lies inside the Web Mercator world without crossing the antimeridian. */
+/** `lon` wrapped into [-180, 180], unchanged when it already lies there. */
+export function wrapLongitude(lon: number): number {
+  return lon >= -180 && lon <= 180 ? lon : ((lon + 180) % 360 + 360) % 360 - 180;
+}
+
+/**
+ * Whether the tiles can serve `bounds`: ordered, inside the latitude limit, and
+ * at most one world wide. As in the studio, an area across the antimeridian
+ * keeps unwrapped longitudes, one edge past ±180°.
+ */
 export function isMercatorBounds(bounds: GeoBounds): boolean {
   const { west, south, east, north } = bounds;
-  return [west, south, east, north].every(Number.isFinite) && west >= -180 && east <= 180 && west < east
+  return [west, south, east, north].every(Number.isFinite) && west >= -540 && east <= 540 && west < east && east - west <= 360
     && south >= -MERCATOR_MAX_LATITUDE && north <= MERCATOR_MAX_LATITUDE && south < north;
 }
 
@@ -95,8 +103,11 @@ export function boundsForProject(config: ProjectConfigV1): GeoBounds {
   const size = worldSize(zoom);
   const centerX = lonToWorldX(config.location.lon, zoom);
   const centerY = latToWorldY(config.location.lat, zoom);
+  // The tiles stop at MERCATOR_MAX_LATITUDE, a hair inside the world's top and bottom rows.
+  const topY = latToWorldY(MERCATOR_MAX_LATITUDE, zoom);
+  const bottomY = latToWorldY(-MERCATOR_MAX_LATITUDE, zoom);
   const widthPx = Math.min(420, size);
-  const heightPx = Math.min(280, size);
-  const northY = Math.max(0, Math.min(size - heightPx, centerY - heightPx / 2));
+  const heightPx = Math.min(280, bottomY - topY);
+  const northY = Math.max(topY, Math.min(bottomY - heightPx, centerY - heightPx / 2));
   return fitCutBounds({ west: worldXToLon(centerX - widthPx / 2, zoom), east: worldXToLon(centerX + widthPx / 2, zoom), north: worldYToLat(northY, zoom), south: worldYToLat(northY + heightPx, zoom) }, config.widthMm, config.heightMm);
 }

@@ -4,11 +4,13 @@ import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import { chromium, firefox, webkit } from "@playwright/test";
 import { artifactDirectory, openBrowserCheck } from "../lib/browser-check.mjs";
 import { unzipSync } from "fflate";
+import { appUrl } from "../lib/app-url.mjs";
 
-const baseURL = process.env.SURVEY_TEST_APP_URL ?? "http://localhost:5293";
+const baseURL = appUrl("SURVEY_TEST_APP_URL");
 if (!["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) throw new Error("Use a local Vite app for this development-data check.");
 const coreUrl = `/@fs${fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url))}`;
 const browserName = process.env.SURVEY_TEST_BROWSER ?? "chromium";
@@ -25,7 +27,8 @@ const { page, errors, output: artifacts, run } = await openBrowserCheck({
   failureReport: true,
 });
 const reports = [];
-const localArchives = process.argv.find((arg) => arg.startsWith("--local-archives="))?.slice(17);
+const { values: flags } = parseArgs({ options: { "local-archives": { type: "string" }, dataset: { type: "string" }, "coverage-only": { type: "boolean", default: false } } });
+const localArchives = flags["local-archives"];
 if (localArchives) {
   // Exercise the real browser decoder with built bytes before external promotion.
   await page.route("**/v1/bathymetry/*.pmtiles", async (route) => {
@@ -59,12 +62,13 @@ await run(async () => {
     cases.push({ name: item.id, dataset: item.dataset, bounds: { west, south, east, north } });
   }
   cases.push(...JSON.parse(await readFile(new URL("../data/lake-survey-validation.json", import.meta.url), "utf8")));
-  const selected = process.argv.find((arg) => arg.startsWith("--dataset="))?.slice(10);
+  const selected = flags.dataset;
   const selectedCases = cases.filter((item) => !selected || selected.split(",").includes(item.dataset));
   assert(selectedCases.length > 0, "No survey verification cases selected");
   for (const test of selectedCases) {
     const result = await page.evaluate(async ({ test, coreUrl }) => {
-      const { loadSurveyedLakeDepths, loadLakeAreas } = await import("/src/lib/domain/data-provider.ts");
+      const { loadSurveyedLakeDepths } = await import("/src/lib/domain/data-provider.ts");
+      const { loadLakeAreas } = await import("/src/lib/domain/lake-area-loader.ts");
       const { DEFAULT_PROJECT } = await import(coreUrl);
       const config = { ...DEFAULT_PROJECT, widthMm: 200, heightMm: 200 };
       const lakes = await loadLakeAreas(test.bounds, 12, config);
@@ -82,7 +86,7 @@ await run(async () => {
     console.log(JSON.stringify(result));
   }
 
-  if (process.argv.includes("--coverage-only")) {
+  if (flags["coverage-only"]) {
     assert.deepEqual(errors, [], "Browser errors");
     await writeFile(`${artifacts}/coverage-report.json`, JSON.stringify(reports, null, 2) + "\n");
     console.log("Survey coverage checks passed.");

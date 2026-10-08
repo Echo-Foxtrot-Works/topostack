@@ -1,5 +1,5 @@
 import { base } from "$app/paths";
-import { networkSignal } from "$lib/domain/archive";
+import { networkSignal } from "$lib/domain/network";
 import { indexLakeDirectory, type IndexedLake, type LakeDirectory } from "$lib/site/lake-directory";
 import { uniqueLocationLakes } from "$lib/site/location-results";
 

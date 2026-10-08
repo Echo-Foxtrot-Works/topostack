@@ -122,6 +122,10 @@
     <tbody>
       <tr><td>Material-saving nests</td><td>On, off</td><td>On</td><td><em>Layered</em>. Cuts upper layers from covered parts of lower sheets.</td></tr>
       <tr><td>Water paint templates</td><td>On, off</td><td>Off</td><td><em>Layered</em>. Adds a paper stencil SVG beside each panel with visible water, cut to the piece outline with windows over the water that stays visible after assembly, so you can spray paint it without colouring the land. Needs water outlines, which are fetched even with Water outlines and Water depth off. See <a href={`${base}/guides/water-paint-templates`}>water paint templates</a>.</td></tr>
+      <tr><td>Acrylic water inserts</td><td>On, off</td><td>Off</td><td><em>Layered</em>, with Water depth on. Cuts each lake's shoreline out of the sheet that carries its waterline and exports a fitted acrylic insert for it, as separate acrylic files with their own sheet layout. The sheet below gets a 2 mm ledge for the insert to rest on, and map detail over the water is engraved on the acrylic. Lakes on the bottom sheet, and arms narrower than 3 mm, stay wood. Each lake can be switched back to wood in the list below the switch.</td></tr>
+      <tr><td>Acrylic thickness</td><td>0.5–25 mm</td><td>Material thickness</td><td><em>With acrylic inserts</em>. Thinner than the wood sits just below the shore; thicker stands proud of it, with a warning.</td></tr>
+      <tr><td>Acrylic kerf</td><td>0–1 mm</td><td>Laser kerf</td><td><em>With acrylic inserts</em>. Full kerf width in acrylic; half is applied to each side of an insert's cut.</td></tr>
+      <tr><td>Fit clearance</td><td>0–0.5 mm</td><td>0.1 mm</td><td><em>With acrylic inserts</em>. Gap left between each insert and its wood opening on every side, so it drops in without forcing.</td></tr>
       <tr><td>Smooth contours</td><td>On, off</td><td>On</td><td>Rounds sharp corners on contour shapes.</td></tr>
       <tr><td>Glue margin</td><td>2–25 mm</td><td>8 mm</td><td><em>Layered</em>, with nests on. Covered glue area kept around nested pieces.</td></tr>
       <tr><td>Laser kerf</td><td>0–1 mm</td><td>0.15 mm</td><td><em>Layered</em>. Full kerf width; half is applied to each side of a cut.</td></tr>
@@ -129,7 +133,7 @@
       <tr><td>Seam offset</td><td>0–50 mm</td><td>10 mm</td><td><em>Layered</em>, when split. How far seams shift between alternating layers, so no seam sits over another.</td></tr>
       <tr><td>Puzzle seam tabs</td><td>On, off</td><td>On</td><td><em>Layered</em>, when split. Cuts covered seams as interlocking tabs so each piece only fits its neighbour.</td></tr>
       <tr><td>Assembly labels</td><td>On, off</td><td>On</td><td><em>Layered</em>, when split. Engraves each piece's id, such as <code>L03-B2</code>, where the next layer hides it.</td></tr>
-      <tr><td>Minimum feature</td><td>0.2–5 mm</td><td>0.8 mm</td><td>Pieces and holes narrower than this are removed, and contours are simplified at this scale.</td></tr>
+      <tr><td>Minimum feature</td><td>0.2–5 mm</td><td>0.8 mm</td><td>Pieces, holes, and short lines smaller than this are removed. Contour detail stays the same at any setting, so raising it clears specks without coarsening the outlines that remain.</td></tr>
     </tbody>
   </table>
 

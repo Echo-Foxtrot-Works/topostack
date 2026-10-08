@@ -1,16 +1,19 @@
 <script lang="ts">
-  import { LayoutGrid, Shapes, StopCircle, X } from "@lucide/svelte";
+  import { Droplets, LayoutGrid, Shapes, StopCircle, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { base } from "$app/paths";
   import { DEFAULT_SHEET_NESTING, SHEET_NEST_LIMITS, displayLength, type SheetNestRotation, type SheetNestSettingsV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import { getStudio } from "$lib/studio/studio-context";
 
-  let { disabled = false }: { disabled?: boolean } = $props();
+  let { disabled = false, material = "wood" }: { disabled?: boolean; material?: "wood" | "acrylic" } = $props();
 
   const studio = getStudio();
-  const nesting = studio.sheetNesting;
-  const settings = $derived<SheetNestSettingsV1>({ ...DEFAULT_SHEET_NESTING, ...studio.project.sheetNesting });
+  const acrylic = $derived(material === "acrylic");
+  const nesting = $derived(acrylic ? studio.acrylicSheetNesting : studio.sheetNesting);
+  const settingsKey = $derived(acrylic ? "waterInsertSheetNesting" : "sheetNesting");
+  const settings = $derived<SheetNestSettingsV1>({ ...DEFAULT_SHEET_NESTING, ...studio.project[settingsKey] });
+  const titleId = $derived(acrylic ? "acrylic-sheet-layout-title" : "sheet-layout-title");
   const workArea = $derived(studio.project.workAreaWidthMm > 0 && studio.project.workAreaHeightMm > 0);
   const sheetSizeMissing = $derived((settings.sheetWidthMm || studio.project.workAreaWidthMm) <= 0 || (settings.sheetHeightMm || studio.project.workAreaHeightMm) <= 0);
   const running = $derived(nesting.status === "running");
@@ -34,24 +37,24 @@
   const summary = $derived(plan ? `${plan.sheets.length} ${plan.sheets.length === 1 ? "sheet" : "sheets"} · ${Math.round(plan.utilization * 100)}% material used` : "");
 
   function update(patch: Partial<SheetNestSettingsV1>): void {
-    studio.updateProject({ sheetNesting: { ...settings, ...patch } });
+    studio.updateProject({ [settingsKey]: { ...settings, ...patch } });
   }
   const shown = (valueMm: number) => studio.shownLength(valueMm);
   const maxShown = $derived(displayLength(SHEET_NEST_LIMITS.sheetMm.max, studio.project.units));
 </script>
 
-<section class="sheet-layout" aria-labelledby="sheet-layout-title">
+<section class="sheet-layout" aria-labelledby={titleId}>
   <header class="sheet-layout-header">
-    <span class="export-row-icon"><LayoutGrid size={20} strokeWidth={1.6} /></span>
+    <span class="export-row-icon">{#if acrylic}<Droplets size={20} strokeWidth={1.6} />{:else}<LayoutGrid size={20} strokeWidth={1.6} />{/if}</span>
     <div>
-      <h3 id="sheet-layout-title">Sheet layout</h3>
-      <p>Pack every piece onto as few stock sheets as possible, moved and turned to fit. The export uses the nested sheets once you have nested them.</p>
+      <h3 id={titleId}>{acrylic ? "Acrylic sheet layout" : "Sheet layout"}</h3>
+      <p>{acrylic ? "Pack the acrylic water inserts onto their own acrylic stock sheets, which may be a different size from the wood." : "Pack every piece onto as few stock sheets as possible, moved and turned to fit. The export uses the nested sheets once you have nested them."}</p>
     </div>
   </header>
-  <p class="sheet-layout-credit">Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noopener noreferrer">sparrow<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> (Jeroen Gardeyn, KU Leuven) on <a href="https://github.com/JeroenGar/jagua-rs" target="_blank" rel="noopener noreferrer">jagua-rs<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> · MIT and MPL-2.0 · <a href={`${base}/attribution#software`} target="_blank" rel="noopener noreferrer">Credits<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> · <a href={`${base}/licenses/third-party.txt`} target="_blank" rel="noopener noreferrer">Licences<span class="ldt-visually-hidden"> (opens in a new tab)</span></a></p>
-  <div class="sheet-layout-choice" role="radiogroup" aria-label="Sheet layout">
-    <label><input type="radio" name="sheet-layout" checked={!nesting.useSheets} onchange={() => nesting.setUseSheets(false)} /> Original panels</label>
-    <label><input type="radio" name="sheet-layout" checked={nesting.useSheets} onchange={() => nesting.setUseSheets(true)} /> Nested sheets</label>
+  {#if !acrylic}<p class="sheet-layout-credit">Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noopener noreferrer">sparrow<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> (Jeroen Gardeyn, KU Leuven) on <a href="https://github.com/JeroenGar/jagua-rs" target="_blank" rel="noopener noreferrer">jagua-rs<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> · MIT and MPL-2.0 · <a href={`${base}/attribution#software`} target="_blank" rel="noopener noreferrer">Credits<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> · <a href={`${base}/licenses/third-party.txt`} target="_blank" rel="noopener noreferrer">Licences<span class="ldt-visually-hidden"> (opens in a new tab)</span></a></p>{/if}
+  <div class="sheet-layout-choice" role="radiogroup" aria-label={acrylic ? "Acrylic sheet layout" : "Sheet layout"}>
+    <label><input type="radio" name={`${material}-sheet-layout`} checked={!nesting.useSheets} onchange={() => nesting.setUseSheets(false)} /> Original panels</label>
+    <label><input type="radio" name={`${material}-sheet-layout`} checked={nesting.useSheets} onchange={() => nesting.setUseSheets(true)} /> Nested sheets</label>
   </div>
   {#if nesting.useSheets}
     <div class="sheet-layout-fields">
@@ -97,7 +100,7 @@
       {#if nesting.fallback}<small>The nesting engine could not start here ({nesting.fallback}), so pieces were packed by their bounding boxes.</small>{/if}
     </div>
     {#if nesting.previews.length}
-      <ul class="sheet-previews" aria-label="Nested sheets">
+      <ul class="sheet-previews" aria-label={acrylic ? "Nested acrylic sheets" : "Nested sheets"}>
         {#each nesting.previews as sheet, index (index)}
           <li class:sheet-preview--provisional={sheet.provisional}>
             <svg viewBox={`0 0 ${sheet.widthMm} ${sheet.heightMm}`} role="img" aria-label={`Sheet ${index + 1}: ${sheet.parts.length} pieces${sheet.provisional ? ", not packed yet" : ""}`}>

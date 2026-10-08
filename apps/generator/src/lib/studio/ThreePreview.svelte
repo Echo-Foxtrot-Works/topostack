@@ -7,13 +7,14 @@
 </script>
 
 <script lang="ts">
-  import { onMount, untrack, getContext } from "svelte";
+  import { getEmbedded } from "$lib/studio/embed-context";
+  import { onMount, untrack } from "svelte";
   import * as THREE from "three";
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { aviationStroke, labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1 } from "@topostack/core";
+  import { aviationStroke, type GeometryIRV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -22,7 +23,7 @@
    * matching `hiddenPrefixes` are left out while their drafts are drawn above.
    */
   let { geometry, exploded, placement, onUnavailable, rememberCamera = true }: {
-    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle">;
+    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial">;
     /** Isolated representative previews must not replace the project camera. */
     rememberCamera?: boolean;
     exploded: number;
@@ -34,7 +35,8 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  import { addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
+  const isEmbedded = getEmbedded();
   let zoom = $state(1);
   let fitDistance = 320;
   let fitTarget = new THREE.Vector3();
@@ -65,165 +67,6 @@
     layerMeshes: Map<string, CachedLayer>;
   }
 
-  interface CachedLayer {
-    /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
-    key: string;
-    meshes: THREE.Mesh[];
-    /** Cut lines between the pieces of a split layer, as segment pairs. */
-    seams: number[];
-    /** The top-face material, which knockout markings also draw with. */
-    face: THREE.MeshStandardMaterial;
-    /** Materials and textures only this layer's meshes reference. */
-    resources: Array<{ dispose: () => void }>;
-  }
-
-  /**
-   * Signature of a layer's extruded body. The worker answers with a structured
-   * clone, so every result is a fresh object graph and reference identity can
-   * never match: a text-size, line-width or kerf edit re-triangulated all 24
-   * layers although their cut polygons had not moved. Hashing coordinates is
-   * linear and far cheaper than `ExtrudeGeometry`, so the body is rebuilt only
-   * when its shape, thickness or stack position actually changed.
-   */
-  function layerKey(layer: GeometryIRV1["layers"][number]): string {
-    let hash = 0x811c9dc5;
-    let vertices = 0;
-    const mix = (value: number) => { hash = Math.imul(hash ^ (value | 0), 0x01000193) >>> 0; };
-    const mixRing = (ring: Point2D[]) => {
-      mix(ring.length);
-      vertices += ring.length;
-      // 8192 units per mm: finer than any edit a preview can show, and integer
-      // mixing avoids a float-to-string per coordinate.
-      for (const point of ring) { mix(Math.round(point.x * 8192)); mix(Math.round(point.y * 8192)); }
-    };
-    for (const polygon of layer.polygons) {
-      mix(polygon.holes.length);
-      mixRing(polygon.outer);
-      for (const hole of polygon.holes) mixRing(hole);
-    }
-    return `${layer.index}:${layer.materialThicknessMm}:${layer.polygons.length}:${vertices}:${hash}`;
-  }
-
-  interface StackedObject { layerIndex: number; baseZ: number }
-
-  // Faces are pushed one depth unit back so coincident engrave/score lines
-  // resolve in front of them regardless of viewing angle.
-  const SURFACE_DEPTH_BIAS = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } as const;
-
-  // Markings ride above the face they annotate by a fraction of the stock
-  // thickness, so thin material does not collapse them into the surface.
-  function markingLift(materialThicknessMm: number): number { return Math.max(materialThicknessMm * 0.04, 0.05); }
-
-  function shapeFromPolygon(polygon: Polygon2D): THREE.Shape {
-    const shape = new THREE.Shape();
-    polygon.outer.forEach((point, index) => index === 0 ? shape.moveTo(point.x, point.y) : shape.lineTo(point.x, point.y));
-    polygon.holes.forEach((hole) => { const path = new THREE.Path(); hole.forEach((point, index) => index === 0 ? path.moveTo(point.x, point.y) : path.lineTo(point.x, point.y)); shape.holes.push(path); });
-    return shape;
-  }
-
-  function makeWoodTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 256;
-    const context = canvas.getContext("2d")!;
-    const gradient = context.createLinearGradient(0, 0, 256, 0); gradient.addColorStop(0, "#d7b587"); gradient.addColorStop(0.45, "#edcf9f"); gradient.addColorStop(1, "#c99f6c");
-    context.fillStyle = gradient; context.fillRect(0, 0, 256, 256);
-    for (let y = 0; y < 256; y += 3) { const alpha = 0.04 + ((Math.sin(y * 0.18) + 1) / 2) * 0.05; context.strokeStyle = `rgba(70,42,22,${alpha})`; context.beginPath(); context.moveTo(0, y); for (let x = 0; x <= 256; x += 16) context.lineTo(x, y + Math.sin(x * 0.04 + y * 0.09) * 2.5); context.stroke(); }
-    // A few heavier growth lines so the grain direction stays legible once the
-    // per-layer rotation is applied.
-    for (let line = 0; line < 7; line += 1) { const y = 18 + line * 37.5; context.strokeStyle = "rgba(96,58,30,0.16)"; context.lineWidth = 1.6; context.beginPath(); context.moveTo(0, y); for (let x = 0; x <= 256; x += 8) context.lineTo(x, y + Math.sin(x * 0.03 + line * 2.1) * 4.5); context.stroke(); }
-    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(1 / 45, 1 / 45); return texture;
-  }
-
-  /**
-   * Empty `content` and free what this rebuild owned. Objects in `kept` are
-   * only detached: they are cached layer bodies the next scene reuses, and
-   * their materials live in the cache entry rather than in `resources`.
-   */
-  function disposeContent(content: THREE.Group, resources: Array<{ dispose: () => void }>, kept?: ReadonlySet<THREE.Object3D>): void {
-    for (const child of [...content.children]) {
-      content.remove(child);
-      if (kept?.has(child)) continue;
-      child.traverse((object) => { if (object instanceof THREE.Mesh || object instanceof THREE.Line) object.geometry.dispose(); });
-    }
-    // Every material and texture a rebuild creates is registered here — including
-    // ones no object ended up using (no trails, markers, or water in this
-    // geometry) — so the traversal above only has to free geometries.
-    for (const resource of resources.splice(0)) resource.dispose();
-  }
-
-  /** Free every cached layer body, or only the ones this rebuild did not reuse. */
-  function disposeLayerCache(cache: Map<string, CachedLayer>, reused?: ReadonlySet<string>): void {
-    for (const [id, cached] of cache) {
-      if (reused?.has(id)) continue;
-      // The meshes themselves were geometry-disposed with the rest of `content`.
-      for (const resource of cached.resources) resource.dispose();
-      cache.delete(id);
-    }
-  }
-
-  interface LineBatch { positions: number[]; distances?: number[] }
-
-  /** One polyline as segment pairs, with per-polyline dash distances so dashes restart where a separate Line would. */
-  function appendPolyline(batch: LineBatch, points: Point2D[]): void {
-    let distance = 0;
-    for (let index = 0; index < points.length - 1; index += 1) {
-      const start = points[index]!, end = points[index + 1]!;
-      batch.positions.push(start.x, start.y, 0, end.x, end.y, 0);
-      if (batch.distances) {
-        batch.distances.push(distance);
-        distance += Math.hypot(end.x - start.x, end.y - start.y);
-        batch.distances.push(distance);
-      }
-    }
-  }
-
-  function batchSegments(batch: LineBatch, material: THREE.LineBasicMaterial | THREE.LineDashedMaterial): THREE.LineSegments {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
-    if (batch.distances) geometry.setAttribute("lineDistance", new THREE.Float32BufferAttribute(batch.distances, 1));
-    return new THREE.LineSegments(geometry, material);
-  }
-
-  // Deterministic per-layer randomness: grain orientation must survive
-  // geometry rebuilds without visibly re-rolling, so seed from the layer index.
-  function mulberry32(seed: number): () => number {
-    let state = seed;
-    return () => {
-      state = (state + 0x6d2b79f5) | 0;
-      let t = Math.imul(state ^ (state >>> 15), 1 | state);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  // Each physical layer is cut from its own sheet, so grain direction is
-  // uniform within a layer but varies between layers.
-  function layerGrainTexture(base: THREE.CanvasTexture, layerIndex: number): THREE.Texture {
-    const random = mulberry32(layerIndex + 1);
-    const grain = base.clone();
-    grain.center.set(0.5, 0.5);
-    grain.rotation = random() * Math.PI * 2;
-    grain.offset.set(random(), random());
-    grain.needsUpdate = true;
-    return grain;
-  }
-  function appendLabel(batch: LineBatch, label: string, origin: Point2D, rotationRad = 0, textStyle?: TextStyleV1): void {
-    for (const segment of labelLineSegments(label, origin, 0, 0, rotationRad, textStyle)) batch.positions.push(segment.start.x, segment.start.y, 0, segment.end.x, segment.end.y, 0);
-  }
-
-  // Fast path for the exploded slider: only mesh z-positions move, so a drag
-  // never tears down or re-extrudes the scene.
-  function applyExploded(content: THREE.Group, amount: number): void {
-    const layerGap = amount * 13;
-    for (const child of content.children) {
-      const stacked = child.userData as StackedObject;
-      child.position.z = stacked.baseZ + stacked.layerIndex * layerGap;
-    }
-  }
-
-  function addStacked(content: THREE.Group, object: THREE.Object3D, layerIndex: number, baseZ: number): void {
-    object.userData = { layerIndex, baseZ } satisfies StackedObject;
-    content.add(object);
-  }
 
   /**
    * Placement draws below its toolbar, in the stage minus the top
@@ -460,6 +303,8 @@
   // geometry object but keeps these references, so it does not rebuild the scene.
   const layers = $derived(geometry.layers);
   const waterSurfaces = $derived(geometry.waterSurfaces);
+  const waterInserts = $derived(geometry.waterInserts);
+  const waterInsertMaterial = $derived(geometry.waterInsertMaterial);
   const lineStyle = $derived(geometry.lineStyle);
   const widthMm = $derived(geometry.widthMm);
   const heightMm = $derived(geometry.heightMm);
@@ -468,7 +313,7 @@
   const hideMarkings = $derived(placement?.hideMarkings ?? false);
   $effect(() => {
     const omitMarkings = hideMarkings;
-    const activeGeometry = { layers, waterSurfaces, lineStyle, widthMm, heightMm };
+    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, lineStyle, widthMm, heightMm };
     const hiddenPrefixes = hiddenKey ? hiddenKey.split("|") : [];
     const timeout = window.setTimeout(() => {
       if (!runtime) return;
@@ -512,16 +357,14 @@
       const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
       const markerFillMaterial = new THREE.MeshBasicMaterial({ color: 0x2b2119, side: THREE.DoubleSide });
-      // Water reads as a pane resting over the basin rather than as another
-      // sheet of stock, so it is transmissive and never casts a shadow into the
-      // recess it is meant to reveal.
-      const waterMaterial = new THREE.MeshStandardMaterial({
-        // Saturated and a touch darker than it looks in isolation: the room
-        // environment washes a mid blue out to frosted glass over pale stock.
-        color: 0x14536e, transparent: true, opacity: 0.52, roughness: 0.28, metalness: 0,
+      // An acrylic insert is a real sheet, clear and glossy, so the stepped
+      // bed below shows through it. Water left in wood is stained instead
+      // (below), so the two finishes read apart at a glance.
+      const acrylicMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial);
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
@@ -571,19 +414,62 @@
         }
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, baseZ + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.5);
       });
-      // The surface floats on the top face of the layer holding its waterline,
-      // and rides that layer when the stack is exploded.
-      (activeGeometry.waterSurfaces ?? []).forEach((surface) => {
-        const layer = activeGeometry.layers[surface.layerIndex] ?? activeGeometry.layers[0];
+      // Acrylic inserts fill their opening from the ledge below, riding the
+      // layer they replace when the stack is exploded. Map detail engraved on
+      // them sits on their top face.
+      (activeGeometry.waterInserts ?? []).forEach((insert) => {
+        const layer = activeGeometry.layers[insert.layerIndex];
         if (!layer) return;
-        surface.polygons.forEach((polygon) => {
-          const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), waterMaterial);
+        const thickness = activeGeometry.waterInsertMaterial?.thicknessMm ?? layer.materialThicknessMm;
+        const baseZ = layer.index * layer.materialThicknessMm;
+        insert.polygons.forEach((polygon) => {
+          const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thickness, bevelEnabled: false, curveSegments: 8 }), acrylicMaterial);
           mesh.castShadow = false;
           mesh.receiveShadow = false;
           mesh.renderOrder = 1;
-          addStacked(runtime!.content, mesh, layer.index, layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 0.5);
+          addStacked(runtime!.content, mesh, layer.index, baseZ);
         });
+        if (omitMarkings) return;
+        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+        const labelBatch: LineBatch = { positions: [] };
+        insert.markings.forEach((marking) => {
+          if (marking.knockout || hiddenByPrefix(marking.id, hiddenPrefixes)) return;
+          if (marking.points.length > 1 && !marking.filled) {
+            const material = lineMaterials[markingStyleKey(marking)];
+            let batch = lineBatches.get(material);
+            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
+            appendPolyline(batch, marking.points);
+          }
+          if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
+        });
+        const top = baseZ + thickness + markingLift(thickness);
+        for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
+        if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
       });
+      // Open water is stain on the wood rather than a pane over it: the top
+      // face of every sheet under a waterline takes a multiply tint wherever
+      // the lake covers it, riding its sheet when the stack is exploded. The
+      // tint sits above knockouts and engraved lines, which stay dark through
+      // it, and below filled markers and labels.
+      for (const band of waterStainBands(activeGeometry.waterSurfaces ?? [])) {
+        const mask = waterStainMask(band.polygons);
+        if (!mask) continue;
+        const stain = new THREE.MeshBasicMaterial({
+          map: mask, toneMapped: false, transparent: true, depthWrite: false,
+          blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor,
+        });
+        runtime.sceneResources.push(mask, stain);
+        const reach = polygonBounds(band.polygons);
+        for (const layer of activeGeometry.layers.slice(band.fromLayer, band.toLayer + 1)) {
+          const top = layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.1;
+          for (const polygon of layer.polygons) {
+            if (!boundsOverlap(polygonBounds([polygon]), reach)) continue;
+            const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), stain);
+            mesh.renderOrder = 1;
+            addStacked(runtime!.content, mesh, layer.index, top);
+          }
+        }
+      }
 
       applyExploded(runtime.content, untrack(() => (placement ? 0 : exploded)));
       const radius = Math.hypot(activeGeometry.widthMm / 2, activeGeometry.heightMm / 2);

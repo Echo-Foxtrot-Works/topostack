@@ -1,6 +1,9 @@
 import { ringIou } from "@topostack/chart-trace/georef";
 import { DEFAULT_PROJECT, type GeoBounds, type Polygon2D, type WaterAreaV1 } from "@topostack/core";
-import { loadLakeAreas, loadVectorMarkings, type PlaceResult } from "$lib/domain/data-provider";
+import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "$lib/domain/coordinates";
+import { loadLakeAreas } from "$lib/domain/lake-area-loader";
+import { loadVectorMarkings } from "$lib/domain/vector-loader";
+import type { PlaceResult } from "$lib/domain/geocode";
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { artworkToLonLat } from "$lib/domain/tile-math";
 
@@ -74,14 +77,14 @@ const MAP_LAKE_MIN_ROUNDNESS = 0.1;
 function roundness(outline: readonly [number, number][]): number {
   if (outline.length < 3) return 0;
   const midLat = outline.reduce((sum, [, lat]) => sum + lat, 0) / outline.length;
-  const kmX = 111.32 * Math.cos((midLat * Math.PI) / 180);
+  const kmX = kmPerDegreeLon(midLat);
   let twiceArea = 0;
   let perimeter = 0;
   for (let index = 0; index < outline.length; index += 1) {
     const [x1, y1] = outline[index]!;
     const [x2, y2] = outline[(index + 1) % outline.length]!;
-    twiceArea += x1 * kmX * y2 * 110.57 - x2 * kmX * y1 * 110.57;
-    perimeter += Math.hypot((x2 - x1) * kmX, (y2 - y1) * 110.57);
+    twiceArea += x1 * kmX * y2 * KM_PER_DEGREE_LAT - x2 * kmX * y1 * KM_PER_DEGREE_LAT;
+    perimeter += Math.hypot((x2 - x1) * kmX, (y2 - y1) * KM_PER_DEGREE_LAT);
   }
   return perimeter > 0 ? (4 * Math.PI * Math.abs(twiceArea / 2)) / (perimeter * perimeter) : 0;
 }
@@ -94,7 +97,7 @@ const unnamed = (area: WaterAreaV1): string => (area.outlineSource === "osm" ? "
  * that naming the town beside a lake finds it: a place result lands on the town
  * centre, and a lake ten kilometres out is still the one that was meant.
  */
-export const LAKE_WINDOW_DEG = 0.3;
+const LAKE_WINDOW_DEG = 0.3;
 const LAKE_WINDOW_ZOOM = 11;
 /** The closest zoom a lake is loaded at: a pond picked from the map is loaded again this close. */
 const DETAIL_ZOOM = 15;
@@ -126,10 +129,9 @@ function sizeOf(outline: readonly [number, number][]): { footprint: number; span
     west = Math.min(west, lon); east = Math.max(east, lon);
     south = Math.min(south, lat); north = Math.max(north, lat);
   }
-  const midLat = ((south + north) / 2) * Math.PI / 180;
   return {
     footprint: (east - west) * (north - south),
-    spanKm: [(east - west) * 111.32 * Math.cos(midLat), (north - south) * 110.57],
+    spanKm: [(east - west) * kmPerDegreeLon((south + north) / 2), (north - south) * KM_PER_DEGREE_LAT],
   };
 }
 
@@ -170,7 +172,7 @@ async function loadWindow(bounds: GeoBounds, place: Pick<PlaceResult, "lat" | "l
     // Many lakes are unnamed in the water data, so how big it is and how far
     // off it lies are what let a maker pick the one they meant.
     const centre = outline.reduce(([sx, sy], [lon, lat]) => [sx + lon / outline.length, sy + lat / outline.length], [0, 0]);
-    const distanceKm = Math.hypot((centre[0]! - place.lon) * 111.32 * Math.cos((place.lat * Math.PI) / 180), (centre[1]! - place.lat) * 110.57);
+    const distanceKm = Math.hypot((centre[0]! - place.lon) * kmPerDegreeLon(place.lat), (centre[1]! - place.lat) * KM_PER_DEGREE_LAT);
     // Map water carries no clipped flag; an outline running along the window's edge was cut there.
     const clipped = area.clipped === true || area.polygon.outer.some((point) => Math.abs(point.x) >= halfMm || Math.abs(point.y) >= halfMm);
     if (area.hylakId === undefined && (clipped || Math.max(...size.spanKm) > MAP_LAKE_MAX_SPAN_KM || roundness(outline) < MAP_LAKE_MIN_ROUNDNESS)) continue;

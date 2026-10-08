@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { expect } from "@playwright/test";
 import { artifactDirectory, openBrowserCheck } from "../lib/browser-check.mjs";
+import { appUrl } from "../lib/app-url.mjs";
 
 const directory = JSON.parse(await readFile(new URL("../../apps/generator/static/data/lake-depth-directory.json", import.meta.url), "utf8"));
 const totalLakes = new Intl.NumberFormat("en-US").format(directory.lakes.length);
 
-const origin = process.env.DIRECTORY_TEST_APP_URL ?? "http://localhost:5273";
+const origin = appUrl("DIRECTORY_TEST_APP_URL");
 if (!["localhost", "127.0.0.1"].includes(new URL(origin).hostname)) throw new Error("Use a local preview for this check.");
 const { browser, page, errors, output, run } = await openBrowserCheck({
   output: artifactDirectory(process.env.DIRECTORY_TEST_OUTPUT, "lake-directory"),

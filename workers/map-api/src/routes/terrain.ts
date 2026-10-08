@@ -1,8 +1,10 @@
+import packageJson from "../../package.json";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { edgeCacheKey, matchEdge, putEdge, teeToEdge } from "../edge-cache";
-import { etagMatches, json, rateLimitExceeded, upstreamFailure, upstreamSignal } from "../http";
+import { etagMatches, rateLimitExceeded, UpstreamError, upstreamErrorResponse, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
+import { hex } from "../hex";
 
 const MAX_TERRAIN_BYTES = 2_000_000;
 // R2 keys are versioned; public tile URLs are mutable across deployments.
@@ -75,7 +77,7 @@ function singleEtag(ifNoneMatch: string | null): string | null {
 // advertise the same validator its cached copy will carry.
 async function r2Etag(body: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest("MD5", body);
-  return `"${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}"`;
+  return `"${hex(digest)}"`;
 }
 
 function readTerrainCache(request: Request, env: Env, key: string): Promise<R2Object | R2ObjectBody | null> {
@@ -83,35 +85,36 @@ function readTerrainCache(request: Request, env: Env, key: string): Promise<R2Ob
   return etag ? readCache(env.MAP_CACHE, key, "terrain", { etagDoesNotMatch: etag }) : readCache(env.MAP_CACHE, key, "terrain");
 }
 
-async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promise<Response | { body: Uint8Array<ArrayBuffer>; imagerySources: string }> {
+/** One tile from the terrain origin, checked to be a terrain PNG. Throws UpstreamError when it is not usable. */
+async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promise<{ body: Uint8Array<ArrayBuffer>; imagerySources: string }> {
   let upstream: Response;
   try {
     upstream = await fetch(`${env.TERRAIN_ORIGIN}/${tile.z}/${tile.x}/${tile.y}.png`, {
-      headers: { "user-agent": "TopoStack/0.1 (terrain fabrication generator)" },
+      headers: { "user-agent": `TopoStack/${packageJson.version} (terrain fabrication generator)` },
       signal: upstreamSignal(request),
     });
   } catch (error) {
-    return upstreamFailure(error, "Terrain origin");
+    throw upstreamFailure(error, "Terrain origin");
   }
   if (upstream.status !== 200 || !upstream.body) {
     await upstream.body?.cancel();
-    return json({ error: "Terrain tile unavailable", status: upstream.status }, { status: 502 });
+    throw upstreamRejected(upstream, "Terrain origin", "Terrain tile unavailable");
   }
   const contentLength = Number(upstream.headers.get("content-length") ?? 0);
   const contentType = upstream.headers.get("content-type") ?? "";
   if ((contentLength > 0 && contentLength > MAX_TERRAIN_BYTES) || !contentType.includes("image/png")) {
     await upstream.body.cancel();
-    return json({ error: "Terrain origin returned an invalid tile" }, { status: 502 });
+    throw new UpstreamError(502, "Terrain origin returned an invalid tile");
   }
   const imagerySources = upstream.headers.get("x-imagery-sources") ?? upstream.headers.get("x-amz-meta-x-imagery-sources") ?? "";
   let body: Uint8Array<ArrayBuffer>;
   try { body = await readBounded(upstream.body, MAX_TERRAIN_BYTES); }
   catch (error) {
-    if (error instanceof BodyTooLargeError) return json({ error: "Terrain origin returned an oversized tile" }, { status: 502 });
-    return upstreamFailure(error, "Terrain origin");
+    if (error instanceof BodyTooLargeError) throw new UpstreamError(502, "Terrain origin returned an oversized tile");
+    throw upstreamFailure(error, "Terrain origin");
   }
   try { decodeTerrainPng(body); }
-  catch { return json({ error: "Terrain origin returned an invalid tile" }, { status: 502 }); }
+  catch { throw new UpstreamError(502, "Terrain origin returned an invalid tile"); }
   return { body, imagerySources };
 }
 
@@ -198,11 +201,11 @@ export async function terrainResponse(request: Request, env: Env, ctx: Execution
   if (options.admitUpstream && !(await options.admitUpstream())) {
     return (await staleResponse(env, key, cached)) ?? rateLimitExceeded();
   }
-  const fetched = await fetchUpstreamTile(request, env, tile);
-  if (fetched instanceof Response) {
-    const stale = await staleResponse(env, key, cached);
-    if (stale) { await fetched.body?.cancel(); return stale; }
-    return fetched;
+  let fetched: Awaited<ReturnType<typeof fetchUpstreamTile>>;
+  try { fetched = await fetchUpstreamTile(request, env, tile); }
+  catch (error) {
+    if (!(error instanceof UpstreamError)) throw error;
+    return (await staleResponse(env, key, cached)) ?? upstreamErrorResponse(error);
   }
   const { body, imagerySources } = fetched;
   const etag = await r2Etag(body);

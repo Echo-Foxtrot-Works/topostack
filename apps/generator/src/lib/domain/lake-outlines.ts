@@ -1,7 +1,7 @@
 import { index as outlineIndex } from "../../../../../scripts/data/lake-outlines-release.json";
 import type { GeoBounds, Polygon2D, ProjectConfigV1, WaterAreaV1 } from "@topostack/core";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
-import { networkSignal } from "$lib/domain/archive";
+import { networkSignal } from "$lib/domain/network";
 import { mapTiles } from "$lib/domain/tile-requests";
 import { createFeatureBudget } from "$lib/domain/feature-budget";
 

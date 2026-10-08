@@ -13,7 +13,7 @@ export default defineConfig({
     testTimeout: 20_000,
     coverage: {
       reportsDirectory: "coverage/client",
-      thresholds: { statements: 60, branches: 40, functions: 65, lines: 50 },
+      thresholds: { statements: 65, branches: 50, functions: 68, lines: 63 },
     },
   },
 });

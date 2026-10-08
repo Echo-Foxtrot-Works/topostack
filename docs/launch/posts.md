@@ -20,7 +20,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 
 **Body**
 
-> Disclosure: I built this. It's free, open source (MIT) and needs no account: TopoStack, https://topostack.app/guides/laser-cut-topographic-map?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Disclosure: I built this. It's free, open source (MIT) and needs no account: TopoStack, https://topostack.app/guides/laser-cut-topographic-map?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-lasercutting
 >
 > You pick a place, set the physical size, material thickness and vertical exaggeration, and it generates the files for a layered relief (or a single flat engraving) from real elevation and OpenStreetMap data:
 >
@@ -32,21 +32,23 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 > - lake floors from surveys or charts for more than 8,000 lakes (NOAA, USGS, Minnesota DNR, Ontario, Finland, Norway, swisstopo), with modelled depths elsewhere
 > - roads, trails, labels, compass, scale bar, your own markers and GPX tracks, SVG logos
 >
-> To be upfront: the images are renders and screenshots from the studio. I don't have photos of a finished piece yet, which is part of why I'm asking here. I'd like to hear from people who actually cut these:
+> To be upfront: the images are renders and screenshots from the studio. Community makers have shared physical builds; the images attached here are still software renders. I'd like to hear from people who actually cut these:
 >
 > 1. Does the SVG import at the right size, with the right operations, in your software (LightBurn, xTool Studio, the Glowforge app…)?
 > 2. What thickness and exaggeration do you usually use, and does the layer count it suggests seem sensible?
 > 3. What's missing from however you make these today?
 >
-> If you want something to try right away, there are six example projects you can import: https://topostack.app/examples?utm_source=social&utm_medium=forum&utm_campaign=launch
+> If you want something to try right away, there are six example projects you can import: https://topostack.app/examples?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-lasercutting
 >
-> It's a spare-time solo project, built with a lot of help from AI. Bugs go through the Feedback button (no account needed) or GitHub issues.
+> It's a spare-time solo project, built with a lot of help from AI. Bugs go through the Feedback button or GitHub issues; submitting the prefilled issue requires a GitHub account.
 
-**Image:** `atomm/assets/topostack-gallery-02-layers-v6.png` or the 6-second loop. See [media.md](media.md).
+**Image:** `atomm/assets/topostack-gallery-02-layers-v8.png` or the 6-second loop. See [media.md](media.md).
 
 ---
 
 ## r/xToolOfficial / xTool community
+
+Use `utm_content=reddit-xtool` for the subreddit, or change it to `xtool-community` for the xTool community site.
 
 (Confirm the subreddit name and whether third-party generator posts are allowed.)
 
@@ -56,7 +58,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 
 **Body**
 
-> Disclosure: I made this. TopoStack is a free generator on Atomm (https://www.atomm.com/creativetools/community/generator/topostack) and also runs as a website: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Disclosure: I made this. TopoStack is a free generator on Atomm (https://www.atomm.com/creativetools/community/generator/topostack) and also runs as a website: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-xtool
 >
 > In Atomm it loads real terrain for wherever you frame the map, nests the layers onto your material size automatically, and **Open in Studio** sends one SVG with the whole layout. The website version adds a few things the embed leaves out, such as tracing your own lake depth chart.
 >
@@ -64,7 +66,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > The pictures are screenshots and renders from the software, not photos of a cut piece. I'd really like to hear from anyone who runs one through their machine: whether the scoring and cutting look right in xTool Studio, what material thickness you used, and what went wrong.
 
-**Image:** `atomm/assets/topostack-gallery-06-nesting-v6.png` or `atomm/assets/topostack-gallery-08-material-v6.png`.
+**Image:** `atomm/assets/topostack-gallery-06-nesting-v8.png` or `atomm/assets/topostack-gallery-08-material-v8.png`.
 
 ---
 
@@ -76,11 +78,11 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 
 **Body**
 
-> Disclosure: I built this. It's free and runs in the browser with no account: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Disclosure: I built this. It's free and runs in the browser with no account: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-glowforge
 >
 > Pick a place anywhere, set the size and material thickness, and it generates cut and score SVGs for every layer from real elevation data. If the map is bigger than your bed, set your work area and it splits each layer into pieces with staggered puzzle-tab seams and engraved assembly ids.
 >
-> It can also cut a paper stencil for each layer so you can spray paint only the water that stays visible after gluing: https://topostack.app/guides/water-paint-templates?utm_source=social&utm_medium=forum&utm_campaign=launch
+> It can also cut a paper stencil for each layer so you can spray paint only the water that stays visible after gluing: https://topostack.app/guides/water-paint-templates?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-glowforge
 >
 > Honest caveats: the images are renders from the studio, not photos of a cut piece, and I haven't been able to confirm how the SVGs import in the Glowforge app. Cuts are red `#FE0002` and score/engrave lines are blue `#2366FF`, at physical size in millimetres. If you try one, I'd love to know whether the operations and scale come through correctly.
 
@@ -102,14 +104,16 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > It takes real elevation and map data for any place and produces layered cut files: one SVG per layer, at physical size, with cuts and score lines in separate colours. Maps larger than the bed are split into pieces with puzzle-tab seams. It can also produce paper stencils for painting the water, and an assembly guide.
 >
-> Guide: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch
-> Examples with project files: https://topostack.app/examples?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Guide: https://topostack.app/guides/split-large-maps?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=glowforge-forum
+> Examples with project files: https://topostack.app/examples?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=glowforge-forum
 >
-> Everything pictured is a screenshot or render from the software. I don't have photos of a physical piece yet. If anyone tries a small one, I'd be grateful to hear how the import went and what you'd change.
+> Everything pictured is a screenshot or render from the software. Community makers have shared physical builds; their photos need separate reuse permission. If anyone tries a small one, I'd be grateful to hear how the import went and what you'd change.
 
 ---
 
 ## LightBurn forum
+
+An introduction already exists; adapt this into a useful update in [the existing thread](https://forum.lightburnsoftware.com/t/i-built-a-free-tool-for-creating-laser-cut-topographic-maps-looking-for-feedback/192506), rather than posting a duplicate introduction.
 
 (Its guidelines send unclear-policy questions to the site feedback category. Ask there first if unsure where this fits.)
 
@@ -119,7 +123,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 
 **Body**
 
-> I maintain a free, open-source generator for layered topographic maps (TopoStack) and want to make sure its files behave well in LightBurn. I haven't got a verified LightBurn import to point to yet, so I'd rather ask people who know the software.
+> I maintain a free, open-source generator for layered topographic maps (TopoStack) and want to make sure its files behave well in LightBurn. Makers in the existing LightBurn thread have shared import feedback and a small physical build. I'd appreciate checks of the current release and more material/machine combinations.
 >
 > What the export does now:
 > - SVGs in millimetres at physical size
@@ -127,7 +131,7 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 > - a kerf compensation setting
 > - optional nested sheets (one SVG per sheet) or one panel per layer
 >
-> Details: https://topostack.app/guides/export-files?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Details: https://topostack.app/guides/export-files?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=lightburn-forum
 >
 > Questions: do the colours land on sensible layers? Is the scale right on import? Would you rather have a different colour convention or file split? The pictures on the site are software renders, not photos.
 
@@ -155,13 +159,13 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 >
 > There is also a tool for tracing a depth chart you have (an image or PDF): review and repair the contours, assign depths, align to known coordinates, then fill with a harmonic (Laplace) solve so the floor follows the slope the chart implies instead of terracing like a TIN.
 >
-> Write-up of the depth logic: https://topostack.app/guides/how-lake-depths-work?utm_source=social&utm_medium=forum&utm_campaign=launch
-> Lake directory by region: https://topostack.app/lakes?utm_source=social&utm_medium=forum&utm_campaign=launch
+> Write-up of the depth logic: https://topostack.app/guides/how-lake-depths-work?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-gis
+> Lake directory by region: https://topostack.app/lakes?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-gis
 > Code: https://github.com/Echo-Foxtrot-Works/topostack
 >
 > None of this is for navigation. I'd welcome pointers to open lake bathymetry I've missed (especially outside North America and the Nordics), and opinions on the datum handling.
 
-**Image:** `atomm/assets/topostack-gallery-05-depth-v6.png` (lake-floor controls) or `apps/generator/static/images/examples/lake-tahoe.webp`.
+**Image:** `atomm/assets/topostack-gallery-05-depth-v8.png` (lake-floor controls) or `apps/generator/static/images/examples/lake-tahoe.webp`.
 
 ---
 
@@ -176,17 +180,19 @@ Voice: first person and plain, like one maker talking to others. No hype words (
 > Disclosure: my own free, open-source project, TopoStack. It turns elevation and OSM data into either stacked cut layers or a single flat contour engraving.
 >
 > For the flat engraving you choose the contour count and index interval, line widths per feature (contours, index contours, roads, trails, water, boundaries) and whether to add elevation labels, a lat/long grid, a compass and a scale bar. Output is one SVG at physical size:
-> https://topostack.app/guides/topographic-map-engraving?utm_source=social&utm_medium=forum&utm_campaign=launch
+> https://topostack.app/guides/topographic-map-engraving?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-cartography
 >
-> For layered relief, the layer count comes from relief, map scale, vertical exaggeration and material thickness. Roads and trails are clipped to the highest exposed layer so they stay continuous across contour steps. How the generation works: https://topostack.app/guides/how-terrain-generation-works?utm_source=social&utm_medium=forum&utm_campaign=launch
+> For layered relief, the layer count comes from relief, map scale, vertical exaggeration and material thickness. Roads and trails are clipped to the highest exposed layer so they stay continuous across contour steps. How the generation works: https://topostack.app/guides/how-terrain-generation-works?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=reddit-cartography
 >
 > The images are software renders. I'd value critique of the linework defaults from people who design maps for a living.
 
-**Image:** `atomm/assets/topostack-gallery-04-flat-v6.png`.
+**Image:** `atomm/assets/topostack-gallery-04-flat-v8.png`.
 
 ---
 
 ## Show HN
+
+An [ordinary Hacker News submission](https://news.ycombinator.com/item?id=49716578) already exists. This is an unposted Show HN draft; check prior activity and current guidelines before submitting it.
 
 Post after per-lake pages ship. Put the URL in the link field and the text below as the first comment (or in the text field).
 
@@ -196,7 +202,7 @@ Post after per-lake pages ship. Put the URL in the link field and the text below
 
 **URL**
 
-> https://topostack.app/?utm_source=social&utm_medium=forum&utm_campaign=launch
+> https://topostack.app/?utm_source=social&utm_medium=forum&utm_campaign=launch&utm_content=hacker-news
 
 **Text / first comment**
 
@@ -211,7 +217,7 @@ Post after per-lake pages ship. Put the URL in the link field and the text below
 >
 > Stack: Svelte 5/SvelteKit (prerendered), MapLibre, three.js, TypeScript geometry core, MIT licensed: https://github.com/Echo-Foxtrot-Works/topostack
 >
-> Two honest notes. It's a solo project built with a lot of help from AI coding tools; the repo is open, so judge the result. And the images are renders from the studio. I don't have photos of a finished physical piece yet.
+> Two honest notes. It's a solo project built with a lot of help from AI coding tools; the repo is open, so judge the result. And the images are renders from the studio. Community makers have also shared physical builds; their photos require separate reuse permission.
 >
 > I'd like feedback on the output files, on where generation is slow for your area, and on data sources I've missed.
 
@@ -229,7 +235,7 @@ Launch last. Gallery images need cropping to 1270 × 760 ([media.md](media.md#pr
 
 Alternatives: "Real terrain and lake depths to laser-ready SVGs, free" (54), "Free layered topo maps for laser cutters, in your browser" (57).
 
-**Link:** `https://topostack.app/?utm_source=other&utm_medium=referral&utm_campaign=launch`
+**Link:** `https://topostack.app/?utm_source=other&utm_medium=referral&utm_campaign=launch&utm_content=product-hunt`
 
 **Description** (≤ 500 characters; this one is 400)
 
@@ -249,10 +255,12 @@ Alternatives: "Real terrain and lake depths to laser-ready SVGs, free" (54), "Fr
 
 ## X / Bluesky / Mastodon
 
-The draft is 287 characters with the full link. That fits Bluesky's 300 and Mastodon's 500, and X counts any link as 23 characters, so the same text works on all three. Attach the 6-second loop (`atomm/assets/topostack-cover-loop-v6.mp4`) or `apps/generator/static/images/social-crater-lake.png`, with alt text.
+The link below is tagged for X. Change `utm_content=x` to `bluesky` or `mastodon` for those platforms.
 
-> I built a free, open-source studio that turns any place into layered laser-cut topo map files: real elevation, lake depths for 8,000+ lakes, splitting for small beds. No account. (Video is a software render.)
-> https://topostack.app/?utm_source=social&utm_medium=social&utm_campaign=launch
+The draft fits Bluesky's 300 and Mastodon's 500 characters with each platform's tagged link; it also fits X's limit with its link counting. Attach the 6-second loop (`atomm/assets/topostack-cover-loop-v8.mp4`) or `apps/generator/static/images/social-crater-lake.png`, with alt text.
+
+> I built a free, open-source studio that turns any place into layered laser-cut topo map files: lake depths for 8,000+ lakes, splitting for small beds. No account. (Video is a software render.)
+> https://topostack.app/?utm_source=social&utm_medium=social&utm_campaign=launch&utm_content=x
 
 **Alt text:** "Software render of a layered Crater Lake relief model rotating and separating into its layers in the TopoStack studio."
 
@@ -266,6 +274,6 @@ Check the group rules first. Many prefer the link in a comment.
 
 > I've been building a free tool for making layered topographic maps on a laser and would appreciate feedback from this group. Pick any place, set your size and material thickness, and it gives you SVG cut and score files for each layer, with splitting for small beds and an assembly guide. No account needed.
 >
-> The picture is a render from the software. I don't have a finished piece to photograph yet. If you try it, I'd love to hear how the files worked in your software.
+> The picture is a render from the software. The attached media shows a software preview. If you try it, I'd love to hear how the files worked in your software.
 >
-> https://topostack.app/guides/laser-cut-topographic-map?utm_source=social&utm_medium=social&utm_campaign=launch
+> https://topostack.app/guides/laser-cut-topographic-map?utm_source=social&utm_medium=social&utm_campaign=launch&utm_content=facebook

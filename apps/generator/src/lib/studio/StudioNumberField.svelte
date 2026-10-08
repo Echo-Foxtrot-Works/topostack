@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getEmbedded } from "$lib/studio/embed-context";
   import type { HTMLInputAttributes } from "svelte/elements";
   import { NumberField } from "@loidolt/theme-svelte";
   let { value = 0, min = -Infinity, max = Infinity, step = 1, label, disabled = false, boxed = false, onValueChange, oninput, ...rest }: Pick<HTMLInputAttributes, "id" | "oninput" | "aria-describedby"> & {
     value?: number; min?: number; max?: number; step?: number; label: string; disabled?: boolean; boxed?: boolean; onValueChange?: (value: number) => void;
   } = $props();
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  const isEmbedded = getEmbedded();
   const fieldId = $props.id();
   const errorId = `${fieldId}-error`;
   let error = $state("");

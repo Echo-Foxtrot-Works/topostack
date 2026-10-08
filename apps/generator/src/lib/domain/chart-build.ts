@@ -1,4 +1,5 @@
 import { reviewAlignment, reviewGeometryIssues, type ChartReview } from "./chart-review.ts";
+import { pathLength } from "@topostack/chart-trace/geometry";
 import { snapCandidates, SNAP_MIN_IOU } from "@topostack/chart-trace/georef";
 import type { Point2 } from "@topostack/chart-trace/local-frame";
 import type { Rgb } from "@topostack/chart-trace/raster";
@@ -95,12 +96,6 @@ export function chartId(name: string | undefined, random: () => number = Math.ra
   return `${base}-chart-${suffix}`.slice(0, 64);
 }
 
-const ringLength = (ring: readonly Point2[]): number => {
-  let total = 0;
-  for (let index = 1; index < ring.length; index += 1) total += Math.hypot(ring[index]![0] - ring[index - 1]![0], ring[index]![1] - ring[index - 1]![1]);
-  return total;
-};
-
 /**
  * The shore the snap is fitted from: the longest traced line that closes, or
  * the longest line of all when nothing closed. A chart's outer shore is its
@@ -115,7 +110,7 @@ export function shorelineFor(trace: { shoreline: Point2[][]; contours: { points:
   let bestLength = 0;
   for (const ring of rings) {
     if (ring.length < 3) continue;
-    const length = ringLength(ring);
+    const length = pathLength(ring);
     if (length > bestLength) { best = ring; bestLength = length; }
   }
   return best;
@@ -125,7 +120,7 @@ export function shorelineFor(trace: { shoreline: Point2[][]; contours: { points:
  * Why no contour got a depth, in the maker's terms. The record's own error
  * names ids and batch steps, which mean nothing in the studio.
  */
-export function levellingFailure(diagnostics: { labels: number; labelled: number; labelDisagreements: number; contradictoryRegions: number }): string {
+function levellingFailure(diagnostics: { labels: number; labelled: number; labelDisagreements: number; contradictoryRegions: number }): string {
   if (!diagnostics.labels) return "The placed depths could not be read. Type each as a number, such as 10 or 2.5.";
   if (!diagnostics.labelled) return "None of the placed depths is on a traced line. Click on the contour line itself, a little away from its printed number.";
   if (diagnostics.labelDisagreements || diagnostics.contradictoryRegions) return "The placed depths disagree with each other or with the contour interval. Check each depth, and that the interval matches the chart.";

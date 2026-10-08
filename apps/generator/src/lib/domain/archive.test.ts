@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearArchiveCache, createArchive, NETWORK_TIMEOUT_MS } from "$lib/domain/archive";
+import { clearArchiveCache, createArchive } from "$lib/domain/archive";
+import { NETWORK_TIMEOUT_MS } from "$lib/domain/network";
 
 function archiveBytes(directory = false): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(132);

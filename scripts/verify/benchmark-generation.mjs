@@ -1,5 +1,5 @@
 /** Run after npm run build -w @topostack/core. See docs/generation-performance.md. */
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../lib/hash.mjs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -73,7 +73,7 @@ source.markings = Array.from({ length: roads }, (_, road) => ({
   points: Array.from({ length: 80 }, (_, i) => ({ x: -1500 + i * 3000 / 79, y: -1400 + road * 2800 / Math.max(1, roads - 1) + 30 * Math.sin(i / 8 + road) })),
 }));
 const normalize = geometry => { const copy = { ...geometry }; delete copy.generatedAt; return copy; };
-const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const hash = value => sha256Hex(JSON.stringify(value));
 const workers = Number(option('--workers', '0'));
 if (!Number.isInteger(workers) || workers < 0 || workers > 4) throw new Error('Workers must be 0–4.');
 const fallbackErrors = [];

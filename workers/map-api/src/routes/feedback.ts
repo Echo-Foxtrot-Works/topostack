@@ -2,7 +2,6 @@ import { FEEDBACK_LIMITS, parseFeedbackSubmission, type FeedbackKind, type Feedb
 import { BodyTooLargeError, readBounded } from "../body";
 import { clientKey, json, rateLimitExceeded } from "../http";
 
-export const FEEDBACK_PATH = "/v1/feedback";
 const FEEDBACK_GLOBAL_LIMIT_KEY = "feedback-global";
 const KIND_LABELS: Record<FeedbackKind, string> = { bug: "Bug", feature: "Feature", terrain: "Terrain data", lake: "Lake data" };
 
@@ -25,7 +24,7 @@ export function feedbackEmail(submission: FeedbackSubmission, environment: strin
 }
 
 export async function feedbackResponse(request: Request, env: FeedbackEnv): Promise<Response> {
-  const respond = (status: number, error?: string) => error ? json({ error }, { status, headers: { "cache-control": "no-store" } }) : new Response(null, { status, headers: { "cache-control": "no-store" } });
+  const respond = (status: number, error?: string) => error ? json({ error }, { status }) : new Response(null, { status, headers: { "cache-control": "no-store" } });
   // Same-origin browser POSTs only, like usage events: the form lives on the
   // app's own pages and the Atomm workbench offers no feedback entry point.
   if (request.headers.get("origin") !== new URL(request.url).origin) return respond(403, "Origin is not allowed.");

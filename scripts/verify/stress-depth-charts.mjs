@@ -1,7 +1,6 @@
 // Opt-in, network-backed real-chart probe. Start Vite with the public map API first.
 // See docs/reports/real-depth-chart-stress-2026-09-23.md for scope and reproduction.
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -11,9 +10,12 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { readPdfPage } from "@topostack/chart-trace/pdf";
 import { parseUserChartBathymetry, decodeChartDepths } from "@topostack/data-contracts/chart-bathymetry";
 import { traceVectorChart } from "@topostack/chart-trace/trace-vector";
+import { sha256Hex } from "../lib/hash.mjs";
+import { pinnedDownload } from "../lib/pinned-download.mjs";
+import { appUrl } from "../lib/app-url.mjs";
 
 const work = resolve(".topostack/real-chart-stress");
-const baseURL = process.env.CHART_STRESS_URL ?? "http://127.0.0.1:5278";
+const baseURL = appUrl("CHART_STRESS_URL");
 const browserName = process.env.CHART_STRESS_BROWSER ?? "chromium";
 const sources = [
   { id: "walden", name: "Walden Pond", url: "https://pubs.usgs.gov/wri/wri014137/pdf/cover.pdf", sha256: "77c75ce92fdfc82a57593f5e3be2c314e1675e9d4ce4a2676ccad91ff4d0b234", area: [710, 285, 1130, 548], scale: 4, units: "m", labels: "depth", interval: 2, styles: ["#01509f/1.00"], location: [42.439, -71.3387] },
@@ -28,7 +30,6 @@ function contains(ring, x, y) {
   }
   return inside;
 }
-const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 await mkdir(`${work}/sources`, { recursive: true });
 await mkdir(`${work}/rendered`, { recursive: true });
 const legacy = process.env.CHART_STRESS_LEGACY === "1";
@@ -39,14 +40,7 @@ const receiptPath = `${output}/results${process.env.CHART_STRESS_ONLY ? `-${proc
 const receipt = { date: new Date().toISOString(), browser: browserName, baseURL, sources: [], scenarios: [] };
 for (const source of sources) {
   const pdf = `${work}/sources/${source.id}.pdf`;
-  let bytes = await readFile(pdf).catch(() => undefined);
-  if (!bytes) {
-    const response = await fetch(source.url);
-    assert(response.ok, `Download failed: ${source.url} (${response.status})`);
-    bytes = Buffer.from(await response.arrayBuffer());
-    await writeFile(pdf, bytes);
-  }
-  assert.equal(sha256(bytes), source.sha256, `Source changed: ${source.id}`);
+  const bytes = await pinnedDownload({ url: source.url, sha256: source.sha256, file: pdf, label: `Source ${source.id}` });
   const page = await readPdfPage(pdfjs, new Uint8Array(bytes));
   const [left, top, right, bottom] = source.area;
   const traced = traceVectorChart(page, { labels: source.labels, surface: source.surface, interval: source.interval, contourStyles: source.styles, shorelineStyles: source.shore, mapArea: { left, top, right, bottom } });
@@ -105,7 +99,7 @@ try {
       }, source.location);
       assert(lake, `No lake outline at ${source.location}`);
       await writeFile(cache, JSON.stringify(lake, null, 2));
-      result.lake = { id: lake.id, hylakId: lake.hylakId, originalName: lake.name, vertices: lake.outline.length, sha256: sha256(JSON.stringify(lake.outline)) };
+      result.lake = { id: lake.id, hylakId: lake.hylakId, originalName: lake.name, vertices: lake.outline.length, sha256: sha256Hex(JSON.stringify(lake.outline)) };
       await page.evaluate(async lake => {
         const { chooseLake } = await import("/src/lib/studio/customdata/lake-picker.svelte.ts");
         await chooseLake(lake);
@@ -203,7 +197,7 @@ try {
           const exported = JSON.parse(await readFile(file, "utf8"));
           assert.equal(exported.charts.length, 1);
           assert.equal(exported.charts[0].license.attestation, "public-domain");
-          assert.equal(exported.charts[0].provenance.fileSha256, sha256(await readFile(scenario.file)));
+          assert.equal(exported.charts[0].provenance.fileSha256, sha256Hex(await readFile(scenario.file)));
           assert.equal(exported.project.userDepthCharts[String(lake.hylakId)].id, exported.charts[0].id);
           await page.reload();
           await page.getByRole("radio", { name: "Custom data", exact: true }).click();

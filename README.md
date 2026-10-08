@@ -1,13 +1,13 @@
 # TopoStack
 
 [![CI](https://github.com/Echo-Foxtrot-Works/topostack/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Echo-Foxtrot-Works/topostack/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Echo-Foxtrot-Works/topostack?filter=v*&label=release)](https://topostack.app/changelog)
+[![Release](https://img.shields.io/github/v/release/Echo-Foxtrot-Works/topostack?filter=v*&label=release)](https://topostack.app/changelog?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Open the studio](https://img.shields.io/badge/open-topostack.app-2366FF)](https://topostack.app/studio)
+[![Open the studio](https://img.shields.io/badge/open-topostack.app-2366FF)](https://topostack.app/studio?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github)
 
 Turn a place you love into something you can make. TopoStack is a free, browser-based terrain studio for creating layered, laser-cut reliefs and flat topographic engravings from real elevation and map data. No account, no install: pick a place, set your material, and download cut-ready SVGs.
 
-[Visit the website](https://topostack.app) · [Open the studio](https://topostack.app/studio) · [Browse examples](https://topostack.app/examples) · [Find a lake with depth data](https://topostack.app/lakes) · [Report a bug or share an idea](https://github.com/Echo-Foxtrot-Works/topostack/issues)
+[Visit the website](https://topostack.app?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) · [Open the studio](https://topostack.app/studio?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) · [Browse examples](https://topostack.app/examples?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) · [Find a lake with depth data](https://topostack.app/lakes?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) · [Report a bug or share an idea](https://github.com/Echo-Foxtrot-Works/topostack/issues)
 
 ![A TopoStack layered relief of Crater Lake turning in the studio's 3D preview, showing the stacked sheets and the surveyed lake floor](docs/images/topostack-stack.webp)
 
@@ -36,7 +36,7 @@ Crater Lake with USGS surveyed lake-floor data where available; existing terrain
 
 ### Get started
 
-1. Open the [studio](https://topostack.app/studio) and explore the bundled Crater Lake preview.
+1. Open the [studio](https://topostack.app/studio?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) and explore the bundled Crater Lake preview.
 2. Choose a place, frame the map area, and select **Layered** or **Flat** output.
 3. Set the physical dimensions and details, then **Generate terrain** and inspect the result.
 4. Open **Export** to download the complete project, individual artwork, or project settings.
@@ -49,9 +49,11 @@ The homepage lives at `/`, the editor at `/studio`, and the former `/about` URL 
 
 ### Examples and guides
 
-Worked projects with renders, measured results and a project file you can import: [Grand Canyon](https://topostack.app/examples/grand-canyon), [Yosemite Valley](https://topostack.app/examples/yosemite-valley), [Mount Rainier](https://topostack.app/examples/mount-rainier), [Mount Fuji](https://topostack.app/examples/mount-fuji), [Matterhorn](https://topostack.app/examples/matterhorn), [Lake Tahoe](https://topostack.app/examples/lake-tahoe) and [Crater Lake](https://topostack.app/examples/crater-lake).
+Worked projects with renders, measured results and a project file you can import: [Grand Canyon](https://topostack.app/examples/grand-canyon?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [Yosemite Valley](https://topostack.app/examples/yosemite-valley?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [Mount Rainier](https://topostack.app/examples/mount-rainier?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [Mount Fuji](https://topostack.app/examples/mount-fuji?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [Matterhorn](https://topostack.app/examples/matterhorn?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [Lake Tahoe](https://topostack.app/examples/lake-tahoe?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) and [Crater Lake](https://topostack.app/examples/crater-lake?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github).
 
-Step-by-step guides cover [making a layered laser-cut map](https://topostack.app/guides/laser-cut-topographic-map), [flat engraving](https://topostack.app/guides/topographic-map-engraving), [splitting maps larger than your laser bed](https://topostack.app/guides/split-large-maps), [painting water](https://topostack.app/guides/water-paint-templates) and [tracing a lake depth chart](https://topostack.app/guides/trace-a-depth-chart). The [lake directory](https://topostack.app/lakes) lists more than 8,000 lakes with surveyed or charted depths.
+Step-by-step guides cover [making a layered laser-cut map](https://topostack.app/guides/laser-cut-topographic-map?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [flat engraving](https://topostack.app/guides/topographic-map-engraving?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [splitting maps larger than your laser bed](https://topostack.app/guides/split-large-maps?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github), [painting water](https://topostack.app/guides/water-paint-templates?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) and [tracing a lake depth chart](https://topostack.app/guides/trace-a-depth-chart?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github). The [lake directory](https://topostack.app/lakes?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) lists more than 8,000 lakes with surveyed or charted depths.
+
+For a first project, choose a small layered relief, flat engraving or surveyed lake starter on the homepage. The studio offers a checklist to your first export; the [LightBurn workflow](https://topostack.app/guides/lightburn?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github) covers import, dimensions, operations and kerf. Export also offers a labelled software-preview PNG and a design link for sharing.
 
 ## Built in the open, with AI
 

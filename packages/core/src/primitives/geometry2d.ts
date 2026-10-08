@@ -1,11 +1,12 @@
 import type { MultiPolygon, Pair, Polygon, Ring } from "polygon-clipping";
 import type { Point2D, Polygon2D } from "../types.js";
+import { MERCATOR_MAX_LATITUDE } from "./units.js";
 
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 /** Web Mercator world Y in [0, 1] (north at 0), clamped to the projection's latitude limit. */
 export function mercatorWorldY(latitude: number): number {
-  const radians = clamp(latitude, -85.0511, 85.0511) * Math.PI / 180;
+  const radians = clamp(latitude, -MERCATOR_MAX_LATITUDE, MERCATOR_MAX_LATITUDE) * Math.PI / 180;
   return (1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2;
 }
 
@@ -109,12 +110,16 @@ export function pointInBounds(point: Point2D, bounds: Bounds2D): boolean {
 }
 
 export function pointInRing(point: Point2D, ring: Point2D[]): boolean {
+  return pointInRingAt(point.x, point.y, ring);
+}
+
+function pointInRingAt(x: number, y: number, ring: Point2D[]): boolean {
   let inside = false;
   for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
     const a = ring[index];
     const b = ring[previous];
     if (!a || !b) continue;
-    const crosses = (a.y > point.y) !== (b.y > point.y) && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x;
+    const crosses = (a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x;
     if (crosses) inside = !inside;
   }
   return inside;
@@ -131,9 +136,9 @@ export function pointInPolygon(point: Point2D, polygon: Polygon2D): boolean {
  */
 const BOUNDS_SLACK = 1e-6;
 
-function pointNearBounds(point: Point2D, bounds: Bounds2D): boolean {
-  return point.x >= bounds.minX - BOUNDS_SLACK && point.x <= bounds.maxX + BOUNDS_SLACK &&
-    point.y >= bounds.minY - BOUNDS_SLACK && point.y <= bounds.maxY + BOUNDS_SLACK;
+function nearBounds(x: number, y: number, bounds: Bounds2D): boolean {
+  return x >= bounds.minX - BOUNDS_SLACK && x <= bounds.maxX + BOUNDS_SLACK &&
+    y >= bounds.minY - BOUNDS_SLACK && y <= bounds.maxY + BOUNDS_SLACK;
 }
 
 /** A balanced hierarchy over consecutive edges; contour neighbours are spatial neighbours. */
@@ -170,10 +175,9 @@ function edgeIndex(prepared: PreparedRing): EdgeNode | undefined {
       node.maxY = Math.max(node.left.maxY, node.right.maxY);
     } else {
       for (let edge = start; edge < end; edge += 1) {
-        for (const point of [ring[edge]!, ring[(edge + 1) % ring.length]!]) {
-          node.minX = Math.min(node.minX, point.x); node.minY = Math.min(node.minY, point.y);
-          node.maxX = Math.max(node.maxX, point.x); node.maxY = Math.max(node.maxY, point.y);
-        }
+        const a = ring[edge]!, b = ring[(edge + 1) % ring.length]!;
+        node.minX = Math.min(node.minX, a.x, b.x); node.minY = Math.min(node.minY, a.y, b.y);
+        node.maxX = Math.max(node.maxX, a.x, b.x); node.maxY = Math.max(node.maxY, a.y, b.y);
       }
     }
     return node;
@@ -183,41 +187,45 @@ function edgeIndex(prepared: PreparedRing): EdgeNode | undefined {
   return root;
 }
 
-function pointInPreparedRing(point: Point2D, prepared: PreparedRing): boolean {
-  if (!pointNearBounds(point, prepared.bounds)) return false;
+/** Whether a ray from (x, y) toward +x crosses an odd number of the node's edges. */
+function crossesIn(node: EdgeNode, ring: Point2D[], x: number, y: number): boolean {
+  if (y < node.minY || y > node.maxY || x > node.maxX + BOUNDS_SLACK) return false;
+  if (node.left && node.right) return crossesIn(node.left, ring, x, y) !== crossesIn(node.right, ring, x, y);
+  let inside = false;
+  for (let edge = node.start; edge < node.end; edge += 1) {
+    const a = ring[(edge + 1) % ring.length]!, b = ring[edge]!;
+    if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+// Hot path: called per clipped segment and per label probe, so it takes
+// coordinates rather than a point and allocates nothing.
+function pointInPreparedRing(x: number, y: number, prepared: PreparedRing): boolean {
+  if (!nearBounds(x, y, prepared.bounds)) return false;
   const root = edgeIndex(prepared);
-  if (!root) return pointInRing(point, prepared.ring);
-  const { ring } = prepared;
-  const crosses = (node: EdgeNode): boolean => {
-    if (point.y < node.minY || point.y > node.maxY || point.x > node.maxX + BOUNDS_SLACK) return false;
-    if (node.left && node.right) return crosses(node.left) !== crosses(node.right);
-    let inside = false;
-    for (let edge = node.start; edge < node.end; edge += 1) {
-      const a = ring[(edge + 1) % ring.length]!, b = ring[edge]!;
-      if ((a.y > point.y) !== (b.y > point.y) && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-    }
-    return inside;
-  };
-  return crosses(root);
+  return root ? crossesIn(root, prepared.ring, x, y) : pointInRingAt(x, y, prepared.ring);
 }
 
 /** Visit only edges near a query box, stopping as soon as a predicate succeeds. */
 function someNearbyEdge(prepared: PreparedRing, bounds: Bounds2D, predicate: (start: Point2D, end: Point2D) => boolean): boolean {
   if (!boundsOverlap(bounds, prepared.bounds)) return false;
-  const { ring } = prepared;
-  const scan = (start: number, end: number): boolean => {
-    for (let edge = start; edge < Math.min(end, ring.length - 1); edge += 1) {
-      if (predicate(ring[edge]!, ring[edge + 1]!)) return true;
-    }
-    return false;
-  };
   const root = edgeIndex(prepared);
-  if (!root) return scan(0, ring.length - 1);
-  const visit = (node: EdgeNode): boolean => {
-    if (!boundsOverlap(bounds, node)) return false;
-    return node.left && node.right ? visit(node.left) || visit(node.right) : scan(node.start, node.end);
-  };
-  return visit(root);
+  return root ? someEdgeIn(root, prepared.ring, bounds, predicate) : someEdgeBetween(prepared.ring, 0, prepared.ring.length - 1, predicate);
+}
+
+function someEdgeBetween(ring: Point2D[], start: number, end: number, predicate: (start: Point2D, end: Point2D) => boolean): boolean {
+  for (let edge = start; edge < Math.min(end, ring.length - 1); edge += 1) {
+    if (predicate(ring[edge]!, ring[edge + 1]!)) return true;
+  }
+  return false;
+}
+
+function someEdgeIn(node: EdgeNode, ring: Point2D[], bounds: Bounds2D, predicate: (start: Point2D, end: Point2D) => boolean): boolean {
+  if (!boundsOverlap(bounds, node)) return false;
+  return node.left && node.right
+    ? someEdgeIn(node.left, ring, bounds, predicate) || someEdgeIn(node.right, ring, bounds, predicate)
+    : someEdgeBetween(ring, node.start, node.end, predicate);
 }
 
 /** Broad-phase boundary query; the caller retains its exact geometric predicate. */
@@ -226,12 +234,27 @@ export function somePreparedEdge(prepared: PreparedPolygons, bounds: Bounds2D, p
   return prepared.rings.some((ring) => someNearbyEdge(ring, bounds, predicate));
 }
 
+/** Pushes the parameter along a→b of every crossing with the ring's edges near `bounds`. */
 function ringCuts(a: Point2D, b: Point2D, bounds: Bounds2D, prepared: PreparedRing, cuts: number[]): void {
-  someNearbyEdge(prepared, bounds, (start, end) => {
-    const t = segmentIntersectionT(a, b, start, end);
+  if (!boundsOverlap(bounds, prepared.bounds)) return;
+  const root = edgeIndex(prepared);
+  if (root) cutsIn(root, prepared.ring, a, b, bounds, cuts);
+  else cutsBetween(prepared.ring, 0, prepared.ring.length - 1, a, b, cuts);
+}
+
+function cutsBetween(ring: Point2D[], start: number, end: number, a: Point2D, b: Point2D, cuts: number[]): void {
+  for (let edge = start; edge < Math.min(end, ring.length - 1); edge += 1) {
+    const t = segmentIntersectionT(a, b, ring[edge]!, ring[edge + 1]!);
     if (t !== undefined) cuts.push(t);
-    return false;
-  });
+  }
+}
+
+function cutsIn(node: EdgeNode, ring: Point2D[], a: Point2D, b: Point2D, bounds: Bounds2D, cuts: number[]): void {
+  if (!boundsOverlap(bounds, node)) return;
+  if (node.left && node.right) {
+    cutsIn(node.left, ring, a, b, bounds, cuts);
+    cutsIn(node.right, ring, a, b, bounds, cuts);
+  } else cutsBetween(ring, node.start, node.end, a, b, cuts);
 }
 
 /** Polygons with their ring bounding boxes, built once for repeated clipping and containment tests. */
@@ -263,7 +286,17 @@ export function preparePolygons(polygons: Polygon2D[]): PreparedPolygons {
 
 /** `polygons.some((polygon) => pointInPolygon(point, polygon))`, skipping polygons whose box excludes the point. */
 export function pointInPreparedPolygons(point: Point2D, prepared: PreparedPolygons): boolean {
-  return prepared.polygonRings.some(({ outer, holes }) => pointInPreparedRing(point, outer) && !holes.some((hole) => pointInPreparedRing(point, hole)));
+  return pointInPreparedPolygonsAt(point.x, point.y, prepared);
+}
+
+function pointInPreparedPolygonsAt(x: number, y: number, prepared: PreparedPolygons): boolean {
+  for (const { outer, holes } of prepared.polygonRings) {
+    if (!pointInPreparedRing(x, y, outer)) continue;
+    let inHole = false;
+    for (const hole of holes) if (pointInPreparedRing(x, y, hole)) { inHole = true; break; }
+    if (!inHole) return true;
+  }
+  return false;
 }
 
 const NO_POLYGONS = preparePolygons([]);
@@ -290,29 +323,39 @@ export function clipPolyline(points: Point2D[], polygons: Polygon2D[] | Prepared
   const excluded = boundsOverlap(reach, excludedSet.bounds) ? excludedSet : NO_POLYGONS;
   const result: Point2D[][] = [];
   let active: Point2D[] = [];
+  // Scratch reused across segments: a long road against a tall stack makes
+  // millions of these, and allocating them per segment kept the collector busy.
+  const segmentBounds: Bounds2D = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  const cuts: number[] = [];
+  const unique: number[] = [];
   for (let index = 0; index < points.length - 1; index += 1) {
     const a = points[index];
     const b = points[index + 1];
     if (!a || !b) continue;
-    const segmentBounds: Bounds2D = {
-      minX: Math.min(a.x, b.x) - 1e-6,
-      minY: Math.min(a.y, b.y) - 1e-6,
-      maxX: Math.max(a.x, b.x) + 1e-6,
-      maxY: Math.max(a.y, b.y) + 1e-6,
-    };
-    const cuts = [0, 1];
+    segmentBounds.minX = Math.min(a.x, b.x) - 1e-6;
+    segmentBounds.minY = Math.min(a.y, b.y) - 1e-6;
+    segmentBounds.maxX = Math.max(a.x, b.x) + 1e-6;
+    segmentBounds.maxY = Math.max(a.y, b.y) + 1e-6;
+    cuts.length = 0;
+    cuts.push(0, 1);
     for (let set = 0; set < 2; set += 1) {
       for (const ring of set === 0 ? included.rings : excluded.rings) {
         if (boundsOverlap(segmentBounds, ring.bounds)) ringCuts(a, b, segmentBounds, ring, cuts);
       }
     }
     cuts.sort((left, right) => left - right);
-    const unique = cuts.filter((value, cutIndex) => cutIndex === 0 || Math.abs(value - cuts[cutIndex - 1]!) > 1e-7);
+    // Each cut is compared with its sorted neighbour, not the last one kept.
+    unique.length = 0;
+    for (let cutIndex = 0; cutIndex < cuts.length; cutIndex += 1) {
+      if (cutIndex === 0 || Math.abs(cuts[cutIndex]! - cuts[cutIndex - 1]!) > 1e-7) unique.push(cuts[cutIndex]!);
+    }
     for (let cutIndex = 0; cutIndex < unique.length - 1; cutIndex += 1) {
       const startT = unique[cutIndex]!;
       const endT = unique[cutIndex + 1]!;
-      const midpoint = pointAt(a, b, (startT + endT) / 2);
-      if (pointInPreparedPolygons(midpoint, included) && !pointInPreparedPolygons(midpoint, excluded)) {
+      const midT = (startT + endT) / 2;
+      const midX = a.x + (b.x - a.x) * midT;
+      const midY = a.y + (b.y - a.y) * midT;
+      if (pointInPreparedPolygonsAt(midX, midY, included) && !pointInPreparedPolygonsAt(midX, midY, excluded)) {
         const start = pointAt(a, b, startT);
         const end = pointAt(a, b, endT);
         const previous = active[active.length - 1];
@@ -331,6 +374,13 @@ export function clipPolyline(points: Point2D[], polygons: Polygon2D[] | Prepared
   return result;
 }
 
+export function polylineLength(points: Point2D[]): number {
+  return points.reduce((total, point, index) => {
+    const next = points[index + 1];
+    return total + (next ? Math.hypot(next.x - point.x, next.y - point.y) : 0);
+  }, 0);
+}
+
 export function distanceToSegment(point: Point2D, start: Point2D, end: Point2D): number {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -340,7 +390,7 @@ export function distanceToSegment(point: Point2D, start: Point2D, end: Point2D):
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
 }
 
-export function orientation(a: Point2D, b: Point2D, c: Point2D): number {
+function orientation(a: Point2D, b: Point2D, c: Point2D): number {
   return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 

@@ -3,7 +3,7 @@
 import { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, SITE_ORIGIN, socialCard, type SocialImage } from "./site.ts";
 import latestRelease from "../../../../../changelog/latest.json" with { type: "json" };
 
-export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_LOCALE, SITE_ORIGIN, type SocialImage } from "./site.ts";
+export { DEFAULT_SOCIAL_IMAGE, DOCS_HOME, REPOSITORY_URL, SITE_ORIGIN, type SocialImage } from "./site.ts";
 
 export interface PageMeta {
   title: string;
@@ -46,7 +46,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Create layered terrain maps and flat topographic engravings from real elevation data. Customize your design and export SVG files free in your browser.",
     label: "Home",
     published: "2026-08-19",
-    updated: "2026-09-17",
+    updated: "2026-10-08",
   },
   "/guides": {
     title: "Topographic Map Guides and Documentation | TopoStack",
@@ -63,6 +63,14 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     published: "2026-09-15",
     updated: "2026-09-18",
     image: socialCard("guides-laser-cut-topographic-map", "Laser-cut topographic map guide card with an exploded stack of Crater Lake layers rendered in the studio."),
+  },
+  "/guides/lightburn": {
+    title: "Import Topographic Map SVGs into LightBurn | TopoStack",
+    description: "Use TopoStack SVGs in LightBurn: check size, assign cut and marking layers, avoid duplicate engraving, apply kerf once, and preview the job.",
+    label: "LightBurn workflow",
+    published: "2026-10-08",
+    updated: "2026-10-08",
+    image: socialCard("guides-lightburn", "LightBurn workflow guide card showing TopoStack’s export dialog, not a LightBurn screenshot."),
   },
   "/guides/topographic-map-engraving": {
     title: "Create a Topographic Map SVG for Laser Engraving | TopoStack",
@@ -85,7 +93,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Cut a paper stencil for each layer of a topographic map and spray paint only the water that stays visible after the stack is glued.",
     label: "Water paint templates",
     published: "2026-09-18",
-    updated: "2026-09-18",
+    updated: "2026-10-05",
     image: PAINT_IMAGE,
   },
   "/guides/lake-depth-data": {
@@ -189,7 +197,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every TopoStack studio control with its range, default and output type, from vertical exaggeration and kerf to linework widths.",
     label: "Settings reference",
     published: "2026-09-17",
-    updated: "2026-09-23",
+    updated: "2026-10-05",
     image: socialCard("guides-settings-reference", "Settings reference card with the studio's project controls beside a Crater Lake relief."),
   },
   "/guides/use-with-ai-assistants": {
@@ -213,7 +221,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "The tools, resources and prompts of TopoStack's remote MCP server, the in-chat preview app, protocol behavior, error codes and rate limits.",
     label: "MCP server reference",
     published: "2026-09-25",
-    updated: "2026-10-02",
+    updated: "2026-10-07",
     image: socialCard("guides-mcp-server", "MCP server reference card with a Mount Rainier model previewed inside a chat as stacked sheets."),
   },
   "/guides/agent-api": {
@@ -221,7 +229,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every field of the TopoStack project request, how studio links work, and the HTTP routes that plan models and make links, with errors and limits.",
     label: "Project request and HTTP API",
     published: "2026-09-25",
-    updated: "2026-09-26",
+    updated: "2026-10-07",
     image: socialCard("guides-agent-api", "Project request and HTTP API card with a layered Lake Tahoe relief rendered in the studio."),
   },
   "/guides/export-files": {
@@ -229,7 +237,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "What each TopoStack download contains: SVG panels, colors and operation groups, kerf compensation, assembly guide, project file and attribution.",
     label: "Export files",
     published: "2026-09-17",
-    updated: "2026-09-18",
+    updated: "2026-10-05",
     image: socialCard("guides-export-files", "Export files card with the studio's export preview of SVG cut panels."),
   },
   "/guides/troubleshooting": {
@@ -278,7 +286,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     updated: "2026-09-25",
   },
 };
-export const STUDIO_META = {
+const STUDIO_META = {
   title: "Studio: Create Your Topographic Map | TopoStack",
   description: "Choose a place, customize layered relief or flat engraving, and generate SVG artwork in the free TopoStack studio.",
   label: "studio",

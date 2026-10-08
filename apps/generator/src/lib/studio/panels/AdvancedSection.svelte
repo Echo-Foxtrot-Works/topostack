@@ -1,13 +1,26 @@
 <script lang="ts">
-  import { ChevronDown, Grid3X3, Layers3, Puzzle, SprayCan, Waves } from "@lucide/svelte";
+  import { ChevronDown, Droplets, Grid3X3, Layers3, Puzzle, SprayCan, Waves } from "@lucide/svelte";
   import { Section } from "@loidolt/theme-svelte";
-  import { displayLength, MAX_PROJECT_DIMENSION_MM, MAX_SEAM_OFFSET_MM } from "@topostack/core";
+  import { DEFAULT_WATER_INSERT_CLEARANCE_MM, displayLength, MAX_PROJECT_DIMENSION_MM, MAX_SEAM_OFFSET_MM, type WaterInsertSettingsV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  import { insertLakes } from "$lib/studio/preview-summary";
 
   const studio = getStudio();
   const { sectionSummary, shownLength, storedLength, toggleSection, updateFabrication, workAreaLength } = studio;
+  const inserts = $derived(studio.project.waterInserts);
+  const insertThicknessMm = $derived(inserts?.thicknessMm ?? studio.project.materialThicknessMm);
+  const insertLakeRows = $derived(inserts ? insertLakes(studio.geometry, studio.project) : []);
+  let showAllInsertLakes = $state(false);
+  const updateInserts = (patch: Partial<WaterInsertSettingsV1>) => inserts && void updateFabrication({ waterInserts: { ...inserts, ...patch } });
+  const setLakeInsert = (key: string, on: boolean) => {
+    if (!inserts) return;
+    const excluded = new Set(inserts.excludedLakeIds);
+    if (on) excluded.delete(key);
+    else excluded.add(key);
+    updateInserts({ excludedLakeIds: [...excluded].sort() });
+  };
 </script>
 
 <Section class="config-section advanced-section" aria-labelledby="atomm-advanced-title">
@@ -23,8 +36,31 @@
         {#if studio.project.outputMode === "stack" && studio.seamGrid}<Switch checked={studio.project.showAssemblyLabels} onCheckedChange={(showAssemblyLabels) => void updateFabrication({ showAssemblyLabels })} aria-label="Assembly labels"><span class="toggle-label"><Grid3X3 size={16} />Assembly labels</span></Switch>{/if}
         {#if studio.project.outputMode === "stack" && studio.seamGrid}<Switch checked={studio.project.seamTabs} onCheckedChange={(seamTabs) => void updateFabrication({ seamTabs })} aria-label="Puzzle seam tabs"><span class="toggle-label"><Puzzle size={16} />Puzzle seam tabs</span></Switch>{/if}
         {#if studio.project.outputMode === "stack"}<Switch checked={studio.project.paintTemplates.includes("water")} onCheckedChange={(on) => void updateFabrication({ paintTemplates: on ? ["water"] : [] })} aria-label="Water paint templates"><span class="toggle-label"><SprayCan size={16} />Water paint templates</span></Switch>{/if}
+        {#if studio.project.outputMode === "stack"}<Switch checked={Boolean(inserts)} disabled={!studio.project.showWaterDepth && !inserts} onCheckedChange={(on) => void updateFabrication({ waterInserts: on ? { fitClearanceMm: DEFAULT_WATER_INSERT_CLEARANCE_MM, excludedLakeIds: [] } : undefined })} aria-label="Acrylic water inserts"><span class="toggle-label"><Droplets size={16} />Acrylic water inserts</span></Switch>{/if}
         <Switch checked={studio.project.smoothing === 1} onCheckedChange={(smooth) => void updateFabrication({ smoothing: smooth ? 1 : 0 })} aria-label="Smooth contours"><span class="toggle-label"><Waves size={16} />Smooth contours</span></Switch>
       </div>
+      {#if studio.project.outputMode === "stack" && !studio.project.showWaterDepth}<small class="depth-note insert-note">Acrylic water inserts need <strong>Water depth</strong> on: they replace each lake on the sheet that carries its waterline.</small>{/if}
+      {#if studio.project.outputMode === "stack" && inserts}
+        <div class="toggle-settings water-insert-settings">
+          <p class="subgroup-heading">Acrylic</p>
+          <div class="field-stack">
+            <LengthField label="Acrylic thickness" unit={studio.shownLengthUnit} value={shownLength(insertThicknessMm)} min={shownLength(0.5)} max={shownLength(25)} step={studio.project.units === "imperial" ? 0.01 : 0.1} onCommit={(shown) => { const thicknessMm = storedLength(shown); if (thicknessMm !== insertThicknessMm) updateInserts({ thicknessMm }); }} />
+            <LengthField label="Acrylic kerf" unit={studio.shownLengthUnit} value={shownLength(inserts.kerfMm ?? studio.project.laserKerfMm)} min={0} max={shownLength(1)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onCommit={(shown) => { const kerfMm = storedLength(shown); if (kerfMm !== (inserts.kerfMm ?? studio.project.laserKerfMm)) updateInserts({ kerfMm }); }} />
+            <LengthField label="Fit clearance" unit={studio.shownLengthUnit} value={shownLength(inserts.fitClearanceMm)} min={0} max={shownLength(0.5)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onCommit={(shown) => { const fitClearanceMm = storedLength(shown); if (fitClearanceMm !== inserts.fitClearanceMm) updateInserts({ fitClearanceMm }); }} />
+          </div>
+          {#if insertThicknessMm > studio.project.materialThicknessMm}<small class="depth-note">Thicker than the wood: the water will stand {shownLength(insertThicknessMm - studio.project.materialThicknessMm)} {studio.shownLengthUnit} proud of its shore.</small>{/if}
+          {#if insertLakeRows.length}
+            <p class="subgroup-heading">Lakes</p>
+            <div class="toggle-stack insert-lakes">
+              {#each showAllInsertLakes ? insertLakeRows : insertLakeRows.slice(0, 8) as lake (lake.key)}
+                <Switch checked={!lake.excluded} onCheckedChange={(on) => setLakeInsert(lake.key, on)} aria-label={`Acrylic insert for ${lake.name}`}><span class="toggle-label">{lake.name}<small>{lake.excluded ? "Wood" : lake.insertIds.length ? lake.insertIds.join(", ") : "Stays wood"}</small></span></Switch>
+              {/each}
+            </div>
+            {#if insertLakeRows.length > 8}<p class="depth-chart-row"><button type="button" onclick={() => showAllInsertLakes = !showAllInsertLakes}>{showAllInsertLakes ? "Show fewer lakes" : `Show all ${insertLakeRows.length} lakes`}</button></p>{/if}
+          {/if}
+          <small class="depth-note">Each lake is cut out of the sheet at its waterline and filled with a fitted acrylic piece, exported as separate files. A 2 mm ledge on the sheet below holds it.</small>
+        </div>
+      {/if}
       <div class="field-stack">
         {#if studio.project.outputMode === "stack" && studio.project.optimizeMaterialUse}<LengthField label="Glue margin" unit={studio.shownLengthUnit} value={shownLength(studio.project.glueMarginMm)} min={shownLength(2)} max={shownLength(25)} step={studio.project.units === "imperial" ? 0.01 : 0.5} onCommit={(shown) => { const glueMarginMm = storedLength(shown); if (glueMarginMm !== studio.project.glueMarginMm) void updateFabrication({ glueMarginMm }); }} />{/if}
         {#if studio.project.outputMode === "stack"}<LengthField label="Laser kerf" unit={studio.shownLengthUnit} value={shownLength(studio.project.laserKerfMm)} min={0} max={shownLength(1)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onCommit={(shown) => { const laserKerfMm = storedLength(shown); if (laserKerfMm !== studio.project.laserKerfMm) void updateFabrication({ laserKerfMm }); }} />{/if}

@@ -26,7 +26,7 @@ export const SUMMARY_SCHEMA: Schema = {
     materialThicknessMm: { type: "number" }, verticalExaggeration: { type: "number" }, bounds: BOUNDS_SCHEMA,
   },
 };
-export const COVERAGE_SCHEMA: Schema = {
+const COVERAGE_SCHEMA: Schema = {
   type: "object",
   required: ["terrain", "lakeSurveys", "roadsAndWater", "notes"],
   properties: {

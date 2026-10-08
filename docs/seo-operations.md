@@ -186,6 +186,14 @@ links to its page, with a small **studio** link beside it. The featured lakes on
 
 ## Example projects
 
+### First-project paths and related content
+
+The homepage's three starters use `/studio?starter=relief`, `engraving` or `lake`. Descriptions live in `site/starters.ts`; settings are built lazily by `studio/starter-project.ts` from a fresh default project, never from saved machine settings. Startup restores a saved design first and opens the starter as an undoable change. Shared designs take precedence. The starter query is consumed so reloads retain edits; the first-visit checklist waits for an explicit Generate after size/material review. Fabrication exports still require current real terrain.
+
+`Article.svelte` renders curated next actions from `site/related-content.ts` on relevant guides, examples and generated lake pages. They are ordinary anchors, including on pages without JavaScript. Keep destinations published and descriptions specific; `related-content.test.ts` checks them. The LightBurn workflow is registered in metadata, guide navigation, usage landings and the sharing-card capture recipe.
+
+The export dialog's preview PNG is generated locally from the existing `StackTopView` or `EngravingPreview`, with its CSS resolved into standalone SVG before rasterization. The card labels it as a software preview and includes the geometry's source names/licenses and the attribution page. This lazy workflow uploads nothing and emits `share_preview_prepared`, independently of fabrication exports. Publish the compatible Worker event contract before or with the browser build.
+
 `/examples` lists worked projects; each page under `/examples/<slug>` comes from
 `ALL_EXAMPLES` in `apps/generator/src/lib/site/examples.ts` (Crater Lake keeps
 its own route). Pages never state numbers by hand: layer count, elevation range
@@ -274,8 +282,16 @@ become `other`. Links we publish (README, launch posts, creator walkthroughs)
 can also carry `utm_campaign` (`launch`, `readme`, `newsletter`, `creator`,
 `atomm`) and `utm_medium` (`social`, `forum`, `email`, `video`, `referral`);
 unlisted values become `other` and absent ones `none`, so free text is never
-sent. Events from tabs loaded before this change carry neither field. Only
-those categories and the public landing path are kept in tab session storage, with entry deduplication flags and
+sent. Events from tabs loaded before that change carry neither field. Fixed
+`channel` values from `utm_content` or recognized referrer hosts are
+recorded by the week 1 attribution release. Channels distinguish forums,
+social venues and numbered creator slots while broad sources stay comparable.
+The channel is independently optional in the Worker contract, preserving old
+open tabs. Unknown tags become `other`; absent/unrecoverable channels are `none`.
+Static lake entry tags can be recovered from the same-origin referrer when
+the studio starts the session. No arbitrary referrer path is collected. See
+[the launch link scheme](launch/README.md#link-scheme) for values and examples.
+Only those categories and the public landing path are kept in tab session storage, with entry deduplication flags and
 a 30-minute inactivity expiry. No coordinates, project names, raw query strings,
 custom data or stable user IDs are sent. Collection honors DNT and GPC and is
 best effort. It runs only on the production host (or the explicit E2E test build).
@@ -291,6 +307,11 @@ page, studio entries, generation success/attempts, and prepared fabrication
 exports, segmented by output and acquisition source, and by campaign and
 medium while a launch is running. Use Search Console for
 search traffic and Cloudflare Web Analytics for visit/device context.
+The [growth measurement runbook](launch/measurement.md) and
+`scripts/verify/growth-baseline.mjs` capture aggregate Cloudflare baselines,
+including sampling and availability. Segment new events by `channel` as well.
+Sampled provider counts are estimates; do not treat missing groups as proof of
+zero usage or event ratios as a unique-user conversion funnel.
 
 ## Account steps after publishing
 

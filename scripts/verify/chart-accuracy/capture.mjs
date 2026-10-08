@@ -1,10 +1,11 @@
 // Isolated diagnostic use of the real preview component; not a full UI workflow.
 import { readFile, writeFile } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
+import { appUrl } from '../../lib/app-url.mjs';
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 820 }, deviceScaleFactor: 1 });
-  await page.goto(process.env.CHART_STRESS_URL ?? 'http://127.0.0.1:5278');
+  await page.goto(appUrl('CHART_STRESS_URL'));
   const vector = JSON.parse(await readFile('scripts/data/depth-charts/usgs-lake-viking-2019.json'));
   const raster = JSON.parse(await readFile('scripts/verify/chart-accuracy/fixtures/viking-crop-record.json')).record;
   const scores = JSON.parse(await readFile('.topostack/chart-accuracy/accuracy-results.json'));

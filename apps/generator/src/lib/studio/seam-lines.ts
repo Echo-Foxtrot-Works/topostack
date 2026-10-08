@@ -1,18 +1,10 @@
-import type { Point2D, Polygon2D } from "@topostack/core";
+import { distanceToSegment, type Point2D, type Polygon2D } from "@topostack/core";
 
 /** Two pieces meeting along a seam share their boundary to well under this. */
 const SHARED_EDGE_TOLERANCE_MM = 1e-3;
 const CELL_MM = 2;
 
 type Segment = readonly [Point2D, Point2D];
-
-function distanceToSegment(point: Point2D, [start, end]: Segment): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  const t = lengthSquared ? Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared)) : 0;
-  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
-}
 
 function rings(polygon: Polygon2D): Point2D[][] {
   return [polygon.outer, ...polygon.holes];
@@ -58,7 +50,7 @@ export function sharedPieceEdges(polygons: Polygon2D[]): Segment[] {
         const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
         const bucket = grid.get(`${cell(middle.x)},${cell(middle.y)}`) ?? [];
         // Found from both sides of the seam; the two copies draw as one line.
-        if (bucket.some((entry) => entry.owner !== owner && distanceToSegment(middle, entry.segment) <= SHARED_EDGE_TOLERANCE_MM)) shared.push([start, end]);
+        if (bucket.some((entry) => entry.owner !== owner && distanceToSegment(middle, ...entry.segment) <= SHARED_EDGE_TOLERANCE_MM)) shared.push([start, end]);
       }
     }
   });

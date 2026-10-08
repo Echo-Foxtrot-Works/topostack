@@ -44,7 +44,6 @@ export function prepareChartReview(request: ChartBuildRequest): ChartReview {
   return { contours, shorelineId: "", controlPoints: [], alignmentConfirmed: false };
 }
 
-export { insideRing } from "./chart-geometry.ts";
 import { insideRing } from "./chart-geometry.ts";
 
 const cross = (a: Point2, b: Point2, c: Point2) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);

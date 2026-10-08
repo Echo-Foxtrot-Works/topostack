@@ -27,7 +27,7 @@
 
 .placement-stage--flat {
   pointer-events: auto;
-  background: #292d27;
+  background: var(--preview-stage-background);
 }
 
 .stack-top-view,

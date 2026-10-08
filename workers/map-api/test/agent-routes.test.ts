@@ -114,8 +114,11 @@ describe("POST /v1/projects/plan", () => {
 
   it("passes on a terrain outage and an exhausted terrain budget", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    const warn = vi.spyOn(console, "warn");
     const outage = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: -33.9, lon: 18.4 }, widthKm: 7 } }), env, context);
     expect(outage.status).toBe(502);
+    // The origin's own status is logged, so a refusing origin is visible and not only a run of 502s.
+    expect(warn.mock.calls.map(([line]) => JSON.parse(String(line)) as unknown)).toContainEqual({ message: "upstream_rejected", service: "Terrain origin", status: 503 });
     const noBudget = { ...env, TERRAIN_GLOBAL_LIMITER: deny() } as unknown as Env;
     const refused = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: -34.9, lon: 138.6 }, widthKm: 7 } }), noBudget, context);
     expect(refused.status).toBe(429);
@@ -154,11 +157,16 @@ describe("GET /v1/coverage", () => {
     expect(denver.aviation?.nasrCycle).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const ontario = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<{ aviation: unknown }>();
     expect(ontario.aviation).toBeNull();
+    // Across the antimeridian, Midway lies on the far side of the crop's unwrapped east edge.
+    const midway = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=179,27,-177,29"), env, context)).json<{ aviation: unknown }>();
+    expect(midway.aviation).not.toBeNull();
   });
 
   it("accepts a center and width, and refuses anything else", async () => {
     expect((await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=46.85&lon=-121.76&widthKm=10"), env, context)).status).toBe(200);
-    for (const query of ["", "bbox=1,2,3", "bbox=10,0,5,1", "lat=91&lon=0&widthKm=1"]) {
+    // West greater than east crosses the antimeridian.
+    expect((await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=177,-19.2,-178,-16"), env, context)).status).toBe(200);
+    for (const query of ["", "bbox=1,2,3", "bbox=10,0,10,1", "bbox=-190,0,-170,1", "lat=91&lon=0&widthKm=1"]) {
       expect((await worker.fetch(new Request(`https://api.topostack.test/v1/coverage?${query}`), env, context)).status).toBe(400);
     }
   });

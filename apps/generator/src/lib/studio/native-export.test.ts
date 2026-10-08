@@ -1,7 +1,9 @@
 import { unzipSync } from "fflate";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROJECT, type FabricationPackageV1 } from "@topostack/core";
-import { prepareProjectDownload, prepareProjectSettings, prepareSelectedDownload } from "$lib/studio/native-export";
+import { prepareProjectDownload, prepareProjectSettings, prepareSelectedDownload, startBrowserDownload } from "$lib/studio/native-export";
+
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("native export", () => {
   it("packages every project file into one clearly named download", async () => {
@@ -19,6 +21,42 @@ describe("native export", () => {
     expect(download.fileCount).toBe(2);
     expect(Object.keys(files)).toEqual(["mount-rainier-master.svg", "README.txt"]);
     expect(new TextDecoder().decode(files["README.txt"])).toBe("Build guide");
+  });
+
+  it("hands a single file over as itself rather than a ZIP", async () => {
+    const master = { filename: "crater-lake-engraving.svg", blob: new Blob(["<svg />"], { type: "image/svg+xml" }) };
+    expect(await prepareProjectDownload({ schemaVersion: 1, master, files: [master] })).toEqual({ ...master, fileCount: 1 });
+    // A selection that leaves one panel and no supporting files keeps that panel's own name.
+    const panel = { filename: "ridge-layer-01.svg", blob: new Blob(["<svg />"], { type: "image/svg+xml" }) };
+    expect(await prepareSelectedDownload({ schemaVersion: 1, master, files: [master, panel] }, "panels")).toEqual({ ...panel, fileCount: 1 });
+  });
+
+  it("names an archive after the project when the master has no recognizable name", async () => {
+    const master = { filename: ".svg", blob: new Blob(["<svg />"]) };
+    const download = await prepareProjectDownload({ schemaVersion: 1, master, files: [master, { filename: "README.txt", blob: new Blob(["x"]) }] });
+    expect(download.filename).toBe("topostack-project-project-files.zip");
+    expect(download.blob.type).toBe("application/zip");
+  });
+
+  it("saves the download through a hidden link and releases the blob URL afterwards", () => {
+    vi.useFakeTimers();
+    const anchor = { href: "", download: "", hidden: false, click: vi.fn(), remove: vi.fn() };
+    const append = vi.fn();
+    vi.stubGlobal("document", { createElement: vi.fn(() => anchor), body: { append } });
+    vi.stubGlobal("window", { setTimeout });
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:topostack/1");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const blob = new Blob(["{}"], { type: "application/json" });
+    startBrowserDownload({ blob, filename: "crater-lake-project.json", fileCount: 1 });
+    expect(create).toHaveBeenCalledWith(blob);
+    expect(anchor).toMatchObject({ href: "blob:topostack/1", download: "crater-lake-project.json", hidden: true });
+    expect(append).toHaveBeenCalledWith(anchor);
+    expect(anchor.click).toHaveBeenCalledTimes(1);
+    expect(anchor.remove).toHaveBeenCalledTimes(1);
+    // The browser still needs the URL while it starts the save.
+    expect(revoke).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1_000);
+    expect(revoke).toHaveBeenCalledWith("blob:topostack/1");
   });
 });
 
@@ -72,6 +110,45 @@ describe("export choices", () => {
     await expect(prepareSelectedDownload(output, "paint")).rejects.toThrow(/no paint templates/i);
   });
 
+  it("offers every nested stock sheet in panels, engravings and paint templates", async () => {
+    const sheets = ["ridge-sheet-01", "ridge-sheet-02", "ridge-sheet-12"];
+    const nested: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
+      ...sheets.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`), file(`${sheet}-paint-water.svg`)]),
+      // Clear acrylic water pieces are cut from different stock, so the wood options leave them out.
+      file("ridge-acrylic-sheet-01.svg"), file("ridge-acrylic-sheet-01-engrave.svg"), file("ridge-acrylic-03.svg"),
+      file("ridge-assembly-guide.html"), file("README.txt"), file("ATTRIBUTION.txt"),
+    ] };
+    for (const [option, suffix] of [["panels", ".svg"], ["engravings", "-engrave.svg"], ["paint", "-paint-water.svg"]] as const) {
+      const files = unzipSync(new Uint8Array(await (await prepareSelectedDownload(nested, option)).blob.arrayBuffer()));
+      expect(Object.keys(files)).toEqual([...sheets.map((sheet) => `${sheet}${suffix}`), "README.txt", "ATTRIBUTION.txt"]);
+    }
+  });
+
+  it("offers the acrylic inserts as their own bundle and keeps them out of the wood panels", async () => {
+    const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
+    const acrylic = ["ridge-acrylic-03", "ridge-acrylic-04-w2", "ridge-acrylic-04-w3-2", "ridge-acrylic-sheet-01"];
+    const withInserts: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
+      ...wood.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]),
+      ...acrylic.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]), file("ridge-acrylic-master.svg"),
+      file("ridge-assembly-guide.html"), file("README.txt"), file("ATTRIBUTION.txt"),
+    ] };
+    for (const option of ["panels", "engravings"] as const) {
+      const files = unzipSync(new Uint8Array(await (await prepareSelectedDownload(withInserts, option)).blob.arrayBuffer()));
+      expect(Object.keys(files).some((name) => name.includes("acrylic"))).toBe(false);
+    }
+    const download = await prepareSelectedDownload(withInserts, "acrylic");
+    const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
+    expect(Object.keys(files)).toEqual([...acrylic.flatMap((sheet) => [`${sheet}.svg`, `${sheet}-engrave.svg`]), "ridge-acrylic-master.svg", "README.txt", "ATTRIBUTION.txt"]);
+    expect(download.filename).toBe("ridge-layer-01-acrylic-inserts.zip");
+    await expect(prepareSelectedDownload(output, "acrylic")).rejects.toThrow(/no lake became an acrylic insert/i);
+  });
+
+  it("bundles every file for the everything option", async () => {
+    const download = await prepareSelectedDownload(output, "all");
+    expect(download).toMatchObject({ filename: "ridge-layer-01-project-files.zip", fileCount: output.files.length });
+    expect(Object.keys(unzipSync(new Uint8Array(await download.blob.arrayBuffer())))).toEqual(output.files.map((entry) => entry.filename));
+  });
+
   it("downloads individual files without wrapping them in a ZIP", async () => {
     expect(await prepareSelectedDownload(output, "master")).toEqual({ ...master, fileCount: 1 });
     expect((await prepareSelectedDownload(output, "assembly")).filename).toBe("ridge-layer-01-assembly-guide.html");
@@ -88,6 +165,7 @@ describe("export choices", () => {
     const data = JSON.parse(await download.blob.text());
     expect(parseProject(data.project)).toEqual({ ...DEFAULT_PROJECT, name: "My / mountain" });
     expect("charts" in data).toBe(false);
+    expect(prepareProjectSettings({ ...DEFAULT_PROJECT, name: "???" }).filename).toBe("topostack-project.json");
   });
 
   it("carries the traced depth charts a project needs to open elsewhere", async () => {

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/**/*.mjs",
+        "e2e/**/*.ts",
+        "e2e-live/**/*.ts",
+        "playwright*.config.ts"
+      ],
+      "project": [
+        "scripts/**/*.mjs",
+        "e2e/**/*.ts",
+        "e2e-live/**/*.ts"
+      ]
+    },
+    "workers/map-api": {
+      "entry": [
+        "test/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "test/**/*.ts"
+      ]
+    },
+    "apps/generator": {
+      "entry": [
+        "src/mcp-app/main.ts",
+        "vite.mcp-app.config.ts",
+        "src/lib/site/lake-preview/prepare.ts"
+      ]
+    }
+  }
+}

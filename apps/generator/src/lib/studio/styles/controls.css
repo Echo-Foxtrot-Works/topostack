@@ -193,6 +193,14 @@
   color: var(--loidolt-text-muted);
 }
 
+/* Per-lake acrylic switches: the lake's name, then which insert it became. */
+.insert-lakes .toggle-label small {
+  margin-left: auto;
+  color: var(--loidolt-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* A toggle that reveals its own settings when switched on. */
 .toggle-control {
   display: flex;

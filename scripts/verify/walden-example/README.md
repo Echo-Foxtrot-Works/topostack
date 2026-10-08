@@ -6,7 +6,7 @@ Source: [USGS WRIR 01-4137 cover](https://pubs.usgs.gov/wri/wri014137/pdf/cover.
 
 ## Reproduce
 
-Run from the repository root with Node 26, installed workspace dependencies, Playwright Chromium, and Poppler. Use a local development server with real map access. The default URL is `http://localhost:5274/studio`; override with `CHART_STRESS_URL`.
+Run from the repository root with Node 26, installed workspace dependencies, Playwright Chromium, and Poppler. Use a local development server with real map access. The default URL is `http://localhost:5274/studio`; override with `TOPOSTACK_APP_URL`.
 
 ```sh
 node scripts/verify/walden-example/prepare.mjs

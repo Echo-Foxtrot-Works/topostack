@@ -10,7 +10,7 @@ const lookup = vi.hoisted(() => ({ lakesNear: vi.fn(), wholeLake: vi.fn(), searc
 const storage = vi.hoisted(() => ({ listUserCharts: vi.fn(), deleteUserChart: vi.fn() }));
 const builds = vi.hoisted(() => [] as { request: Record<string, unknown>; resolve: (result: unknown) => void }[]);
 vi.mock("$lib/domain/lake-lookup", () => ({ lakesNear: lookup.lakesNear, wholeLake: lookup.wholeLake }));
-vi.mock("$lib/domain/data-provider", () => ({ searchPlaces: lookup.searchPlaces }));
+vi.mock("$lib/domain/geocode", () => ({ searchPlaces: lookup.searchPlaces }));
 vi.mock("$lib/storage/user-charts", () => ({ listUserCharts: storage.listUserCharts, deleteUserChart: storage.deleteUserChart }));
 vi.mock("$lib/workers/chart-trace-client", () => ({
   ChartTraceClient: class {

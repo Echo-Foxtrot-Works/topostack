@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import { base } from "$app/paths";
   import Article from "$lib/site/Article.svelte";
 </script>
@@ -12,10 +13,15 @@
     <div><dt>Cut panels <span>ZIP · layered</span></dt><dd>One SVG per fabrication panel with its cut, score and engrave paths, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Engraving panels <span>ZIP · layered</span></dt><dd>The engraving-only companion for each panel, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Paint templates <span>ZIP · layered</span></dt><dd>With <strong>Water paint templates</strong> on: a paper stencil for each panel that has visible water, plus README.txt and ATTRIBUTION.txt.</dd></div>
+    <div><dt>Acrylic inserts <span>ZIP · layered</span></dt><dd>With <strong>Acrylic water inserts</strong> on: the acrylic panels or sheets, their engraving-only companions and the acrylic master, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Assembly guide <span>SVG · layered</span></dt><dd>The stacking reference on its own.</dd></div>
     <div><dt>Project settings <span>JSON</span></dt><dd>Your settings, for backup or to continue on another device. Always available, even when artwork export is blocked.</dd></div>
   </dl>
   <p>ZIP and file names start with your project name, lower-cased with spaces replaced by hyphens. The examples below use <code>my-map</code>. The combined download is limited to 100 MB; if a project exceeds it, reduce the map details or the size of the map area.</p>
+
+  <h2 id="water-finishes-and-their-files">Water finishes and their files</h2>
+  <WaterFinishComparison />
+  <p>For painted wood, download <strong>Paint templates</strong> and cut the paper stencils with kerf compensation off. For acrylic, download <strong>Acrylic inserts</strong> and use the separate acrylic thickness, kerf and fit clearance from Fabrication settings. <strong>Complete project</strong> includes both sets when enabled. See the <a href={`${base}/guides/water-paint-templates`}>water paint template guide</a> for painting the bed before assembly.</p>
 
   <h2>Layered relief files</h2>
   <table>
@@ -27,6 +33,7 @@
       <tr><td><code>my-map-layer-03-b2.svg</code></td><td>With a work area set, one panel per tile of a split layer: column B, row 2. A piece that needs its own sheet adds a number, as in <code>-b2-2</code>.</td></tr>
       <tr><td><code>…-engrave.svg</code></td><td>The engraving-only companion of the panel with the same name, in the same position. It has no cut or score paths.</td></tr>
       <tr><td><code>…-paint-water.svg</code></td><td>A paper stencil registered to the panel with the same name. It is the cut piece at nominal size (cut it with kerf compensation off) with the water that stays visible once the stack is glued cut away, reaching 1.5 mm under the layer above so a slightly misplaced stencil leaves no bare edge. Where water meets the piece edge the stencil stops short of it, so register on the edges and tabs it keeps. Lay it flush to the piece, spray, and remove it before gluing. Only written when <strong>Water paint templates</strong> is on and the panel has visible water.</td></tr>
+      <tr><td><code>my-map-acrylic-04.svg</code></td><td>With <strong>Acrylic water inserts</strong> on: the acrylic inserts that fill the lake openings in layer 04, cut and engraved as their own job with your acrylic settings. Each insert is smaller than its opening by the fit clearance and compensated for the acrylic kerf. An insert too large to share a panel with the others gets its own, as in <code>-acrylic-04-w2.svg</code>; nested acrylic is written as <code>my-map-acrylic-sheet-01.svg</code>. Each has an <code>-engrave.svg</code> companion, and <code>my-map-acrylic-master.svg</code> holds them all. Inserts carry no engraved ids: the assembly guide names them W1, W2 and so on.</td></tr>
       <tr><td><code>my-map-assembly-guide.html</code></td><td>A step-by-step assembly booklet that opens in any browser and prints on US Letter: finished size and materials, a checklist of sheets to cut, what the engraved marks mean, and one illustrated step per layer from layer 01 upward, showing the stack so far with the new layer highlighted, which sheet its pieces come from, and where split pieces go.</td></tr>
       <tr><td><code>README.txt</code></td><td>Layer count, finished stack height, applied vertical exaggeration and horizontal scale, any lake depth fitting, line widths, panel count, colors, kerf and nesting notes.</td></tr>
       <tr><td><code>my-map-project.json</code></td><td>Your settings plus generation details (see below).</td></tr>
@@ -65,7 +72,7 @@
 
   <h2 id="kerf-panel-size-and-alignment-marks">Kerf, panel size and alignment marks</h2>
   <p>In layered output, <strong>Laser kerf</strong> in Fabrication settings is the full width your beam removes. Outer cuts move outward and holes move inward by half that width, so the finished pieces match the artwork. Each panel's canvas is enlarged by the kerf to make room. Set Laser kerf to 0 if your laser software applies its own compensation.</p>
-  <p>When <strong>Assembly guides</strong> is on, each lower layer has an engraved outline of the layer above it, inset by the kerf, labeled with that layer’s number (for example <code>L04</code> on layer 03). They are hidden once the next layer is glued in place.</p>
+  <p>When <strong>Assembly guides</strong> is on, each lower layer has an engraved outline of the layer above it, inset by half the line width plus the kerf, labeled with that layer’s number (for example <code>L04</code> on layer 03). They are hidden once the next layer is glued in place.</p>
   <p>When <strong>Work area width</strong> or <strong>Work area height</strong> splits a layer, each piece also engraves its id, such as <code>L03-B2</code> (layer 03, column B, row 2), in a separate green (<code>#00A651</code>) <code>ASSEMBLY</code> group where the next layer will cover it. Assign that color to Score or turn off <strong>Assembly labels</strong> if you don't want it. Seam edges get the same kerf compensation as every other cut, so pieces butt together at their intended size.</p>
 
   <h2>Project file</h2>
@@ -77,6 +84,7 @@
   <p>Every SVG also carries a short “Made with TopoStack” credit in its <code>&lt;desc&gt;</code> description, and README.txt ends with the same line. The description is file metadata: it is not a path, so it never draws, cuts or engraves.</p>
 
   <h2>Next steps</h2>
+  <p>Using LightBurn? Follow the <a href={`${base}/guides/lightburn`}>LightBurn import and processing guide</a> to check dimensions, assign operations and apply kerf once.</p>
   <p>Follow the <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> or the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a>, or see <a href={`${base}/guides/troubleshooting`}>troubleshooting</a> if export is blocked.</p>
 </Article>
 

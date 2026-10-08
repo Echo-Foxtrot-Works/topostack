@@ -2,34 +2,35 @@
 
 Which existing pictures and videos to use where, with captions that say what they are. **Everything here is a screenshot or render from the TopoStack software.** None shows a physical piece, and no caption, post or crop may suggest otherwise. When real builds exist, they should lead and these should support them (see the [shot list](#shot-list-for-real-builds)).
 
-Provenance for each set is recorded next to it: [atomm/media-provenance.json](../../atomm/media-provenance.json) (v6 Atomm set), [docs/images/README.md](../images/README.md), [docs/images/splitting-paint-templates/README.md](../images/splitting-paint-templates/README.md), [docs/images/walden-example/README.md](../images/walden-example/README.md) and [apps/generator/static/images/guides/chart-images.md](../../apps/generator/static/images/guides/chart-images.md).
+Provenance for each set is recorded next to it: [atomm/media-provenance.json](../../atomm/media-provenance.json) (v8 Atomm set), [docs/images/README.md](../images/README.md), [docs/images/splitting-paint-templates/README.md](../images/splitting-paint-templates/README.md), [docs/images/walden-example/README.md](../images/walden-example/README.md) and [apps/generator/static/images/guides/chart-images.md](../../apps/generator/static/images/guides/chart-images.md).
+
+## Community physical builds
+
+Physical builds are now documented in [activity.md](activity.md), including a small cardboard relief and Moab/Point Lobos projects. These photos are not bundled launch assets and have no recorded reuse permission. Link to the original posts until the makers authorize reuse; obtain project settings and machine/material details for a reproducible tutorial. Repository screenshots remain labelled as software previews.
 
 ## Do not use
 
 | File | Why |
 | --- | --- |
-| `atomm/assets/topostack-cover-workshop-4x3.png` | AI image edit (see `atomm/cover-prompt*.txt`) that places a render on a photoreal workshop table. It looks like a photo of a built piece. |
-| `atomm/assets/topostack-cover-workshop-v2-4x3.png` | Same as above. |
-| `atomm/assets/topostack-cover.png` | Photoreal stacked wooden discs on a dark background. It is not a studio capture, no provenance file covers it, and it reads as a photograph. |
-| Older gallery cards: `atomm/assets/topostack-gallery-01-3d.png`, `-01-hero`, `-02-places`, `-03-exploded`, `-03-flat-engraving`, `-04-layered-flat`, `-05-personalize`, `-06-lake-depth`, `-07-export`, `-08-custom-marker`, `-08-workbench`, `-09-shapes` | Superseded studio captures. The ones checked carry the legacy `topostack.echofoxtrot.works` domain and older UI. Use the `-v6` set instead. |
-| `atomm/assets/topostack-cover-4x3.png`, `topostack-cover-motion-4x3.png` | Older software-preview covers, superseded by `topostack-cover-v6.png`. |
-| `atomm/assets/topostack-cover-loop-v3.mp4`, `topostack-product-showcase-v3.mp4`, `topostack-exploded-stack-v2.mp4` | Native renders, but older captures; superseded by the v6 videos. |
+| `atomm/assets/topostack-gallery-03-flat-engraving.png`, `-08-custom-marker.png` | Superseded studio captures with the legacy `topostack.echofoxtrot.works` domain and older UI. They stay only as crops for the guide sharing cards (`scripts/dev/capture-social-cards.mjs`). Use the `-v8` set instead. |
+
+The AI-edited workshop covers, the photoreal `topostack-cover.png`, the older gallery cards and covers, and the v2/v3 videos were removed from the repository on 2026-10-06, and the v6 set, which the v8 captures replace one for one, on 2026-10-07; git history keeps them. Do not restore them for posts: the covers read as photographs of built pieces.
 
 ## Recommended assets
 
 | Asset | Size | Honest caption / alt text | Best for |
 | --- | --- | --- | --- |
-| `atomm/assets/topostack-cover-loop-v6.mp4` | 1920 × 1440, 6 s, silent, 16 MB | "Software render: a layered Crater Lake model in the TopoStack studio, separating into its layers. Survey depth where available; exaggerated for display." | X, Bluesky, Mastodon, Reddit video posts, Product Hunt video slot |
-| `atomm/assets/topostack-showcase-v6.mp4` | 1920 × 1440, 44 s, silent, 52 MB | "A tour of the TopoStack studio: 3D preview, cut layers, flat engraving, lake depth, nesting and export. Screen captures and renders; no physical builds shown." | Product Hunt, creator pitches (as a link), the xTool community |
-| `atomm/assets/topostack-cover-v6.png` | 3200 × 2400 | "Software preview: Crater Lake as a layered relief in TopoStack." | Product Hunt thumbnail source, Facebook groups |
-| `atomm/assets/topostack-gallery-01-workbench-v6.png` | 3200 × 2400 | "Crater Lake in the TopoStack workbench (screenshot)." | r/xToolOfficial, Atomm-related posts |
-| `atomm/assets/topostack-gallery-02-layers-v6.png` | 3200 × 2400 | "Separating the rendered terrain stack to inspect each layer (screenshot)." | r/lasercutting, Facebook groups |
-| `atomm/assets/topostack-gallery-03-cut-layer-v6.png` | 3200 × 2400 | "One cut layer before export: red cuts, blue score lines (screenshot)." | LightBurn forum, r/Lightburn |
-| `atomm/assets/topostack-gallery-04-flat-v6.png` | 3200 × 2400 | "Flat contour engraving artwork generated for Crater Lake (screenshot)." | r/cartography |
-| `atomm/assets/topostack-gallery-05-depth-v6.png` | 3200 × 2400 | "Lake-floor relief and water-depth controls (screenshot). USGS survey where available; gaps filled." | r/gis |
-| `atomm/assets/topostack-gallery-06-nesting-v6.png` | 3200 × 2400 | "Sheet layouts updating while automatic nesting runs (screenshot)." | r/xToolOfficial, Show HN (as a link) |
-| `atomm/assets/topostack-gallery-07-export-v6.png` | 3200 × 2400 | "Export view showing the actual artwork and what the download contains (screenshot)." | LightBurn forum |
-| `atomm/assets/topostack-gallery-08-material-v6.png` | 3200 × 2400 | "Layout recomputed for 700 × 500 mm material (screenshot)." | r/xToolOfficial, r/glowforge |
+| `atomm/assets/topostack-cover-loop-v8.mp4` | 1920 × 1440, 6 s, silent, 7 MB | "Software render: a layered Crater Lake model in the TopoStack studio, separating into its layers. Survey depth where available; exaggerated for display." | X, Bluesky, Mastodon, Reddit video posts, Product Hunt video slot |
+| `atomm/assets/topostack-showcase-v8.mp4` | 1920 × 1440, 76 s, silent, 35 MB | "A tour of the TopoStack studio: 3D preview, cut layers, flat engraving, lake depth, nesting and export. Screen captures and renders; no physical builds shown." | Product Hunt, creator pitches (as a link), the xTool community |
+| `atomm/assets/topostack-cover-v8.png` | 3200 × 2400 | "Software preview: Crater Lake as a layered relief in TopoStack." | Product Hunt thumbnail source, Facebook groups |
+| `atomm/assets/topostack-gallery-01-workbench-v8.png` | 3200 × 2400 | "Crater Lake in the TopoStack workbench (screenshot)." | r/xToolOfficial, Atomm-related posts |
+| `atomm/assets/topostack-gallery-02-layers-v8.png` | 3200 × 2400 | "Separating the rendered terrain stack to inspect each layer (screenshot)." | r/lasercutting, Facebook groups |
+| `atomm/assets/topostack-gallery-03-cut-layer-v8.png` | 3200 × 2400 | "One cut layer before export: red cuts, blue score lines (screenshot)." | LightBurn forum, r/Lightburn |
+| `atomm/assets/topostack-gallery-04-flat-v8.png` | 3200 × 2400 | "Flat contour engraving artwork generated for Crater Lake (screenshot)." | r/cartography |
+| `atomm/assets/topostack-gallery-05-depth-v8.png` | 3200 × 2400 | "Lake-floor relief and water-depth controls (screenshot). USGS survey where available; gaps filled." | r/gis |
+| `atomm/assets/topostack-gallery-06-nesting-v8.png` | 3200 × 2400 | "Sheet layouts updating while automatic nesting runs (screenshot)." | r/xToolOfficial, Show HN (as a link) |
+| `atomm/assets/topostack-gallery-07-export-v8.png` | 3200 × 2400 | "Export view showing the actual artwork and what the download contains (screenshot)." | LightBurn forum |
+| `atomm/assets/topostack-gallery-08-material-v8.png` | 3200 × 2400 | "Layout recomputed for 700 × 500 mm material (screenshot)." | r/xToolOfficial, r/glowforge |
 | `apps/generator/static/images/social-crater-lake.png` | 1200 × 630 | "TopoStack studio render of Crater Lake with surveyed lake floor." | Link-preview image, X/Bluesky/Mastodon still |
 | `apps/generator/static/images/studio-crater-lake.png` (also `docs/images/studio-crater-lake.png`) | 1280 × 900 | "The TopoStack studio with freshly generated Crater Lake terrain and USGS survey data (screenshot). Depth exaggerated for display." | Show HN (as a link), r/gis |
 | `docs/images/splitting-paint-templates/01-split-relief.png` … `04-lower-layer-paint-template.png` | 3200 × 2200 | Use the captions in [that folder's README](../images/splitting-paint-templates/README.md). Add "screenshot" to each. | r/glowforge, Glowforge forum, small-bed threads |
@@ -51,22 +52,22 @@ Rules for captions:
 
 | Channel | Lead with | Also |
 | --- | --- | --- |
-| r/lasercutting, Facebook groups | `topostack-gallery-02-layers-v6.png` | `topostack-cover-loop-v6.mp4` |
-| r/xToolOfficial / xTool community | `topostack-gallery-06-nesting-v6.png` | `topostack-gallery-01-workbench-v6.png` |
+| r/lasercutting, Facebook groups | `topostack-gallery-02-layers-v8.png` | `topostack-cover-loop-v8.mp4` |
+| r/xToolOfficial / xTool community | `topostack-gallery-06-nesting-v8.png` | `topostack-gallery-01-workbench-v8.png` |
 | r/glowforge, Glowforge forum | `splitting-paint-templates/02-split-cut-layer.png` | `03-water-paint-template.png` |
-| LightBurn forum | `topostack-gallery-03-cut-layer-v6.png` | `topostack-gallery-07-export-v6.png` |
-| r/gis | `topostack-gallery-05-depth-v6.png` | `walden-reviewed-workspace.png`, `lake-tahoe.webp` |
-| r/cartography | `topostack-gallery-04-flat-v6.png` | `workflows.svg` |
+| LightBurn forum | `topostack-gallery-03-cut-layer-v8.png` | `topostack-gallery-07-export-v8.png` |
+| r/gis | `topostack-gallery-05-depth-v8.png` | `walden-reviewed-workspace.png`, `lake-tahoe.webp` |
+| r/cartography | `topostack-gallery-04-flat-v8.png` | `workflows.svg` |
 | Show HN | none (HN has no images); the link preview uses `social-crater-lake.png` | |
 | Product Hunt | see below | |
-| X / Bluesky / Mastodon | `topostack-cover-loop-v6.mp4` | `social-crater-lake.png` |
+| X / Bluesky / Mastodon | `topostack-cover-loop-v8.mp4` | `social-crater-lake.png` |
 
 ## Product Hunt gallery
 
-Product Hunt recommends 1270 × 760 gallery images and needs at least two. The v6 cards are 4:3, so pad them rather than crop, to keep their captions. For example:
+Product Hunt recommends 1270 × 760 gallery images and needs at least two. The v8 cards are 4:3, so pad them rather than crop, to keep their captions. For example:
 
 ```sh
-ffmpeg -i atomm/assets/topostack-gallery-02-layers-v6.png \
+ffmpeg -i atomm/assets/topostack-gallery-02-layers-v8.png \
   -vf "scale=-1:760,pad=1270:760:(ow-iw)/2:0:color=0xe9ebee" ph-02-layers.png
 ```
 

@@ -1,4 +1,5 @@
 import type { LakeDirectoryEntry } from "./lake-directory.ts";
+import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "./geo.ts";
 
 /**
  * The small map on each /lake/<slug> page that shows where the lake is. It is
@@ -46,8 +47,6 @@ const MAX_DOTS = 600;
 /** A survey box narrower than this (SVG units) also gets a marker. */
 const MIN_BOX = 8;
 
-const KM_PER_DEGREE_LAT = 110.574;
-const kmPerDegreeLon = (lat: number): number => 111.32 * Math.cos(lat * Math.PI / 180);
 
 /** The map's extent in degrees around a lake: [west, south, east, north]. */
 export function locatorWindow([west, south, east, north]: Bounds): Bounds {

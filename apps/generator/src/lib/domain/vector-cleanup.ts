@@ -1,4 +1,4 @@
-import type { MarkingFeature, Point2D, Polygon2D } from "@topostack/core";
+import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, distanceToSegment, polylineLength, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
 
 /** Pure vector-tile geometry cleanup shared by the data provider and preview refreshes. */
@@ -59,21 +59,6 @@ function samePoint(left: Point2D, right: Point2D, tolerance = 1e-7): boolean {
   return Math.hypot(left.x - right.x, left.y - right.y) <= tolerance;
 }
 
-function pathLength(points: Point2D[]): number {
-  let length = 0;
-  for (let index = 0; index < points.length - 1; index += 1) length += Math.hypot(points[index + 1]!.x - points[index]!.x, points[index + 1]!.y - points[index]!.y);
-  return length;
-}
-
-function distanceToSegment(point: Point2D, start: Point2D, end: Point2D): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared <= 1e-12) return Math.hypot(point.x - start.x, point.y - start.y);
-  const ratio = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-  return Math.hypot(point.x - (start.x + dx * ratio), point.y - (start.y + dy * ratio));
-}
-
 function simplifyPath(points: Point2D[], tolerance: number): Point2D[] {
   if (points.length < 3 || tolerance <= 0) return points;
   const closed = samePoint(points[0]!, points.at(-1)!);
@@ -128,17 +113,16 @@ export function dissolveWaterAreas(polygons: Polygon2D[], minimumFeatureMm: numb
 
 /** polygon-clipping emits outer-first rings; restore the winding Polygon2D promises. */
 export function multiPolygonToAreas(multi: MultiPolygon, minimumFeatureMm: number): Polygon2D[] {
-  const tolerance = minimumFeatureMm * 0.18;
   const areas: Polygon2D[] = [];
   for (const polygon of multi) {
     const [outerRing, ...holeRings] = polygon;
     if (!outerRing) continue;
-    const outer = closedSimplified(outerRing, tolerance);
+    const outer = closedSimplified(outerRing, CONTOUR_SIMPLIFICATION_TOLERANCE_MM);
     if (!ringIsLargeEnough(outer, minimumFeatureMm)) continue;
     areas.push({
       outer: signedArea(outer) < 0 ? [...outer].reverse() : outer,
       holes: holeRings
-        .map((ring) => closedSimplified(ring, tolerance))
+        .map((ring) => closedSimplified(ring, CONTOUR_SIMPLIFICATION_TOLERANCE_MM))
         .filter((ring) => ringIsLargeEnough(ring, minimumFeatureMm))
         .map((ring) => (signedArea(ring) > 0 ? [...ring].reverse() : ring)),
     });
@@ -150,14 +134,6 @@ function closedSimplified(ring: readonly Pair[], tolerance: number): Point2D[] {
   const points = simplifyPath(ring.map(([x, y]) => ({ x, y })), tolerance);
   if (!samePoint(points[0]!, points.at(-1)!)) points.push({ ...points[0]! });
   return points;
-}
-
-function signedArea(points: Point2D[]): number {
-  let total = 0;
-  for (let index = 0, previous = points.length - 1; index < points.length; previous = index, index += 1) {
-    total += (points[previous]!.x - points[index]!.x) * (points[previous]!.y + points[index]!.y);
-  }
-  return total / 2;
 }
 
 /** Dissolve vector-tile polygon fragments before extracting their shorelines. */
@@ -237,8 +213,8 @@ export function joinPaths(features: MarkingFeature[], groupKey: (feature: Markin
 export function cleanWaterwayMarkings(markings: MarkingFeature[], minimumFeatureMm: number): MarkingFeature[] {
   const result: MarkingFeature[] = [];
   for (const { feature, points } of joinPaths(markings.filter((marking) => marking.points.length >= 2))) {
-    const simplified = simplifyPath(points, minimumFeatureMm * 0.18);
-    if (pathLength(simplified) >= minimumFeatureMm) result.push({ ...feature, id: `waterway-${result.length}`, points: simplified });
+    const simplified = simplifyPath(points, CONTOUR_SIMPLIFICATION_TOLERANCE_MM);
+    if (polylineLength(simplified) >= minimumFeatureMm) result.push({ ...feature, id: `waterway-${result.length}`, points: simplified });
   }
   return result;
 }

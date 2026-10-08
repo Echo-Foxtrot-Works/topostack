@@ -95,7 +95,7 @@ test("mobile readers can navigate guides, examples and the studio with correct m
     events.push(route.request().postDataJSON());
     await route.fulfill({ status: 204 });
   });
-  await page.goto("/?utm_source=github");
+  await page.goto("/?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_content=github");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "index, follow, max-image-preview:large");
   await page.getByRole("link", { name: "How to make a layered topographic map" }).click();
   await expect(page).toHaveTitle("How to Make a Laser-Cut Topographic Map | TopoStack");
@@ -120,7 +120,7 @@ test("mobile readers can navigate guides, examples and the studio with correct m
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
   // Opening an example also starts its terrain generation, which reports its own events.
   await expect.poll(() => events.map((event) => event.event).slice(0, 3)).toEqual(["landing_view", "studio_open", "generation_started"]);
-  expect(events.every((event) => event.source === "github" && event.landing === "/")).toBe(true);
+  expect(events.every((event) => event.source === "github" && event.landing === "/" && event.channel === "github" && event.campaign === "readme" && event.medium === "referral")).toBe(true);
 });
 
 test("a guide explains the workflow with JavaScript disabled", async ({ browser, baseURL }) => {

@@ -3,7 +3,7 @@ import type { SheetNesting } from "$lib/studio/sheet-nesting.svelte";
 import type { GeoPoint, GeometryIRV1, LineStyleV1, OperationPath, ProjectConfigV1, SourceBundleV1, TerrainStackPlan, UserDepthChartRefV1 } from "@topostack/core";
 import type { elevationUnit, lengthUnit, planSeamGrid } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
-import type { PlaceResult } from "$lib/domain/data-provider";
+import type { PlaceResult } from "$lib/domain/geocode";
 import type { studioFeedbackContext } from "$lib/site/feedback";
 import type { ExportPhase } from "$lib/studio/export-notice";
 import type { HistoryAvailability } from "$lib/studio/history";
@@ -65,6 +65,8 @@ export interface StudioContext {
   readonly exportReady: boolean;
   /** Sheet nesting for the export: search progress, the layout found, and whether to use it. */
   readonly sheetNesting: SheetNesting;
+  /** Layout of the acrylic water inserts on their own stock sheets. */
+  readonly acrylicSheetNesting: SheetNesting;
   /** Layer, panel and height counts (or contour count) for the preview readout. */
   readonly outputSummary: readonly string[];
   readonly booted: boolean;

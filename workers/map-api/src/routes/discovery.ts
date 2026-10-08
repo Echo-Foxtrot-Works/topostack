@@ -1,6 +1,7 @@
 import { publicOrigin, type AgentContext } from "../agent/projects";
-import { MCP_PATH } from "../mcp/server";
+import { MCP_PATH, PUBLIC_HOUR_CACHE } from "../paths";
 import { makingAModelGuide } from "../mcp/resources";
+import { hex } from "../hex";
 
 /**
  * Well-known documents that let an agent find TopoStack's MCP server and HTTP
@@ -19,12 +20,12 @@ import { makingAModelGuide } from "../mcp/resources";
 export const API_CATALOG_PATH = "/.well-known/api-catalog";
 export const SKILLS_INDEX_PATH = "/.well-known/agent-skills/index.json";
 export const ARD_PATHS = ["/.well-known/ard.json", "/.well-known/ai-catalog.json"] as const;
-export const SKILL_NAME = "plan-topostack-model";
+const SKILL_NAME = "plan-topostack-model";
 export const SKILL_PATH = `/.well-known/agent-skills/${SKILL_NAME}/SKILL.md`;
 const SERVER_CARD_PATH = "/.well-known/mcp/server-card.json";
 const OPENAPI_PATH = "/v1/openapi.json";
 const OPENAPI_TYPE = "application/vnd.oai.openapi+json;version=3.1";
-const CACHE = "public, max-age=3600";
+const CACHE = PUBLIC_HOUR_CACHE;
 
 type DiscoveryContext = Pick<AgentContext, "env" | "request">;
 
@@ -80,7 +81,7 @@ export function apiCatalogResponse(context: DiscoveryContext): Response {
 const SKILL_DESCRIPTION = "Plan a laser-cut layered terrain model or flat topographic engraving of a real place with TopoStack: find the place, check sheet count, height and scale, then hand the user a studio link that generates the SVG files. Use when someone wants a topo map, terrain relief, lake depth map or contour engraving for a laser cutter.";
 
 /** The skill: how to reach the tools and the order to call them in, then the sizing guide the MCP server also serves. */
-export function skillMarkdown(context: DiscoveryContext): string {
+function skillMarkdown(context: DiscoveryContext): string {
   const { site, api } = origins(context);
   // The description holds a colon, so it is quoted; a JSON string is valid YAML.
   return `---
@@ -112,7 +113,7 @@ ${makingAModelGuide(site)}`;
 
 async function sha256Digest(text: string): Promise<string> {
   const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
-  return `sha256:${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  return `sha256:${hex(bytes)}`;
 }
 
 export function skillResponse(context: DiscoveryContext): Response {

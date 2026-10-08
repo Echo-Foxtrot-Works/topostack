@@ -1,4 +1,4 @@
-import { clipPolyline, type PreparedPolygons } from "../primitives/geometry2d.js";
+import { clipPolyline, polylineLength, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { isBitmapFont, missingGlyphs } from "../annotate/font-data.js";
 import type { MarkingFeature, Point2D, ProjectConfigV1, TextFont, TransportationClass } from "../types.js";
 
@@ -67,12 +67,6 @@ function withoutMissingGlyphs(value: string, font: TextFont): string {
   return [...value].map((character) => (missing.has(character) ? " " : character)).join("");
 }
 
-export function polylineLength(points: Point2D[]): number {
-  return points.reduce((total, point, index) => {
-    const next = points[index + 1];
-    return total + (next ? Math.hypot(next.x - point.x, next.y - point.y) : 0);
-  }, 0);
-}
 
 export function longestPath(paths: Point2D[][]): number {
   let longest = Number.NEGATIVE_INFINITY;

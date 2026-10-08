@@ -9,8 +9,8 @@ import catalog from "../../../../../scripts/data/noaa-great-lakes.json";
 
 const registry = validateSurveyCatalog(rawSurveyCatalog);
 
-export const NOAA_DATASET_VERSION = catalog.dataset;
-export const NOAA_ATTRIBUTION = {
+const NOAA_DATASET_VERSION = catalog.dataset;
+const NOAA_ATTRIBUTION = {
   name: "NOAA NCEI Great Lakes Bathymetry",
   url: catalog.sourceUrl,
   license: "NOAA/NCEI — Great Lakes bathymetric grids; Lake Superior is a draft. " + catalog.lakes.flatMap((lake) => lake.doi ? [lake.doi] : []).join("; "),

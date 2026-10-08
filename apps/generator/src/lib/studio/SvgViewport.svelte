@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount, getContext, untrack, type Snippet } from "svelte";
+  import { getEmbedded } from "$lib/studio/embed-context";
+  import { onDestroy, onMount, untrack, type Snippet } from "svelte";
   import { IconButton } from "@loidolt/theme-svelte";
   import AtommZoom from "$lib/atomm/AtommZoom.svelte";
-  const isEmbedded = getContext<() => boolean>("atomm-embedded") ?? (() => false);
+  const isEmbedded = getEmbedded();
   import { Minus, Plus, RotateCcw } from "@lucide/svelte";
 
   let { widthMm, heightMm, label, svgLabel, controlsLabel, resetLabel, children, editable = false, topLeft = false, padding = 5, svg = $bindable(), onactivate, onkeydown, onviewchange }: {

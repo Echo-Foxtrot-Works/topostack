@@ -1,5 +1,6 @@
 import { DEFAULT_PROJECT, MAX_PROJECT_NAME_LENGTH, parseProject, type ProjectConfigV1 } from "@topostack/core";
 import { UnreadableSavedProjectError } from "$lib/storage/storage";
+import { starterById, type StarterId } from "$lib/site/starters";
 
 /** Example slugs are lowercase words joined by hyphens; anything else never reaches the network. */
 const EXAMPLE_SLUG = /^[a-z0-9-]+$/;
@@ -22,6 +23,8 @@ export interface StartupRestoreHost {
   loadExample: (slug: string) => Promise<unknown>;
   /** Consumes the `example` parameter so a refresh restores later edits instead. */
   consumeExampleLink: () => Promise<void>;
+  consumeStarterLink: () => Promise<void>;
+  onStarterOpened: (id: StarterId) => void;
   isCancelled: () => boolean;
   currentProject: () => ProjectConfigV1;
   /** Swap in the saved project as the new baseline (no undo into the default project). */
@@ -44,8 +47,9 @@ export interface StartupRestoreResult {
 
 /**
  * Restore the autosaved project, then apply a shared design (`#p=`), an
- * `?example=` link or a `?lake=` directory link on top of it, in that order of
+ * `?starter=`, `?example=` or `?lake=` link on top of it, in that order of
  * precedence. A saved project that cannot be read still lets the link open.
+ * Starters wait for a review of size/material and an explicit Generate.
  * Examples and directory lakes are generated on arrival; a shared design waits
  * for Generate unless its link carries `?generate=1`, as the links assistants
  * make do.
@@ -84,6 +88,19 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
       } else {
         host.setStatus("Shared design opened · generate terrain to preview it · Undo returns to your previous project");
       }
+      return { autosave };
+    }
+    const starter = new URLSearchParams(host.search).get("starter");
+    if (starter !== null) {
+      const { starterProject } = await import("$lib/studio/starter-project");
+      if (host.isCancelled()) return { autosave };
+      const next = starterProject(starter);
+      await host.consumeStarterLink();
+      if (host.isCancelled()) return { autosave };
+      if (!next) { host.setStatus("Starter not found · your project is unchanged"); return { autosave }; }
+      host.openExample(next, host.currentProject());
+      host.onStarterOpened(starterById(starter)!.id);
+      host.setStatus("Starter opened · review the size and material, then generate terrain · Undo returns to your previous project");
       return { autosave };
     }
     const example = new URLSearchParams(host.search).get("example");

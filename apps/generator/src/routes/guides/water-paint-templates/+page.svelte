@@ -1,9 +1,13 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import { base } from "$app/paths";
   import Article from "$lib/site/Article.svelte";
 </script>
 
 <Article title="Paint lakes with water paint templates" intro="Color the water on a layered relief without masking by hand. TopoStack cuts a paper stencil for each panel, open exactly where the lake stays visible once the stack is glued.">
+  <h2>Choose your water finish</h2>
+  <WaterFinishComparison />
+
   <h2>Turn on paint templates</h2>
   <p>Choose <strong>Layered</strong> and turn on <strong>Water paint templates</strong> in <strong>Fabrication settings</strong>, then regenerate terrain. For every panel with water that stays visible once the stack is glued, TopoStack writes a paper stencil registered to that panel. Mask the land with it and spray the water, and the paint lands exactly where the lake will show. Water outlines are fetched for the templates even when <strong>Water outlines</strong> and <strong>Water depth</strong> are off.</p>
   <figure>
@@ -37,6 +41,8 @@
   <h2>With a split map</h2>
   <p>When a <a href={`${base}/guides/split-large-maps`}>work area splits the layers</a>, each piece that shows water gets its own stencil, named after its cell. Register it on the piece's puzzle tabs as well as its outer edges.</p>
 
+  <h2>With acrylic water inserts</h2>
+  <p>With <strong>Acrylic water inserts</strong> on, each lake on the sheet at its waterline becomes clear acrylic, so that sheet has no water left to paint. The lake bed below still gets its stencils: paint it before gluing and the colour shows through the acrylic. The 2 mm ledge the insert rests on is part of the bed's stencil window too.</p>
   <h2>Check before you cut</h2>
   <p class="note">Cut one stencil and test it on a scrap of your material and paint before committing the whole stack. Kerf compensation must be off for the stencil files.</p>
   <h2>Related guides</h2>

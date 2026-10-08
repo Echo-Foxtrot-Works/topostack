@@ -18,7 +18,7 @@ export const DOCS_SECTIONS: readonly { id: string; title: string; summary: strin
     id: "make",
     title: "Make a map",
     summary: "Step-by-step workflows from choosing a place to exporting SVG files for your laser.",
-    paths: ["/guides/laser-cut-topographic-map", "/guides/split-large-maps", "/guides/water-paint-templates", "/guides/topographic-map-engraving"],
+    paths: ["/guides/laser-cut-topographic-map", "/guides/split-large-maps", "/guides/water-paint-templates", "/guides/topographic-map-engraving", "/guides/lightburn"],
   },
   {
     id: "customize",

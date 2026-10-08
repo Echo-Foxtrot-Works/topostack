@@ -1,6 +1,7 @@
 <script lang="ts">
   import SiteHeader from "$lib/site/SiteHeader.svelte";
   import SiteFooter from "$lib/site/SiteFooter.svelte";
+  import RelatedContent from "$lib/site/RelatedContent.svelte";
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
@@ -90,6 +91,7 @@
       {/if}
       <header><h1>{title}</h1><p class="intro">{intro}</p></header>
       <article bind:this={article}>{@render children()}</article>
+      {#if !atommBuild}<RelatedContent {path} />{/if}
       {#if !atommBuild && (neighbours.previous || neighbours.next)}
         <nav class="pager" aria-label="Previous and next guides">
           {#if neighbours.previous}<a class="previous" href={`${base}${neighbours.previous.path}`}><small>Previous</small>{neighbours.previous.label}</a>{/if}

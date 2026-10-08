@@ -14,7 +14,6 @@ import json
 import math
 from pathlib import Path
 import re
-import subprocess
 import urllib.parse
 import urllib.request
 from xml.etree import ElementTree
@@ -31,6 +30,7 @@ from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
 from terrain_release import atomic_write
+from pinned import download, file_sha256
 
 BUCKET = 'https://noaa-ocs-nationalbathymetry-pds.s3.amazonaws.com'
 PRODUCTS = {
@@ -47,12 +47,7 @@ RAT_FIELDS = ('value', 'count', 'source_survey_id', 'source_institution',
 MEASURE_SIZE = 512
 
 
-def digest(path):
-    value = hashlib.sha256()
-    with open(path, 'rb') as file:
-        for block in iter(lambda: file.read(1 << 20), b''):
-            value.update(block)
-    return value.hexdigest()
+digest = file_sha256
 
 
 def list_keys(prefix):
@@ -78,7 +73,7 @@ def fetch_scheme(cache, product):
     key = schemes[-1]
     path = Path(cache) / Path(key).name
     if not path.exists():
-        subprocess.run(['curl', '-fsSL', '--retry', '3', '--max-time', '600', '-o', path, f'{BUCKET}/{key}'], check=True)
+        download(f'{BUCKET}/{key}', path, timeout=600, retries=3)
     return {'product': product, 'key': key, 'sha256': digest(path)}, path
 
 

@@ -1,8 +1,9 @@
 // Real source + an explicitly prepared review draft. This is not a claim that
 // the app automatically discovers the fixture's corrections or coordinates.
 import { readFile, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../../lib/hash.mjs';
 import { chromium, expect } from '@playwright/test';
+import { appUrl } from '../../lib/app-url.mjs';
 const source = JSON.parse(await readFile('scripts/verify/chart-release/king-city-reviewed.json'));
 const lake = JSON.parse(await readFile('scripts/verify/chart-accuracy/fixtures/king-city-lake.json'));
 const input = '.topostack/chart-accuracy/king-city-crop.png';
@@ -10,7 +11,7 @@ const bytes = await readFile(input);
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });
-  await page.goto(process.env.CHART_STRESS_URL ?? 'http://127.0.0.1:5278/studio');
+  await page.goto(`${appUrl('CHART_STRESS_URL')}/studio`);
   await page.getByRole('radio', { name: 'Custom data', exact: true }).click();
   await page.evaluate(async lake => { const { draft } = await import('/src/lib/studio/customdata/chart-draft.svelte.ts'); draft.lake = lake; }, lake);
   await page.locator('.chart-upload input').setInputFiles(input);
@@ -21,7 +22,7 @@ try {
   const review = structuredClone(source.review);
   for (const c of review.contours) c.points = c.points.map(([x,y]) => [(x-left)*sx, (y-top)*sy]);
   for (const p of review.controlPoints) { p.x = (p.x-left)*sx; p.y = (p.y-top)*sy; }
-  const draftFile = { schema: 'chart-review-draft-v1', source: { sha256: createHash('sha256').update(bytes).digest('hex'), page: 0, ...size, units: 'ft', reads: 'elevation', surface: '1028.5', interval: '2' }, review };
+  const draftFile = { schema: 'chart-review-draft-v1', source: { sha256: sha256Hex(bytes), page: 0, ...size, units: 'ft', reads: 'elevation', surface: '1028.5', interval: '2' }, review };
   await page.locator('.chart-review-restore input').setInputFiles({ name: 'king-reviewed.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(draftFile)) });
   await expect(page.getByRole('button', { name: 'Generate reviewed depths', exact: true })).toBeDisabled();
   await page.getByLabel('Select review contour', { exact: true }).selectOption(review.contours.find(c => !c.excluded && c.id !== review.shorelineId).id);

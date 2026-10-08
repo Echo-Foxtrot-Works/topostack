@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 // software-rendered; the README caption says so.
 const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
 const img2webp = process.env.IMG2WEBP_PATH ?? "img2webp";
-const source = fileURLToPath(new URL("../../atomm/assets/topostack-cover-loop-v6.mp4", import.meta.url));
+const source = fileURLToPath(new URL("../../atomm/assets/topostack-cover-loop-v8.mp4", import.meta.url));
 const output = fileURLToPath(new URL("../../docs/images/topostack-stack.webp", import.meta.url));
 const FPS = 12;
 const WIDTH = 800;

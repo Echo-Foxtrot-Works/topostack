@@ -32,6 +32,7 @@ const shot = (file, crop) => ({ kind: "shot", file, crop });
 
 // Card text is short and written for a feed: the page title reads too long at 50 px.
 const PAGE_CARDS = {
+  "/guides/lightburn": { kicker: "LightBurn workflow", title: "From terrain SVG to laser job", intro: "Check size, assign operations, apply kerf once and preview before cutting.", media: shot(`${TIPS}export.webp`), footer: `TopoStack export dialog · Software screenshot · ${TERRAIN}` },
   "/guides": { kicker: "Guides", title: "Guides for laser-cut terrain maps", intro: "Layered reliefs, flat engravings, lake depths, your own data and export files.", media: shot(`${TIPS}assembly.webp`), footer: `Crater Lake, Oregon, in the TopoStack studio · ${TERRAIN}` },
   "/guides/laser-cut-topographic-map": { kicker: "Guide", title: "Make a laser-cut topographic map", intro: "Pick a place, set material thickness, preview the stack and export SVG cut panels.", media: shot(`${TIPS}layers.webp`), footer: `Crater Lake layers, exploded in the studio's 3D view · ${TERRAIN}` },
   "/guides/topographic-map-engraving": { kicker: "Guide", title: "Engrave a topographic map", intro: "One flat contour SVG at your chosen size, with roads, water and elevation labels.", media: shot("atomm/assets/topostack-gallery-03-flat-engraving.png", [406, 325, 789, 527]), footer: `Crater Lake contour engraving in the studio · ${TERRAIN}` },

@@ -1,4 +1,5 @@
 import { MARKER_SYMBOLS } from "../types.js";
+import { MERCATOR_MAX_LATITUDE } from "./bounds.js";
 import { PROJECT_REQUEST_AVIATION_KEYS, PROJECT_REQUEST_DETAIL_KEYS, PROJECT_REQUEST_LIMITS as LIMITS } from "./request.js";
 
 /**
@@ -12,7 +13,7 @@ type Schema = Record<string, unknown>;
 const range = (limits: { min: number; max: number }, description?: string, integer = false): Schema =>
   ({ type: integer ? "integer" : "number", minimum: limits.min, maximum: limits.max, ...(description ? { description } : {}) });
 
-const latitude: Schema = { type: "number", minimum: -85.0511, maximum: 85.0511 };
+const latitude: Schema = { type: "number", minimum: -MERCATOR_MAX_LATITUDE, maximum: MERCATOR_MAX_LATITUDE };
 const longitude: Schema = { type: "number", minimum: -180, maximum: 180 };
 
 export const AREA_SCHEMA: Schema = {
@@ -38,7 +39,7 @@ export const AREA_SCHEMA: Schema = {
           type: "object",
           required: ["west", "south", "east", "north"],
           additionalProperties: false,
-          description: "WGS84 degrees; west < east (the antimeridian cannot be crossed) and south < north.",
+          description: "WGS84 degrees; south < north. West greater than east crosses the antimeridian, as in GeoJSON.",
           properties: { west: longitude, south: latitude, east: longitude, north: latitude },
         },
       },

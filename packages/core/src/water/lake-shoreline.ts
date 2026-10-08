@@ -10,6 +10,13 @@ function withoutRepeats(ring: Point2D[]): Point2D[] {
   });
 }
 
+/**
+ * Largest corner trim when rounding a shoreline. Fixed, like the contour
+ * simplification tolerance, so the minimum feature size only decides which
+ * slivers are removed and never how coarsely the remaining shore is drawn.
+ */
+const LAKE_CORNER_TRIM_MM = 0.8;
+
 /** Round sparse shore samples without extrapolating beyond their local edges. */
 export function smoothLakePolygon(polygon: Polygon2D, minimumFeatureMm: number): Polygon2D {
   const smooth = (ring: Point2D[]): Point2D[] => {
@@ -38,7 +45,7 @@ export function smoothLakePolygon(polygon: Polygon2D, minimumFeatureMm: number):
       const outgoing = Math.hypot(b.x - p.x, b.y - p.y);
       // Local spacing, rather than terrain resolution, controls sparse shores.
       // A physical cap bounds displacement even when an outline is very coarse.
-      const trim = Math.min(Math.min(incoming, outgoing) * 0.25, Math.max(0.25, minimumFeatureMm), 2);
+      const trim = Math.min(Math.min(incoming, outgoing) * 0.25, LAKE_CORNER_TRIM_MM);
       const start = { x: p.x + (a.x - p.x) * trim / incoming, y: p.y + (a.y - p.y) * trim / incoming };
       const end = { x: p.x + (b.x - p.x) * trim / outgoing, y: p.y + (b.y - p.y) * trim / outgoing };
       for (let step = 0; step <= 4; step += 1) {

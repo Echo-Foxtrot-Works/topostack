@@ -1,9 +1,10 @@
 import { escapeXml } from "./svg-primitives.js";
+import { assemblyGuideStyles } from "./assembly-guide-styles.js";
 import { formatNumber as format } from "../primitives/format.js";
 import { pointInPolygon, ringBounds, simplifyClosedRing } from "../primitives/geometry2d.js";
 import { displayElevation, displayLength, elevationUnit, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
-import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
+import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterInsertIR } from "../types.js";
 
 /**
  * A web font to embed in the guide, as WOFF2 bytes in base64. The core cannot
@@ -27,6 +28,16 @@ export interface GuideSheet {
   paintTemplates?: Array<{ kind: PaintRegionKind; filename: string }>;
   /** Where each piece sits on a nested stock sheet, drawn so unlabelled pieces can be told apart. */
   map?: GuideSheetMap;
+}
+
+/** The acrylic water inserts, as the guide refers to them: the files actually written and what each holds. */
+export interface GuideAcrylic {
+  thicknessMm: number;
+  ledgeMm: number;
+  inserts: WaterInsertIR[];
+  sheets: Array<{ filename: string; insertIds: string[]; map?: GuideSheetMap }>;
+  /** Stock sheet size when the acrylic was nested. */
+  sheetSize?: { widthMm: number; heightMm: number };
 }
 
 export interface GuideSheetMap {
@@ -126,7 +137,7 @@ function layerNumber(layer: LayerIR): string {
  * prints from there - and each layer's outline is written once and reused by every step
  * through `<use>`, so the file grows with the layer count rather than its square.
  */
-export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = []): string {
+export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = [], acrylic?: GuideAcrylic): string {
   const units = config.units;
   const unit = lengthUnit(units);
   const amount = (valueMm: number) => format(Number(displayLength(valueMm, units).toFixed(units === "imperial" ? 2 : 1)));
@@ -161,8 +172,15 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   const donorsOf = (index: number) => [...new Set(nests.filter((nest) => nest.nestedLayerIndex === index).map((nest) => nest.donorLayerIndex))];
   const nestedIn = (index: number) => [...new Set(nests.filter((nest) => nest.donorLayerIndex === index).map((nest) => nest.nestedLayerIndex))];
 
-  const defs = layers.map((layer) => `<path id="g-${layer.id}" d="${layer.polygons.map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("");
-  const stack = (upTo: number) => layers.slice(0, upTo).map((layer, index) => `<use href="#g-${layer.id}" fill="${tone(index, count)}"/>`).join("");
+  // Acrylic inserts by the wood layer they sit in; they go in once that layer is glued.
+  const inserts = acrylic?.inserts ?? [];
+  const insertsOn = (layerIndex: number) => inserts.filter((insert) => insert.layerIndex === layerIndex);
+  const insertName = (insert: WaterInsertIR) => `<strong>${escapeXml(insert.id)}</strong>${insert.name ? ` (${escapeXml(insert.name)})` : ""}`;
+  const acrylicSheetsFor = (insert: WaterInsertIR) => (acrylic?.sheets ?? []).filter((sheet) => sheet.insertIds.some((id) => id === insert.id || id.startsWith(`${insert.id}-`)));
+  const defs = layers.map((layer) => `<path id="g-${layer.id}" d="${layer.polygons.map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("")
+    + layers.filter((layer) => insertsOn(layer.index).length).map((layer) => `<path id="g-acrylic-${layer.id}" d="${insertsOn(layer.index).flatMap((insert) => insert.polygons).map((polygon) => polygonPath(polygon, tolerance)).join("")}"/>`).join("");
+  const acrylicUse = (layer: LayerIR) => insertsOn(layer.index).length ? `<use href="#g-acrylic-${layer.id}" class="acrylic"/>` : "";
+  const stack = (upTo: number) => layers.slice(0, upTo).map((layer, index) => `<use href="#g-${layer.id}" fill="${tone(index, count)}"/>${acrylicUse(layer)}`).join("");
   const diagram = (body: string, label: string) => `<svg class="diagram" viewBox="${viewBox}" role="img" aria-label="${escapeXml(label)}">${body}</svg>`;
 
   const stepFigure = (layer: LayerIR): string => {
@@ -175,7 +193,11 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
       const ring = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) < small ? `<circle cx="${format(point.x)}" cy="${format(point.y)}" r="${format(small * 0.7)}" class="callout"/>` : "";
       return ring + text;
     }).join("");
-    return diagram(`${stack(layer.index)}<use href="#g-${layer.id}" class="current"/>${callouts}`, `Stack after adding layer ${layerNumber(layer)}`);
+    const insertCallouts = insertsOn(layer.index).map((insert) => {
+      const point = labelPoint(insert.polygons[0]!);
+      return `<text x="${format(point.x)}" y="${format(point.y)}" class="piece-id insert-id">${escapeXml(insert.id)}</text>`;
+    }).join("");
+    return diagram(`${stack(layer.index)}<use href="#g-${layer.id}" class="current"/>${acrylicUse(layer)}${callouts}${insertCallouts}`, `Stack after adding layer ${layerNumber(layer)}`);
   };
 
   const nestedSheet = sheets.find((sheet) => sheet.map)?.map;
@@ -196,6 +218,12 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     if (nestedIn(index).length) notes.push(`<strong>Keep its cutouts.</strong> The pieces that drop out of it belong to layer ${nestedIn(index).map((nested) => layers[nested]).filter((entry): entry is LayerIR => Boolean(entry)).map(layerNumber).join(" and ")}.`);
     if (donors.length) notes.push(`<strong>Nested.</strong> ${pieces === 1 ? "This piece was" : "These pieces were"} cut from inside layer ${donors.map(layerNumber).join(" and ")}; look among that sheet's cutouts.`);
     for (const { kind, files } of templatesFor(index)) notes.push(`<strong>Paint the ${kind} first</strong> with ${files.map(({ filename }) => `<code>${escapeXml(filename)}</code>`).join(", ")}.`);
+    const covering = insertsOn(index + 1);
+    if (covering.length) notes.push(`<strong>Under the water.</strong> Its lake bed shows through acrylic ${covering.length === 1 ? "insert" : "inserts"} ${covering.map(insertName).join(", ")}, set in at step ${index + 2}. The ${length(acrylic!.ledgeMm)} rim just inside the opening above is the ledge ${covering.length === 1 ? "it rests" : "they rest"} on${painted ? "" : "; tint the bed now if you want coloured water"}. Keep glue off the bed: it shows.`);
+    for (const insert of insertsOn(index)) {
+      const files = acrylicSheetsFor(insert);
+      notes.push(`<strong>Set in acrylic ${insertName(insert)}</strong>${files.length ? ` from ${files.map((sheet) => `<code>${escapeXml(sheet.filename)}</code>`).join(", ")}` : ""} once this layer${insert.polygons.some((polygon) => polygon.holes.length) ? " and the islands inside its opening are" : " is"} glued and set. Peel the film from its underside, dry-fit it in the opening, then lift it out, put a few dots of clear acrylic-safe glue (not superglue, which fogs acrylic) on the ledge and press it home. Peel the top film when the model is finished.`);
+    }
     if (index === count - 1 && count > 1) notes.push(`<strong>Top layer.</strong> ${(labelsOn || (nestedSheet && config.showAssemblyLabels)) && pieces > 1 ? `Its pieces carry no id; ${nestedSheet ? "find them on the sheet maps and " : ""}place them by the picture.` : "The last one."}`);
     const facts = [
       ["Cut from", layerSheets.length ? layerSheets.map((sheet) => `<code>${escapeXml(sheet.filename)}</code>${piecesOn(sheet, index)}`).join(" ") : "—"],
@@ -215,6 +243,13 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   }).join("");
 
   const sheetMaps = sheets.map((sheet) => sheet.map ? sheetMapFigure(sheet, sheet.map) : "").join("");
+  const acrylicSheets = acrylic?.sheets ?? [];
+  const acrylicRows = acrylicSheets.map((sheet) => `<tr><td><input type="checkbox" aria-label="Cut ${escapeXml(sheet.filename)}"></td><td><code>${escapeXml(sheet.filename)}</code></td><td>${sheet.insertIds.map(escapeXml).join(", ")}</td></tr>`).join("");
+  const acrylicMaps = acrylicSheets.map((sheet) => sheet.map ? sheetMapFigure({ filename: sheet.filename, layerIndexes: [] }, sheet.map) : "").join("");
+  const acrylicCut = acrylicSheets.length ? `
+<h3 style="margin-top:24px">Acrylic</h3>
+<p class="muted">Cut these as a separate job with your acrylic settings, film left on. The last column names the inserts on each file; acrylic carries no engraved ids${acrylicMaps ? ", so the maps below name them" : ", so keep each with its file"}.</p>
+<table><tbody>${acrylicRows}</tbody></table>${acrylicMaps ? `\n<div class="sheet-maps">${acrylicMaps}</div>` : ""}` : "";
 
   const templateRows = templates.map(({ filename, sheet }) => `<tr><td><input type="checkbox" aria-label="Cut ${escapeXml(filename)}"></td><td><code>${escapeXml(filename)}</code></td><td>for <code>${escapeXml(sheet.filename)}</code></td></tr>`).join("");
   const paintSection = painted ? `<section class="page">
@@ -246,6 +281,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     `<li><span class="swatch swatch-below"></span>Layers already glued</li>`,
     labelsOn ? `<li><span class="swatch swatch-id">B2</span>Piece id, also engraved on the piece</li>` : "",
     `<li><span class="swatch swatch-ring"></span>A small piece, circled so it is not missed</li>`,
+    inserts.length ? `<li><span class="swatch swatch-acrylic"></span>Acrylic water insert, named W1, W2…</li>` : "",
   ].filter(Boolean).join("");
 
   const marks = [
@@ -254,6 +290,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     // Nested sheets mix layers, so the export engraves an id on every covered piece, split or not.
     nestedSheet && config.showAssemblyLabels && !split ? `<li><strong>Piece ids.</strong> Pieces from different layers share each sheet, so every piece carries a green id like <code>L05</code> or <code>L05-2</code> (layer 05, island 2) where the next layer will cover it. Pieces with no covered room, the top layer's among them, are named on the sheet maps.</li>` : "",
     split && !labelsOn ? `<li><strong>Split layers.</strong> Each layer is cut in ${split.columns} × ${split.rows} parts. Use the step pictures to place them.</li>` : "",
+    inserts.some((insert) => insert.markings.some((mark) => !mark.knockout)) ? `<li><strong>On the acrylic.</strong> Map detail that crosses the water is engraved on the inserts' top face.</li>` : "",
     `<li><strong>Everything else</strong> engraved on the pieces (contours, roads, labels) is part of the artwork.</li>`,
   ].filter(Boolean).join("");
 
@@ -264,6 +301,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     ["Layers", `${count} × ${length(thickness)}`],
     ["Pieces", String(pieceTotal)],
     ["Sheets to cut", String(sheets.length)],
+    ...(inserts.length ? [["Acrylic inserts", `${inserts.length} × ${length(acrylic!.thicknessMm)}`]] : []),
     ["Elevation", `${elevation(ir.minElevationM)} – ${elevation(ir.maxElevationM)}`],
     ["Vertical exaggeration", `${ir.verticalExaggeration.toFixed(1)}×`],
   ].map(([term, value]) => `<div><dt>${term}</dt><dd>${value}</dd></div>`).join("");
@@ -277,102 +315,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
 <style>
-${fonts.map((font) => `@font-face{font-family:"${font.family.replace(/["\\<>;{}]/g, "")}";src:url(data:font/woff2;base64,${font.woff2Base64.replace(/[^A-Za-z0-9+/=]/g, "")}) format("woff2");font-weight:${Math.round(font.weight)};font-style:normal;font-display:swap}`).join("\n")}
-:root{color-scheme:light;--bg:#ebe7dc;--surface:#f5f2e9;--surface-alt:#efebe1;--text:#20231d;--muted:#5f5b50;--line:#c8c1b1;--line-soft:#ddd7c9;--line-strong:#847d6a;--accent:#c65224;--accent-text:#a9441d;--on-accent:#fff;--canvas:#d8d3c7;--display:"Jost","Avenir Next","Segoe UI",sans-serif;--utility:"Archivo","Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-@media screen and (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#161814;--surface:#1e211c;--surface-alt:#24271f;--text:#ebe7dc;--muted:#a8a394;--line:#3a3d34;--line-soft:#2b2e26;--line-strong:#6a6e5f;--accent:#e0672f;--accent-text:#f0895c;--on-accent:#161814;--canvas:#d8d3c7}}
-*,::before,::after{box-sizing:border-box}
-html{background:var(--bg);color:var(--text);font:400 16px/1.6 var(--display);-webkit-font-smoothing:antialiased}
-body{margin:0;padding:0 16px 80px}
-main{max-width:8.5in;margin:0 auto}
-h1,h2,h3{font-weight:500;line-height:1.15;margin:0}
-h1{font-size:clamp(34px,6vw,52px);letter-spacing:-.035em;margin:10px 0 12px}
-h2{font-size:26px;letter-spacing:-.02em;margin-bottom:14px}
-h3{font-size:22px;letter-spacing:-.01em}
-p{margin:0 0 12px}
-strong{font-weight:700}
-code{font:12.5px var(--mono);background:var(--surface-alt);border:1px solid var(--line-soft);padding:1px 5px;overflow-wrap:anywhere;white-space:normal}
-.label{font:11px/1.4 var(--utility);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
-.muted{color:var(--muted)}
-.lede{font-size:18px;line-height:1.6;color:var(--muted);max-width:40em}
-.masthead{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;margin-bottom:24px;border-bottom:1px solid var(--line)}
-.wordmark{font:500 20px var(--display);letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-.wordmark svg{width:26px;height:26px}
-.masthead .label{margin:0}
-.page{background:var(--surface);border:1px solid var(--line);padding:32px;margin-bottom:24px}
-.cover{padding:36px 32px}
-.cover figure{margin:24px 0 28px}
-.facts{display:grid;grid-template-columns:repeat(3,1fr);margin:0;border-top:1px solid var(--line)}
-.facts>div{padding:12px 16px 12px 0;border-bottom:1px solid var(--line-soft)}
-.facts dt{font:11px var(--utility);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.facts dd{margin:4px 0 0;font-size:18px;font-weight:500}
-figure{margin:0;background:var(--canvas);padding:14px;box-shadow:0 18px 23px rgb(32 35 29/.12)}
-.diagram{display:block;width:100%;height:auto;max-height:118mm}${sheetMaps ? `
-.sheet-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(3in,1fr));gap:14px;margin-top:10px}
-.sheet-map figcaption{margin-top:6px}` : ""}
-.diagram use{stroke:#847d6a;stroke-width:.6;vector-effect:non-scaling-stroke;fill-rule:evenodd}
-.diagram use.current{fill:#c65224;stroke:#6e2a10;stroke-width:1.4}
-.diagram .callout{fill:none;stroke:#c65224;stroke-width:1.8;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
-.diagram .piece-id{font:600 ${format(Math.max(ir.widthMm, ir.heightMm) * 0.035)}px "Archivo","Helvetica Neue",sans-serif;fill:#fff;stroke:#6e2a10;stroke-width:.35em;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
-ul,ol{margin:0;padding-left:1.3em}
-li{margin-bottom:8px}
-.numbered{counter-reset:n;list-style:none;padding:0}
-.numbered>li{counter-increment:n;position:relative;padding-left:40px;min-height:28px;margin-bottom:12px}
-.numbered>li::before{content:counter(n);position:absolute;left:0;top:0;width:26px;height:26px;display:grid;place-items:center;background:var(--text);color:var(--bg);font:600 12px var(--utility)}
-table{width:100%;border-collapse:collapse;font-size:15px;margin-top:16px}
-td{border-bottom:1px solid var(--line);padding:9px 12px 9px 0;vertical-align:top}
-td:first-child{width:32px}
-input[type=checkbox]{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:2px 0 0;border:1.5px solid var(--line-strong);background:var(--surface);display:inline-grid;place-content:center;cursor:pointer;vertical-align:-3px}
-input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
-input[type=checkbox]:checked::after{content:"";width:9px;height:5px;border:2px solid var(--on-accent);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
-input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.legend{list-style:none;padding:0}
-.legend li{display:flex;align-items:center;gap:12px}
-.swatch{flex:none;width:28px;height:18px;display:grid;place-items:center;font:600 10px var(--utility)}
-.swatch-current{background:#c65224;border:1.5px solid #6e2a10}
-.swatch-below{background:#d4ccbb;border:1px solid #847d6a}
-.swatch-id{background:#c65224;color:#fff}
-.swatch-ring{border:1.8px dashed #c65224;border-radius:50%;width:22px;height:22px;margin:0 3px}
-.build-intro h3{margin:0 0 12px}
-.step{background:var(--surface);border:1px solid var(--line);padding:24px;margin-bottom:20px;break-inside:avoid}
-.step header{display:flex;gap:16px;align-items:center;margin-bottom:16px}
-.step-title{flex:1}
-.step-title .label{margin:0 0 2px}
-.badge{flex:none;width:48px;height:48px;background:var(--accent);color:var(--on-accent);font:500 24px var(--display);display:grid;place-items:center}
-.done{display:flex;gap:8px;align-items:center;font:11px var(--utility);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer}
-.step-body{margin-top:16px}
-.step-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
-.step-facts>div{display:contents}
-.step-facts dt{font:11px/2 var(--utility);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.step-facts dd{margin:0}
-.notes{list-style:none;padding:12px 0 0;margin:12px 0 0;border-top:1px solid var(--line-soft)}
-.notes li{padding-left:14px;border-left:3px solid var(--accent);margin-bottom:10px}
-.print{position:fixed;right:16px;bottom:16px;border:0;min-height:44px;background:var(--accent);color:var(--on-accent);padding:10px 18px;font:500 15px var(--display);cursor:pointer;box-shadow:0 12px 30px rgb(32 35 29/.18)}
-.print:hover{background:var(--accent-text)}
-footer{font:12px/1.8 var(--utility);color:var(--muted);margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
-@media (max-width:640px){.two{grid-template-columns:1fr;gap:20px}.page,.step{padding:20px}.facts{grid-template-columns:1fr 1fr}.badge{width:40px;height:40px;font-size:20px}}
-@page{size:letter;margin:.5in}
-@media print{
-html{background:#fff;font-size:10pt}
-body{padding:0}
-.print{display:none}
-.page,.step{background:none;border:0;padding:0;margin:0 0 .3in}
-.masthead{padding-top:0}
-.cover{break-after:page}
-.cover .diagram{max-height:5.2in}
-h2,h3,.label{break-after:avoid}
-tr{break-inside:avoid}
-.build-intro{break-before:page}
-figure{background:#efebe1;box-shadow:none;padding:.06in}
-.step{display:grid;grid-template-columns:1.25fr 1fr;grid-template-areas:"fig head" "fig body";grid-template-rows:auto 1fr;gap:0 .25in;align-items:start;border-top:1.5px solid var(--text);padding-top:.12in;margin:0 0 .14in}
-.step header{grid-area:head;margin-bottom:.1in}
-.step figure{grid-area:fig}
-.step-body{grid-area:body;margin-top:0}
-.diagram{max-height:2.6in}
-.badge{width:.45in;height:.45in;font-size:18pt}
-code{font-size:8pt}
-figure,code,.badge,.diagram,.swatch,.numbered>li::before,input{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
+${assemblyGuideStyles({ fonts, sheetMaps: Boolean(sheetMaps), acrylic: inserts.length > 0, pieceIdSizePx: Math.max(ir.widthMm, ir.heightMm) * 0.035 })}
 </style>
 </head>
 <body>
@@ -397,6 +340,8 @@ figure,code,.badge,.diagram,.swatch,.numbered>li::before,input{-webkit-print-col
 <li>A flat board to build on and some weights or clamps</li>
 <li>A small bag or tray per layer, and a pencil</li>
 ${painted ? `<li>Paper or stencil film for ${plural(templates.length, "paint template")}, and paint</li>` : ""}
+${inserts.length ? `<li>${plural(acrylicSheets.length, "sheet")} of ${length(acrylic!.thicknessMm)} clear or tinted cast acrylic${acrylic!.sheetSize ? `, each ${length(acrylic!.sheetSize.widthMm)} × ${length(acrylic!.sheetSize.heightMm)}` : ""}, for ${plural(inserts.length, "water insert")}</li>
+<li>Clear, acrylic-safe glue for the inserts (not superglue: it leaves a white haze on acrylic)</li>` : ""}
 </ul>
 </div>
 <div>
@@ -414,7 +359,7 @@ ${nests.length ? `<li><strong>Keep every cutout.</strong> Some small pieces of h
 <p class="label">Section 1</p>
 <h2>Cut the sheets</h2>
 <p class="muted">Tick each file off as it comes off the laser. The last column says which layers are on that sheet.</p>
-<table><tbody>${sheetRows}</tbody></table>${sheetMaps ? `\n<p class="muted">Pieces from different layers share each sheet. Each map shows every piece where the laser cuts it, named by its id; use it for any piece without an engraved id.</p>\n<div class="sheet-maps">${sheetMaps}</div>` : ""}
+<table><tbody>${sheetRows}</tbody></table>${sheetMaps ? `\n<p class="muted">Pieces from different layers share each sheet. Each map shows every piece where the laser cuts it, named by its id; use it for any piece without an engraved id.</p>\n<div class="sheet-maps">${sheetMaps}</div>` : ""}${acrylicCut}
 </section>
 ${paintSection}
 <section class="page build-intro">

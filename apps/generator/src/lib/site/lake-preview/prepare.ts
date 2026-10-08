@@ -1,4 +1,5 @@
 import { DEFAULT_PROJECT, carveWaterDepth, groundWidthMFor, smoothLakeShorelines, type GeoBounds, type ProjectConfigV1 } from "@topostack/core";
+import { KM_PER_DEGREE_LAT, kmPerDegreeLon } from "$lib/domain/coordinates";
 import { loadTerrain } from "$lib/domain/data-provider";
 import type { PreviewInput } from "$lib/site/lake-preview/render";
 
@@ -29,14 +30,14 @@ export function previewBounds([west, south, east, north]: [number, number, numbe
   const padX = (east - west) * 0.08;
   const padY = (north - south) * 0.08;
   let [w, s, e, n] = [west - padX, south - padY, east + padX, north + padY];
-  const kmPerDegreeLon = 111.32 * Math.cos(((s + n) / 2) * Math.PI / 180);
-  const widthKm = (e - w) * kmPerDegreeLon;
-  const heightKm = (n - s) * 110.574;
+  const kmPerLon = kmPerDegreeLon((s + n) / 2);
+  const widthKm = (e - w) * kmPerLon;
+  const heightKm = (n - s) * KM_PER_DEGREE_LAT;
   if (widthKm * MAX_ASPECT < heightKm) {
-    const grow = (heightKm / MAX_ASPECT - widthKm) / kmPerDegreeLon / 2;
+    const grow = (heightKm / MAX_ASPECT - widthKm) / kmPerLon / 2;
     w -= grow; e += grow;
   } else if (heightKm * MAX_ASPECT < widthKm) {
-    const grow = (widthKm / MAX_ASPECT - heightKm) / 110.574 / 2;
+    const grow = (widthKm / MAX_ASPECT - heightKm) / KM_PER_DEGREE_LAT / 2;
     s -= grow; n += grow;
   }
   return { west: Math.max(-180, w), south: Math.max(-85, s), east: Math.min(180, e), north: Math.min(85, n) };

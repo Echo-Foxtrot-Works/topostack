@@ -53,6 +53,8 @@ Source registration lives in `scripts/data/terrain-sources.json`, upstream pins
 in `scripts/data/hrdem-sources.json`, and verified build receipts in
 `scripts/data/hrdem-builds.json`. The builder uses the same numeric PNG writer as
 survey bathymetry but declares elevation encoding and vertical datum explicitly.
+The snapshot and build steps live in `scripts/data-build/hrdem.py`, which
+`build-hrdem-terrain.py`, `discover-terrain.py` and `benchmark-terrain.py` import.
 
 ## Provision and activate
 

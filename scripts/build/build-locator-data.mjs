@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseArgs } from "node:util";
 import { locatorWindow } from "../../apps/generator/src/lib/site/lake-locator.ts";
 
 // Builds apps/generator/src/lib/site/locator-data.json, the map behind the
@@ -18,8 +19,7 @@ const TOLERANCE = 0.01;
 const directoryUrl = new URL("../../apps/generator/static/data/lake-depth-directory.json", import.meta.url);
 const outputUrl = new URL("../../apps/generator/src/lib/site/locator-data.json", import.meta.url);
 
-const fromIndex = process.argv.indexOf("--from");
-const localDir = fromIndex > 0 ? process.argv[fromIndex + 1] : undefined;
+const { values: { from: localDir } } = parseArgs({ options: { from: { type: "string" } } });
 
 async function load(name) {
   if (localDir) return JSON.parse(await readFile(join(localDir, `${name}.geojson`), "utf8"));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, generateGeometry, layerToSvg } from "@topostack/core";
-import { boundsForProject } from "$lib/domain/data-provider";
+import { boundsForProject } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 
 // Full bundled geometry includes contouring and label placement; coverage on
