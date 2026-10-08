@@ -117,6 +117,6 @@ describe("markers across exposed layer faces", () => {
     expect(Math.abs(signedArea(ring(16))) / Math.abs(signedArea(ring(8)))).toBeCloseTo(4);
     expect(projectFingerprint(flat)).not.toBe(projectFingerprint({ ...flat, markers: [{ ...flat.markers[0]!, sizeMm: 16 }] }));
     expect(exportBlockReason(ir, { ...flat, markers: [{ ...flat.markers[0]!, sizeMm: 16 }] })).toMatch(/settings changed/i);
-    expect(exportBlockReason({ ...ir, configFingerprint: ir.configFingerprint!.replace(/^v9-/, "v8-") }, flat)).toMatch(/settings changed/i);
+    expect(exportBlockReason({ ...ir, configFingerprint: ir.configFingerprint!.replace(/^v10-/, "v9-") }, flat)).toMatch(/settings changed/i);
   });
 });

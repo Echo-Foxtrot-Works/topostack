@@ -1,4 +1,4 @@
-import { distanceToSegment, polylineLength, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
+import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, distanceToSegment, polylineLength, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
 
 /** Pure vector-tile geometry cleanup shared by the data provider and preview refreshes. */
@@ -113,17 +113,16 @@ export function dissolveWaterAreas(polygons: Polygon2D[], minimumFeatureMm: numb
 
 /** polygon-clipping emits outer-first rings; restore the winding Polygon2D promises. */
 export function multiPolygonToAreas(multi: MultiPolygon, minimumFeatureMm: number): Polygon2D[] {
-  const tolerance = minimumFeatureMm * 0.18;
   const areas: Polygon2D[] = [];
   for (const polygon of multi) {
     const [outerRing, ...holeRings] = polygon;
     if (!outerRing) continue;
-    const outer = closedSimplified(outerRing, tolerance);
+    const outer = closedSimplified(outerRing, CONTOUR_SIMPLIFICATION_TOLERANCE_MM);
     if (!ringIsLargeEnough(outer, minimumFeatureMm)) continue;
     areas.push({
       outer: signedArea(outer) < 0 ? [...outer].reverse() : outer,
       holes: holeRings
-        .map((ring) => closedSimplified(ring, tolerance))
+        .map((ring) => closedSimplified(ring, CONTOUR_SIMPLIFICATION_TOLERANCE_MM))
         .filter((ring) => ringIsLargeEnough(ring, minimumFeatureMm))
         .map((ring) => (signedArea(ring) > 0 ? [...ring].reverse() : ring)),
     });
@@ -214,7 +213,7 @@ export function joinPaths(features: MarkingFeature[], groupKey: (feature: Markin
 export function cleanWaterwayMarkings(markings: MarkingFeature[], minimumFeatureMm: number): MarkingFeature[] {
   const result: MarkingFeature[] = [];
   for (const { feature, points } of joinPaths(markings.filter((marking) => marking.points.length >= 2))) {
-    const simplified = simplifyPath(points, minimumFeatureMm * 0.18);
+    const simplified = simplifyPath(points, CONTOUR_SIMPLIFICATION_TOLERANCE_MM);
     if (polylineLength(simplified) >= minimumFeatureMm) result.push({ ...feature, id: `waterway-${result.length}`, points: simplified });
   }
   return result;

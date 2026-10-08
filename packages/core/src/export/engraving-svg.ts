@@ -1,7 +1,7 @@
 import { ARTWORK_CATEGORIES, ENGRAVE, ENGRAVE_LINE, type MarkerClearance, categoryStrokeAttributes, clearLineData, engravingCategory, markerClearance, markingPath, pathData, svgDocument } from "./svg-primitives.js";
 import { CIRCLE_CROP_SEGMENTS, cropRadiusMm } from "../primitives/crop.js";
 import { formatNumber as format } from "../primitives/format.js";
-import { CONTOUR_SIMPLIFICATION_FACTOR } from "../pipeline/contours.js";
+import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "../pipeline/contours.js";
 import { pointAt } from "../primitives/geometry2d.js";
 import { waterPatternStrokes } from "../water/water-pattern.js";
 import type { GeometryIRV1, Point2D, ProjectConfigV1 } from "../types.js";
@@ -17,7 +17,7 @@ function segmentOnCropBoundary(start: Point2D, end: Point2D, config: ProjectConf
     // smaller than that sagitta let whole arcs through as engraved stubs.
     const radius = cropRadiusMm(config);
     const sagitta = radius * (1 - Math.cos(Math.PI / CIRCLE_CROP_SEGMENTS));
-    const inner = radius - sagitta - config.minimumFeatureMm * CONTOUR_SIMPLIFICATION_FACTOR - epsilon;
+    const inner = radius - sagitta - CONTOUR_SIMPLIFICATION_TOLERANCE_MM - epsilon;
     const onBoundary = (point: Point2D) => {
       const distance = Math.hypot(point.x, point.y);
       return distance >= inner && distance <= radius + epsilon;

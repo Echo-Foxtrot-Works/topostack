@@ -2,8 +2,9 @@
 
 With smoothing enabled, generation filters narrow shoreline reversals and rounds
 lake corners using quadratic arcs. The local shoreline edge lengths determine
-the trim, capped by the minimum feature size and an absolute 2 mm limit. This
-helps sparse vector outlines independently of the terrain grid resolution.
+the trim, capped at a fixed 0.8 mm. This helps sparse vector outlines
+independently of the terrain grid resolution, and the cap does not follow the
+minimum feature size: that setting removes slivers but never coarsens a shore.
 
 Near reversals are removed only when their width is below 18% of the minimum
 feature size and their tip lies within twice that size (at most 2 mm) of the

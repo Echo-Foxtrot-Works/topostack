@@ -1,4 +1,4 @@
-import { CONTOUR_SIMPLIFICATION_FACTOR, clipContours, contourToMm, roundContourRing } from "./contours.js";
+import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, clipContours, contourToMm, roundContourRing } from "./contours.js";
 import { groundWidthMFor, planTerrainStack } from "./stack-plan.js";
 import { cropElevationRange } from "../primitives/crop.js";
 import { contours } from "d3-contour";
@@ -132,7 +132,7 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
         const point2d = contourToMm([point[0] ?? 0, point[1] ?? 0], modelGrid, config);
         return [point2d.x, point2d.y] as Pair;
       });
-      const baseline = simplify(close(mapped.map(toPoint)), config.minimumFeatureMm * CONTOUR_SIMPLIFICATION_FACTOR)
+      const baseline = simplify(close(mapped.map(toPoint)), CONTOUR_SIMPLIFICATION_TOLERANCE_MM)
         .map(({ x, y }) => [x, y] as Pair);
       return config.smoothing > 0 ? roundContourRing(baseline, maximumCornerTrimMm) : baseline;
     }));
