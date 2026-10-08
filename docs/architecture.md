@@ -76,6 +76,16 @@ The first release supports land terrain between ±85.0511° latitude. Mapzen Ter
 
 Usage events (`@topostack/data-contracts/usage`) are not stored, but the Worker validates them strictly, and a tab loaded before a deploy keeps sending the previous shape. New categories may be appended to an existing list; new fields are added only as an optional group that `isUsageEvent` accepts both with and without (as `campaign` and `medium` are); removing a value or field rejects events from open tabs.
 
+## Hidden assembly marks
+
+Alignment outlines, the `Lxx` id each sheet carries for the sheet above, piece ids and sheet-nesting part ids must vanish once the model is glued. All of them are placed through `pipeline/hidden-marks.ts`:
+
+- A hidden label sits in the glue area: its own piece under one piece of the sheet directly above. Seams between pieces above are edges, and a sheet two or more up does not count, because it covers only across an air gap such as a nest cavity.
+- Placement measures the engraved ink, not the text's advance box (`labelInkExtent`, `labelFootprint`): typeface figures and ascenders rise above the cap line and script letters overhang, and stroked text is widened by half the line. The ink keeps `HIDDEN_LABEL_CLEARANCE_MM` from the glue edge.
+- An alignment outline's centre line is inset by half the line plus one kerf (at least 0.1 mm), so the whole stroke stays inside the sheet above.
+
+`hiddenMarkIssues(ir)` checks finished geometry against the same rule by sampling the ink every 0.1 mm; tests use it on generated stacks, and it is the first thing to run on a report of a visible id. Visible text (elevation, transportation and aviation labels, annotations) uses the same ink footprint for its fit and collision tests.
+
 ## Launch-readiness invariants
 
 `sourceRequirements()` is shared by the provider, UI refresh logic, and core export policy. `exportBlockReason()` is shared by browser actions and both package builders. Transportation names are retained even when their labels are hidden. PMTiles caches live for one source operation; its header, directory, and body requests share cancellation and a 20-second request deadline. Source geometry is bounded to 200,000 points and 4,000 polygon rings before projection/union, with cancellation opportunities between decode batches.

@@ -249,7 +249,7 @@ function cutSheet(config: ProjectConfigV1, material: WaterInsertMaterialIR, laye
     skipped.wholeSheet.push(...found.map(({ lake }) => lake.name));
     return [];
   }
-  const ledges = openings.flatMap((polygon) => clipPolygons([polygon], offsetPolygons([polygon], -material.ledgeMm, "miter"), "difference"));
+  const ledges = insertLedges(openings, material.ledgeMm);
   layer.polygons = remaining;
   below.polygons = normalizedPolygons(clipPolygons(below.polygons, ledges, "union"), config.minimumFeatureMm);
 
@@ -283,6 +283,25 @@ export function withInsertSurfaces(layers: LayerIR[], inserts: WaterInsertIR[]):
   return layers.map((layer) => {
     const acrylic = inserts.filter((insert) => insert.layerIndex === layer.index).flatMap((insert) => insert.polygons);
     return acrylic.length ? { ...layer, polygons: [...layer.polygons, ...acrylic] } : layer;
+  });
+}
+
+/** The rim just inside each opening that its insert rests and is glued on, part of the sheet below. */
+function insertLedges(openings: Polygon2D[], ledgeMm: number): Polygon2D[] {
+  return openings.flatMap((polygon) => clipPolygons([polygon], offsetPolygons([polygon], -ledgeMm, "miter"), "difference"));
+}
+
+/**
+ * What lies over each layer's face, for text that must stay visible: the wood
+ * sheet above, and on the sheet an insert rests on, its ledge. The bed seen
+ * through the acrylic may carry labels; the ledge is glued under the insert's
+ * edge, so a label there would be smeared and half covered.
+ */
+export function labelCoverings(layers: LayerIR[], inserts: WaterInsertIR[], material: WaterInsertMaterialIR | undefined): Array<Pick<LayerIR, "polygons"> | undefined> {
+  return layers.map((_, index) => {
+    const next = layers[index + 1];
+    const resting = material ? inserts.filter((insert) => insert.layerIndex === index + 1).flatMap((insert) => insert.polygons) : [];
+    return next && resting.length ? { polygons: [...next.polygons, ...insertLedges(resting, material!.ledgeMm)] } : next;
   });
 }
 

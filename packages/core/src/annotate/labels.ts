@@ -54,6 +54,15 @@ function isFilledFont(font: TextFont | undefined): boolean {
   return font !== undefined && fontEntry(font).kind === "outline";
 }
 
+/**
+ * How far engraved text reaches past its glyph geometry: half the line for
+ * stroked fonts, which every export draws `strokeMm` wide, and nothing for
+ * typeface letters, which are filled without a stroke.
+ */
+export function labelStrokeReachMm(style: TextStyleV1 | undefined, strokeMm: number): number {
+  return isFilledFont(style?.font ?? DEFAULT_TEXT_STYLE.font) ? 0 : strokeMm / 2;
+}
+
 function glyphFor(character: string): string[] {
   return GLYPHS[character] ?? GLYPHS[character.toUpperCase()] ?? GLYPHS["?"]!;
 }
@@ -132,6 +141,45 @@ function glyphLayout(label: string, style: TextStyleV1): { font: ReturnType<type
     cursor += (font.glyph(character).advance + (next ? kerning[character + next] ?? 0 : 0)) * scale;
   });
   return { font, scale, placements, dimensions: { width: Math.max(0, cursor), height: (capHeight - descender) * scale } };
+}
+
+/** A label's extent from its origin, unrotated, y down. */
+export interface LabelExtent { minX: number; minY: number; maxX: number; maxY: number }
+
+/** Per loaded typeface, so test fixtures re-registered under one id never share entries. */
+const inkExtents = new WeakMap<object, Map<string, LabelExtent>>();
+const INK_EXTENT_CACHE_LIMIT = 4096;
+
+/**
+ * Everything `label` engraves, relative to its origin and before rotation:
+ * the `labelDimensions` box together with any glyph that reaches past it.
+ * Typeface figures and ascenders rise above the cap line (Jost digits by 13%
+ * of the size) and script and italic letters overhang their advances, so the
+ * box alone understates the ink. Stroke width is not included; see
+ * `labelFootprint`. Bitmap fonts draw inside their box.
+ */
+export function labelInkExtent(label: string, style: TextStyleV1 = DEFAULT_TEXT_STYLE): LabelExtent {
+  const { width, height } = labelDimensions(label, style);
+  if (isBitmapFont(style.font)) return { minX: 0, minY: 0, maxX: width, maxY: height };
+  const font = loadedFont(style.font);
+  let cache = inkExtents.get(font);
+  if (!cache) inkExtents.set(font, cache = new Map());
+  const key = `${style.sizeMm}\u0000${label}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const extent = { minX: 0, minY: 0, maxX: width, maxY: height };
+  const { strokes, fills } = labelGeometry(label, { x: 0, y: 0 }, 0, 0, 0, style);
+  for (const line of [...strokes, ...fills.map((fill) => fill.outer)]) {
+    for (const { x, y } of line) {
+      if (x < extent.minX) extent.minX = x;
+      if (x > extent.maxX) extent.maxX = x;
+      if (y < extent.minY) extent.minY = y;
+      if (y > extent.maxY) extent.maxY = y;
+    }
+  }
+  if (cache.size >= INK_EXTENT_CACHE_LIMIT) cache.clear();
+  cache.set(key, extent);
+  return extent;
 }
 
 /** Text drawn at the origin: stroke polylines, and filled regions for outline typefaces. */

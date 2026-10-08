@@ -1,7 +1,7 @@
 import { addLabelObstacles, indexLabelLayer, type LabelLayerIndex } from "../../annotate/label-placement.js";
-import { coveredLabelPoint } from "../../pipeline/piece-labels.js";
+import { gluedLabelPoint, hiddenLabelMarking } from "../../pipeline/hidden-marks.js";
 import { preparePolygons, type PreparedPolygons } from "../../primitives/geometry2d.js";
-import type { GeometryIRV1, NestPartV1, OperationPath, ProjectConfigV1 } from "../../types.js";
+import type { GeometryIRV1, NestPartV1, ProjectConfigV1 } from "../../types.js";
 import { polygonLabel } from "./parts.js";
 
 /**
@@ -13,11 +13,11 @@ import { polygonLabel } from "./parts.js";
  */
 export function withPartLabels(ir: GeometryIRV1, config: ProjectConfigV1, parts: NestPartV1[]): { ir: GeometryIRV1; omitted: string[] } {
   if (!config.showAssemblyLabels) return { ir, omitted: [] };
-  const coverings = new Map<number, PreparedPolygons>();
-  // Everything stacked above a layer, as generation computes it for piece ids.
-  const coveringOf = (layerIndex: number) => {
-    if (!coverings.has(layerIndex)) coverings.set(layerIndex, preparePolygons(ir.layers.slice(layerIndex + 1).flatMap((layer) => layer.polygons)));
-    return coverings.get(layerIndex)!;
+  const aboves = new Map<number, PreparedPolygons>();
+  // The sheet glued on top, as generation reads it for piece ids.
+  const aboveOf = (layerIndex: number) => {
+    if (!aboves.has(layerIndex)) aboves.set(layerIndex, preparePolygons(ir.layers[layerIndex + 1]?.polygons ?? []));
+    return aboves.get(layerIndex)!;
   };
   const layers = [...ir.layers];
   const indexes = new Map<number, LabelLayerIndex>();
@@ -31,12 +31,12 @@ export function withPartLabels(ir: GeometryIRV1, config: ProjectConfigV1, parts:
     const layer = layers[layerIndex] === source ? (layers[layerIndex] = { ...source, markings: [...source.markings] }) : layers[layerIndex]!;
     let index = indexes.get(layerIndex);
     if (!index) indexes.set(layerIndex, index = indexLabelLayer(layer.polygons, layer.markings));
-    const point = coveredLabelPoint(text, config, index, polygon, coveringOf(layerIndex));
+    const point = gluedLabelPoint(text, config, index, polygon, aboveOf(layerIndex));
     if (!point) {
       omitted.push(text);
       continue;
     }
-    const marking: OperationPath = { id: `piece-${text}-label`, operation: "engrave", kind: "guide", points: [point], label: text, textStyle: config.textStyle };
+    const marking = hiddenLabelMarking(`piece-${text}-label`, text, point, config);
     layer.markings.push(marking);
     addLabelObstacles(index, [marking]);
   }

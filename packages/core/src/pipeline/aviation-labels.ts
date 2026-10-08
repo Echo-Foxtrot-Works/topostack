@@ -1,7 +1,7 @@
 import { aviationSymbolSize, type AviationAltitudeCandidate } from "./aviation.js";
 import { fabricationLabel } from "./transportation.js";
 import { pointInRing } from "../primitives/geometry2d.js";
-import { labelDimensions } from "../annotate/labels.js";
+import { labelInkExtent } from "../annotate/labels.js";
 import type { Point2D, OperationPath, TextStyleV1 } from "../types.js";
 import type { GenerationContext } from "./generation-context.js";
 import type { LayerClip } from "./layer-clips.js";
@@ -40,7 +40,10 @@ export function placeAviationLabels(context: GenerationContext, clips: LayerClip
     if (placed >= AVIATION_LABEL_LIMIT) break;
     const label = fabricationLabel(candidate.label, textStyle.font);
     if (!label) continue;
-    const { width, height } = labelDimensions(label, textStyle);
+    // Boxes hold the ink, which can reach past the advance box; the origin is placed from it.
+    const ink = labelInkExtent(label, textStyle);
+    const width = ink.maxX - ink.minX;
+    const height = ink.maxY - ink.minY;
     const offset = candidate.clearanceMm + AVIATION_LABEL_GAP_MM;
     const top = candidate.anchor.y - height / 2;
     const box = [candidate.anchor.x + offset, candidate.anchor.x - offset - width]
@@ -48,7 +51,7 @@ export function placeAviationLabels(context: GenerationContext, clips: LayerClip
       .find((option) => inside(option) && !overlaps(option));
     if (!box) continue;
     occupied.push(box);
-    placer.push([{ id: `aviation-label-${placed++}`, operation: "engrave", kind: "label", aviationClass: candidate.aviationClass, points: [{ x: box.left, y: box.top }], label, textStyle }], true);
+    placer.push([{ id: `aviation-label-${placed++}`, operation: "engrave", kind: "label", aviationClass: candidate.aviationClass, points: [{ x: box.left - ink.minX, y: box.top - ink.minY }], label, textStyle }], true);
   }
   const printed = new Set<string>();
   for (const candidate of aviation.altitudes) {
@@ -74,15 +77,18 @@ export function placeAviationLabels(context: GenerationContext, clips: LayerClip
  */
 function altitudeLabel(candidate: AviationAltitudeCandidate, textStyle: TextStyleV1, id: string): { box: { left: number; top: number; right: number; bottom: number }; markings: OperationPath[] } | undefined {
   const { anchor: { x, y }, aviationClass } = candidate;
+  // Laid out by ink, so a glyph past its advance box stays inside the reserved box.
   const text = (value: string) => {
     const label = fabricationLabel(value, textStyle.font);
-    return label ? { label, ...labelDimensions(label, textStyle) } : undefined;
+    if (!label) return undefined;
+    const ink = labelInkExtent(label, textStyle);
+    return { label, ink, width: ink.maxX - ink.minX, height: ink.maxY - ink.minY };
   };
   const ceiling = text(candidate.ceiling);
   if (!ceiling) return undefined;
   const line = (points: Point2D[], suffix: string): OperationPath => ({ id: `${id}-${suffix}`, operation: "engrave", kind: "label", aviationClass, points });
-  const word = (value: { label: string; width: number }, top: number, suffix: string): OperationPath =>
-    ({ id: `${id}-${suffix}`, operation: "engrave", kind: "label", aviationClass, points: [{ x: x - value.width / 2, y: top }], label: value.label, textStyle });
+  const word = (value: { label: string; width: number; ink: { minX: number; minY: number } }, top: number, suffix: string): OperationPath =>
+    ({ id: `${id}-${suffix}`, operation: "engrave", kind: "label", aviationClass, points: [{ x: x - value.width / 2 - value.ink.minX, y: top - value.ink.minY }], label: value.label, textStyle });
   if (candidate.floor === undefined) {
     const margin = ceiling.height * 0.4;
     const [left, right, top, bottom] = [x - ceiling.width / 2 - margin, x + ceiling.width / 2 + margin, y - ceiling.height / 2 - margin, y + ceiling.height / 2 + margin];

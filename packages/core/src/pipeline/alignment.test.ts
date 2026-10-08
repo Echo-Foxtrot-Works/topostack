@@ -3,6 +3,7 @@ import { labelDimensions } from "../annotate/labels.js";
 import { distanceToSegment, pointInRing } from "../test-support/sources.js";
 import { DEFAULT_PROJECT, type LayerIR, type LayerPieceV1, type OperationPath, type Point2D, type Polygon2D } from "../types.js";
 import { alignmentGuideMarkings } from "./alignment.js";
+import { alignmentOutlineInsetMm } from "./hidden-marks.js";
 
 const config = { ...DEFAULT_PROJECT, laserKerfMm: 0.5 };
 
@@ -35,19 +36,28 @@ describe("alignment guide markings", () => {
     expect(alignmentGuideMarkings(config, base, layer(1, []))).toEqual([]);
   });
 
-  it("traces the next layer's footprint one kerf inside its cut line and names it", () => {
+  it("traces the next layer's footprint with its whole line one kerf inside the cut line, and names it", () => {
     const next = layer(1, [rect(-40, -30, 40, 30)]);
     const markings = alignmentGuideMarkings(config, base, next);
     expect(markings.every((marking) => marking.operation === "engrave" && marking.kind === "guide")).toBe(true);
     expect(outlines(markings).length).toBeGreaterThan(0);
     for (const point of outlines(markings).flatMap((marking) => marking.points)) {
       expect(pointInRing(point, next.polygons[0]!.outer)).toBe(true);
-      expect(distanceToRing(point, next.polygons[0]!.outer)).toBeCloseTo(config.laserKerfMm, 3);
+      expect(distanceToRing(point, next.polygons[0]!.outer)).toBeCloseTo(config.laserKerfMm + config.lineStyle.annotationMm / 2, 3);
     }
     const [label] = labels(markings);
     expect(label).toMatchObject({ label: "L02", id: "alignment-layer-01-to-02-0-label", textStyle: config.textStyle });
     expect(labelInside(label!, next.polygons[0]!.outer)).toBe(true);
     expect(new Set(markings.map((marking) => marking.id)).size).toBe(markings.length);
+  });
+
+  it("keeps a wide outline hidden even with no kerf", () => {
+    // A centred line at the cut edge would leave half its width beside the sheet above.
+    const wide = { ...config, laserKerfMm: 0, lineStyle: { ...config.lineStyle, annotationMm: 1.2 } };
+    const next = layer(1, [rect(-40, -30, 40, 30)]);
+    const points = outlines(alignmentGuideMarkings(wide, base, next)).flatMap((marking) => marking.points);
+    expect(points.length).toBeGreaterThan(0);
+    for (const point of points) expect(distanceToRing(point, next.polygons[0]!.outer)).toBeGreaterThanOrEqual(0.6 + 0.1 - 1e-6);
   });
 
   it("clips the guide to the material it is engraved on", () => {
@@ -70,7 +80,7 @@ describe("alignment guide markings", () => {
     expect(labels(markings).map((marking) => marking.label).sort()).toEqual(["L02-A1", "L02-B1"]);
     labels(markings).forEach((marking) => expect(labelInside(marking, pieces[marking.label === "L02-A1" ? 0 : 1]!.outer)).toBe(true));
     const guidePoints = outlines(markings).flatMap((marking) => marking.points);
-    expect(guidePoints.every((point) => distanceToRing(point, whole.outer) < config.laserKerfMm + 1e-3)).toBe(true);
+    expect(guidePoints.every((point) => distanceToRing(point, whole.outer) < alignmentOutlineInsetMm(config) + 1e-3)).toBe(true);
     expect(guidePoints.some((point) => Math.abs(point.x) < 1)).toBe(false);
   });
 
