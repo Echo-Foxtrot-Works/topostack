@@ -1,6 +1,6 @@
 {
   "name": "@topostack/chart-trace",
-  "version": "0.9.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Turns a lake depth chart into bathymetry: georeferencing a chart image against a known lake outline, and interpolating traced contours into a depth grid. Pure TypeScript with no DOM access, run by the batch build in Node and by a studio worker in the browser. Source-only; every consumer compiles TypeScript itself.",

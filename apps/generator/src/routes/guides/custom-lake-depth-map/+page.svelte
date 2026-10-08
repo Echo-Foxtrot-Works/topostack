@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import { base } from "$app/paths";
   import Article from "$lib/site/Article.svelte";
 </script>
@@ -21,8 +22,8 @@
   <h2>4. Add the details that make it personal</h2>
   <p>In <strong>Map details</strong>, choose roads, trails and labels for context, and keep <strong>Water depth</strong> on. To mark a cabin, a dock or a favorite fishing spot, add a marker in the <strong>Custom data</strong> view by clicking the map or entering its coordinates, or import a GPX track of a paddling route. See <a href={`${base}/guides/custom-markers-and-paths`}>custom markers and paths</a>.</p>
 
-  <h2>5. Paint the water</h2>
-  <p>Many lake maps are painted or stained blue in the lake, often darker toward the deepest layers. Turn on <strong>Water paint templates</strong> and TopoStack cuts a paper stencil for each layer, open only where water stays visible once the stack is glued. The <a href={`${base}/guides/water-paint-templates`}>paint template guide</a> covers the process.</p>
+  <h2>5. Choose your water finish</h2>
+  <WaterFinishComparison links />
 
   <h2>6. Generate, export and cut</h2>
   <p>Select <strong>Generate terrain</strong>, check the warnings about survey coverage or estimated depths, and step through the <strong>Cut layers</strong> view. Then open <strong>Export</strong> for the SVG cut panels, the assembly guide and <strong>ATTRIBUTION.txt</strong>, which credits the lake survey. If the map is bigger than your laser bed, <a href={`${base}/guides/split-large-maps`}>split it into pieces</a>. The <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> covers kerf, nesting and assembly in detail.</p>

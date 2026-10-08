@@ -13,8 +13,9 @@ const dist = new URL("../../apps/generator/dist/", import.meta.url);
 const budgets = {
   // JavaScript the homepage preloads. 58,053 when set.
   landingJavaScriptGzip: 64_000,
-  // Prerendered homepage HTML. 9,579 when set.
-  landingHtmlGzip: 10_500,
+  // Prerendered homepage HTML. 9,579 when set; 11,142 after adding the
+  // accessible water-finish comparison with responsive images (2026-10-08).
+  landingHtmlGzip: 12_300,
   // JavaScript studio.html preloads before the studio can render. 130,547 when set.
   // 145,307 when raised 2026-09-29 (from 143,137): the VFR sectional legend
   // symbols are geometry in core, whose chunk studio.html preloads.
