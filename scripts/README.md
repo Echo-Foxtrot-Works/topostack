@@ -113,6 +113,7 @@ Check deployed services, SEO output, and data quality. CI and the production mon
 | `verify-noaa-live.mjs` | Integration check of NOAA depth data against a local app and Worker | manual: [noaa-bathymetry.md](../docs/noaa-bathymetry.md) |
 | `seo-pages.mjs` | Library, not run directly: every indexable page and what the SEO verifiers expect of it | imported by `verify-seo.mjs` and `verify-seo-http.mjs` |
 | `verify-seo-http.mjs` | Check a deployed site's SEO responses (headers, sitemap, robots, redirects) | CI/workflows |
+| `growth-baseline.mjs` | Read-only production usage and Web Analytics baseline, with sampling and availability; see [growth measurement](../docs/launch/measurement.md) | manual: `node --env-file-if-exists=.env scripts/verify/growth-baseline.mjs <from-ISO> <to-ISO> <output.json>` |
 | `verify-seo.mjs` | Check the built site's metadata, sitemap, and structured data | CI/workflows |
 | `verify-surveys-live.mjs` | Integration check of survey archives against a local app and Worker | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `verify-upstream-health.mjs` | Hourly monitor of the Worker's upstream cache-miss probes | CI/workflows |
