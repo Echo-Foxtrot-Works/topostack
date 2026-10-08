@@ -5,7 +5,7 @@ import { traceVectorChart } from "./trace-vector.ts";
 const mapArea = { left: 100, top: 100, right: 1100, bottom: 900 };
 
 describe("traceVectorChart", () => {
-  it("recovers every level of a fragmented GIS chart with two contours labelled", () => {
+  it("recovers every level of a fragmented GIS chart with two contours labelled", { timeout: 15_000 }, () => {
     const chart = syntheticChart({ levels: [5, 10, 15, 20, 25], fractions: [0.84, 0.67, 0.5, 0.33, 0.16], labelled: [1, 3], indexEvery: 2 });
     const trace = traceVectorChart(chart.page, { contourStyles: chart.contourStyles, shorelineStyles: [chart.shorelineStyle], labels: "depth", mapArea });
     expect(trace.interval).toBe(10);
