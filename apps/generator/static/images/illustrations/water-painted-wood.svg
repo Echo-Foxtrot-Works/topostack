@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 280" fill="none" stroke="currentColor" color="#c65224" stroke-width="1.2" stroke-linejoin="round">
+  <defs>
+    <!-- Hide lower geometry behind the paper, while keeping its lake opening clear.
+         Removing those strokes preserves the theme-aware outer CSS mask. -->
+    <mask id="stencil-occlusion" maskUnits="userSpaceOnUse" x="0" y="0" width="460" height="280" stroke="none" style="mask-type: luminance">
+      <rect width="460" height="280" fill="white"/>
+      <path d="M58 88 230 28 402 88 230 149Z" fill="black"/>
+      <path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 88) scale(1 .4)" fill="white"/>
+    </mask>
+  </defs>
+  <g mask="url(#stencil-occlusion)">
+  <g opacity=".3" stroke-dasharray="3 6"><path d="M58 88V160M402 88V160M230 140V220"/></g>
+  <g stroke-width="1.5">
+  <path d="M58 164 230 104 402 164 230 225Z"/>
+  <path d="M58 164V182L230 243 402 182V164M230 225V243"/>
+  <path opacity=".45" d="M58 170 230 231 402 170M58 176 230 237 402 176"/>
+</g>
+  <path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 164) scale(1 .4)" fill="currentColor" fill-opacity=".12" stroke="none"/>
+  <g><path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 164) scale(1.0 0.4)"/>
+<path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 167) scale(0.8200000000000001 0.32800000000000007)"/>
+<path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 170) scale(0.64 0.256)"/>
+<path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 173) scale(0.45999999999999996 0.184)"/></g>
+  </g>
+  <g stroke-width="1.5"><path d="M58 88 230 28 402 88 230 149Z"/><path d="M-95 5C-116-16-83-48-52-42C-29-65 13-62 34-41C63-48 96-23 99-2C120 17 78 45 47 38C18 64-15 47-40 44C-68 48-76 22-95 5Z" transform="translate(230 88) scale(1 .4)"/></g>
+  <path opacity=".4" d="M105 251H356M105 246V256M356 246V256"/>
+</svg>

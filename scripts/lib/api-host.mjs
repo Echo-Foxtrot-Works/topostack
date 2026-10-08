@@ -24,6 +24,9 @@ const LIBRARY_HOSTS = [
   // pdf.js tells absolute URLs from relative ones by parsing against this base
   // (`new URL(url, "http://example.com")`). It is never requested.
   { host: "example.com", marker: "GlobalWorkerOptions" },
+  // MapLibre parses attribution URLs against this base to inspect their protocol.
+  // The base is never requested or copied into the sanitized markup.
+  { host: "maplibre.invalid", marker: "setRTLTextPlugin" },
 ];
 
 /** The forbidden hosts named in one built file, less those a bundled library only writes. */
