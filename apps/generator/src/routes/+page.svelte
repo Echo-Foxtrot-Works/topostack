@@ -73,7 +73,7 @@
 
     <section id="water-finishes" class="section" aria-labelledby="water-finishes-title">
       <div class="section-heading"><p class="eyebrow">Water, made your way</p><h2 id="water-finishes-title">Two ways to finish your lake.</h2><p>Color the wooden lake bed, or add a fitted acrylic surface. Both finishes start with the same layered terrain.</p></div>
-      <WaterFinishComparison links />
+      <WaterFinishComparison links linework />
     </section>
 
     <section id="how-it-works" class="section process" aria-labelledby="process-title">
