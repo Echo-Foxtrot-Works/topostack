@@ -671,6 +671,32 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector<HTMLButtonElement>('button[aria-label="Undo"]')?.disabled).toBe(true);
   });
 
+  it("builds the preview once the startup project is known, not for the sample it replaces", async () => {
+    const { loadProject } = await import("$lib/storage/storage");
+    let finishRestore: ((project: typeof DEFAULT_PROJECT) => void) | undefined;
+    vi.mocked(loadProject).mockImplementationOnce(() => new Promise((resolve) => { finishRestore = resolve; }));
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    // Long enough for the already imported preview module to have mounted, were it requested.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(target.querySelector('[data-testid="three-preview"]')).toBeNull();
+    expect(target.querySelector(".preview-loading")?.textContent).toContain("Loading 3D preview");
+    finishRestore!({ ...DEFAULT_PROJECT, name: "Restored ridge" });
+    await vi.waitFor(() => expect(target.querySelector('[data-testid="three-preview"]')).not.toBeNull());
+    expect(target.querySelector<HTMLInputElement>('input[aria-label="Project name"]')?.value).toBe("Restored ridge");
+  });
+
+  it("shows the sample's preview when the startup project is slow to restore", async () => {
+    const { loadProject } = await import("$lib/storage/storage");
+    vi.mocked(loadProject).mockImplementationOnce(() => new Promise(() => undefined));
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    // Long enough for the already imported preview module to have mounted, were it requested.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(target.querySelector('[data-testid="three-preview"]')).toBeNull();
+    await vi.waitFor(() => expect(target.querySelector('[data-testid="three-preview"]')).not.toBeNull(), { timeout: 3_000 });
+  });
+
   it("switches to a flat engraving workflow with dedicated controls and preview", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
