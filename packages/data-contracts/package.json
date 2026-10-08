@@ -1,6 +1,6 @@
 {
   "name": "@topostack/data-contracts",
-  "version": "0.9.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Data-layer contracts shared by the browser, the map-api Worker, and the provisioning scripts: catalog validation, archive release parsing, terrain PNG decoding, usage events, feedback submissions, traced depth charts, share-link encoding, and the changelog. Source-only; every consumer compiles TypeScript itself.",

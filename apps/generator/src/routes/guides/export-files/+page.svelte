@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import { base } from "$app/paths";
   import Article from "$lib/site/Article.svelte";
 </script>
@@ -17,6 +18,10 @@
     <div><dt>Project settings <span>JSON</span></dt><dd>Your settings, for backup or to continue on another device. Always available, even when artwork export is blocked.</dd></div>
   </dl>
   <p>ZIP and file names start with your project name, lower-cased with spaces replaced by hyphens. The examples below use <code>my-map</code>. The combined download is limited to 100 MB; if a project exceeds it, reduce the map details or the size of the map area.</p>
+
+  <h2 id="water-finishes-and-their-files">Water finishes and their files</h2>
+  <WaterFinishComparison />
+  <p>For painted wood, download <strong>Paint templates</strong> and cut the paper stencils with kerf compensation off. For acrylic, download <strong>Acrylic inserts</strong> and use the separate acrylic thickness, kerf and fit clearance from Fabrication settings. <strong>Complete project</strong> includes both sets when enabled. See the <a href={`${base}/guides/water-paint-templates`}>water paint template guide</a> for painting the bed before assembly.</p>
 
   <h2>Layered relief files</h2>
   <table>

@@ -1,9 +1,13 @@
 <script lang="ts">
+  import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import { base } from "$app/paths";
   import Article from "$lib/site/Article.svelte";
 </script>
 
 <Article title="Paint lakes with water paint templates" intro="Color the water on a layered relief without masking by hand. TopoStack cuts a paper stencil for each panel, open exactly where the lake stays visible once the stack is glued.">
+  <h2>Choose your water finish</h2>
+  <WaterFinishComparison />
+
   <h2>Turn on paint templates</h2>
   <p>Choose <strong>Layered</strong> and turn on <strong>Water paint templates</strong> in <strong>Fabrication settings</strong>, then regenerate terrain. For every panel with water that stays visible once the stack is glued, TopoStack writes a paper stencil registered to that panel. Mask the land with it and spray the water, and the paint lands exactly where the lake will show. Water outlines are fetched for the templates even when <strong>Water outlines</strong> and <strong>Water depth</strong> are off.</p>
   <figure>
