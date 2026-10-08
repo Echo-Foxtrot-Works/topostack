@@ -2,8 +2,8 @@ import { removeTinyRing } from "./contours.js";
 import { groundWidthMFor } from "./stack-plan.js";
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
 import { clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, pointInRing, type PreparedPolygons, preparePolygons, toMultiPolygon } from "../primitives/geometry2d.js";
-import { labelDimensions, labelGeometry } from "../annotate/labels.js";
-import { placeElevationLabelStack, type CoordinatedElevationLabel } from "../annotate/label-placement.js";
+import { labelGeometry } from "../annotate/labels.js";
+import { labelFootprint, placeElevationLabelStack, type CoordinatedElevationLabel } from "../annotate/label-placement.js";
 import { geoPointToMapPoint, longitudeInBounds, markerCenterForAnchor, markerPolygons } from "../annotate/markers.js";
 import { markerLayerPolygons } from "../annotate/marker-placement.js";
 import { GRAPHIC_CLEARANCE_MM, placedGraphicMarkingPrefix, placedGraphicPolygons } from "../annotate/graphics.js";
@@ -12,7 +12,7 @@ import { northArrowMarkings } from "../annotate/north-arrow.js";
 import { scaleBarMarkings } from "../annotate/scale-bar.js";
 import { plaqueFootprint, plaqueMarkings } from "../annotate/plaque.js";
 import { displayElevation, elevationUnit } from "../primitives/units.js";
-import { MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D, type UnitSystem } from "../types.js";
+import { DEFAULT_TEXT_STYLE, MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D, type UnitSystem } from "../types.js";
 import type { GenerationContext } from "./generation-context.js";
 import type { LayerClip } from "./layer-clips.js";
 
@@ -37,11 +37,8 @@ export function annotationPlacer({ config, clip, warnings, flatEngraving }: Gene
     fits(markings, name) {
       const fits = markings.every((marking) => {
         const points = [...marking.points];
-        if (marking.label && marking.points[0]) {
-          const { x, y } = marking.points[0];
-          const { width, height } = labelDimensions(marking.label, marking.textStyle);
-          points.push({ x: x + width, y }, { x, y: y + height }, { x: x + width, y: y + height });
-        }
+        // The text's own footprint, turned with it and including glyphs past their advance box.
+        if (marking.label && marking.points[0]) points.push(...labelFootprint(marking.label, marking.points[0], marking.labelRotationRad ?? 0, marking.textStyle ?? DEFAULT_TEXT_STYLE, 0));
         return insetFits(points, config.lineStyle.annotationMm / 2, clip);
       });
       if (!fits) warnings.push({ code: "LABEL_OMITTED", message: `${name} was omitted because it does not fit the material. Increase the output size or reduce the annotation size.` });
@@ -109,14 +106,15 @@ export function elevationLabelTexts(layer: LayerIR, units: UnitSystem): string[]
   return [`${elevation} ${unit}`, `${elevation}${unit}`, `${elevation}`];
 }
 
-export function placeElevationLabels({ config, flatEngraving, warnings }: GenerationContext, layers: LayerIR[], parallelPlacements?: Array<CoordinatedElevationLabel | undefined>): void {
+/** `coverings[i]` is what lies over layer i (`labelCoverings`), which a label must stay clear of. */
+export function placeElevationLabels({ config, flatEngraving, warnings }: GenerationContext, layers: LayerIR[], coverings: Array<Pick<LayerIR, "polygons"> | undefined> = layers.slice(1), parallelPlacements?: Array<CoordinatedElevationLabel | undefined>): void {
   const omittedLayers: string[] = [];
   const labelsByLayer = layers.map((layer) => elevationLabelTexts(layer, config.units));
   // A flat map labels only its emphasized index contours. Labelling every
   // minor line overwhelms the engraving and implies a label on the base
   // crop boundary, which is not itself a contour.
   const flatLabeled = (layer: LayerIR) => layer.index !== 0 && layer.index % config.engravingIndexInterval === 0;
-  const placements = parallelPlacements ?? placeElevationLabelStack(labelsByLayer, config, layers, flatEngraving ? { markings: layers[0]!.markings, labeled: flatLabeled } : undefined);
+  const placements = parallelPlacements ?? placeElevationLabelStack(labelsByLayer, config, layers, flatEngraving ? { markings: layers[0]!.markings, labeled: flatLabeled } : undefined, coverings);
   layers.forEach((layer, layerIndex) => {
     if (flatEngraving && !flatLabeled(layer)) return;
     const placed = placements[layerIndex];

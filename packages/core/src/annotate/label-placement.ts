@@ -1,4 +1,4 @@
-import { labelDimensions } from "./labels.js";
+import { labelDimensions, labelInkExtent, labelStrokeReachMm } from "./labels.js";
 import {
   type Bounds2D,
   boundsContainBounds,
@@ -18,13 +18,22 @@ import {
 } from "../primitives/geometry2d.js";
 import { DEFAULT_TEXT_STYLE, type LayerIR, type Point2D, type Polygon2D, type ProjectConfigV1, type TextStyleV1 } from "../types.js";
 
+/**
+ * Space kept between a hidden label's ink and the edge of the material that
+ * hides it. It is measured from the engraved line itself (glyphs past their
+ * advance box and half the stroke included), so it is the slack a maker has
+ * when a sheet is glued slightly off its alignment outline.
+ */
+export const HIDDEN_LABEL_CLEARANCE_MM = 0.8;
+
+/** Axis-aligned box of an unrotated label's ink, padded. */
 function labelBounds(label: string, origin: Point2D, style: TextStyleV1, padding = 0): Bounds2D {
-  const dimensions = labelDimensions(label, style);
+  const ink = labelInkExtent(label, style);
   return {
-    minX: origin.x - padding,
-    minY: origin.y - padding,
-    maxX: origin.x + dimensions.width + padding,
-    maxY: origin.y + dimensions.height + padding,
+    minX: origin.x + ink.minX - padding,
+    minY: origin.y + ink.minY - padding,
+    maxX: origin.x + ink.maxX + padding,
+    maxY: origin.y + ink.maxY + padding,
   };
 }
 
@@ -103,13 +112,20 @@ function boundsInsidePolygon(bounds: Bounds2D, prepared: PreparedPolygons): bool
   return !somePreparedEdge(prepared, expanded(bounds), (start, end) => segmentIntersectsBounds(start, end, bounds));
 }
 
-function labelFootprint(label: string, origin: Point2D, rotationRad: number, style: TextStyleV1, padding = 0.8): Point2D[] {
-  const dimensions = labelDimensions(label, style);
+/**
+ * The closed ring around everything a label engraves, grown by `padding`, at
+ * its origin and rotation. Every placement test, obstacle and fit check reads
+ * this one shape, so what is checked is what the laser draws: glyphs that
+ * reach past the advance box included. Callers add the stroke's reach
+ * (`labelStrokeReachMm`) to `padding` where the line width matters.
+ */
+export function labelFootprint(label: string, origin: Point2D, rotationRad: number, style: TextStyleV1, padding = 0.8): Point2D[] {
+  const { minX, minY, maxX, maxY } = labelBounds(label, origin, style, padding);
   return close([
-    { x: origin.x - padding, y: origin.y - padding },
-    { x: origin.x + dimensions.width + padding, y: origin.y - padding },
-    { x: origin.x + dimensions.width + padding, y: origin.y + dimensions.height + padding },
-    { x: origin.x - padding, y: origin.y + dimensions.height + padding },
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: maxX, y: maxY },
+    { x: minX, y: maxY },
   ].map((point) => rotatedPoint(point, origin, rotationRad)));
 }
 
@@ -188,19 +204,25 @@ export function addLabelObstacles(index: LabelLayerIndex, markings: LayerIR["mar
 }
 
 /**
+ * The origin of an unrotated hidden label whose ink, kept
+ * `HIDDEN_LABEL_CLEARANCE_MM` plus half the line inside, lies in one material
+ * polygon and one of `requiredPolygons`, clear of every indexed marking. Hidden
+ * marks reach this through `pipeline/hidden-marks.ts`.
+ *
  * `localCandidates` are extra normalized positions tried before the global
  * grid, whose 10% spacing is coarser than a small target region such as one
  * cut piece's covered area; all candidates are still ordered by distance from
  * `preferred`.
  */
 export function placeLabel(label: string, config: ProjectConfigV1, { material, obstacles }: LabelLayerIndex, preferred: Point2D, requiredPolygons?: Polygon2D[], localCandidates: readonly Point2D[] = []): Point2D | undefined {
-  const dimensions = labelDimensions(label, config.textStyle);
+  const padding = HIDDEN_LABEL_CLEARANCE_MM + labelStrokeReachMm(config.textStyle, config.lineStyle.annotationMm);
+  const ink = labelBounds(label, { x: 0, y: 0 }, config.textStyle, padding);
   // Every sampled point of the label box must be inside, so the box must sit
   // inside the polygon's box - which no polygon narrower than the label can
   // manage at any candidate position. Ruling those out once, rather than 361
   // times, matters because a layer can hold hundreds of small polygons.
   const holdsLabel = ({ bounds }: { bounds: Bounds2D }) =>
-    bounds.maxX - bounds.minX >= dimensions.width + 1.6 && bounds.maxY - bounds.minY >= dimensions.height + 1.6;
+    bounds.maxX - bounds.minX >= ink.maxX - ink.minX && bounds.maxY - bounds.minY >= ink.maxY - ink.minY;
   const candidateMaterial = material.filter(holdsLabel);
   if (!candidateMaterial.length) return undefined;
   const required = requiredPolygons && indexPolygons(requiredPolygons).filter(holdsLabel);
@@ -209,8 +231,9 @@ export function placeLabel(label: string, config: ProjectConfigV1, { material, o
     boundsContainBounds(box, bounds) && boundsInsidePolygon(bounds, prepared);
   for (const candidate of labelCandidates(preferred, localCandidates)) {
     const center = { x: candidate.x * config.widthMm / 2, y: candidate.y * config.heightMm / 2 };
-    const origin = { x: center.x - dimensions.width / 2, y: center.y - dimensions.height / 2 };
-    const bounds = labelBounds(label, origin, config.textStyle, 0.8);
+    // The ink, not the advance box, is centred on the candidate.
+    const origin = { x: center.x - (ink.minX + ink.maxX) / 2, y: center.y - (ink.minY + ink.maxY) / 2 };
+    const bounds = { minX: origin.x + ink.minX, minY: origin.y + ink.minY, maxX: origin.x + ink.maxX, maxY: origin.y + ink.maxY };
     // Cheapest test first: the requirement is usually one polygon, while the
     // material is the whole layer below, and each edge-scans what it tests.
     if (required && !required.some(inside(bounds))) continue;
@@ -472,10 +495,14 @@ export function elevationLabelOptions(labels: string[], config: ProjectConfigV1,
   return [];
 }
 
-export function placeElevationLabelStack(labelsByLayer: string[][], config: ProjectConfigV1, layers: LayerIR[], sharedFace?: SharedFaceLabelOptions): Array<CoordinatedElevationLabel | undefined> {
+/**
+ * `coverings[i]` is what lies over layer i, by default the layer above; with
+ * acrylic water inserts it includes the ledge each insert is glued on.
+ */
+export function placeElevationLabelStack(labelsByLayer: string[][], config: ProjectConfigV1, layers: LayerIR[], sharedFace?: SharedFaceLabelOptions, coverings: Array<Pick<LayerIR, "polygons"> | undefined> = layers.slice(1)): Array<CoordinatedElevationLabel | undefined> {
   const sharedObstacles = sharedFace && indexMarkings(sharedFace.markings);
   const options = layers.map((layer, index) => sharedFace && !sharedFace.labeled(layer) ? [] :
-    elevationLabelOptions(labelsByLayer[index] ?? [], config, layer, layers[index + 1], layer.markings === sharedFace?.markings ? undefined : sharedObstacles));
+    elevationLabelOptions(labelsByLayer[index] ?? [], config, layer, coverings[index], layer.markings === sharedFace?.markings ? undefined : sharedObstacles));
   return selectElevationLabels(options, config, layers, sharedFace);
 }
 

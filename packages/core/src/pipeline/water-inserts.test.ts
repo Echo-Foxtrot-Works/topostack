@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, parseProject, projectFingerprint, type GeometryWarning, type LayerIR, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterSurfaceIR } from "../index.js";
+import { DEFAULT_PROJECT, generateGeometry, parseProject, projectFingerprint, type GeometryWarning, type LayerIR, type MarkingFeature, type OperationPath, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterSurfaceIR } from "../index.js";
 import { bowlLake, circleRing, lakeArea as lake, scaledForLayers } from "../test-support/sources.js";
 
 const LAKE_RADIUS_MM = 40;
 import { pointInPolygon, signedArea } from "../primitives/geometry2d.js";
-import { cutWaterInserts, WATER_INSERT_LEDGE_MM, waterInsertMaterial } from "./water-inserts.js";
+import { cutWaterInserts, labelCoverings, WATER_INSERT_LEDGE_MM, waterInsertMaterial } from "./water-inserts.js";
+import { elevationLabelOptions } from "../annotate/label-placement.js";
 import { acrylicPanelGroups, fitsWorkArea } from "./water-insert-panels.js";
 import { waterInsertLakeKey } from "../types.js";
+import { labelGeometry } from "../annotate/labels.js";
+import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
 
 
 function square(minX: number, minY: number, maxX: number, maxY: number): Point2D[] {
@@ -240,6 +243,22 @@ const shoreline: MarkingFeature = { id: "water-area-0-shore-0", kind: "water", o
 const road: MarkingFeature = { id: "causeway", kind: "road", operation: "engrave", transportationClass: "local-road", points: [{ x: -90, y: 5 }, { x: 90, y: 5 }] };
 const generated: ProjectConfigV1 = { ...DEFAULT_PROJECT, waterDepthLayerLimit: 6, showWater: true, showRoads: true, optimizeMaterialUse: false, showAlignmentGuides: true, showAssemblyLabels: true, waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: [] } };
 
+describe("elevation labels around an insert", () => {
+  it("keeps labels off the ledge the insert is glued on, and lets them read through the acrylic", () => {
+    const layers = stack();
+    // A wide bed step just inside the opening: its label would sit on the ledge.
+    layers[0]!.polygons = [{ outer: square(-100, -100, 100, 100), holes: [circleRing(0, 0, 24)] }];
+    const cut = cutWaterInserts(project, layers, [surface()], 1.5, [])!;
+    const radii = (covering: Pick<LayerIR, "polygons"> | undefined) => elevationLabelOptions(["10 m"], project, layers[0]!, covering)
+      .map(({ candidate }) => Math.hypot(candidate.center.x, candidate.center.y));
+    // Under the opening only the ledge rim is covered; the bed inside it is open to view.
+    expect(radii(layers[1]).some((radius) => radius < 31)).toBe(true);
+    const covering = labelCoverings(layers, cut.inserts, cut.material)[0];
+    expect(radii(covering).some((radius) => radius < 31)).toBe(false);
+    expect(labelCoverings(layers, cut.inserts, cut.material)[1]).toBe(layers[2]);
+  });
+});
+
 describe("water inserts in a generated stack", () => {
   const [config, scaled] = scaledForLayers(generated, bowlLake(generated), 8);
   const source: SourceBundleV1 = { ...scaled, waterAreas: [lakeArea], markings: [shoreline, road] };
@@ -274,6 +293,18 @@ describe("water inserts in a generated stack", () => {
     expect(shown).toEqual([]);
     const ids = [...result.layers, ...result.waterInserts!].flatMap((entry) => entry.markings.map((marking) => marking.id));
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("labels the bed seen through the acrylic but keeps labels off the ledge it is glued on", () => {
+    const ink = (marking: OperationPath) => {
+      const { strokes, fills } = labelGeometry(marking.label!, marking.points[0]!, 0, 0, marking.labelRotationRad, marking.textStyle);
+      return [...strokes, ...fills.map((fill) => fill.outer)].flat();
+    };
+    const elevations = result.layers.slice(0, insert!.layerIndex).flatMap((layer) => layer.markings.filter((marking) => marking.id.startsWith("elevation-")));
+    expect(elevations.some((marking) => ink(marking).some((point) => inside(point, insert!.polygons)))).toBe(true);
+    const ledge = insert!.polygons.flatMap((polygon) => clipPolygons([polygon], offsetPolygons([polygon], -WATER_INSERT_LEDGE_MM, "miter"), "difference"));
+    const onLedge = elevations.filter((marking) => ink(marking).some((point) => inside(point, ledge))).map((marking) => `${marking.id} ${marking.label}`);
+    expect(onLedge).toEqual([]);
   });
 
   it("keeps the shoreline score along an arm that stayed wood", () => {

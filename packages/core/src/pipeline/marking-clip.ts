@@ -1,7 +1,8 @@
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
-import { labelDimensions, labelGeometry } from "../annotate/labels.js";
+import { labelGeometry } from "../annotate/labels.js";
+import { labelFootprint } from "../annotate/label-placement.js";
 import { type Bounds2D, boundsOverlap, clipPolyline, normalizeMultiPolygon, pointInPreparedPolygons, preparePolygons, ringBounds, toMultiPolygon, toRing, type PreparedPolygons } from "../primitives/geometry2d.js";
-import type { OperationPath, Point2D, Polygon2D } from "../types.js";
+import { DEFAULT_TEXT_STYLE, type OperationPath, type Point2D, type Polygon2D } from "../types.js";
 
 /** Which share of the markings to keep: the part over `polygons`, or the part clear of them. */
 export type MarkingSide = "inside" | "outside";
@@ -74,15 +75,17 @@ export function markingsWithin(markings: OperationPath[], polygons: Polygon2D[],
   });
 }
 
-/** A box around everything a mark engraves; a label's text may turn any way about its anchor. */
+/** Covers half of the widest line a project allows (1.5 mm), so the box never needs the line style. */
+const LABEL_STROKE_SLACK_MM = 1;
+
+/** A box around everything a mark engraves, a label's turned text and its stroke included. */
 function markBounds(mark: OperationPath): Bounds2D {
   const box = ringBounds(mark.points);
-  if (!mark.label) return box;
-  const { width, height } = labelDimensions(mark.label, mark.textStyle);
-  // Generous: glyphs may overhang their advance box a little.
-  const reach = Math.hypot(width, height) * 1.25 + 1;
-  return { minX: box.minX - reach, minY: box.minY - reach, maxX: box.maxX + reach, maxY: box.maxY + reach };
+  if (!mark.label || !mark.points[0]) return box;
+  const label = ringBounds(labelFootprint(mark.label, mark.points[0], mark.labelRotationRad ?? 0, mark.textStyle ?? DEFAULT_TEXT_STYLE, LABEL_STROKE_SLACK_MM));
+  return { minX: Math.min(box.minX, label.minX), minY: Math.min(box.minY, label.minY), maxX: Math.max(box.maxX, label.maxX), maxY: Math.max(box.maxY, label.maxY) };
 }
+
 
 /** One rectangle comfortably around every marking, label boxes included. */
 function everywhere(markings: OperationPath[]): PreparedPolygons {

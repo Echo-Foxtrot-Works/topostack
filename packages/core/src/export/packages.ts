@@ -9,6 +9,7 @@ import { ringBounds } from "../primitives/geometry2d.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
+import { alignmentOutlineInsetMm } from "../pipeline/hidden-marks.js";
 import { aviationRequested, aviationStroke } from "../pipeline/aviation.js";
 import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, Point2D, ProjectConfigV1, SheetNestPlanV1 } from "../types.js";
 import { nestableParts, polygonLabel } from "./sheet-nest/parts.js";
@@ -344,7 +345,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   const attribution = attributionText(ir);
   const cutUnit = lengthUnit(config.units);
   const shownLength = (valueMm: number) => `${format(displayLength(valueMm, config.units))} ${cutUnit}`;
-  const alignment = config.showAlignmentGuides ? `Each lower layer includes an engraved outline inset ${shownLength(config.laserKerfMm)} beneath the layer directly above it, plus an Lxx label. These marks are designed to be hidden after assembly.\n\n` : "";
+  const alignment = config.showAlignmentGuides ? `Each lower layer includes an engraved outline of the layer directly above it, its centre line ${shownLength(alignmentOutlineInsetMm(config))} inside that layer's edge so the whole line stays hidden, plus an Lxx label. These marks are designed to be hidden after assembly.\n\n` : "";
   const kerf = config.laserKerfMm > 0 ? `CUT paths include ${shownLength(config.laserKerfMm)} total kerf compensation: external cuts move outward and internal cuts move inward by half the kerf. Calibrate this value for your laser and material.\n\n` : "CUT paths have no kerf compensation. Calibrate your laser and material before fabrication.\n\n";
   // Layer count is derived, so the README states the scale relationship it came from.
   const horizontalScale = ir.horizontalScale ?? horizontalScaleFor(ir.widthMm, ir.bounds);

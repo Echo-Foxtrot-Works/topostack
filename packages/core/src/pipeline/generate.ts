@@ -9,7 +9,7 @@ import { cropBoundary as boundary } from "../primitives/crop.js";
 import { selectElevationLabels } from "../annotate/label-placement.js";
 import { splitLayersForWorkArea } from "./split.js";
 import { paintRegions } from "./paint-regions.js";
-import { cutWaterInserts, takeInsertMarkings, withInsertSurfaces } from "./water-inserts.js";
+import { cutWaterInserts, labelCoverings, takeInsertMarkings, withInsertSurfaces } from "./water-inserts.js";
 import type { ElevationGrid, GeometryIRV1, GeometryWarning, LayerIR, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR } from "../types.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
 import { layerClips } from "./layer-clips.js";
@@ -151,11 +151,11 @@ function alignmentTasks(layers: LayerIR[], unsplitOutlines: Polygon2D[][]): Geom
   }));
 }
 
-/** Each sheet's elevation-label search under the sheet above, as worker tasks. */
-function elevationLabelTasks(layers: LayerIR[], config: ProjectConfigV1): GeometryTask[] {
+/** Each sheet's elevation-label search under what covers it, insert ledges included, as worker tasks. */
+function elevationLabelTasks(layers: LayerIR[], coverings: Array<Pick<LayerIR, "polygons"> | undefined>, config: ProjectConfigV1): GeometryTask[] {
   return layers.map((layer, index) => ({
     kind: "elevation-labels" as const, layer,
-    covering: layers[index + 1] && { polygons: layers[index + 1]!.polygons },
+    covering: coverings[index] && { polygons: coverings[index]!.polygons },
     labels: elevationLabelTexts(layer, config.units),
   }));
 }
@@ -265,15 +265,16 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   });
   placeAviationLabels(context, surfaceClips);
   if (config.showElevationLabels) {
+    const coverings = labelCoverings(layers, waterInserts, water?.material);
     if (usePool) {
-      const results = yield { config, tasks: elevationLabelTasks(layers, config) };
+      const results = yield { config, tasks: elevationLabelTasks(layers, coverings, config) };
       if (results.length !== layers.length) throw new Error("Incomplete elevation-label batch.");
       const candidates = results.map(result => {
         if (result.kind !== "elevation-labels") throw new Error("Invalid elevation-label result.");
         return result.options;
       });
-      placeElevationLabels(context, layers, selectElevationLabels(candidates, config, layers));
-    } else placeElevationLabels(context, layers);
+      placeElevationLabels(context, layers, coverings, selectElevationLabels(candidates, config, layers));
+    } else placeElevationLabels(context, layers, coverings);
   }
   stage("elevation-labels");
   placePlaque(context, surfaceClips);

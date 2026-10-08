@@ -370,7 +370,7 @@
   }
 
   function previewMarkingPath(marking: OperationPath): string {
-    if (marking.label && marking.points[0]) return labelPathData(marking.label, marking.points[0], 0, 0, 0, marking.textStyle);
+    if (marking.label && marking.points[0]) return labelPathData(marking.label, marking.points[0], 0, 0, marking.labelRotationRad, marking.textStyle);
     return pointsToPath(marking.points);
   }
 

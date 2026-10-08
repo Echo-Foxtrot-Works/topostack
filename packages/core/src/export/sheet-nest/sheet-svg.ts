@@ -1,23 +1,22 @@
-import { labelDimensions } from "../../annotate/labels.js";
+import { labelFootprint } from "../../annotate/label-placement.js";
 import { boundsOverlap, ringBounds, type Bounds2D } from "../../primitives/geometry2d.js";
-import type { GeometryIRV1, LayerIR, PaintRegionKind, ProjectConfigV1 } from "../../types.js";
+import { DEFAULT_TEXT_STYLE, type GeometryIRV1, type LayerIR, type PaintRegionKind, type ProjectConfigV1 } from "../../types.js";
 import { escapeXml } from "../svg-primitives.js";
 import { OPERATIONS, paintTemplateDocument, paintTemplateGroups, panelBodies, type Operation, type PanelBodies } from "../svg.js";
 import { placementMatrix, suffixIds, type NestedPart, type NestedSheet } from "./apply.js";
 
-/** Rough extent of a marking, generous for labels, used only to skip markings far from a part. */
+/** Extent of a marking, its text and stroke included, used only to skip markings far from a part. */
 function markingBounds(mark: LayerIR["markings"][number]): Bounds2D | undefined {
   const first = mark.points[0];
   if (!first) return undefined;
   if (mark.label) {
-    let reach = 50;
     try {
-      const { width, height } = labelDimensions(mark.label, mark.textStyle);
-      reach = Math.hypot(width, height);
+      // 1 mm covers half the widest line a project allows.
+      return ringBounds(labelFootprint(mark.label, first, mark.labelRotationRad ?? 0, mark.textStyle ?? DEFAULT_TEXT_STYLE, 1));
     } catch {
-      // A font that is not loaded cannot be measured; the generous default only costs clipping time.
+      // A font that is not loaded cannot be measured; a generous box only costs clipping time.
+      return { minX: first.x - 50, minY: first.y - 50, maxX: first.x + 50, maxY: first.y + 50 };
     }
-    return { minX: first.x - reach, minY: first.y - reach, maxX: first.x + reach, maxY: first.y + reach };
   }
   return ringBounds(mark.points);
 }
