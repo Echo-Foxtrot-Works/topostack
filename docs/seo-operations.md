@@ -274,8 +274,16 @@ become `other`. Links we publish (README, launch posts, creator walkthroughs)
 can also carry `utm_campaign` (`launch`, `readme`, `newsletter`, `creator`,
 `atomm`) and `utm_medium` (`social`, `forum`, `email`, `video`, `referral`);
 unlisted values become `other` and absent ones `none`, so free text is never
-sent. Events from tabs loaded before this change carry neither field. Only
-those categories and the public landing path are kept in tab session storage, with entry deduplication flags and
+sent. Events from tabs loaded before that change carry neither field. Fixed
+`channel` values from `utm_content` or recognized referrer hosts are
+recorded by the week 1 attribution release. Channels distinguish forums,
+social venues and numbered creator slots while broad sources stay comparable.
+The channel is independently optional in the Worker contract, preserving old
+open tabs. Unknown tags become `other`; absent/unrecoverable channels are `none`.
+Static lake entry tags can be recovered from the same-origin referrer when
+the studio starts the session. No arbitrary referrer path is collected. See
+[the launch link scheme](launch/README.md#link-scheme) for values and examples.
+Only those categories and the public landing path are kept in tab session storage, with entry deduplication flags and
 a 30-minute inactivity expiry. No coordinates, project names, raw query strings,
 custom data or stable user IDs are sent. Collection honors DNT and GPC and is
 best effort. It runs only on the production host (or the explicit E2E test build).
@@ -291,6 +299,11 @@ page, studio entries, generation success/attempts, and prepared fabrication
 exports, segmented by output and acquisition source, and by campaign and
 medium while a launch is running. Use Search Console for
 search traffic and Cloudflare Web Analytics for visit/device context.
+The [growth measurement runbook](launch/measurement.md) and
+`scripts/verify/growth-baseline.mjs` capture aggregate Cloudflare baselines,
+including sampling and availability. Segment new events by `channel` as well.
+Sampled provider counts are estimates; do not treat missing groups as proof of
+zero usage or event ratios as a unique-user conversion funnel.
 
 ## Account steps after publishing
 

@@ -4,6 +4,10 @@ Which existing pictures and videos to use where, with captions that say what the
 
 Provenance for each set is recorded next to it: [atomm/media-provenance.json](../../atomm/media-provenance.json) (v8 Atomm set), [docs/images/README.md](../images/README.md), [docs/images/splitting-paint-templates/README.md](../images/splitting-paint-templates/README.md), [docs/images/walden-example/README.md](../images/walden-example/README.md) and [apps/generator/static/images/guides/chart-images.md](../../apps/generator/static/images/guides/chart-images.md).
 
+## Community physical builds
+
+Physical builds are now documented in [activity.md](activity.md), including a small cardboard relief and Moab/Point Lobos projects. These photos are not bundled launch assets and have no recorded reuse permission. Link to the original posts until the makers authorize reuse; obtain project settings and machine/material details for a reproducible tutorial. Repository screenshots remain labelled as software previews.
+
 ## Do not use
 
 | File | Why |

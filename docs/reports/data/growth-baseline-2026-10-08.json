@@ -1,0 +1,798 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-08T19:32:10.991Z",
+  "timezone": "America/Denver",
+  "from": "2026-10-02T00:00:00-06:00",
+  "to": "2026-10-08T00:00:00-06:00",
+  "interpretation": "Aggregate events and Web Analytics visits, not unique users or a joined conversion funnel. Sampled counts are estimates; missing events do not prove zero usage. export_prepared is file handoff, not a completed physical build.",
+  "search": {
+    "status": "awaiting-search-console-export"
+  },
+  "usage": {
+    "status": "available",
+    "actualTimeframe": {
+      "from": 1790920800000,
+      "to": 1791439200000
+    },
+    "sampled": true,
+    "adaptiveSamplingLevel": 10,
+    "byEvent": {
+      "generation_started": 540,
+      "generation_succeeded": 390,
+      "generation_failed": 20,
+      "landing_view": 90,
+      "studio_open": 240,
+      "export_prepared": 80
+    },
+    "rows": [
+      {
+        "event": "generation_started",
+        "source": "google",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_succeeded",
+        "source": "direct",
+        "channel": "none",
+        "count": 270,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_failed",
+        "source": "other",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_started",
+        "source": "bing",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "landing_view",
+        "source": "social",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_succeeded",
+        "source": "google",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_failed",
+        "source": "social",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "studio_open",
+        "source": "social",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_succeeded",
+        "source": "other",
+        "channel": "none",
+        "count": 70,
+        "sampleInterval": 10
+      },
+      {
+        "event": "studio_open",
+        "source": "direct",
+        "channel": "none",
+        "count": 190,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_succeeded",
+        "source": "social",
+        "channel": "none",
+        "count": 40,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_started",
+        "source": "other",
+        "channel": "none",
+        "count": 80,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_started",
+        "source": "direct",
+        "channel": "none",
+        "count": 390,
+        "sampleInterval": 10
+      },
+      {
+        "event": "landing_view",
+        "source": "other",
+        "channel": "none",
+        "count": 20,
+        "sampleInterval": 10
+      },
+      {
+        "event": "export_prepared",
+        "source": "direct",
+        "channel": "none",
+        "count": 80,
+        "sampleInterval": 10
+      },
+      {
+        "event": "studio_open",
+        "source": "google",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "generation_started",
+        "source": "social",
+        "channel": "none",
+        "count": 50,
+        "sampleInterval": 10
+      },
+      {
+        "event": "studio_open",
+        "source": "ai",
+        "channel": "none",
+        "count": 10,
+        "sampleInterval": 10
+      },
+      {
+        "event": "studio_open",
+        "source": "other",
+        "channel": "none",
+        "count": 20,
+        "sampleInterval": 10
+      },
+      {
+        "event": "landing_view",
+        "source": "direct",
+        "channel": "none",
+        "count": 60,
+        "sampleInterval": 10
+      }
+    ],
+    "breakdowns": {
+      "source": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "generation_started",
+            "value": "google",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "direct",
+            "count": 270,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "other",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "bing",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "social",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "google",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "social",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "social",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "other",
+            "count": 70,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "direct",
+            "count": 190,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "social",
+            "count": 40,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "other",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "direct",
+            "count": 390,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "other",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "direct",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "google",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "social",
+            "count": 50,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "ai",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "other",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "direct",
+            "count": 60,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "campaign": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "landing_view",
+            "value": "none",
+            "count": 90,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "none",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "none",
+            "count": 240,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "none",
+            "count": 390,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "none",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "none",
+            "count": 540,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "medium": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "generation_failed",
+            "value": "none",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "none",
+            "count": 390,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "none",
+            "count": 240,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "none",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "none",
+            "count": 540,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "none",
+            "count": 90,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "channel": {
+        "status": "no-matching-events",
+        "sampled": false,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [],
+        "note": "The captured production frontend predates the channel field; no channel breakdown is available. This does not mean no channel traffic."
+      },
+      "landing": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "landing_view",
+            "value": "/",
+            "count": 90,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "/guides/export-files",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "/lakes",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "/",
+            "count": 30,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "/guides/export-files",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "/studio",
+            "count": 200,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "/",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "/studio",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "/",
+            "count": 110,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "/guides/topographic-map-engraving",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "/studio",
+            "count": 270,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "/lakes",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "/",
+            "count": 120,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "/studio",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "/studio",
+            "count": 380,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "device": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "export_prepared",
+            "value": "large",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "large",
+            "count": 210,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "small",
+            "count": 30,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "small",
+            "count": 10,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "large",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "large",
+            "count": 530,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "large",
+            "count": 70,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "small",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "large",
+            "count": 390,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "output": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "generation_started",
+            "value": "stack",
+            "count": 380,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "none",
+            "count": 240,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "engraving",
+            "count": 160,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "engraving",
+            "count": 40,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_failed",
+            "value": "stack",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "stack",
+            "count": 250,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "none",
+            "count": 90,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "stack",
+            "count": 40,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "engraving",
+            "count": 140,
+            "sampleInterval": 10
+          }
+        ]
+      },
+      "delivery": {
+        "status": "available",
+        "sampled": true,
+        "actualTimeframe": {
+          "from": 1790920800000,
+          "to": 1791439200000
+        },
+        "rows": [
+          {
+            "event": "generation_failed",
+            "value": "none",
+            "count": 20,
+            "sampleInterval": 10
+          },
+          {
+            "event": "export_prepared",
+            "value": "browser",
+            "count": 80,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_succeeded",
+            "value": "none",
+            "count": 390,
+            "sampleInterval": 10
+          },
+          {
+            "event": "studio_open",
+            "value": "none",
+            "count": 240,
+            "sampleInterval": 10
+          },
+          {
+            "event": "generation_started",
+            "value": "none",
+            "count": 540,
+            "sampleInterval": 10
+          },
+          {
+            "event": "landing_view",
+            "value": "none",
+            "count": 90,
+            "sampleInterval": 10
+          }
+        ]
+      }
+    }
+  },
+  "traffic": {
+    "status": "available",
+    "devices": [
+      {
+        "avg": {
+          "sampleInterval": 1.039568345323741
+        },
+        "count": 289,
+        "dimensions": {
+          "deviceType": "desktop"
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 55,
+        "dimensions": {
+          "deviceType": "mobile"
+        }
+      }
+    ],
+    "referrers": [
+      {
+        "avg": {
+          "sampleInterval": 1.0048543689320388
+        },
+        "count": 207,
+        "dimensions": {
+          "refererHost": ""
+        },
+        "sum": {
+          "visits": 207
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1.1162790697674418
+        },
+        "count": 96,
+        "dimensions": {
+          "refererHost": "topostack.app"
+        },
+        "sum": {
+          "visits": 0
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 16,
+        "dimensions": {
+          "refererHost": "www.google.com"
+        },
+        "sum": {
+          "visits": 16
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 11,
+        "dimensions": {
+          "refererHost": "forum.lightburnsoftware.com"
+        },
+        "sum": {
+          "visits": 11
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 6,
+        "dimensions": {
+          "refererHost": "www.reddit.com"
+        },
+        "sum": {
+          "visits": 6
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 5,
+        "dimensions": {
+          "refererHost": "chatgpt.com"
+        },
+        "sum": {
+          "visits": 5
+        }
+      },
+      {
+        "avg": {
+          "sampleInterval": 1
+        },
+        "count": 3,
+        "dimensions": {
+          "refererHost": "www.bing.com"
+        },
+        "sum": {
+          "visits": 3
+        }
+      }
+    ],
+    "totals": [
+      {
+        "avg": {
+          "sampleInterval": 1.033033033033033
+        },
+        "count": 344,
+        "sum": {
+          "visits": 248
+        }
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { USAGE_CAMPAIGNS, USAGE_EVENTS, USAGE_LANDINGS, USAGE_MEDIUMS, USAGE_SOURCES, isUsageEvent } from "./usage";
+import { USAGE_CAMPAIGNS, USAGE_CHANNELS, USAGE_EVENTS, USAGE_LANDINGS, USAGE_MEDIUMS, USAGE_SOURCES, isUsageEvent } from "./usage";
 
 const valid = { event: "studio_open", landing: "/studio", source: "direct", device: "large", output: "none", delivery: "browser" };
 
@@ -30,5 +30,15 @@ describe("isUsageEvent", () => {
     expect(isUsageEvent({ ...valid, campaign: "spring-sale", medium: "forum" })).toBe(false);
     expect(isUsageEvent({ ...valid, campaign: "launch", medium: "billboard" })).toBe(false);
     expect(isUsageEvent({ ...valid, campaign: "launch", medium: "forum", term: "maps" })).toBe(false);
+  });
+  it("accepts an optional fixed channel with legacy or attributed events", () => {
+    for (const channel of USAGE_CHANNELS) {
+      expect(isUsageEvent({ ...valid, channel })).toBe(true);
+      expect(isUsageEvent({ ...valid, campaign: "creator", medium: "video", channel })).toBe(true);
+    }
+    expect(isUsageEvent({ ...valid, channel: "private-creator-name" })).toBe(false);
+    expect(isUsageEvent({ ...valid, channel: null })).toBe(false);
+    expect(isUsageEvent({ ...valid, channel: "youtube", campaign: "creator" })).toBe(false);
+    expect(isUsageEvent({ ...valid, channel: "youtube", referrer: "https://youtube.com/private" })).toBe(false);
   });
 });
