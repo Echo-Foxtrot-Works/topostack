@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { GeometryIRV1 } from "@topostack/core";
-import { addStacked, appendPolyline, applyExploded, batchSegments, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
+import { addStacked, appendPolyline, applyExploded, batchSegments, boundsOverlap, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, polygonBounds, waterStainBands, waterStainMask, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
 
 type Layer = GeometryIRV1["layers"][number];
 const square = (size: number) => [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }];
@@ -99,5 +99,55 @@ describe("disposeLayerCache", () => {
     disposeLayerCache(cache);
     expect(cache.size).toBe(0);
     expect(kept.resources[0]!.dispose).toHaveBeenCalledOnce();
+  });
+});
+
+describe("water stain", () => {
+  const lake = (size: number) => [{ outer: square(size), holes: [] }];
+
+  it("stains each sheet under every waterline at or above it", () => {
+    const shallow = lake(4), deep = lake(8), filled = lake(6);
+    const bands = waterStainBands([
+      { layerIndex: 3, polygons: deep },
+      { layerIndex: 1, polygons: shallow },
+      // An acrylic insert covers this lake entirely: nothing left to stain.
+      { layerIndex: 5, polygons: filled, openPolygons: [] },
+    ]);
+    expect(bands).toEqual([
+      { fromLayer: 0, toLayer: 1, polygons: [...deep, ...shallow] },
+      { fromLayer: 2, toLayer: 3, polygons: deep },
+    ]);
+  });
+
+  it("stains only the water an insert leaves open", () => {
+    const open = lake(2);
+    expect(waterStainBands([{ layerIndex: 2, polygons: lake(9), openPolygons: open }])).toEqual([{ fromLayer: 0, toLayer: 2, polygons: open }]);
+  });
+
+  it("skips sheet pieces nowhere near the water", () => {
+    const reach = polygonBounds(lake(4));
+    expect(reach).toEqual({ minX: 0, minY: 0, maxX: 4, maxY: 4 });
+    expect(boundsOverlap(reach, polygonBounds([{ outer: square(1).map(({ x, y }) => ({ x: x + 3.5, y })), holes: [] }]))).toBe(true);
+    expect(boundsOverlap(reach, polygonBounds([{ outer: square(1).map(({ x, y }) => ({ x: x + 5, y })), holes: [] }]))).toBe(false);
+  });
+
+  it("maps model millimetres onto the mask, with model y running up the canvas", () => {
+    const moves: Array<[number, number]> = [];
+    const context = { fillRect: vi.fn(), beginPath: vi.fn(), closePath: vi.fn(), fill: vi.fn(), moveTo: (x: number, y: number) => moves.push([x, y]), lineTo: vi.fn() };
+    const canvas = { width: 0, height: 0, getContext: () => context };
+    vi.stubGlobal("document", { createElement: () => canvas });
+    try {
+      const texture = waterStainMask([{ outer: [{ x: 10, y: 20 }, { x: 30, y: 20 }, { x: 30, y: 40 }], holes: [] }])!;
+      // 20 mm of water plus 1 mm either side, at 4 px/mm.
+      expect([canvas.width, canvas.height]).toEqual([88, 88]);
+      // The lake's lowest corner lands 1 mm in from the left and bottom.
+      expect(moves[0]).toEqual([4, 84]);
+      expect(context.fill).toHaveBeenCalledWith("evenodd");
+      // UVs are model mm on a top face; the transform puts (9, 19) at the mask's corner.
+      const uv = new THREE.Vector2(9, 19).applyMatrix3((texture.updateMatrix(), texture.matrix));
+      expect(uv.x).toBeCloseTo(0); expect(uv.y).toBeCloseTo(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
