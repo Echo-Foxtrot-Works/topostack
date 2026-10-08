@@ -186,6 +186,14 @@ links to its page, with a small **studio** link beside it. The featured lakes on
 
 ## Example projects
 
+### First-project paths and related content
+
+The homepage's three starters use `/studio?starter=relief`, `engraving` or `lake`. Descriptions live in `site/starters.ts`; settings are built lazily by `studio/starter-project.ts` from a fresh default project, never from saved machine settings. Startup restores a saved design first and opens the starter as an undoable change. Shared designs take precedence. The starter query is consumed so reloads retain edits; the first-visit checklist waits for an explicit Generate after size/material review. Fabrication exports still require current real terrain.
+
+`Article.svelte` renders curated next actions from `site/related-content.ts` on relevant guides, examples and generated lake pages. They are ordinary anchors, including on pages without JavaScript. Keep destinations published and descriptions specific; `related-content.test.ts` checks them. The LightBurn workflow is registered in metadata, guide navigation, usage landings and the sharing-card capture recipe.
+
+The export dialog's preview PNG is generated locally from the existing `StackTopView` or `EngravingPreview`, with its CSS resolved into standalone SVG before rasterization. The card labels it as a software preview and includes the geometry's source names/licenses and the attribution page. This lazy workflow uploads nothing and emits `share_preview_prepared`, independently of fabrication exports. Publish the compatible Worker event contract before or with the browser build.
+
 `/examples` lists worked projects; each page under `/examples/<slug>` comes from
 `ALL_EXAMPLES` in `apps/generator/src/lib/site/examples.ts` (Crater Lake keeps
 its own route). Pages never state numbers by hand: layer count, elevation range

@@ -79,6 +79,7 @@
   <p>Every SVG also carries a short “Made with TopoStack” credit in its <code>&lt;desc&gt;</code> description, and README.txt ends with the same line. The description is file metadata: it is not a path, so it never draws, cuts or engraves.</p>
 
   <h2>Next steps</h2>
+  <p>Using LightBurn? Follow the <a href={`${base}/guides/lightburn`}>LightBurn import and processing guide</a> to check dimensions, assign operations and apply kerf once.</p>
   <p>Follow the <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> or the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a>, or see <a href={`${base}/guides/troubleshooting`}>troubleshooting</a> if export is blocked.</p>
 </Article>
 
