@@ -29,6 +29,28 @@ describe("contour tracing", () => {
     expect(deviation(ring)).toBeLessThanOrEqual(deviation(stepped.layers[2]?.polygons[0]?.outer ?? []));
   });
 
+  it("removes undersized pieces by minimum feature without coarsening the rest", () => {
+    const base = { ...DEFAULT_PROJECT, widthMm: 200, heightMm: 200, optimizeMaterialUse: false };
+    // A broad hill plus a needle about 3 mm across at half height.
+    const terrain = (nx: number, ny: number) => Math.max(
+      1000 - 1000 * Math.hypot(nx + 0.3, ny + 0.3),
+      1000 - 1000 * Math.hypot(nx - 0.7, ny - 0.7) / 0.03,
+    );
+    const [project, source] = scaledForLayers(base, gridSource(base, 193, terrain), 6);
+    const fine = generateGeometry({ ...project, minimumFeatureMm: 0.8 }, source);
+    const coarse = generateGeometry({ ...project, minimumFeatureMm: 4 }, source);
+    const narrowSide = (ring: Array<{ x: number; y: number }>) => Math.min(
+      Math.max(...ring.map((point) => point.x)) - Math.min(...ring.map((point) => point.x)),
+      Math.max(...ring.map((point) => point.y)) - Math.min(...ring.map((point) => point.y)),
+    );
+
+    expect(coarse.layers).toHaveLength(fine.layers.length);
+    // The same outlines, minus only the pieces narrower than 4 mm.
+    expect(coarse.layers.map((layer) => layer.polygons))
+      .toEqual(fine.layers.map((layer) => layer.polygons.filter((polygon) => narrowSide(polygon.outer) >= 4)));
+    expect(coarse.layers.flatMap((layer) => layer.polygons).length).toBeLessThan(fine.layers.flatMap((layer) => layer.polygons).length);
+  });
+
   it("rounds contour corners instead of simplifying them into chamfers", () => {
     const base = { ...DEFAULT_PROJECT, widthMm: 200, heightMm: 200, minimumFeatureMm: 1, smoothing: 1 };
     const squareHill = (nx: number, ny: number) => 1000 - 500 * Math.max(Math.abs(nx), Math.abs(ny));

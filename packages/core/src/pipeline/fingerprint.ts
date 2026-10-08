@@ -22,5 +22,5 @@ function stableProjectValue(config: ProjectConfigV1): unknown {
 }
 
 export function projectFingerprint(config: ProjectConfigV1): string {
-  return `v9-${fnv1aHex(stableStringify(stableProjectValue(config)))}`;
+  return `v10-${fnv1aHex(stableStringify(stableProjectValue(config)))}`;
 }

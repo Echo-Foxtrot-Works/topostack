@@ -3,6 +3,7 @@ export { planSeamGrid } from "./pipeline/split.js";
 export { generateGeometry, createGeometryGenerator, createParallelGeometryGenerator, type ParallelGenerationOptions, type GenerationOptions, type GenerationStage } from "./pipeline/generate.js";
 export { createSyntheticSource } from "./pipeline/synthetic-source.js";
 export { projectFingerprint } from "./pipeline/fingerprint.js";
+export { CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "./pipeline/contours.js";
 // Polygon clip inputs appear in exported signatures (paint regions, marker
 // placement), so the prepared form is public even though the primitives stay internal.
 export { distanceToSegment, polylineLength, signedArea, type PreparedPolygons } from "./primitives/geometry2d.js";

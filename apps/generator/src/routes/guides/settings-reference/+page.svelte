@@ -133,7 +133,7 @@
       <tr><td>Seam offset</td><td>0–50 mm</td><td>10 mm</td><td><em>Layered</em>, when split. How far seams shift between alternating layers, so no seam sits over another.</td></tr>
       <tr><td>Puzzle seam tabs</td><td>On, off</td><td>On</td><td><em>Layered</em>, when split. Cuts covered seams as interlocking tabs so each piece only fits its neighbour.</td></tr>
       <tr><td>Assembly labels</td><td>On, off</td><td>On</td><td><em>Layered</em>, when split. Engraves each piece's id, such as <code>L03-B2</code>, where the next layer hides it.</td></tr>
-      <tr><td>Minimum feature</td><td>0.2–5 mm</td><td>0.8 mm</td><td>Pieces and holes narrower than this are removed, and contours are simplified at this scale.</td></tr>
+      <tr><td>Minimum feature</td><td>0.2–5 mm</td><td>0.8 mm</td><td>Pieces, holes, and short lines smaller than this are removed. Contour detail stays the same at any setting, so raising it clears specks without coarsening the outlines that remain.</td></tr>
     </tbody>
   </table>
 

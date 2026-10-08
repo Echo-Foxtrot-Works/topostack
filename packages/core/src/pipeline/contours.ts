@@ -4,8 +4,12 @@ import { sampleIndexAt, sampleOffset } from "../primitives/grid.js";
 import type { ElevationGrid, Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
 
 
-/** Douglas-Peucker tolerance for contour rings, as a fraction of the minimum feature size. */
-export const CONTOUR_SIMPLIFICATION_FACTOR = 0.18;
+/**
+ * Douglas-Peucker tolerance for contour rings. Fixed rather than derived from
+ * the minimum feature size, so raising that setting removes undersized pieces
+ * and holes without coarsening the outlines that remain.
+ */
+export const CONTOUR_SIMPLIFICATION_TOLERANCE_MM = 0.144;
 
 export function removeTinyRing(points: Point2D[], minimumFeatureMm: number): boolean {
   if (points.length < 4) return true;
@@ -64,7 +68,7 @@ export function contourToMm(point: [number, number], grid: ElevationGrid, config
 }
 
 /** Pass `simplificationTolerance` 0 for rings already simplified, or simplifying again flattens their rounded corners. */
-export function clipContours(raw: MultiPolygon, clip: Point2D[], minimumFeatureMm: number, simplificationTolerance = minimumFeatureMm * CONTOUR_SIMPLIFICATION_FACTOR): Polygon2D[] {
+export function clipContours(raw: MultiPolygon, clip: Point2D[], minimumFeatureMm: number, simplificationTolerance = CONTOUR_SIMPLIFICATION_TOLERANCE_MM): Polygon2D[] {
   return normalizeMultiPolygon(polygonClipping.intersection(raw, [[toRing(clip)]]) as MultiPolygon, (ring) => {
     const refined = simplify(ring, simplificationTolerance);
     return removeTinyRing(refined, minimumFeatureMm) ? undefined : refined;
