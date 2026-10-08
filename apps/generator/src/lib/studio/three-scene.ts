@@ -1,6 +1,6 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1 } from "@topostack/core";
+import { labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -75,6 +75,88 @@ export function makeWoodTexture(): THREE.CanvasTexture {
  * only detached: they are cached layer bodies the next scene reuses, and
  * their materials live in the cache entry rather than in `resources`.
  */
+/** A run of sheets that sit under the same set of open water. */
+export interface WaterStainBand { fromLayer: number; toLayer: number; polygons: Polygon2D[] }
+
+/**
+ * Open water cut in wood is stained, not glazed: every sheet at or below a
+ * waterline takes the stain wherever that lake covers it. A sheet sits under
+ * every lake whose waterline is at or above it, so the stack splits into
+ * bands at each distinct waterline. Water an acrylic insert fills is left
+ * out; the acrylic shows it instead.
+ */
+export function waterStainBands(surfaces: ReadonlyArray<Pick<WaterSurfaceIR, "layerIndex" | "polygons" | "openPolygons">>): WaterStainBand[] {
+  const open = surfaces.map((surface) => ({ layerIndex: surface.layerIndex, polygons: surface.openPolygons ?? surface.polygons })).filter((surface) => surface.polygons.length);
+  const waterlines = [...new Set(open.map((surface) => surface.layerIndex))].sort((a, b) => a - b);
+  return waterlines.map((toLayer, index) => ({
+    fromLayer: index ? waterlines[index - 1]! + 1 : 0,
+    toLayer,
+    polygons: open.filter((surface) => surface.layerIndex >= toLayer).flatMap((surface) => surface.polygons),
+  }));
+}
+
+export interface Bounds { minX: number; minY: number; maxX: number; maxY: number }
+
+export function polygonBounds(polygons: Polygon2D[]): Bounds {
+  const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  for (const polygon of polygons) for (const point of polygon.outer) {
+    bounds.minX = Math.min(bounds.minX, point.x); bounds.maxX = Math.max(bounds.maxX, point.x);
+    bounds.minY = Math.min(bounds.minY, point.y); bounds.maxY = Math.max(bounds.maxY, point.y);
+  }
+  return bounds;
+}
+
+export function boundsOverlap(a: Bounds, b: Bounds): boolean {
+  return a.minX <= b.maxX && b.minX <= a.maxX && a.minY <= b.maxY && b.minY <= a.maxY;
+}
+
+// The stain multiplies the lit wood below it, so the grain, shadows and
+// layer edges all read through. Strong in blue and weak in red so the result
+// on pale stock lands on blue rather than the grey a mid blue gives.
+const STAIN_COLOR = "#4f86e6";
+// Mask resolution: fine enough that the stain edge hides under the wall of
+// the sheet above, capped so a large model stays a few megabytes of texture.
+const STAIN_PX_PER_MM = 4;
+const STAIN_MAX_PX = 2048;
+
+/**
+ * A multiply mask over the bounds of `polygons`: stain colour inside the
+ * water, white (no change) everywhere else. UVs on a top face are its x and
+ * y in millimetres, so the texture transform maps those onto the canvas.
+ * Undefined where there is no 2D canvas to draw on.
+ */
+export function waterStainMask(polygons: Polygon2D[]): THREE.CanvasTexture | undefined {
+  const bounds = polygonBounds(polygons);
+  const pad = 1;
+  const minX = bounds.minX - pad, minY = bounds.minY - pad;
+  const widthMm = bounds.maxX - bounds.minX + pad * 2, heightMm = bounds.maxY - bounds.minY + pad * 2;
+  if (!(widthMm > 0 && heightMm > 0)) return undefined;
+  const scale = Math.min(STAIN_PX_PER_MM, STAIN_MAX_PX / Math.max(widthMm, heightMm));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(2, Math.ceil(widthMm * scale)); canvas.height = Math.max(2, Math.ceil(heightMm * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  context.fillStyle = "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height);
+  // Canvas rows run down, model y runs up: the texture's flipY puts canvas
+  // row 0 at v = 1, so drawing y as distance below the top lines them up.
+  const trace = (ring: Point2D[]) => ring.forEach((point, index) => {
+    const x = (point.x - minX) * scale, y = (minY + heightMm - point.y) * scale;
+    if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+  });
+  context.fillStyle = STAIN_COLOR;
+  for (const polygon of polygons) {
+    context.beginPath();
+    trace(polygon.outer); context.closePath();
+    for (const hole of polygon.holes) { trace(hole); context.closePath(); }
+    context.fill("evenodd");
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.repeat.set(1 / widthMm, 1 / heightMm);
+  texture.offset.set(-minX / widthMm, -minY / heightMm);
+  return texture;
+}
+
 export function disposeContent(content: THREE.Group, resources: Array<{ dispose: () => void }>, kept?: ReadonlySet<THREE.Object3D>): void {
   for (const child of [...content.children]) {
     content.remove(child);

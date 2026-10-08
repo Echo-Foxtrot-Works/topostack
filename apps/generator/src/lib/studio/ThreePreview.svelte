@@ -35,7 +35,7 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  import { addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, shapeFromPolygon, SURFACE_DEPTH_BIAS } from "$lib/studio/three-scene";
+  import { addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
   const isEmbedded = getEmbedded();
   let zoom = $state(1);
   let fitDistance = 320;
@@ -357,22 +357,14 @@
       const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
       const markerFillMaterial = new THREE.MeshBasicMaterial({ color: 0x2b2119, side: THREE.DoubleSide });
-      // Water reads as a pane resting over the basin rather than as another
-      // sheet of stock, so it is transmissive and never casts a shadow into the
-      // recess it is meant to reveal.
-      const waterMaterial = new THREE.MeshStandardMaterial({
-        // Saturated and a touch darker than it looks in isolation: the room
-        // environment washes a mid blue out to frosted glass over pale stock.
-        color: 0x14536e, transparent: true, opacity: 0.52, roughness: 0.28, metalness: 0,
-        side: THREE.DoubleSide, depthWrite: false,
-      });
-      // An acrylic insert is a real sheet: clearer and glossier than the
-      // floating surface, so the stepped bed below shows through it.
+      // An acrylic insert is a real sheet, clear and glossy, so the stepped
+      // bed below shows through it. Water left in wood is stained instead
+      // (below), so the two finishes read apart at a glance.
       const acrylicMaterial = new THREE.MeshStandardMaterial({
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, waterMaterial, acrylicMaterial);
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
@@ -454,20 +446,30 @@
         for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
       });
-      // The surface floats on the top face of the layer holding its waterline,
-      // and rides that layer when the stack is exploded. Where a lake became
-      // acrylic the acrylic stands in, so only its still-open water floats.
-      (activeGeometry.waterSurfaces ?? []).forEach((surface) => {
-        const layer = activeGeometry.layers[surface.layerIndex] ?? activeGeometry.layers[0];
-        if (!layer) return;
-        (surface.openPolygons ?? surface.polygons).forEach((polygon) => {
-          const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), waterMaterial);
-          mesh.castShadow = false;
-          mesh.receiveShadow = false;
-          mesh.renderOrder = 1;
-          addStacked(runtime!.content, mesh, layer.index, layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 0.5);
+      // Open water is stain on the wood rather than a pane over it: the top
+      // face of every sheet under a waterline takes a multiply tint wherever
+      // the lake covers it, riding its sheet when the stack is exploded. The
+      // tint sits above knockouts and engraved lines, which stay dark through
+      // it, and below filled markers and labels.
+      for (const band of waterStainBands(activeGeometry.waterSurfaces ?? [])) {
+        const mask = waterStainMask(band.polygons);
+        if (!mask) continue;
+        const stain = new THREE.MeshBasicMaterial({
+          map: mask, toneMapped: false, transparent: true, depthWrite: false,
+          blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor,
         });
-      });
+        runtime.sceneResources.push(mask, stain);
+        const reach = polygonBounds(band.polygons);
+        for (const layer of activeGeometry.layers.slice(band.fromLayer, band.toLayer + 1)) {
+          const top = layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.1;
+          for (const polygon of layer.polygons) {
+            if (!boundsOverlap(polygonBounds([polygon]), reach)) continue;
+            const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), stain);
+            mesh.renderOrder = 1;
+            addStacked(runtime!.content, mesh, layer.index, top);
+          }
+        }
+      }
 
       applyExploded(runtime.content, untrack(() => (placement ? 0 : exploded)));
       const radius = Math.hypot(activeGeometry.widthMm / 2, activeGeometry.heightMm / 2);
