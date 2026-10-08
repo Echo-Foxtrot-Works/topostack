@@ -30,6 +30,6 @@
     "delaunator": "^5.1.0"
   },
   "devDependencies": {
-    "pdfjs-dist": "^6.3.289"
+    "pdfjs-dist": "^6.4.299"
   }
 }
