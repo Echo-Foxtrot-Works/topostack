@@ -465,6 +465,12 @@ export interface ProjectConfigV1 {
    * `sheetNesting`: the fingerprint ignores it.
    */
   waterInsertSheetNesting?: SheetNestSettingsV1;
+  /**
+   * Builds the airspace over the model in acrylic, held at true height on
+   * rods (docs/plans/airspace-acrylic.md). Layered output only. Absent in
+   * every project that never turned it on, which keeps their fingerprints.
+   */
+  airspaceStack?: AirspaceStackSettingsV1;
   showElevationLabels: boolean;
   elevationLabelPosition: Point2D;
   textStyle: TextStyleV1;
@@ -500,6 +506,43 @@ export interface ProjectConfigV1 {
   /** User-authored geographic paths, independent of fetched map-detail toggles. */
   customLines: CustomLineFeatureV1[];
   explodedPreview: number;
+}
+
+/**
+ * How airspace is built in acrylic. `plates`: one clear plate per altitude
+ * level, cut to the airspace there. `tiers`: tinted pieces only where a shelf
+ * starts or ends, the chart guide's wedding cake. `volumes`: every acrylic
+ * sheet from floor to ceiling, stacked solid.
+ */
+export type AirspaceStackForm = "plates" | "tiers" | "volumes";
+export const AIRSPACE_STACK_FORMS = ["plates", "tiers", "volumes"] as const satisfies readonly AirspaceStackForm[];
+export type AirspaceRodShape = "round" | "square";
+/** How a rod meets the acrylic: short segments glued between levels, or one rod per column through every piece. */
+export type AirspaceRodJoint = "segments" | "through";
+
+/** The rods that hold airspace pieces at height; cut to length by the maker from stock of their choosing. */
+export interface AirspaceRodSettingsV1 {
+  shape: AirspaceRodShape;
+  /** Diameter, or side of a square rod. */
+  sizeMm: number;
+  /** Gap left around a rod in its socket or hole, per side. */
+  fitClearanceMm: number;
+  /** How deep a rod sits in the terrain. */
+  socketDepthMm: number;
+  joint: AirspaceRodJoint;
+}
+
+export interface AirspaceStackSettingsV1 {
+  form: AirspaceStackForm;
+  /** Which airspace is built. Class D is a single lid at its ceiling over each airport. */
+  classes: { B: boolean; C: boolean; D: boolean; specialUse: boolean };
+  /** Every ceiling is trimmed to this; absent takes the highest Class B or C ceiling in the crop, else 10,000 ft. */
+  ceilingCapFt?: number;
+  /** Acrylic sheet thickness; absent follows `materialThicknessMm`. */
+  thicknessMm?: number;
+  /** Laser kerf in acrylic; absent follows `laserKerfMm`. */
+  kerfMm?: number;
+  rod: AirspaceRodSettingsV1;
 }
 
 /** The acrylic a project's water inserts are cut from, as the maker set it. */
@@ -985,6 +1028,52 @@ export interface WaterInsertMaterialIR {
   ledgeMm: number;
 }
 
+/** Acrylic tints, after the VFR sectional's colours; plates are clear and carry the colour as engraving. */
+export type AirspaceTint = "clear" | "blue" | "magenta";
+
+/** A sector edge engraved on a piece, styled as its class is charted. */
+export interface AirspaceEdgeIR { aviationClass: AviationClass; points: Point2D[] }
+
+/** One acrylic piece of an airspace level. */
+export interface AirspacePieceIR {
+  /** `A<level>-<n>`, unique in the stack. */
+  id: string;
+  tint: AirspaceTint;
+  /** The cut outline, closed by half the minimum feature and clear of the terrain. */
+  polygons: Polygon2D[];
+  /** Plates: the shelves that start or end at this level, frost-engraved. */
+  frost?: Polygon2D[];
+  /** Plates: edges of sectors that pass through this level, inside the piece. */
+  edges?: AirspaceEdgeIR[];
+  /** The sectors (source volume ids) the piece shows. */
+  sectorIds: string[];
+}
+
+/** One height at which acrylic is cut: an altitude level for plates and tiers, an acrylic sheet for volumes. */
+export interface AirspaceLevelIR {
+  index: number;
+  /** The altitude the level sits at, feet MSL. */
+  altitudeFt: number;
+  /** Other altitudes merged into this level because no rod would fit between them. */
+  mergedFt: number[];
+  /** Height of the pieces' underside above the table. */
+  zMm: number;
+  pieces: AirspacePieceIR[];
+}
+
+export interface AirspaceStackIR {
+  form: AirspaceStackForm;
+  thicknessMm: number;
+  kerfMm: number;
+  ceilingCapFt: number;
+  /** Model millimetres per metre of altitude, shared with the terrain. */
+  mmPerMeter: number;
+  /** Height of the highest piece's top above the table. */
+  topMm: number;
+  levels: AirspaceLevelIR[];
+  rod: AirspaceRodSettingsV1;
+}
+
 /** Why a generation warns; a stable code the studio and agents key their wording and actions on. */
 export type GeometryWarningCode =
   | "TERRAIN_SOURCE_FALLBACK"
@@ -1012,7 +1101,13 @@ export type GeometryWarningCode =
   | "AVIATION_SYMBOLS_FILLED"
   | "WATER_INSERT_SKIPPED"
   | "WATER_INSERT_PROUD"
-  | "WATER_INSERT_OVERSIZE";
+  | "WATER_INSERT_OVERSIZE"
+  | "AIRSPACE_NOT_LOADED"
+  | "AIRSPACE_LEVELS_MERGED"
+  | "AIRSPACE_TERRACED"
+  | "AIRSPACE_PIECES_DROPPED"
+  | "AIRSPACE_TALL"
+  | "AIRSPACE_ACRYLIC_HEAVY";
 
 export interface GeometryWarning {
   code: GeometryWarningCode;
@@ -1064,6 +1159,8 @@ export interface GeometryIRV1 {
   waterInserts?: WaterInsertIR[];
   /** The resolved acrylic the inserts are cut from; present with `waterInserts`. */
   waterInsertMaterial?: WaterInsertMaterialIR;
+  /** Airspace built in acrylic above the stack; present only when the project asks for it. */
+  airspaceStack?: AirspaceStackIR;
   /** Present only when a machine work area split the layers. */
   splitPlan?: SeamPlanV1;
   warnings: GeometryWarning[];

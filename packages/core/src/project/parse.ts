@@ -1,4 +1,4 @@
-import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1 } from "../types.js";
+import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1, type AirspaceStackSettingsV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
 import { validateProject } from "../pipeline/validate.js";
@@ -65,6 +65,30 @@ function waterInsertsValue(value: unknown): WaterInsertSettingsV1 {
     ...(record.kerfMm === undefined ? {} : { kerfMm: numberValue(record.kerfMm) }),
     fitClearanceMm: numberValue(record.fitClearanceMm),
     excludedLakeIds: [...excluded] as string[],
+  };
+}
+/** Airspace stack settings: shapes only; ranges and names are checked by `validateProject`. */
+function airspaceStackValue(value: unknown): AirspaceStackSettingsV1 {
+  const record = (entry: unknown, label: string): Record<string, unknown> => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error(`Airspace ${label} settings are invalid.`);
+    return entry as Record<string, unknown>;
+  };
+  const settings = record(value, "stack");
+  const classes = record(settings.classes, "class");
+  const rod = record(settings.rod, "rod");
+  return {
+    form: settings.form as AirspaceStackSettingsV1["form"],
+    classes: { B: booleanValue(classes.B, "airspace Class B"), C: booleanValue(classes.C, "airspace Class C"), D: booleanValue(classes.D, "airspace Class D"), specialUse: booleanValue(classes.specialUse, "airspace special use") },
+    ...(settings.ceilingCapFt === undefined ? {} : { ceilingCapFt: numberValue(settings.ceilingCapFt) }),
+    ...(settings.thicknessMm === undefined ? {} : { thicknessMm: numberValue(settings.thicknessMm) }),
+    ...(settings.kerfMm === undefined ? {} : { kerfMm: numberValue(settings.kerfMm) }),
+    rod: {
+      shape: rod.shape as AirspaceStackSettingsV1["rod"]["shape"],
+      sizeMm: numberValue(rod.sizeMm),
+      fitClearanceMm: numberValue(rod.fitClearanceMm),
+      socketDepthMm: numberValue(rod.socketDepthMm),
+      joint: rod.joint as AirspaceStackSettingsV1["rod"]["joint"],
+    },
   };
 }
 function outputModeValue(value: unknown): ProjectConfigV1["outputMode"] {
@@ -408,6 +432,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     ...(record.sheetNesting === undefined ? {} : { sheetNesting: sheetNestingValue(record.sheetNesting) }),
     ...(record.waterInserts === undefined ? {} : { waterInserts: waterInsertsValue(record.waterInserts) }),
     ...(record.waterInsertSheetNesting === undefined ? {} : { waterInsertSheetNesting: sheetNestingValue(record.waterInsertSheetNesting) }),
+    ...(record.airspaceStack === undefined ? {} : { airspaceStack: airspaceStackValue(record.airspaceStack) }),
     showElevationLabels: booleanValue(record.showElevationLabels, "showElevationLabels"), showNorthArrow: booleanValue(record.showNorthArrow, "showNorthArrow"), showScaleBar: booleanValue(record.showScaleBar, "showScaleBar"),
     elevationLabelPosition: labelPositionRecord ? { x: numberValue(labelPositionRecord.x), y: numberValue(labelPositionRecord.y) } : { ...DEFAULT_PROJECT.elevationLabelPosition },
     textStyle: textStyleRecord ? {
