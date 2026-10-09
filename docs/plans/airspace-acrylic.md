@@ -177,9 +177,13 @@ From the [spike](../reports/airspace-acrylic-spike-2026-10-09.md), 300 mm wide, 
 
 0. **Feasibility spike — done 2026-10-09** ([report](../reports/airspace-acrylic-spike-2026-10-09.md)). Five crops on real data; it set the defaults above and moved the plan to a suggested exaggeration, a crop-based ceiling cap, terraced floors above ground, and browser-side seam closing. Column placement, label fit and a physical test cut remain for phase 2.
 1. **Data — built 2026-10-09.** Contract layers and parsers, builder, contract check, `AirspaceVolumeV1`, and the browser decode and union, with tests. The archive with volumes ships with the 2026-10-29 cycle refresh; until then the served archive has no volume layers and nothing reads them.
-2. **Core plus plates end to end.** Altitude resolution, levels, terrain clearance, chart styling, the IR, settings, fingerprint and validation; the per-piece column solver with stacking seats, stability and span rules; sockets, the `segments` joint and locators; export, manifest, guide cut list; studio section, 3D and cut preview; changelog fragment. Plates come first because they show every sector at every level, so they exercise every shared piece.
-3. **Tiers, Class D and the `through` joint.** Tier outlines and tinted materials; Class D lids; through-holes, the column obstacle rule and the guide's height table.
-4. **Solid volumes.** Slab slicing, columns under floating stacks, the acrylic budget warning.
+2. **Core, supports, export and studio**, as four stacked pull requests:
+   - **2a. Geometry — built 2026-10-09.** `ProjectConfigV1.airspaceStack` (parse, validation, fingerprint, `DEFAULT_AIRSPACE_STACK`) and `pipeline/airspace-stack.ts`, run on the unsplit sheets right after water inserts. Altitudes resolve on the terrain's scale; levels merge when closer than the acrylic plus 2 mm; floors and ceilings given above ground are stepped over the cut sheets and snap up to existing levels; tiers give surface-floored sectors a floor above the ground; Class D is a lid only. Pieces for all three forms are unions closed by half the minimum feature, cut back 1 mm from terrain that rises through them, and dropped under 10 cm². Output is `GeometryIRV1.airspaceStack` (levels, pieces, frost and sector edges for plates, tints). Warnings: `AIRSPACE_NOT_LOADED`, `_LEVELS_MERGED`, `_TERRACED`, `_PIECES_DROPPED`, `_TALL`, `_ACRYLIC_HEAVY`. On real Denver, Seattle and Las Vegas data at 10× it reproduces the spike's levels; Las Vegas takes 4–6 s, most of it stepping MOA floors over rugged ground, which is the first thing to speed up.
+   - **2b. Supports.** The per-piece column solver with stacking seats, stability and span rules; sockets in the terrain sheets; the `segments` joint and locators; the cut list.
+   - **2c. Export.** Airspace SVGs per material, manifest, assembly guide with the cut list and level table.
+   - **2d. Studio.** Loader wiring, the Airspace in 3D section, 3D and cut previews, warnings in the panel, the exaggeration hint, changelog fragment.
+3. **Tiers polish, Class D and the `through` joint.**
+4. **Solid volumes.** Columns under floating stacks (slicing and the acrylic budget warning came with 2a).
 5. **Agents and polish.** `airspaceStack` in `ProjectRequestV1`, REST, MCP and WebMCP, plan notes (height, rod list), the MCP guide, the e2e spec, and docs.
 
 ## Verification

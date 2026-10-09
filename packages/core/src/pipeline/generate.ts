@@ -20,6 +20,7 @@ import { insertedShorelines, markingEnabled, placeTransportationLabels, routeMar
 import { addAlignmentGuides, addPieceLabels } from "./assembly-marks.js";
 import { cutPlacedGraphics, elevationLabelTexts, placeAnnotations, placeElevationLabels, placeGraphics, placeMarkers, placePlaque } from "./annotations.js";
 import { placeAviationLabels } from "./aviation-labels.js";
+import { buildAirspaceStack } from "./airspace-stack.js";
 
 /**
  * Routed features × layers at which merging each layer's covering set into one
@@ -51,7 +52,7 @@ function dedupeMarkingIds(layers: LayerIR[], inserts: WaterInsertIR[] = []): voi
   }));
 }
 
-export type GenerationStage = "prepare" | "water" | "ladder" | "contours" | "terrain-cache" | "water-inserts" | "split" | "nesting" | "fabrication" | "routing" | "alignment" | "assembly-labels" | "elevation-labels" | "annotations";
+export type GenerationStage = "prepare" | "water" | "ladder" | "contours" | "terrain-cache" | "water-inserts" | "airspace" | "split" | "nesting" | "fabrication" | "routing" | "alignment" | "assembly-labels" | "elevation-labels" | "annotations";
 export interface GenerationOptions {
   /** Diagnostic timings only; never included in the geometry or its fingerprint. */
   onStage?: (stage: GenerationStage, durationMs: number) => void;
@@ -74,7 +75,7 @@ const TERRAIN_INDEPENDENT_FIELDS = [
   "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
-  "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "showElevationLabels",
+  "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "airspaceStack", "showElevationLabels",
   "elevationLabelPosition", "textStyle", "showNorthArrow", "northArrowStyle", "northArrowSizeMm",
   "northArrowPlacement", "showScaleBar", "markers", "customLines", "explodedPreview",
   // Placed, engraved or arranged after the cached layers: graphics cut clones of them.
@@ -219,6 +220,9 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   const water = flatEngraving ? undefined : cutWaterInserts(config, layers, waterSurfaces, cellPitchMm, context.warnings);
   const waterInserts = water?.inserts ?? [];
   if (water) stage("water-inserts");
+  // On the unsplit sheets, with every lake opening known: pieces clear the terrain that was cut.
+  const airspaceStack = flatEngraving ? undefined : buildAirspaceStack(config, source, layers, ladder, context.clip, context.warnings);
+  if (airspaceStack) stage("airspace");
 
   // Before nesting: cavities record indices into a donor's polygons and holes
   // that splitting would renumber, and a seam through a cavity would leave an
@@ -317,6 +321,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     fabricationNests,
     paintRegions: paintWindows,
     ...(water ? { waterInserts, waterInsertMaterial: water.material } : {}),
+    ...(airspaceStack ? { airspaceStack } : {}),
     splitPlan,
     warnings: context.warnings,
     attribution: aviationRequested(config) && source.aviationStatus !== "not-covered" ? [...source.attribution, ...(source.aviationAttribution ?? [])] : source.attribution,
