@@ -36,7 +36,7 @@ NAD83 coordinates are used as WGS84. They are under 2 m apart in the conterminou
 
 The 2026-10-01 cycle (`faa-aviation-2026-10-01-v1`, with the Digital Obstacle File of 2026-09-27 and the special use airspace service as captured on 2026-10-05) builds to 35 MB (SHA-256 `677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34`, byte-identical across rebuilds) with 1,643 airspace edges, 13,278 airspace label places, 1,179 special use rings, 8,500 runways, 18,832 airports, 1,523 navaids and 184,123 obstacles. Against the 2026-09-03 cycle (`-v3`) only runways (+28) and airports (+21) changed in the data; the obstacle file and the special use snapshot were byte-identical.
 
-That archive predates the volume layers. The builder now adds them: the same pins build to 38 MB with 1,287 airspace volumes and 1,439 special use volumes, every other layer unchanged and decoding identically. The served archive gains them at the next cycle, which takes a new dataset identity as every refresh does.
+That archive predates the volume layers. Rebuilt with them from the same pins, `faa-aviation-2026-10-01-v2` is 38 MB (SHA-256 `de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793`, byte-identical across rebuilds), with 1,287 airspace volumes and 1,439 special use volumes. Every other layer is unchanged and decodes identically. It is served in development first, so airspace in acrylic can be tried there; production keeps `-v1` until it is provisioned with `--prod` for the release that carries the airspace work.
 
 The Worker serves it by range at `/v1/aviation.pmtiles` from the logical key `aviation/current.pmtiles`. It is optional: `/ready` does not wait for it, and the studio requests it only when a project turns aviation detail on.
 
