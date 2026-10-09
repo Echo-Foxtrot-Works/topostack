@@ -118,7 +118,13 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     // Re-resolve from the provider and HydroLAKES outlines against the current
     // inland water; OSM-derived outlines from the last pass are rebuilt, not kept.
     const resolved = resolveLakeOutlines([], lakes.filter((lake) => lake.outlineSource !== "osm"), inland);
-    if (resolved.length !== lakes.length || resolved.some((area) => !lakes.some((lake) => lake.id === area.id))) next = { ...next, bathymetryStatus: undefined };
+    // A lake keeps its id when it takes a more detailed shore, but survey
+    // depths were masked to the old one.
+    const reshaped = (area: WaterAreaV1) => {
+      const before = lakes.find((lake) => lake.id === area.id)?.polygon;
+      return !before || (before !== area.polygon && JSON.stringify(before) !== JSON.stringify(area.polygon));
+    };
+    if (resolved.length !== lakes.length || resolved.some(reshaped)) next = { ...next, bathymetryStatus: undefined };
     if (resolved.length && next.lakeDataStatus !== "available") next = { ...next, lakeDataStatus: "available" };
     lakes = resolved.map((area) => ({ ...area, bathymetry: lakes.find((lake) => lake.id === area.id)?.bathymetry }));
   }

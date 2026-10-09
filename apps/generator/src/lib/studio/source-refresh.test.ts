@@ -274,6 +274,17 @@ describe("refreshing map data after a failed or partial load", () => {
     expect(deps.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
   });
 
+  it("loads depths again when a lake takes the map's shore under the same id", async () => {
+    const source = loaded({ bathymetryStatus: "available", waterAreas: [lake("hylak-1")] });
+    // A stored source loses identity between its lakes and its map water; equal shores are unchanged.
+    const copied = dependencies({ resolveLakeOutlines: vi.fn((_providers, hydro) => hydro.map((area: WaterAreaV1) => ({ ...area, polygon: structuredClone(area.polygon) }))) });
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), copied);
+    expect(copied.loadSurveyedLakeDepths).not.toHaveBeenCalled();
+    const reshaped = dependencies({ resolveLakeOutlines: vi.fn((_providers, hydro) => hydro.map((area: WaterAreaV1) => ({ ...area, polygon: square(0, 0, 11) }))) });
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), reshaped);
+    expect(reshaped.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
+  });
+
   it("counts resolved outlines as lake data even when the archive was unavailable", async () => {
     const deps = dependencies({
       loadLakeAreas: vi.fn(async () => { throw new Error("offline"); }),
