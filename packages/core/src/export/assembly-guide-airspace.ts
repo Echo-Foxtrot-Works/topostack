@@ -15,6 +15,8 @@ export interface GuideAirspace {
   cycle?: string;
   levels: Array<{ level: AirspaceLevelIR; files: string[] }>;
   columns: AirspaceColumnIR[];
+  /** Wood sheet thickness, to measure through-rod heights from the terrain face at each rod. */
+  woodMm: number;
 }
 
 /** The guide's helpers the airspace pages draw with, passed in so both share one scale and style. */
@@ -78,10 +80,22 @@ function levelMap(entry: GuideAirspace["levels"][number], airspace: GuideAirspac
 export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceContext): string {
   const { length } = context;
   const segments = airspace.columns.flatMap((column) => column.segments);
+  const through = airspace.rod.joint === "through";
   const rodsUnder = (level: AirspaceLevelIR) => {
     const ids = new Set(level.pieces.map((piece) => piece.id));
-    return segments.filter((segment) => ids.has(segment.headPieceId));
+    return segments.filter((segment) => ids.has(segment.headPieceId) || segment.throughPieceIds?.some((id) => ids.has(id)));
   };
+  const zOf = new Map(airspace.levels.flatMap(({ level }) => level.pieces.map((piece) => [piece.id, level.zMm] as const)));
+  // A through rod's heights are measured from the terrain face it stands in, which a ruler can reach.
+  const faceMm = (segment: AirspaceColumnIR["segments"][number]) => segment.seat.kind === "terrain" ? (Math.max(...segment.seat.socketLayerIndices) + 1) * airspace.woodMm : segment.bottomMm;
+  // Rods rising from the terrain; where none could reach a piece, short segments stand on the piece below.
+  const rising = airspace.columns.filter((column) => column.segments.length === 1 && column.segments[0]!.seat.kind === "terrain");
+  const standingOnPieces = segments.some((segment) => segment.seat.kind === "piece");
+  const heightRows = through ? rising.map((column) => {
+    const rod = column.segments[0]!;
+    const held = [...(rod.throughPieceIds ?? []), rod.headPieceId].map((id) => `<strong>${escapeXml(id)}</strong> at ${length((zOf.get(id) ?? rod.topMm) - faceMm(rod))}${id === rod.headPieceId ? " (on top)" : ""}`).join(", ");
+    return `<tr><td>${escapeXml(column.id)}</td><td>${escapeXml(rod.rodId)}</td><td>${held}</td></tr>`;
+  }).join("") : "";
   const levelRows = airspace.levels.map(({ level, files }) => {
     const rods = rodsUnder(level);
     const lengths = [...new Set(rods.map((segment) => segment.rodId))].map((id) => `${rods.filter((segment) => segment.rodId === id).length} × ${id}`).join(", ");
@@ -93,8 +107,14 @@ export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceC
     "Finish the terrain stack first and let it cure.",
     ...(airspace.backingFilenames.length ? ["Glue the backing sheet under the bottom layer, edges flush. Some rods go through the bottom layer and stand on it."] : []),
     ...(segments.length ? [`Cut the rods to the cut list, square and clean, and mark each with its id. Sand a burr off each end so it sits flat.`] : []),
-    "Build the airspace from the lowest level up. For each level, stand its rods where the map shows them: in their sockets in the terrain, or on the rod outlines engraved on the pieces below, with a dot of glue.",
-    "Peel the underside film off the level's pieces, dry-fit them so every rod meets the outline engraved on the piece (seen through the acrylic), then glue each rod top with a small drop and let it set before the next level.",
+    ...(through ? [
+      "Glue every rod upright in its socket in the terrain, where the maps show it, and let it set.",
+      "Build the airspace from the lowest level up. Slide each piece down its rods through its holes to the height the rod table gives, measured from the terrain face at the rod; mark that height on each rod first. Glue it there with a small drop at each rod. A piece on top of a rod sits on the rod's end, over the outline engraved on it.",
+      ...(standingOnPieces ? ["Where no rod could rise from the terrain to a piece, short rods stand on the piece below instead: glue them on the outlines engraved there before the piece goes on."] : []),
+    ] : [
+      "Build the airspace from the lowest level up. For each level, stand its rods where the map shows them: in their sockets in the terrain, or on the rod outlines engraved on the pieces below, with a dot of glue.",
+      "Peel the underside film off the level's pieces, dry-fit them so every rod meets the outline engraved on the piece (seen through the acrylic), then glue each rod top with a small drop and let it set before the next level.",
+    ]),
     ...(airspace.form === "volumes" ? ["Stacked sheets of a volume are glued face to face on the sheet below with thin, even beads, so no rod is needed between them."] : []),
     "Peel the top films last.",
   ];
@@ -106,6 +126,9 @@ export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceC
 ${cutRows ? `<h3>Rod cut list</h3>
 <p class="muted">Lengths include the part that sits in a socket.</p>
 <table><thead><tr><th>Rod</th><th>Length</th><th>Count</th></tr></thead><tbody>${cutRows}</tbody></table>` : ""}
+${heightRows ? `<h3 style="margin-top:24px">Rod heights</h3>
+<p class="muted">Each rod runs from its socket through the pieces it holds. Heights are to each piece's underside, from the terrain face at the rod.</p>
+<table><thead><tr><th>Column</th><th>Rod</th><th>Pieces, lowest first</th></tr></thead><tbody>${heightRows}</tbody></table>` : ""}
 <h3 style="margin-top:24px">Levels</h3>
 <table><thead><tr><th>Level</th><th>Altitude</th><th>Height</th><th>Pieces</th><th>Rods under it</th><th>File</th></tr></thead><tbody>${levelRows}</tbody></table>
 <div class="sheet-maps">${airspace.levels.map((entry) => levelMap(entry, airspace, context)).join("")}</div>

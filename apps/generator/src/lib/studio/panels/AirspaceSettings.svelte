@@ -67,6 +67,15 @@
       <option value="square">Square</option>
     </select>
   </label>
+  <label class="field-row airspace-select">Rods meet pieces
+    <select aria-label="Rod joint" value={settings.rod.joint} onchange={(event) => updateRod({ joint: event.currentTarget.value as AirspaceStackSettingsV1["rod"]["joint"] })}>
+      <option value="segments">Glued segments</option>
+      <option value="through">Through holes</option>
+    </select>
+  </label>
+  <small class="depth-note">{settings.rod.joint === "through"
+    ? "One rod per column stands in the terrain and rises through holes in the pieces; you glue each piece at the height the guide gives."
+    : "A short rod between each level, glued on the outline engraved on the piece below. The guide lists every length."}</small>
   <div class="field-stack">
     <LengthField label="Rod size" fieldLabel={settings.rod.shape === "round" ? "Rod diameter" : "Rod width"} unit={studio.shownLengthUnit} value={shownLength(settings.rod.sizeMm)} min={shownLength(2)} max={shownLength(12)} step={fine} onCommit={(shown) => { const sizeMm = storedLength(shown); if (sizeMm !== settings.rod.sizeMm) updateRod({ sizeMm }); }} />
     <LengthField label="Rod fit clearance" fieldLabel="Socket clearance" unit={studio.shownLengthUnit} value={shownLength(settings.rod.fitClearanceMm)} min={0} max={shownLength(0.5)} step={finer} onCommit={(shown) => { const fitClearanceMm = storedLength(shown); if (fitClearanceMm !== settings.rod.fitClearanceMm) updateRod({ fitClearanceMm }); }} />

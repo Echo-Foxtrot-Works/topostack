@@ -25,17 +25,19 @@ function checkSupports(result: GeometryIRV1): void {
   const segments = stack.columns.flatMap((column) => column.segments.map((segment) => ({ column, segment })));
   // Every piece is held, by rods or by lying glued on what is under it.
   for (const { piece } of byId.values()) {
-    const held = segments.filter(({ segment }) => segment.headPieceId === piece.id);
+    // A rod holds a piece by ending under it, or (through rods) by passing through it, glued.
+    const ending = segments.filter(({ segment }) => segment.headPieceId === piece.id);
+    const held = segments.filter(({ segment }) => segment.headPieceId === piece.id || segment.throughPieceIds?.includes(piece.id));
     expect(piece.resting || held.length > 0, piece.id).toBe(true);
     if (held.length >= 3) expect(convexContains(held.map(({ column }) => column.point), centre(piece)), piece.id).toBe(true);
-    expect(piece.locators?.length ?? 0).toBeGreaterThanOrEqual(held.length);
+    expect(piece.locators?.length ?? 0).toBeGreaterThanOrEqual(ending.length);
   }
   for (const { column, segment } of segments) {
     const head = byId.get(segment.headPieceId)!;
     expect(segment.topMm).toBeCloseTo(head.zMm, 9);
     expect(inside(column.point, head.piece.polygons)).toBe(true);
     expect(segment.lengthMm).toBe(Math.round((segment.topMm - segment.bottomMm) * 2) / 2);
-    // Nothing between the seat and the head stands where the rod passes.
+    // Nothing between the seat and the head stands where the rod passes: a piece it goes through has a hole there.
     for (const { piece, zMm } of byId.values()) {
       if (zMm + stack.thicknessMm > segment.bottomMm + 1e-6 && zMm < segment.topMm - 1e-6) expect(inside(column.point, piece.polygons), `${segment.id} through ${piece.id}`).toBe(false);
     }
@@ -113,6 +115,45 @@ describe("airspace supports in a generated stack", () => {
   });
 });
 
+describe("through rods", () => {
+  const throughRod = { ...DEFAULT_AIRSPACE_STACK.rod, joint: "through" as const };
+
+  it.each(["tiers", "plates"] as const)("runs one %s rod per column from the terrain through every piece it passes", (form) => {
+    const result = build({ form, rod: throughRod }, [core, shelf]);
+    const stack = result.airspaceStack!;
+    const byId = pieces(stack);
+    checkSupports(result);
+    expect(stack.columns.length).toBeGreaterThan(0);
+    for (const column of stack.columns) {
+      expect(column.segments).toHaveLength(1);
+      const [rod] = column.segments;
+      expect(rod!.seat.kind).toBe("terrain");
+      const passed = new Set(rod!.throughPieceIds ?? []);
+      for (const id of passed) {
+        const { piece, zMm } = byId.get(id)!;
+        expect(zMm).toBeGreaterThan(rod!.bottomMm);
+        expect(zMm).toBeLessThan(rod!.topMm);
+        // A hole for the rod, inside the piece's outline.
+        expect(inside(column.point, piece.polygons)).toBe(false);
+        expect(inside(column.point, piece.polygons.map((polygon) => ({ outer: polygon.outer, holes: [] })))).toBe(true);
+      }
+      // Every other piece the rod rises past keeps clear of it.
+      for (const { piece, zMm } of byId.values()) {
+        if (passed.has(piece.id) || piece.id === rod!.headPieceId || zMm >= rod!.topMm || zMm + stack.thicknessMm <= rod!.bottomMm) continue;
+        expect(inside(column.point, piece.polygons.map((polygon) => ({ outer: polygon.outer, holes: [] }))), `${column.id} past ${piece.id}`).toBe(false);
+      }
+    }
+    expect(stack.cutList.reduce((sum, rod) => sum + rod.count, 0)).toBe(stack.columns.length);
+  });
+
+  it("rises through a lower piece to hold the next rather than standing a new rod", () => {
+    const stack = build({ form: "tiers", rod: throughRod }, [core, shelf]).airspaceStack!;
+    expect(stack.columns.some((column) => (column.segments[0]!.throughPieceIds ?? []).length > 0)).toBe(true);
+    const segmented = build({ form: "tiers" }, [core, shelf]).airspaceStack!;
+    expect(stack.columns.length).toBeLessThan(segmented.columns.flatMap((column) => column.segments).length);
+  });
+});
+
 describe("airspace supports on their own", () => {
   const sheet = (index: number, outer: Point2D[]): LayerIR => ({ id: `layer-${index}`, index, elevationM: index * 50, materialThicknessMm: 3, polygons: [{ outer, holes: [] }], markings: [], pieces: [] });
   const plate = (id: string, outer: Point2D[]): AirspacePieceIR => ({ id, tint: "clear", polygons: [{ outer, holes: [] }], sectorIds: [id] });
@@ -128,6 +169,18 @@ describe("airspace supports on their own", () => {
     placeAirspaceSupports(result, layers, [lake], 3, 0.8, []);
     expect(result.columns.length).toBeGreaterThan(0);
     for (const column of result.columns) expect(inside(column.point, lake.polygons)).toBe(false);
+  });
+
+  it("holds a through-rod piece that falls between the shared grid's lines on its own finer grid", () => {
+    // Rods fit only 13–15 mm up, between the shared grid's lines at 8 and 16.
+    const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, 100, 100))];
+    const warnings: GeometryIRV1["warnings"] = [];
+    const result = stack(plate("A1-1", square(-40, 9, 40, 19)));
+    result.rod = { ...result.rod, joint: "through" };
+    placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+    expect(warnings).toEqual([]);
+    expect(result.columns.length).toBeGreaterThanOrEqual(2);
+    for (const column of result.columns) expect(column.point.y % 8).not.toBe(0);
   });
 
   it("leaves out a piece too narrow for a rod, and says so", () => {

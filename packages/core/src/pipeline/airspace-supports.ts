@@ -33,9 +33,23 @@ const MAX_COLUMNS_PER_PIECE = 16;
 /** A piece lying on the surface under it over this share of its area is glued there instead of held on rods. */
 const RESTING_SHARE = 0.25;
 const CUT_STEP_MM = 0.5;
+/** Through rods sit on one grid for every piece, so a rod can rise through one piece to hold the next. */
+const THROUGH_GRID_MM = 8;
 
 interface Placed { piece: AirspacePieceIR; zMm: number; topMm: number; prepared: PreparedPolygons }
-interface Candidate { point: Point2D; seat: AirspaceSeatIR; bottomMm: number }
+interface Candidate {
+  point: Point2D;
+  seat: AirspaceSeatIR;
+  bottomMm: number;
+  /** Through: the rod already standing here, which this piece would extend. */
+  rod?: ThroughRod;
+  /** Through: every lower piece the rod passes, lowest first. */
+  passes?: string[];
+}
+/** The `through` joint: one rod per column, from its socket to the highest piece it holds. */
+interface ThroughRod { point: Point2D; seat: AirspaceSeatIR; bottomMm: number; topMm: number; headPieceId: string; throughPieceIds: string[] }
+
+const pointKey = (point: Point2D) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`;
 
 const area = (polygons: Polygon2D[]) => polygons.reduce((sum, polygon) => sum + Math.abs(signedArea(polygon.outer)) - polygon.holes.reduce((holes, hole) => holes + Math.abs(signedArea(hole)), 0), 0);
 
@@ -97,6 +111,21 @@ interface Context {
   rodRadius: number;
   socketSheets: number;
   placed: Placed[];
+  /** The `through` joint's rods by point; undefined with glued segments. */
+  rods?: Map<string, ThroughRod>;
+  /** Through: points where a glued segment stands on a piece, which no through rod may pass. */
+  segmentPoints: Map<string, Point2D>;
+  /** Through: how close two rods at different points may stand. */
+  rodSpacingMm: number;
+}
+
+/** Through: a point too close to a rod or segment already standing at another point. */
+function crowded(context: Context, point: Point2D): boolean {
+  const key = pointKey(point);
+  const near = (other: Point2D) => Math.hypot(other.x - point.x, other.y - point.y) < context.rodSpacingMm - 1e-6;
+  for (const [otherKey, rod] of context.rods ?? []) if (otherKey !== key && near(rod.point)) return true;
+  for (const [otherKey, other] of context.segmentPoints) if (otherKey !== key && near(other)) return true;
+  return false;
 }
 
 /** The highest sheet holding the point, or -1. Sheets nest, so the search halves. */
@@ -109,10 +138,14 @@ function topSheet(context: Context, point: Point2D): number {
   return found;
 }
 
-/** Where a rod at `point` under a piece at `zMm` stands, or undefined when no rod can stand there. */
-function seatAt(context: Context, point: Point2D, zMm: number): Candidate | undefined {
+/**
+ * Where a rod at `point` under a piece at `zMm` stands, or undefined when no
+ * rod can stand there. `terrainOnly` skips the pieces below, for a through rod
+ * that has already checked them.
+ */
+function seatAt(context: Context, point: Point2D, zMm: number, terrainOnly = false): Candidate | undefined {
   const { rodRadius, woodMm } = context;
-  const below = context.placed.filter((entry) => entry.topMm <= zMm + 1e-6).sort((a, b) => b.topMm - a.topMm);
+  const below = terrainOnly ? [] : context.placed.filter((entry) => entry.topMm <= zMm + 1e-6).sort((a, b) => b.topMm - a.topMm);
   const seatPiece = below.find((entry) => pointInPreparedPolygons(point, entry.prepared));
   const bottomMm = seatPiece ? seatPiece.topMm : undefined;
   // Pieces between the seat and the head must keep clear of the rod.
@@ -140,14 +173,39 @@ function seatAt(context: Context, point: Point2D, zMm: number): Candidate | unde
   return { point, seat: { kind: "terrain", floorLayerIndex: floor, socketLayerIndices: cut.sort((a, b) => a - b) }, bottomMm: Math.max(0, (floor + 1) * woodMm) };
 }
 
+/**
+ * The `through` joint: a rod at `point` rising from the terrain to a piece at
+ * `zMm`, passing through lower pieces well inside them (each gets a hole) and
+ * clear of every other piece. An existing rod at the point is extended.
+ */
+function throughAt(context: Context, point: Point2D, zMm: number): Candidate | undefined {
+  const { rodRadius } = context;
+  const passes: Array<{ id: string; zMm: number }> = [];
+  for (const entry of context.placed) {
+    if (entry.topMm > zMm + 1e-6) continue;
+    const inside = pointInPreparedPolygons(point, entry.prepared);
+    if (inside ? !clearOfEdges(point, entry.prepared, rodRadius + PIECE_EDGE_MM) : !clearOfEdges(point, entry.prepared, rodRadius + PASSING_CLEARANCE_MM)) return undefined;
+    if (inside) passes.push({ id: entry.piece.id, zMm: entry.zMm });
+  }
+  const ordered = passes.sort((a, b) => a.zMm - b.zMm).map((entry) => entry.id);
+  if (context.segmentPoints.has(pointKey(point))) return undefined;
+  const rod = context.rods!.get(pointKey(point));
+  if (rod) return rod.topMm <= zMm ? { point, seat: rod.seat, bottomMm: rod.bottomMm, rod, passes: ordered } : undefined;
+  const fromTerrain = seatAt(context, point, zMm, true);
+  return fromTerrain && { ...fromTerrain, passes: ordered };
+}
+
 /** Points inside a piece far enough from its edge for a rod, on a grid sized to the piece. */
-function candidatePoints(piece: AirspacePieceIR, prepared: PreparedPolygons, margin: number): { valid: Point2D[]; samples: Point2D[] } {
+function candidatePoints(piece: AirspacePieceIR, prepared: PreparedPolygons, margin: number, gridMm?: number): { valid: Point2D[]; samples: Point2D[] } {
   const bounds = ringBounds(piece.polygons.flatMap((polygon) => polygon.outer));
-  const step = Math.min(20, Math.max(4, Math.sqrt(area(piece.polygons)) / 12));
+  const step = gridMm ?? Math.min(20, Math.max(4, Math.sqrt(area(piece.polygons)) / 12));
+  // A shared grid lines up across pieces; otherwise the grid is sized to the piece.
+  const startX = gridMm ? Math.ceil(bounds.minX / gridMm) * gridMm : bounds.minX + step / 2;
+  const startY = gridMm ? Math.ceil(bounds.minY / gridMm) * gridMm : bounds.minY + step / 2;
   const valid: Point2D[] = [];
   const samples: Point2D[] = [];
-  for (let x = bounds.minX + step / 2; x < bounds.maxX; x += step) {
-    for (let y = bounds.minY + step / 2; y < bounds.maxY; y += step) {
+  for (let x = startX; x < bounds.maxX; x += step) {
+    for (let y = startY; y < bounds.maxY; y += step) {
       const point = { x, y };
       if (!pointInPreparedPolygons(point, prepared)) continue;
       samples.push(point);
@@ -168,7 +226,9 @@ function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples:
   const required = pieceArea < SMALL_PIECE_MM2 ? (rod.shape === "square" ? 1 : 2) : 3;
   const middle = centroid(piece.polygons);
   const distance = (a: Point2D, b: Point2D) => Math.hypot(a.x - b.x, a.y - b.y);
-  const chosen: Candidate[] = [candidates.reduce((far, candidate) => (distance(candidate.point, middle) > distance(far.point, middle) ? candidate : far))];
+  // An existing through rod is worth a little more distance than a new one: extending it saves a rod.
+  const weight = (candidate: Candidate) => (candidate.rod ? 1.5 : 1);
+  const chosen: Candidate[] = [candidates.reduce((far, candidate) => (distance(candidate.point, middle) * weight(candidate) > distance(far.point, middle) * weight(far) ? candidate : far))];
   const reach = MAX_SPAN_MM / 2;
   const stable = () => {
     if (chosen.length < required) return false;
@@ -183,9 +243,9 @@ function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples:
     let bestDistance = 0;
     for (const candidate of candidates) {
       const nearest = Math.min(...chosen.map((entry) => distance(entry.point, candidate.point)));
-      if (nearest > bestDistance) { bestDistance = nearest; best = candidate; }
+      if (nearest >= rod.sizeMm * 2 && nearest * weight(candidate) > bestDistance) { bestDistance = nearest * weight(candidate); best = candidate; }
     }
-    if (!best || bestDistance < rod.sizeMm * 2) break;
+    if (!best) break;
     chosen.push(best);
   }
   if (chosen.length < required) return undefined;
@@ -223,6 +283,9 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
     rodRadius: rod.shape === "square" ? (rod.sizeMm / 2) * Math.SQRT2 : rod.sizeMm / 2,
     socketSheets: Math.max(1, Math.round(rod.socketDepthMm / woodMm)),
     placed: [],
+    ...(rod.joint === "through" ? { rods: new Map<string, ThroughRod>() } : {}),
+    segmentPoints: new Map(),
+    rodSpacingMm: Math.max(THROUGH_GRID_MM, rod.sizeMm * 2),
   };
   const standing: Standing[] = [];
   const unsupported: string[] = [];
@@ -235,14 +298,39 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
         context.placed.push(placed);
         return true;
       }
-      const { valid, samples } = candidatePoints(piece, prepared, context.rodRadius + PIECE_EDGE_MM);
-      const candidates = valid.flatMap((point) => seatAt(context, point, level.zMm) ?? []);
-      const columns = chooseColumns(piece, candidates, samples, rod);
+      const through = context.rods;
+      const margin = context.rodRadius + PIECE_EDGE_MM;
+      const { valid, samples } = candidatePoints(piece, prepared, margin, through ? context.rodSpacingMm : undefined);
+      let columns = chooseColumns(piece, valid.flatMap((point) => (through ? (crowded(context, point) ? undefined : throughAt(context, point, level.zMm)) : seatAt(context, point, level.zMm)) ?? []), samples, rod);
+      let segmented = false;
+      if (through && !columns) {
+        // Off the shared grid, the piece's own finer grid finds room the shared one misses (a small
+        // piece, rugged ground). Failing a through rod there, it stands on glued segments, clear of
+        // every through rod, rather than being left out.
+        const fine = candidatePoints(piece, prepared, margin).valid.filter((point) => !crowded(context, point));
+        columns = chooseColumns(piece, fine.flatMap((point) => throughAt(context, point, level.zMm) ?? []), samples, rod);
+        segmented = !columns;
+        if (segmented) columns = chooseColumns(piece, [...valid, ...fine].filter((point) => !through.has(pointKey(point)) && !crowded(context, point)).flatMap((point) => seatAt(context, point, level.zMm) ?? []), samples, rod);
+      }
       if (!columns) {
         unsupported.push(piece.id);
         return false;
       }
-      for (const column of columns) standing.push({ ...column, headPieceId: piece.id, topMm: level.zMm });
+      for (const column of columns) {
+        if (!through || segmented) {
+          standing.push({ ...column, headPieceId: piece.id, topMm: level.zMm });
+          context.segmentPoints.set(pointKey(column.point), column.point);
+          continue;
+        }
+        if (column.rod) {
+          // The rod rises on through the piece it held, which now hangs on it at its own height.
+          column.rod.throughPieceIds = column.passes ?? [];
+          column.rod.headPieceId = piece.id;
+          column.rod.topMm = level.zMm;
+        } else {
+          through.set(pointKey(column.point), { point: column.point, seat: column.seat, bottomMm: column.bottomMm, topMm: level.zMm, headPieceId: piece.id, throughPieceIds: column.passes ?? [] });
+        }
+      }
       context.placed.push(placed);
       return true;
     });
@@ -252,6 +340,10 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
     code: "AIRSPACE_PIECE_UNSUPPORTED",
     message: `${unsupported.length} airspace ${unsupported.length === 1 ? "piece was" : "pieces were"} left out because no rod could hold ${unsupported.length === 1 ? "it" : "them"} clear of the terrain and the pieces below. A thinner rod helps.`,
   });
+  if (context.rods) {
+    for (const entry of context.rods.values()) standing.push({ point: entry.point, seat: entry.seat, bottomMm: entry.bottomMm, headPieceId: entry.headPieceId, topMm: entry.topMm, ...(entry.throughPieceIds.length ? { throughPieceIds: entry.throughPieceIds } : {}) });
+    cutRodHoles(stack, context.rods, rod, minimumFeatureMm);
+  }
   stack.columns = buildColumns(standing);
   stack.backingSheet = standing.some((entry) => entry.seat.kind === "terrain" && entry.seat.floorLayerIndex < 0);
   stack.cutList = cutList(stack.columns);
@@ -259,7 +351,21 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   engraveLocators(stack, rod);
 }
 
-interface Standing extends Candidate { headPieceId: string; topMm: number }
+interface Standing extends Candidate { headPieceId: string; topMm: number; throughPieceIds?: string[] }
+
+/** A hole, the rod's size plus its fit clearance, in every piece a through rod passes; frost stops at it too. */
+function cutRodHoles(stack: AirspaceStackIR, rods: Map<string, ThroughRod>, rod: AirspaceRodSettingsV1, minimumFeatureMm: number): void {
+  const holes = new Map<string, Polygon2D[]>();
+  for (const entry of rods.values()) for (const id of entry.throughPieceIds) {
+    holes.set(id, [...(holes.get(id) ?? []), { outer: rodFootprint(entry.point, rod, rod.fitClearanceMm), holes: [] }]);
+  }
+  for (const level of stack.levels) for (const piece of level.pieces) {
+    const cut = holes.get(piece.id);
+    if (!cut) continue;
+    piece.polygons = normalizedPolygons(clipPolygons(piece.polygons, cut, "difference"), minimumFeatureMm);
+    if (piece.frost) piece.frost = normalizedPolygons(clipPolygons(piece.frost, cut, "difference"), minimumFeatureMm);
+  }
+}
 
 /** Segments at one point form a column, bottom to top; columns are numbered north-west first. */
 function buildColumns(standing: Standing[]): AirspaceColumnIR[] {
@@ -283,6 +389,7 @@ function buildColumns(standing: Standing[]): AirspaceColumnIR[] {
           topMm: entry.topMm,
           lengthMm: Math.round((entry.topMm - entry.bottomMm) / CUT_STEP_MM) * CUT_STEP_MM,
           rodId: "",
+          ...(entry.throughPieceIds ? { throughPieceIds: entry.throughPieceIds } : {}),
         })),
       };
     });
