@@ -5,7 +5,8 @@
     "moduleResolution": "Bundler",
     "paths": {
       "@topostack/core": ["./packages/core/src/index.ts"],
-      "@topostack/core/project": ["./packages/core/src/project/index.ts"]
+      "@topostack/core/project": ["./packages/core/src/project/index.ts"],
+      "@topostack/core/airspace": ["./packages/core/src/airspace.ts"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
     "strict": true,

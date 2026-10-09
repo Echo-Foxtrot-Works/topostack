@@ -40,7 +40,7 @@
   import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
-  import { acrylicPanelCount as findAcrylicPanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
+  import { acrylicPanelCount as findAcrylicPanelCount, airspacePanelCount as findAirspacePanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
   import { retryingLoader } from "$lib/studio/lazy-load";
   import { sameMapArea } from "$lib/studio/project-diff";
   import { pointsToPath } from "$lib/studio/svg-path";
@@ -298,6 +298,7 @@
   const contourInterval = $derived(geometry.landReliefM / (project.engravingContourCount + 1));
   const fabricationPanelCount = $derived(sheetNesting.exportPlan?.sheets.length ?? geometry.layers.length - geometry.fabricationNests.length);
   const acrylicPanelTotal = $derived(acrylicSheetNesting.exportPlan?.sheets.length ?? findAcrylicPanelCount(geometry, project));
+  const airspacePanelTotal = $derived(findAirspacePanelCount(geometry, project));
   const getFeedbackContext = () => studioFeedbackContext(project, activeSource, geometry, !sameMapArea(sourceProject, project));
   const terrainDataStale = $derived(!sameMapArea(sourceProject, project));
   const verticalExaggerationStale = $derived(project.outputMode === "stack" && sourceProject.verticalExaggeration !== project.verticalExaggeration);
@@ -1087,7 +1088,7 @@
 
     <PreviewPanel />
   </Workspace>
-  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false} onSavePreview={() => void savePreviewImage()} onCopyLink={() => void copyShareLink()} onShare={() => void shareDesign()} {previewImageBusy} {previewImageStatus}>
+  <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} airspaceCount={airspacePanelTotal} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false} onSavePreview={() => void savePreviewImage()} onCopyLink={() => void copyShareLink()} onShare={() => void shareDesign()} {previewImageBusy} {previewImageStatus}>
     {#snippet sheetLayout()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
   </ExportDialog>
   {@render locationSearch()}

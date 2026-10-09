@@ -799,8 +799,18 @@ describe("TopoStack Svelte shell", () => {
     [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Fabrication settings"))!.click();
     await tick();
     const fields = target.querySelector<HTMLElement>(".advanced-fields")!;
-    // Material-saving nests, water paint templates, acrylic water inserts, and smooth contours.
-    expect(fields.querySelectorAll('.toggle-stack button[role="switch"]')).toHaveLength(4);
+    // Material-saving nests, water paint templates, acrylic water inserts, airspace in 3D, and smooth contours.
+    expect(fields.querySelectorAll('.toggle-stack button[role="switch"]')).toHaveLength(5);
+    expect(fields.querySelector(".airspace-settings")).toBeNull();
+    [...fields.querySelectorAll<HTMLButtonElement>('button[role="switch"]')].find((button) => button.getAttribute("aria-label") === "Airspace in 3D")!.click();
+    await tick();
+    // Turning it on opens its own settings: the form, the kinds of airspace, the acrylic and the rods.
+    const airspace = fields.querySelector<HTMLElement>(".airspace-settings")!;
+    expect(airspace.querySelector<HTMLSelectElement>('select[aria-label="Airspace form"]')!.value).toBe("plates");
+    expect([...airspace.querySelectorAll('button[role="switch"]')].map((button) => button.getAttribute("aria-label"))).toEqual(["Class B airspace", "Class C airspace", "Special use airspace", "Class D lids"]);
+    expect(airspace.querySelector('select[aria-label="Rod shape"]')).not.toBeNull();
+    [...fields.querySelectorAll<HTMLButtonElement>('button[role="switch"]')].find((button) => button.getAttribute("aria-label") === "Airspace in 3D")!.click();
+    await tick();
     // Glue margin, laser kerf, minimum feature, and the two work-area fields.
     expect(fields.querySelectorAll(".field-stack > .field-row")).toHaveLength(5);
     // Text engraving and the elevation label position now sit beside what they

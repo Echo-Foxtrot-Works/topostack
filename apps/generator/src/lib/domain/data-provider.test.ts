@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSyntheticSource, DEFAULT_PROJECT, type ProjectConfigV1, type WaterAreaV1 } from "@topostack/core";
-import { loadAviation, loadSurveyedLakeDepths, loadTerrain } from "$lib/domain/data-provider";
+import { createSyntheticSource, DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type ProjectConfigV1, type WaterAreaV1 } from "@topostack/core";
+import { loadAirspace, loadAviation, loadSurveyedLakeDepths, loadTerrain } from "$lib/domain/data-provider";
 
 const mocks = vi.hoisted(() => ({
   loadElevation: vi.fn(),
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   loadLakeAreas: vi.fn(),
   loadLakeBathymetry: vi.fn(),
   loadAviationMarkings: vi.fn(),
+  loadAirspaceVolumes: vi.fn(),
   loadUserCharts: vi.fn(),
   applyUserCharts: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock("$lib/domain/vector-loader", () => ({ loadVectorMarkings: mocks.loadVect
 vi.mock("$lib/domain/lake-area-loader", () => ({ loadLakeAreas: mocks.loadLakeAreas }));
 vi.mock("$lib/domain/bathymetry", async (importOriginal) => ({ ...await importOriginal<typeof import("$lib/domain/bathymetry")>(), loadLakeBathymetry: mocks.loadLakeBathymetry }));
 vi.mock("$lib/domain/aviation-provider", () => ({ loadAviationMarkings: mocks.loadAviationMarkings }));
+vi.mock("$lib/domain/airspace-volumes", () => ({ loadAirspaceVolumes: mocks.loadAirspaceVolumes }));
 vi.mock("$lib/storage/user-charts", () => ({ loadUserCharts: mocks.loadUserCharts }));
 vi.mock("$lib/domain/user-bathymetry", () => ({ applyUserCharts: mocks.applyUserCharts }));
 
@@ -157,5 +159,26 @@ describe("loadSurveyedLakeDepths", () => {
     mocks.loadUserCharts.mockResolvedValue(new Map([["42", {}]]));
     const result = await loadSurveyedLakeDepths(bounds, elevation, 11, [lake], undefined, { widthMm: 200, heightMm: 200, userDepthCharts: { "42": { id: "c1", contentHash: "a".repeat(64) } } });
     expect(result).not.toHaveProperty("missingCharts");
+  });
+});
+
+describe("airspace loading", () => {
+  const withAirspace: ProjectConfigV1 = { ...terrainOnly, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { B: false, C: false, D: false, specialUse: true } } };
+  const bounds = { west: -105, south: 39, east: -104, north: 40 };
+
+  it("loads the volumes a layered project asks for, with their kinds and cycle", async () => {
+    mocks.loadAirspaceVolumes.mockResolvedValue({ volumes: [], status: "available", cycle: "2026-10-01" });
+    expect(await loadAirspace(bounds, 9, withAirspace)).toEqual({ airspaceVolumes: [], airspaceStatus: "available", airspaceCycle: "2026-10-01" });
+    expect(mocks.loadAirspaceVolumes.mock.calls[0]![3]).toEqual({ classes: false, specialUse: true });
+    const { source } = await loadTerrain(withAirspace);
+    expect(source).toMatchObject({ airspaceVolumes: [], airspaceStatus: "available" });
+    await loadTerrain(terrainOnly);
+    expect(mocks.loadAirspaceVolumes).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves the volumes absent when the archive cannot be read, so generation can say so", async () => {
+    mocks.loadAirspaceVolumes.mockRejectedValue(new Error("offline"));
+    expect(await loadAirspace(bounds, 9, withAirspace)).toEqual({ airspaceStatus: "unavailable" });
+    expect(await loadAirspace(bounds, 9, terrainOnly)).toEqual({});
   });
 });

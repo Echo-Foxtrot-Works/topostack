@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { ChevronDown, Droplets, Grid3X3, Layers3, Puzzle, SprayCan, Waves } from "@lucide/svelte";
+  import { ChevronDown, Droplets, Grid3X3, Layers3, Plane, Puzzle, SprayCan, Waves } from "@lucide/svelte";
   import { Section } from "@loidolt/theme-svelte";
-  import { DEFAULT_WATER_INSERT_CLEARANCE_MM, displayLength, MAX_PROJECT_DIMENSION_MM, MAX_SEAM_OFFSET_MM, type WaterInsertSettingsV1 } from "@topostack/core";
+  import { DEFAULT_AIRSPACE_STACK, DEFAULT_WATER_INSERT_CLEARANCE_MM, displayLength, MAX_PROJECT_DIMENSION_MM, MAX_SEAM_OFFSET_MM, type WaterInsertSettingsV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import { getStudio } from "$lib/studio/studio-context";
   import { insertLakes } from "$lib/studio/preview-summary";
+  import AirspaceSettings from "$lib/studio/panels/AirspaceSettings.svelte";
 
   const studio = getStudio();
   const { sectionSummary, shownLength, storedLength, toggleSection, updateFabrication, workAreaLength } = studio;
@@ -37,6 +38,7 @@
         {#if studio.project.outputMode === "stack" && studio.seamGrid}<Switch checked={studio.project.seamTabs} onCheckedChange={(seamTabs) => void updateFabrication({ seamTabs })} aria-label="Puzzle seam tabs"><span class="toggle-label"><Puzzle size={16} />Puzzle seam tabs</span></Switch>{/if}
         {#if studio.project.outputMode === "stack"}<Switch checked={studio.project.paintTemplates.includes("water")} onCheckedChange={(on) => void updateFabrication({ paintTemplates: on ? ["water"] : [] })} aria-label="Water paint templates"><span class="toggle-label"><SprayCan size={16} />Water paint templates</span></Switch>{/if}
         {#if studio.project.outputMode === "stack"}<Switch checked={Boolean(inserts)} disabled={!studio.project.showWaterDepth && !inserts} onCheckedChange={(on) => void updateFabrication({ waterInserts: on ? { fitClearanceMm: DEFAULT_WATER_INSERT_CLEARANCE_MM, excludedLakeIds: [] } : undefined })} aria-label="Acrylic water inserts"><span class="toggle-label"><Droplets size={16} />Acrylic water inserts</span></Switch>{/if}
+        {#if studio.project.outputMode === "stack"}<Switch checked={Boolean(studio.project.airspaceStack)} onCheckedChange={(on) => void updateFabrication({ airspaceStack: on ? structuredClone(DEFAULT_AIRSPACE_STACK) : undefined })} aria-label="Airspace in 3D"><span class="toggle-label"><Plane size={16} />Airspace in 3D</span></Switch>{/if}
         <Switch checked={studio.project.smoothing === 1} onCheckedChange={(smooth) => void updateFabrication({ smoothing: smooth ? 1 : 0 })} aria-label="Smooth contours"><span class="toggle-label"><Waves size={16} />Smooth contours</span></Switch>
       </div>
       {#if studio.project.outputMode === "stack" && !studio.project.showWaterDepth}<small class="depth-note insert-note">Acrylic water inserts need <strong>Water depth</strong> on: they replace each lake on the sheet that carries its waterline.</small>{/if}
@@ -61,6 +63,7 @@
           <small class="depth-note">Each lake is cut out of the sheet at its waterline and filled with a fitted acrylic piece, exported as separate files. A 2 mm ledge on the sheet below holds it.</small>
         </div>
       {/if}
+      {#if studio.project.outputMode === "stack" && studio.project.airspaceStack}<AirspaceSettings settings={studio.project.airspaceStack} />{/if}
       <div class="field-stack">
         {#if studio.project.outputMode === "stack" && studio.project.optimizeMaterialUse}<LengthField label="Glue margin" unit={studio.shownLengthUnit} value={shownLength(studio.project.glueMarginMm)} min={shownLength(2)} max={shownLength(25)} step={studio.project.units === "imperial" ? 0.01 : 0.5} onCommit={(shown) => { const glueMarginMm = storedLength(shown); if (glueMarginMm !== studio.project.glueMarginMm) void updateFabrication({ glueMarginMm }); }} />{/if}
         {#if studio.project.outputMode === "stack"}<LengthField label="Laser kerf" unit={studio.shownLengthUnit} value={shownLength(studio.project.laserKerfMm)} min={0} max={shownLength(1)} step={studio.project.units === "imperial" ? 0.001 : 0.01} onCommit={(shown) => { const laserKerfMm = storedLength(shown); if (laserKerfMm !== studio.project.laserKerfMm) void updateFabrication({ laserKerfMm }); }} />{/if}

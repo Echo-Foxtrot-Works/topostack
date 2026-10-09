@@ -23,7 +23,7 @@
    * matching `hiddenPrefixes` are left out while their drafts are drawn above.
    */
   let { geometry, exploded, placement, onUnavailable, rememberCamera = true }: {
-    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial">;
+    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial" | "airspaceStack">;
     /** Isolated representative previews must not replace the project camera. */
     rememberCamera?: boolean;
     exploded: number;
@@ -305,6 +305,7 @@
   const waterSurfaces = $derived(geometry.waterSurfaces);
   const waterInserts = $derived(geometry.waterInserts);
   const waterInsertMaterial = $derived(geometry.waterInsertMaterial);
+  const airspaceStack = $derived(geometry.airspaceStack);
   const lineStyle = $derived(geometry.lineStyle);
   const widthMm = $derived(geometry.widthMm);
   const heightMm = $derived(geometry.heightMm);
@@ -313,7 +314,8 @@
   const hideMarkings = $derived(placement?.hideMarkings ?? false);
   $effect(() => {
     const omitMarkings = hideMarkings;
-    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, lineStyle, widthMm, heightMm };
+    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, airspaceStack, lineStyle, widthMm, heightMm };
+    const showAirspace = !placement;
     const hiddenPrefixes = hiddenKey ? hiddenKey.split("|") : [];
     const timeout = window.setTimeout(() => {
       if (!runtime) return;
@@ -446,6 +448,64 @@
         for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
       });
+      // Airspace pieces float at their true height on their rods, tinted as the
+      // sectional colours them; clear plates show their frost. Each level rides
+      // above the top sheet when the stack is exploded.
+      const airspace = showAirspace ? activeGeometry.airspaceStack : undefined;
+      if (airspace?.levels.length) {
+        const tints = {
+          clear: new THREE.MeshStandardMaterial({ color: 0xdcecf2, transparent: true, opacity: 0.24, roughness: 0.06, metalness: 0, side: THREE.DoubleSide, depthWrite: false }),
+          blue: new THREE.MeshStandardMaterial({ color: 0x3f7fd4, transparent: true, opacity: 0.4, roughness: 0.08, metalness: 0, side: THREE.DoubleSide, depthWrite: false }),
+          magenta: new THREE.MeshStandardMaterial({ color: 0xb44a91, transparent: true, opacity: 0.4, roughness: 0.08, metalness: 0, side: THREE.DoubleSide, depthWrite: false }),
+        };
+        const frostMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide });
+        const rodMaterial = new THREE.MeshStandardMaterial({ color: 0xa8aeb2, roughness: 0.4, metalness: 0.3 });
+        runtime.sceneResources.push(tints.clear, tints.blue, tints.magenta, frostMaterial, rodMaterial);
+        const thickness = airspace.thicknessMm;
+        const levelLayer = new Map<string, number>();
+        airspace.levels.forEach((level, position) => {
+          const stackIndex = activeGeometry.layers.length + position;
+          for (const piece of level.pieces) {
+            levelLayer.set(piece.id, stackIndex);
+            for (const polygon of piece.polygons) {
+              const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thickness, bevelEnabled: false, curveSegments: 8 }), tints[piece.tint]);
+              mesh.castShadow = false;
+              mesh.renderOrder = 2;
+              addStacked(runtime!.content, mesh, stackIndex, level.zMm);
+            }
+            const top = level.zMm + thickness + markingLift(thickness);
+            for (const polygon of piece.frost ?? []) {
+              const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), frostMaterial);
+              mesh.renderOrder = 3;
+              addStacked(runtime!.content, mesh, stackIndex, top);
+            }
+            if (omitMarkings) continue;
+            const edgeBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+            for (const edge of piece.edges ?? []) {
+              const material = lineMaterials[markingStyleKey({ kind: "aviation", operation: "engrave", aviationClass: edge.aviationClass })];
+              let batch = edgeBatches.get(material);
+              if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
+              appendPolyline(batch, edge.points);
+            }
+            for (const [material, batch] of edgeBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), stackIndex, top);
+          }
+        });
+        // Rods stand from their seat to the piece they hold, and ride with that piece.
+        const radius = airspace.rod.sizeMm / 2;
+        for (const column of airspace.columns) {
+          for (const segment of column.segments) {
+            const length = segment.topMm - segment.bottomMm;
+            if (length <= 0) continue;
+            const shape = airspace.rod.shape === "square"
+              ? new THREE.BoxGeometry(airspace.rod.sizeMm, airspace.rod.sizeMm, length)
+              : new THREE.CylinderGeometry(radius, radius, length, 16).rotateX(Math.PI / 2);
+            const rod = new THREE.Mesh(shape.translate(column.point.x, column.point.y, length / 2), rodMaterial);
+            rod.castShadow = true;
+            addStacked(runtime!.content, rod, levelLayer.get(segment.headPieceId) ?? activeGeometry.layers.length, segment.bottomMm);
+          }
+        }
+      }
+
       // Open water is stain on the wood rather than a pane over it: the top
       // face of every sheet under a waterline takes a multiply tint wherever
       // the lake covers it, riding its sheet when the stack is exploded. The
@@ -475,7 +535,9 @@
       const radius = Math.hypot(activeGeometry.widthMm / 2, activeGeometry.heightMm / 2);
       // Fit the key light and its shadow frustum to the model, including the
       // fully exploded stack height, so shadows stay crisp at every size.
-      const stackHeight = activeGeometry.layers.length * ((activeGeometry.layers[0]?.materialThicknessMm ?? 1) + 13);
+      const airspaceLevels = showAirspace ? activeGeometry.airspaceStack?.levels.length ?? 0 : 0;
+      const airspaceTop = airspaceLevels ? activeGeometry.airspaceStack!.topMm : 0;
+      const stackHeight = Math.max(activeGeometry.layers.length * ((activeGeometry.layers[0]?.materialThicknessMm ?? 1) + 13), airspaceTop + (activeGeometry.layers.length + airspaceLevels) * 13);
       const shadowHalfSize = Math.max(radius * 1.4, stackHeight);
       runtime.keyLight.position.set(-0.5, -0.33, 0.78).normalize().multiplyScalar(radius * 2.6);
       runtime.keyLight.shadow.camera.left = -shadowHalfSize; runtime.keyLight.shadow.camera.right = shadowHalfSize;
@@ -489,9 +551,9 @@
       if (orbitBeforePlacement) orbitBeforePlacement.minDistance = minimumDistance; else runtime.controls.minDistance = minimumDistance;
       runtime.controls.maxDistance = Math.max(radius * 8, currentDistance);
       runtime.camera.near = Math.max(radius * 0.15, 0.5); runtime.camera.far = radius * 24; runtime.camera.updateProjectionMatrix();
-      const fitSignature = [activeGeometry.widthMm, activeGeometry.heightMm, activeGeometry.layers.length, activeGeometry.layers[0]?.materialThicknessMm ?? 1].join(":");
+      const fitSignature = [activeGeometry.widthMm, activeGeometry.heightMm, activeGeometry.layers.length, activeGeometry.layers[0]?.materialThicknessMm ?? 1, Math.round(airspaceTop)].join(":");
       if (runtime.fitSignature !== fitSignature) {
-        const target = new THREE.Vector3(0, 0, (activeGeometry.layers.length * (activeGeometry.layers[0]?.materialThicknessMm ?? 1)) / 2);
+        const target = new THREE.Vector3(0, 0, Math.max(activeGeometry.layers.length * (activeGeometry.layers[0]?.materialThicknessMm ?? 1), airspaceTop) / 2);
         const direction = runtime.camera.position.clone().sub(runtime.controls.target);
         if (direction.lengthSq() < 1e-6) direction.set(0.15, -1.65, 2.7);
         direction.normalize();

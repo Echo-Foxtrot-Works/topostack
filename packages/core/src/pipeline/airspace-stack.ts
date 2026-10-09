@@ -2,6 +2,7 @@ import { clipPolyline, ringBounds, signedArea, type Bounds2D } from "../primitiv
 import { clipPolygons, offsetPolygons, windowPolygons } from "../primitives/offset.js";
 import { normalizedPolygons } from "./water-inserts.js";
 import { placeAirspaceSupports } from "./airspace-supports.js";
+import { AIRSPACE_DEFAULT_CAP_FT, airspaceMaterial, airspaceTint } from "./airspace-settings.js";
 import type {
   AirspaceEdgeIR, AirspaceLevelIR, AirspacePieceIR, AirspaceStackIR, AirspaceStackSettingsV1, AirspaceTint, AirspaceVolumeV1,
   GeometryWarning, LayerIR, Point2D, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR,
@@ -20,8 +21,6 @@ import type { ElevationLadder } from "./generation-context.js";
  */
 
 const FEET = 0.3048;
-/** Ceiling cap when the crop has no Class B or C to take it from. */
-export const AIRSPACE_DEFAULT_CAP_FT = 10_000;
 /** Room for a rod between two levels beyond the acrylic itself. */
 const AIRSPACE_LEVEL_ROOM_MM = 2;
 /** Gap kept between a piece and terrain that rises through it. */
@@ -32,27 +31,6 @@ const AIRSPACE_MIN_PIECE_MM2 = 1_000;
 const AIRSPACE_TALL_MM = 250;
 /** Volumes using more acrylic than this many model footprints are flagged. */
 const AIRSPACE_HEAVY_FOOTPRINTS = 4;
-
-/** What turning airspace on starts from: plates of Class B, C and special use airspace on 4 mm round rods glued in segments. */
-export const DEFAULT_AIRSPACE_STACK: AirspaceStackSettingsV1 = {
-  form: "plates",
-  classes: { B: true, C: true, D: false, specialUse: true },
-  rod: { shape: "round", sizeMm: 4, fitClearanceMm: 0.1, socketDepthMm: 6, joint: "segments" },
-};
-
-/** The acrylic as the project resolves it, every optional value filled from the wood. */
-export function airspaceMaterial(config: ProjectConfigV1): { thicknessMm: number; kerfMm: number } | undefined {
-  const settings = config.airspaceStack;
-  if (!settings) return undefined;
-  return { thicknessMm: settings.thicknessMm ?? config.materialThicknessMm, kerfMm: settings.kerfMm ?? config.laserKerfMm };
-}
-
-/** Acrylic colour after the sectional: blue for Class B and D and the prohibited, restricted and warning areas; magenta for Class C, MOAs and alert areas. */
-export function airspaceTint(volume: Pick<AirspaceVolumeV1, "aviationClass" | "specialUseKind">): Exclude<AirspaceTint, "clear"> {
-  if (volume.aviationClass === "class-c") return "magenta";
-  if (volume.aviationClass === "special-use") return volume.specialUseKind === "moa" || volume.specialUseKind === "alert" ? "magenta" : "blue";
-  return "blue";
-}
 
 function classEnabled(volume: AirspaceVolumeV1, classes: AirspaceStackSettingsV1["classes"]): boolean {
   switch (volume.aviationClass) {
@@ -409,7 +387,7 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
     code: "AIRSPACE_PIECES_DROPPED",
     message: `${builder.dropped.count} airspace ${builder.dropped.count === 1 ? "piece was" : "pieces were"} left out because ${builder.dropped.count === 1 ? "it was" : "they were"} smaller than 10 cm² after the terrain and the crop cut ${builder.dropped.count === 1 ? "it" : "them"}.`,
   });
-  const stack: AirspaceStackIR = { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm: 0, levels, rod: { ...settings.rod }, columns: [], cutList: [], backingSheet: false };
+  const stack: AirspaceStackIR = { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm: 0, levels, rod: { ...settings.rod }, ...(source.airspaceCycle ? { cycle: source.airspaceCycle } : {}), columns: [], cutList: [], backingSheet: false };
   // Rods hold the pieces, and their sockets become holes in the sheets; a piece no rod can hold is left out.
   placeAirspaceSupports(stack, layers, inserts, t, config.minimumFeatureMm, warnings);
   levels = stack.levels;

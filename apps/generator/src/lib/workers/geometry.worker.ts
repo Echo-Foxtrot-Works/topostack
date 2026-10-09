@@ -1,5 +1,6 @@
 import { createParallelGeometryGenerator, projectFonts, type SourceBundleV1 } from "@topostack/core";
 import { ensureFonts } from "$lib/domain/fonts";
+import { ensureAirspaceStage } from "$lib/domain/airspace-stage";
 import type { GeometryWorkerCancel, GeometryWorkerReady, GeometryWorkerRequest, GeometryWorkerResponse } from "$lib/workers/geometry-worker-client";
 import { GeometryTaskPool, geometryWorkerCount } from "$lib/workers/geometry-task-pool";
 
@@ -38,6 +39,7 @@ async function drain(): Promise<void> {
       const { signal } = controller;
       try {
         await ensureFonts(projectFonts(config));
+        if (config.airspaceStack) await ensureAirspaceStage();
         signal.throwIfAborted();
         const result = await generateGeometry(config, source, {
           checkCancelled: () => signal.throwIfAborted(),

@@ -20,7 +20,7 @@ import { insertedShorelines, markingEnabled, placeTransportationLabels, routeMar
 import { addAlignmentGuides, addPieceLabels } from "./assembly-marks.js";
 import { cutPlacedGraphics, elevationLabelTexts, placeAnnotations, placeElevationLabels, placeGraphics, placeMarkers, placePlaque } from "./annotations.js";
 import { placeAviationLabels } from "./aviation-labels.js";
-import { buildAirspaceStack } from "./airspace-stack.js";
+import { registeredAirspaceStage } from "./airspace-settings.js";
 
 /**
  * Routed features × layers at which merging each layer's covering set into one
@@ -51,6 +51,18 @@ function dedupeMarkingIds(layers: LayerIR[], inserts: WaterInsertIR[] = []): voi
     markingIds.add(candidate);
   }));
 }
+
+/**
+ * The airspace stage, loaded by the host only for projects that build airspace
+ * (`@topostack/core/airspace`). A realm that never loaded it builds none and
+ * says so, as the in-chat preview does.
+ */
+const buildAirspace: NonNullable<ReturnType<typeof registeredAirspaceStage>> = (config, source, layers, ladder, clip, inserts, warnings) => {
+  const stage = registeredAirspaceStage();
+  if (stage) return stage(config, source, layers, ladder, clip, inserts, warnings);
+  warnings.push({ code: "AIRSPACE_NOT_LOADED", message: "Airspace in 3D is not built in this preview; open the project in the studio to see it." });
+  return undefined;
+};
 
 export type GenerationStage = "prepare" | "water" | "ladder" | "contours" | "terrain-cache" | "water-inserts" | "airspace" | "split" | "nesting" | "fabrication" | "routing" | "alignment" | "assembly-labels" | "elevation-labels" | "annotations";
 export interface GenerationOptions {
@@ -221,7 +233,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   const waterInserts = water?.inserts ?? [];
   if (water) stage("water-inserts");
   // On the unsplit sheets, with every lake opening known: pieces clear the terrain that was cut.
-  const airspaceStack = flatEngraving ? undefined : buildAirspaceStack(config, source, layers, ladder, context.clip, waterInserts, context.warnings);
+  const airspaceStack = flatEngraving || !config.airspaceStack ? undefined : buildAirspace(config, source, layers, ladder, context.clip, waterInserts, context.warnings);
   if (airspaceStack) stage("airspace");
 
   // Before nesting: cavities record indices into a donor's polygons and holes

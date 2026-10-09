@@ -41,8 +41,9 @@ export function previewInput(toolResult: unknown): PreviewInput {
  * placement is most of the generation time and does not change the stack.
  */
 export function previewConfig(project: ProjectConfigV1): ProjectConfigV1 {
-  // Aviation is engraved detail too, and the preview never loads its archive.
-  const { plaque: _plaque, placedGraphics: _placed, aviation: _aviation, ...rest } = project;
+  // Aviation is engraved detail too, and the preview never loads its archive;
+  // airspace in acrylic is built only in the studio, which loads its stage.
+  const { plaque: _plaque, placedGraphics: _placed, aviation: _aviation, airspaceStack: _airspace, ...rest } = project;
   return {
     ...rest,
     showRoads: false,

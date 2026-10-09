@@ -2,7 +2,7 @@ import { zip, type AsyncZippable } from "fflate";
 import type { FabricationPackageV1, ProjectConfigV1 } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 
-export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "assembly" | "project";
+export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "project";
 
 export interface PreparedDownload {
   blob: Blob;
@@ -99,15 +99,19 @@ export async function prepareSelectedDownload(output: FabricationPackageV1, opti
     // Acrylic panels are named after the wood layer they fill ("-acrylic-03",
     // "-acrylic-03-w1" for an insert on its own panel) or numbered as stock sheets.
     if (option === "acrylic") return /-acrylic-(?:\d+(?:-w\d+(?:-\d+)?)?|sheet-\d+|master)(?:-engrave)?\.svg$/.test(file.filename);
+    // Airspace panels are named by tint and level ("-airspace-blue-02", "-airspace-blue-02-a3-1" for a
+    // piece on its own panel), with a master per tint and the backing sheet the rods stand on.
+    if (option === "airspace") return /-airspace-(?:(?:clear|blue|magenta)-(?:\d+(?:-a\d+-\d+)?|master)(?:-engrave)?|backing(?:-[a-z]?\d+(?:-\d+)?)?)\.svg$/.test(file.filename);
     return PANEL_FILE.test(file.filename);
   });
   const [first] = files;
   if (!first) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."
-    : option === "acrylic" ? "No lake became an acrylic insert, so there are no acrylic files." : "This export is not available for the current output type.");
+    : option === "acrylic" ? "No lake became an acrylic insert, so there are no acrylic files."
+    : option === "airspace" ? "No airspace was built for this area, so there are no airspace files." : "This export is not available for the current output type.");
   if (option === "assembly") return { ...first, fileCount: 1 };
   // Keep fabrication instructions and source credits with panel bundles.
   files.push(...output.files.filter((file) => file.filename === "README.txt" || file.filename === "ATTRIBUTION.txt"));
   const download = await prepareProjectDownload({ ...output, files });
-  const suffix = { panels: "cut-panels", engravings: "engraving-panels", paint: "paint-templates", acrylic: "acrylic-inserts" }[option];
+  const suffix = { panels: "cut-panels", engravings: "engraving-panels", paint: "paint-templates", acrylic: "acrylic-inserts", airspace: "airspace" }[option];
   return { ...download, filename: download.blob.type === "application/zip" ? archiveFilename(output.master.filename, suffix) : download.filename };
 }

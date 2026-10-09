@@ -1,6 +1,10 @@
 import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, generateGeometry, type AirspaceStackSettingsV1, type AirspaceVolumeV1, type GeometryIRV1, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1 } from "../index.js";
 import { pointInPolygon } from "../primitives/geometry2d.js";
 import { circleRing, gridSource, scaledForLayers } from "./sources.js";
+import { registerAirspaceStage } from "../pipeline/airspace-settings.js";
+import { buildAirspaceStack } from "../pipeline/airspace-stack.js";
+
+registerAirspaceStage(buildAirspaceStack);
 
 /**
  * A synthetic stack for airspace tests: flat ground with one round hill near

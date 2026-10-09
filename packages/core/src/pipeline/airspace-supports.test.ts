@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AirspacePieceIR, AirspaceStackIR, GeometryIRV1, LayerIR, Point2D } from "../types.js";
-import { DEFAULT_AIRSPACE_STACK } from "./airspace-stack.js";
+import { DEFAULT_AIRSPACE_STACK } from "./airspace-settings.js";
 import { placeAirspaceSupports, rodFootprint } from "./airspace-supports.js";
 import { hiddenMarkIssues } from "./hidden-marks.js";
 import { pointInRing } from "../primitives/geometry2d.js";

@@ -1,6 +1,6 @@
 import { ringBounds } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
-import { fitsWorkArea } from "../pipeline/water-insert-panels.js";
+import { airspacePanelGroups } from "../pipeline/airspace-panels.js";
 import { panelBounds, type FabricationPanel } from "./panel-layout.js";
 import type { AirspacePieceIR, AirspaceStackIR, AirspaceTint, GeometryIRV1, LayerIR, LayerPieceV1, OperationPath, ProjectConfigV1 } from "../types.js";
 
@@ -88,22 +88,22 @@ export function airspaceGeometry(ir: GeometryIRV1, options: { markings?: boolean
 }
 
 /**
- * Unnested airspace panels: every piece of a level and tint on one canvas just
- * large enough for them, or each piece on its own panel when together they
- * outgrow the machine. A piece is never split: a seam would show in clear acrylic.
+ * Unnested airspace panels, grouped as `airspacePanelGroups` says: every piece
+ * of a level and tint on one canvas just large enough for them, or each piece
+ * on its own panel when together they outgrow the machine. A piece is never
+ * split: a seam would show in clear acrylic.
  */
-export function airspacePanels(airspace: GeometryIRV1, config: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): FabricationPanel[] {
-  return airspace.layers.flatMap((layer, layerIndex) => {
-    const whole = new Map([[layerIndex, new Set(layer.polygons.map((_, index) => index))]]);
-    const bounds = panelBounds(airspace, [layerIndex], whole);
-    if (fitsWorkArea({ widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY }, config) || layer.polygons.length === 1) {
-      return [{ rootLayerIndex: layerIndex, layerIndexes: [layerIndex], included: whole, ...bounds }];
-    }
-    const ids = [...new Set(layer.pieces.map((piece) => piece.id))];
-    return ids.map((id): FabricationPanel => {
-      const included = new Map([[layerIndex, new Set(layer.pieces.filter((piece) => piece.id === id).map((piece) => piece.polygonIndex))]]);
-      return { rootLayerIndex: layerIndex, layerIndexes: [layerIndex], cellName: id, included, ...panelBounds(airspace, [layerIndex], included) };
-    });
+export function airspacePanels(ir: GeometryIRV1, airspace: GeometryIRV1, config: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): FabricationPanel[] {
+  const stack = ir.airspaceStack;
+  if (!stack) return [];
+  const layers = airspaceLayers(stack, { markings: false });
+  return airspacePanelGroups(stack, config).map((group) => {
+    const layerIndex = layers.findIndex((entry) => entry.levelIndex === group.levelIndex && entry.tint === group.tint);
+    const layer = airspace.layers[layerIndex]!;
+    const ids = new Set(group.pieces.map((piece) => piece.id));
+    const included = new Map([[layerIndex, new Set(layer.pieces.filter((piece) => ids.has(piece.id)).map((piece) => piece.polygonIndex))]]);
+    const whole = group.pieces.length === layers[layerIndex]!.pieces.length;
+    return { rootLayerIndex: layerIndex, layerIndexes: [layerIndex], ...(whole ? {} : { cellName: group.pieces[0]!.id }), included, ...panelBounds(airspace, [layerIndex], included) };
   });
 }
 
@@ -119,7 +119,7 @@ export function backingGeometry(ir: GeometryIRV1): GeometryIRV1 | undefined {
   return {
     ...ir,
     projectName: `${ir.projectName} backing`,
-    layers: [{ ...bottom, id: "airspace-backing", index: 0, markings: [], polygons, pieces: bottom.pieces.map((piece) => ({ ...piece, id: piece.id.replace(/^L\d+/, "B") })) }],
+    layers: [{ ...bottom, id: "airspace-backing", index: 0, markings: [], polygons, pieces: bottom.pieces.map((piece) => ({ ...piece, id: piece.id.replace(/^L\d+-/, "") })) }],
     waterSurfaces: [],
     fabricationNests: [],
     paintRegions: [],
