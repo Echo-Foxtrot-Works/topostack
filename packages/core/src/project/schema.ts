@@ -1,4 +1,5 @@
-import { MARKER_SYMBOLS } from "../types.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, MARKER_SYMBOLS } from "../types.js";
+import { AIRSPACE_DEFAULT_CAP_FT, DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { MERCATOR_MAX_LATITUDE } from "./bounds.js";
 import { PROJECT_REQUEST_AVIATION_KEYS, PROJECT_REQUEST_DETAIL_KEYS, PROJECT_REQUEST_LIMITS as LIMITS } from "./request.js";
 
@@ -61,6 +62,49 @@ export const AVIATION_SCHEMA: Schema = {
   properties: Object.fromEntries(PROJECT_REQUEST_AVIATION_KEYS.map((key) => [key, { type: "boolean" }])),
 };
 
+const AIRSPACE = DEFAULT_AIRSPACE_STACK;
+const on = (enabled: boolean) => (enabled ? "on" : "off");
+
+export const AIRSPACE_STACK_SCHEMA: Schema = {
+  description: `Airspace in acrylic, US and territories only, layered output only; decorative, never for navigation. Class B, C and special use airspace, and optional Class D lids, are cut from acrylic and held at true height over the terrain on rods the maker cuts to length. false turns it off. An object turns it on from the defaults (${AIRSPACE.form}, ${AIRSPACE.rod.sizeMm} mm ${AIRSPACE.rod.shape} rods glued in ${AIRSPACE.rod.joint}); on a design that has it, only the fields given change. A whole Class B separates into its shelves near 10× vertical exaggeration.`,
+  anyOf: [
+    { const: false },
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        form: { enum: [...AIRSPACE_STACK_FORMS], description: "plates: a clear plate at each altitude where airspace starts or ends. tiers: tinted pieces where each shelf starts and ends, like the chart users' guide's wedding cake. volumes: solid stacked sheets, which use far more acrylic." },
+        classes: {
+          type: "object",
+          additionalProperties: false,
+          description: "Which airspace to build. Turning every kind off turns airspace off.",
+          properties: {
+            B: { type: "boolean", description: `Class B (default ${on(AIRSPACE.classes.B)}).` },
+            C: { type: "boolean", description: `Class C (default ${on(AIRSPACE.classes.C)}).` },
+            D: { type: "boolean", description: `Class D, as a flat lid over each tower airport (default ${on(AIRSPACE.classes.D)}).` },
+            specialUse: { type: "boolean", description: `MOAs, restricted, warning and similar areas (default ${on(AIRSPACE.classes.specialUse)}).` },
+          },
+        },
+        ceilingCapFt: range(AIRSPACE_STACK_LIMITS.ceilingCapFt, `Highest altitude built, in feet. By default the highest Class B or C ceiling in the area, or ${AIRSPACE_DEFAULT_CAP_FT.toLocaleString("en-US")} ft.`),
+        thicknessMm: range(AIRSPACE_STACK_LIMITS.thicknessMm, "Acrylic thickness in millimetres; defaults to materialThicknessMm."),
+        kerfMm: range(AIRSPACE_STACK_LIMITS.kerfMm, "Laser kerf for the acrylic in millimetres; defaults to the laser kerf."),
+        rod: {
+          type: "object",
+          additionalProperties: false,
+          description: "The rods that hold the pieces, standing in sockets cut into the terrain.",
+          properties: {
+            shape: { enum: ["round", "square"], description: `Rod section (default ${AIRSPACE.rod.shape}).` },
+            sizeMm: range(AIRSPACE_STACK_LIMITS.rodSizeMm, `Rod diameter, or a square rod's width, in millimetres (default ${AIRSPACE.rod.sizeMm}).`),
+            fitClearanceMm: range(AIRSPACE_STACK_LIMITS.fitClearanceMm, `Clearance around the rod in sockets and holes, in millimetres (default ${AIRSPACE.rod.fitClearanceMm}).`),
+            socketDepthMm: range(AIRSPACE_STACK_LIMITS.socketDepthMm, `Depth of the sockets in the terrain, in millimetres (default ${AIRSPACE.rod.socketDepthMm}).`),
+            joint: { enum: ["segments", "through"], description: `segments: short rods glued between levels. through: one rod per column, rising through holes in the pieces (default ${AIRSPACE.rod.joint}).` },
+          },
+        },
+      },
+    },
+  ],
+};
+
 const SETTINGS_PROPERTIES: Record<string, Schema> = {
   placeLabel: { type: "string", maxLength: LIMITS.placeLabelLength, description: "Human-readable place name, e.g. from search_places." },
   name: { type: "string", maxLength: LIMITS.nameLength, description: "Project name; defaults to the first part of placeLabel." },
@@ -74,6 +118,7 @@ const SETTINGS_PROPERTIES: Record<string, Schema> = {
   contourCount: range(LIMITS.contourCount, "Flat output only: number of engraved contour lines (default 12).", true),
   details: DETAILS_SCHEMA,
   aviation: AVIATION_SCHEMA,
+  airspaceStack: AIRSPACE_STACK_SCHEMA,
   title: { type: "string", maxLength: LIMITS.titleLines * (LIMITS.titleLineLength + 1), description: `Optional engraved title: up to ${LIMITS.titleLines} lines separated by \\n, ${LIMITS.titleLineLength} characters each.` },
   laser: {
     type: "object",

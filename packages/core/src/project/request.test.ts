@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import { DEFAULT_PROJECT, NORTH_ARROW_MIN_SIZE_MM, northArrowMaximumMm, type ProjectConfigV1 } from "../types.js";
+import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { boundsForProject, isMercatorBounds } from "./bounds.js";
 import { cleanRequestText, describeProject, expandProjectRequest, parseProjectRequest, parseProjectRequestPatch, requestPatch, type ProjectRequestV1 } from "./request.js";
 import { PROJECT_REQUEST_PATCH_SCHEMA, PROJECT_REQUEST_SCHEMA } from "./schema.js";
@@ -155,6 +156,29 @@ describe("request patches", () => {
     expect(invalid.ok || invalid.errors.map(({ path }) => path).sort()).toEqual(["aviation.airspace", "aviation.tfr"]);
   });
 
+  it("turns airspace in acrylic on from the defaults, changes only the fields given, and turns it off", () => {
+    const on = parseProjectRequestPatch({ airspaceStack: { form: "tiers", rod: { joint: "through" } } });
+    expect(on.ok).toBe(true);
+    if (!on.ok) return;
+    const patch = requestPatch(DEFAULT_PROJECT, on.value);
+    expect(patch.airspaceStack).toEqual({ ...DEFAULT_AIRSPACE_STACK, form: "tiers", rod: { ...DEFAULT_AIRSPACE_STACK.rod, joint: "through" } });
+    const withStack: ProjectConfigV1 = { ...DEFAULT_PROJECT, airspaceStack: patch.airspaceStack };
+    expect(requestPatch(withStack, { airspaceStack: { classes: { D: true }, ceilingCapFt: 12_000 } }).airspaceStack).toMatchObject({ form: "tiers", classes: { B: true, D: true }, ceilingCapFt: 12_000, rod: { joint: "through" } });
+    expect(requestPatch(withStack, { airspaceStack: false })).toEqual({ airspaceStack: undefined });
+    // Every kind off drops the setting, as aviation detail does.
+    expect(requestPatch(withStack, { airspaceStack: { classes: { B: false, C: false, specialUse: false } } })).toEqual({ airspaceStack: undefined });
+    expect(expandProjectRequest(parsed({ ...rainier, airspaceStack: {} })).airspaceStack).toEqual(DEFAULT_AIRSPACE_STACK);
+  });
+
+  it("checks airspace settings against the limits the studio keeps", () => {
+    const invalid = parseProjectRequestPatch({ airspaceStack: { form: "cones", classes: { E: true, B: "yes" }, ceilingCapFt: 500, rod: { sizeMm: 20, shape: "hex", length: 3 } } });
+    expect(invalid.ok || invalid.errors.map(({ path }) => path).sort()).toEqual([
+      "airspaceStack.ceilingCapFt", "airspaceStack.classes.B", "airspaceStack.classes.E", "airspaceStack.form", "airspaceStack.rod.length", "airspaceStack.rod.shape", "airspaceStack.rod.sizeMm",
+    ]);
+    const notObject = parseProjectRequestPatch({ airspaceStack: true });
+    expect(notObject.ok || notObject.errors).toEqual([{ path: "airspaceStack", message: "Must be false, or an object of airspace settings." }]);
+  });
+
   it("rejects unknown fields and a version, which only a new request carries", () => {
     const result = parseProjectRequestPatch({ requestVersion: 1, thickness: 3 });
     expect(result.ok || result.errors.map(({ path }) => path)).toEqual(["requestVersion", "thickness"]);
@@ -163,7 +187,7 @@ describe("request patches", () => {
 
 describe("describing a project", () => {
   it("round-trips through a request to the same design", () => {
-    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", aviation: { airspace: true, airports: true }, markers: [{ lat: 46.85, lon: -121.76 }] }));
+    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", aviation: { airspace: true, airports: true }, airspaceStack: { form: "volumes", thicknessMm: 2, rod: { shape: "square" } }, markers: [{ lat: 46.85, lon: -121.76 }] }));
     const described = describeProject(original);
     const again = expandProjectRequest(parsed(described));
     // A box's point is its middle latitude, a hair from the Mercator center the request named.
@@ -218,6 +242,12 @@ describe("request schema", () => {
     ["tiny work area", { ...rainier, laser: { workAreaWidthMm: 5 } }],
     ["bad symbol", { ...rainier, markers: [{ lat: 1, lon: 1, symbol: "flag" }] }],
     ["too many markers", { ...rainier, markers: Array.from({ length: 21 }, () => ({ lat: 1, lon: 1 })) }],
+    ["airspace", { ...rainier, airspaceStack: { form: "tiers", classes: { D: true }, ceilingCapFt: 12_000, thicknessMm: 3, kerfMm: 0.1, rod: { shape: "square", sizeMm: 5, fitClearanceMm: 0.2, socketDepthMm: 9, joint: "through" } } }],
+    ["airspace off", { ...rainier, airspaceStack: false }],
+    ["airspace on", { ...rainier, airspaceStack: true }],
+    ["airspace form", { ...rainier, airspaceStack: { form: "cones" } }],
+    ["airspace rod", { ...rainier, airspaceStack: { rod: { sizeMm: 1 } } }],
+    ["airspace field", { ...rainier, airspaceStack: { colour: "blue" } }],
   ];
 
   it.each(cases)("agrees with the parser on %s", (_label, value) => {

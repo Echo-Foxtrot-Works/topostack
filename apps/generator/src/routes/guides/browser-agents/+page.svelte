@@ -21,10 +21,10 @@
   <table>
     <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th></tr></thead>
     <tbody>
-      <tr><td><code>topostack_get_design</code></td><td>Reads the open design: place, size, layered or flat output, material, exaggeration or contour count, generation state, the studio's status, whether it can be exported, and the sheet count once generated. Changes nothing.</td></tr>
+      <tr><td><code>topostack_get_design</code></td><td>Reads the open design: place, size, layered or flat output, material, exaggeration or contour count, generation state, the studio's status, whether it can be exported, and once generated the sheet count and any airspace in acrylic: its pieces, levels, height and rods. Changes nothing.</td></tr>
       <tr><td><code>topostack_search_places</code></td><td>Searches for a place by name and returns labels, coordinates and a suggested area. Changes nothing.</td></tr>
       <tr><td><code>topostack_set_area</code></td><td>Moves the design to a new area, either a center and ground width in kilometers or a bounding box, as choosing a search result does. The model is rebuilt with the next generate.</td></tr>
-      <tr><td><code>topostack_update_design</code></td><td>Changes the size, shape, output, material thickness, vertical exaggeration, contour count, map details, title or laser settings. It takes the same fields and ranges as the <a href={`${base}/guides/agent-api`}>project request</a>, except the area and markers. Anything left out stays as it is.</td></tr>
+      <tr><td><code>topostack_update_design</code></td><td>Changes the size, shape, output, material thickness, vertical exaggeration, contour count, map details, aviation detail, airspace in acrylic, title or laser settings. It takes the same fields and ranges as the <a href={`${base}/guides/agent-api`}>project request</a>, except the area and markers. Anything left out stays as it is.</td></tr>
       <tr><td><code>topostack_generate_preview</code></td><td>Loads terrain and builds the model, as the Generate button does, then reports the sheet count or the error.</td></tr>
       <tr><td><code>topostack_undo</code></td><td>Undoes the last change, as the Undo button does.</td></tr>
       <tr><td><code>topostack_open_export</code></td><td>Opens the Export dialog, and says so if export is blocked.</td></tr>

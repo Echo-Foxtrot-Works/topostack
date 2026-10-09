@@ -53,6 +53,23 @@ describe("studio WebMCP tools", () => {
     expect(host.applyPatch).toHaveBeenCalledOnce();
   });
 
+  it("turns on airspace in acrylic and reports its pieces and rods once generated", async () => {
+    const { tool, host, project } = fakeHost();
+    await tool("topostack_update_design").execute({ airspaceStack: { form: "tiers", rod: { joint: "through" } } });
+    expect(host.applyPatch).toHaveBeenCalledWith({ airspaceStack: expect.objectContaining({ form: "tiers", rod: expect.objectContaining({ joint: "through" }) }) });
+    const stack = {
+      form: "tiers", topMm: 84.4,
+      levels: [{ pieces: [{}, {}] }, { pieces: [{}] }],
+      columns: [{ segments: [{ lengthMm: 40 }] }, { segments: [{ lengthMm: 52.5 }] }],
+    };
+    const generated = fakeHost({ project, geometry: () => ({ configFingerprint: projectFingerprint(project()), layers: [{}], airspaceStack: stack }) as unknown as GeometryIRV1 });
+    const result = await generated.tool("topostack_get_design").execute({});
+    expect(result.structuredContent).toMatchObject({ design: { airspaceStack: { form: "tiers" } }, airspace: { form: "tiers", levels: 2, pieces: 3, heightMm: 84, rods: 2, rodLengthMm: 93 } });
+    expect(result.content[0]!.text).toContain("Airspace: 3 acrylic pieces on 2 levels (tiers), 84 mm tall, on 2 rods totalling 93 mm.");
+    await tool("topostack_update_design").execute({ airspaceStack: false });
+    expect(project()).toMatchObject({ airspaceStack: undefined });
+  });
+
   it("searches places with cleaned labels, then moves the design to one", async () => {
     const { tool, host, project } = fakeHost();
     const search = await tool("topostack_search_places").execute({ query: "Mount Hood" });
