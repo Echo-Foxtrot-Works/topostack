@@ -46,6 +46,37 @@ describe("aviation tile properties", () => {
     expect(parseAviationProperties("airspace_labels", aviationTileProperties("airspace_labels", tower))).toEqual(tower);
   });
 
+  it("round-trips airspace volumes with every altitude reference", () => {
+    const shelf = { class: "B", name: "DENVER CLASS B", sector: 4, floorFt: 8000, floorRef: "msl", ceilingFt: 12000, ceilingRef: "msl" } as const;
+    expect(aviationTileProperties("airspace_volumes", shelf)).toEqual({ class: "B", name: "DENVER CLASS B", sector: 4, floor_ft: 8000, floor_ref: "msl", ceiling_ft: 12000, ceiling_ref: "msl" });
+    expect(parseAviationProperties("airspace_volumes", aviationTileProperties("airspace_volumes", shelf))).toEqual(shelf);
+    const tower = { class: "D", name: "BOULDER CLASS D", sector: 9, floorFt: 0, floorRef: "sfc", ceilingFt: 7800, ceilingRef: "msl", ceilingBelow: true } as const;
+    expect(parseAviationProperties("airspace_volumes", aviationTileProperties("airspace_volumes", tower))).toEqual(tower);
+    const moa = { kind: "moa", name: "DESERT MOA", sector: 12, floorFt: 100, floorRef: "agl", ceilingFt: 18000, ceilingRef: "fl", ceilingBelow: true } as const;
+    expect(parseAviationProperties("sua_volumes", aviationTileProperties("sua_volumes", moa))).toEqual(moa);
+    const range = { kind: "restricted", name: "R-4806W", sector: 13, floorFt: 0, floorRef: "sfc", ceilingRef: "unlimited", exclusion: true } as const;
+    expect(aviationTileProperties("sua_volumes", range)).toEqual({ kind: "restricted", name: "R-4806W", sector: 13, floor_ft: 0, floor_ref: "sfc", ceiling_ref: "unlimited", exclusion: true });
+    expect(parseAviationProperties("sua_volumes", aviationTileProperties("sua_volumes", range))).toEqual(range);
+  });
+
+  it.each([
+    [{ floor_ft: 0, floor_ref: "msl", ceiling_ft: 0, ceiling_ref: "sfc" }, "a zero-height placeholder"],
+    [{ floor_ft: 500, floor_ref: "sfc", ceiling_ft: 4000, ceiling_ref: "msl" }, "a surface floor with a height"],
+    [{ floor_ft: 0, floor_ref: "unlimited", ceiling_ft: 4000, ceiling_ref: "msl" }, "an unlimited floor"],
+    [{ floor_ft: 0, floor_ref: "sfc", ceiling_ft: 4000, ceiling_ref: "unlimited" }, "an unlimited ceiling with a value"],
+    [{ floor_ft: 0, floor_ref: "sfc", ceiling_ref: "msl" }, "a missing ceiling"],
+    [{ floor_ft: 9000, floor_ref: "msl", ceiling_ft: 8000, ceiling_ref: "msl" }, "a ceiling below its floor"],
+    [{ floor_ft: 0, floor_ref: "sfc", ceiling_ft: 70000, ceiling_ref: "msl" }, "a ceiling past FL600"],
+  ])("drops a volume with %j (%s)", (altitudes, _reason) => {
+    expect(parseAviationProperties("sua_volumes", { kind: "moa", name: "X MOA", sector: 1, ...altitudes })).toBeUndefined();
+  });
+
+  it("drops a volume without a sector number", () => {
+    const base = { class: "C", name: "X CLASS C", floor_ft: 0, floor_ref: "sfc", ceiling_ft: 4800, ceiling_ref: "msl" };
+    expect(parseAviationProperties("airspace_volumes", { ...base, sector: 2 })).toBeDefined();
+    for (const sector of [undefined, -1, 1.5, "2"]) expect(parseAviationProperties("airspace_volumes", { ...base, sector })).toBeUndefined();
+  });
+
   it("keeps optional airspace altitudes optional", () => {
     expect(parseAviationProperties("airspace", { class: "D", name: "BOULDER" })).toEqual({ class: "D", name: "BOULDER" });
   });

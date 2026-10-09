@@ -50,6 +50,9 @@ const LAYER_CLASSES: Record<AviationLayer, (properties: never) => AviationClass>
   airports: () => "airport",
   navaids: () => "navaid",
   obstacles: () => "obstacle",
+  // Volumes are never engraved; domain/airspace-volumes.ts reads them.
+  airspace_volumes: airspaceClass,
+  sua_volumes: () => "special-use",
 };
 
 const NAVAID_SYMBOLS: Record<AviationPropertiesByLayer["navaids"]["kind"], AviationSymbol> = {

@@ -51,6 +51,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 
 | Script | Purpose | Run by |
 | --- | --- | --- |
+| `airspace-acrylic-spike.py` | Measure airspace built in acrylic on real FAA data: levels, heights and pieces per form for five crops, open air between levels, tile-seam gaps, and a 3D scene in millimetres; needs `tippecanoe` and `tippecanoe-decode` for `seams` | manual: [airspace-acrylic-spike-2026-10-09.md](../docs/reports/airspace-acrylic-spike-2026-10-09.md) |
 | `benchmark-terrain.py` | Time the terrain packaging pipeline for a set of regions | manual |
 | `build-faa-aviation.py` | Build the FAA aviation archive (airspace, special use airspace, runways, airports, navaids, obstacles) from the files pinned in `scripts/data/faa-aviation-sources.json`; needs `tippecanoe` and `pmtiles` | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `build-hrdem-terrain.py` | Package NRCan HRDEM rasters into terrain archives and register them in the catalog | manual: [hrdem-terrain.md](../docs/hrdem-terrain.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |

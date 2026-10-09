@@ -1,0 +1,2183 @@
+{
+ "date": "2026-10-09",
+ "script": "scripts/data-build/airspace-acrylic-spike.py",
+ "inputs": {
+  "classAirspace": "NASR 2026-10-01 class_airspace_shape_files.zip (pinned)",
+  "sua": "pinned service snapshot, 1,542 records",
+  "terrain": "Mapzen Terrarium zoom 10"
+ },
+ "model": {
+  "widthMm": 300,
+  "sheetMm": 3,
+  "acrylicMm": 3,
+  "levelGapMm": 5,
+  "ceilingCapFt": 18000,
+  "pieceCloseMm": 0.4,
+  "sealM": 150
+ },
+ "levels": {
+  "avonpark": {
+   "bounds": [
+    -81.80763233242742,
+    27.199418781222487,
+    -80.79236766757258,
+    28.098732446998927
+   ],
+   "sectors": 23,
+   "runs": [
+    {
+     "requestedExaggeration": 2.0,
+     "fittedExaggeration": 5.27,
+     "terrainSheets": 2,
+     "scale": 333711,
+     "mmPer1000Ft": 4.81,
+     "rawLevels": 15,
+     "levels": 7,
+     "closestLevelsFt": 3,
+     "exaggerationForAllLevels": 1668.6,
+     "topMm": 89.6,
+     "terrainTopMm": 6.0,
+     "pieces": {
+      "plates": 11,
+      "tiers": 12
+     },
+     "acrylicM2": {
+      "plates": 0.239,
+      "tiers": 0.117,
+      "volumes": 0.937
+     },
+     "volumeSheets": 29,
+     "levelTable": [
+      {
+       "altitudeFt": 500,
+       "zMm": 5.4,
+       "mergedFt": [
+        595,
+        598,
+        631,
+        1000,
+        1108,
+        1500
+       ]
+      },
+      {
+       "altitudeFt": 3000,
+       "zMm": 17.4,
+       "mergedFt": [
+        4000
+       ]
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 27.1,
+       "mergedFt": [
+        6000
+       ]
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 36.7,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 51.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 70.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 89.6,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "AVON EAST MOA",
+       "groundSpreadM": 17,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "MARIAN MOA",
+       "groundSpreadM": 28,
+       "groundSpreadMm": 0.4
+      },
+      {
+       "name": "R-2901D",
+       "groundSpreadM": 18,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "BASINGER MOA",
+       "groundSpreadM": 19,
+       "groundSpreadMm": 0.3
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 5.0,
+     "fittedExaggeration": 5.27,
+     "terrainSheets": 2,
+     "scale": 333711,
+     "mmPer1000Ft": 4.81,
+     "rawLevels": 15,
+     "levels": 7,
+     "closestLevelsFt": 3,
+     "exaggerationForAllLevels": 1668.6,
+     "topMm": 89.6,
+     "terrainTopMm": 6.0,
+     "pieces": {
+      "plates": 11,
+      "tiers": 12
+     },
+     "acrylicM2": {
+      "plates": 0.239,
+      "tiers": 0.117,
+      "volumes": 0.937
+     },
+     "volumeSheets": 29,
+     "levelTable": [
+      {
+       "altitudeFt": 500,
+       "zMm": 5.4,
+       "mergedFt": [
+        595,
+        598,
+        631,
+        1000,
+        1108,
+        1500
+       ]
+      },
+      {
+       "altitudeFt": 3000,
+       "zMm": 17.4,
+       "mergedFt": [
+        4000
+       ]
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 27.1,
+       "mergedFt": [
+        6000
+       ]
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 36.7,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 51.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 70.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 89.6,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "AVON EAST MOA",
+       "groundSpreadM": 17,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "MARIAN MOA",
+       "groundSpreadM": 28,
+       "groundSpreadMm": 0.4
+      },
+      {
+       "name": "R-2901D",
+       "groundSpreadM": 18,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "BASINGER MOA",
+       "groundSpreadM": 19,
+       "groundSpreadMm": 0.3
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 10.0,
+     "fittedExaggeration": 10.54,
+     "terrainSheets": 4,
+     "scale": 333711,
+     "mmPer1000Ft": 9.63,
+     "rawLevels": 15,
+     "levels": 10,
+     "closestLevelsFt": 3,
+     "exaggerationForAllLevels": 1668.6,
+     "topMm": 176.3,
+     "terrainTopMm": 12.0,
+     "pieces": {
+      "plates": 16,
+      "tiers": 15
+     },
+     "acrylicM2": {
+      "plates": 0.297,
+      "tiers": 0.117,
+      "volumes": 1.901
+     },
+     "volumeSheets": 58,
+     "levelTable": [
+      {
+       "altitudeFt": 500,
+       "zMm": 7.8,
+       "mergedFt": [
+        595,
+        598,
+        631,
+        1000
+       ]
+      },
+      {
+       "altitudeFt": 1108,
+       "zMm": 13.7,
+       "mergedFt": [
+        1500
+       ]
+      },
+      {
+       "altitudeFt": 3000,
+       "zMm": 31.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 41.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 51.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 60.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 70.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 99.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 137.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 176.3,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "AVON EAST MOA",
+       "groundSpreadM": 17,
+       "groundSpreadMm": 0.5
+      },
+      {
+       "name": "MARIAN MOA",
+       "groundSpreadM": 28,
+       "groundSpreadMm": 0.9
+      },
+      {
+       "name": "R-2901D",
+       "groundSpreadM": 18,
+       "groundSpreadMm": 0.6
+      },
+      {
+       "name": "BASINGER MOA",
+       "groundSpreadM": 19,
+       "groundSpreadMm": 0.6
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 20.0,
+     "fittedExaggeration": 21.08,
+     "terrainSheets": 8,
+     "scale": 333711,
+     "mmPer1000Ft": 19.25,
+     "rawLevels": 15,
+     "levels": 11,
+     "closestLevelsFt": 3,
+     "exaggerationForAllLevels": 1668.6,
+     "topMm": 349.5,
+     "terrainTopMm": 24.0,
+     "pieces": {
+      "plates": 17,
+      "tiers": 16
+     },
+     "acrylicM2": {
+      "plates": 0.313,
+      "tiers": 0.117,
+      "volumes": 3.831
+     },
+     "volumeSheets": 116,
+     "levelTable": [
+      {
+       "altitudeFt": 500,
+       "zMm": 12.6,
+       "mergedFt": [
+        595,
+        598,
+        631
+       ]
+      },
+      {
+       "altitudeFt": 1000,
+       "zMm": 22.3,
+       "mergedFt": [
+        1108
+       ]
+      },
+      {
+       "altitudeFt": 1500,
+       "zMm": 31.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 3000,
+       "zMm": 60.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 80.0,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 99.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 118.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 137.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 195.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 272.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 349.5,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "AVON EAST MOA",
+       "groundSpreadM": 17,
+       "groundSpreadMm": 1.1
+      },
+      {
+       "name": "MARIAN MOA",
+       "groundSpreadM": 28,
+       "groundSpreadMm": 1.8
+      },
+      {
+       "name": "R-2901D",
+       "groundSpreadM": 18,
+       "groundSpreadMm": 1.1
+      },
+      {
+       "name": "BASINGER MOA",
+       "groundSpreadM": 19,
+       "groundSpreadMm": 1.2
+      }
+     ]
+    }
+   ]
+  },
+  "denver": {
+   "bounds": [
+    -105.37294845459445,
+    39.31828879855866,
+    -103.96705154540555,
+    40.3974684030061
+   ],
+   "sectors": 14,
+   "runs": [
+    {
+     "requestedExaggeration": 2.0,
+     "fittedExaggeration": 2.1,
+     "terrainSheets": 3,
+     "scale": 400462,
+     "mmPer1000Ft": 1.6,
+     "rawLevels": 8,
+     "levels": 2,
+     "closestLevelsFt": 500,
+     "exaggerationForAllLevels": 13.1,
+     "topMm": 15.2,
+     "terrainTopMm": 9.0,
+     "pieces": {
+      "plates": 2,
+      "tiers": 2
+     },
+     "acrylicM2": {
+      "plates": 0.089,
+      "tiers": 0.085,
+      "volumes": 0.131
+     },
+     "volumeSheets": 5,
+     "levelTable": [
+      {
+       "altitudeFt": 6000,
+       "zMm": 5.6,
+       "mergedFt": [
+        6500,
+        7000,
+        7500,
+        8000,
+        9000
+       ]
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 12.0,
+       "mergedFt": [
+        12000
+       ]
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 5.0,
+     "fittedExaggeration": 4.9,
+     "terrainSheets": 7,
+     "scale": 400462,
+     "mmPer1000Ft": 3.73,
+     "rawLevels": 8,
+     "levels": 4,
+     "closestLevelsFt": 500,
+     "exaggerationForAllLevels": 13.1,
+     "topMm": 31.6,
+     "terrainTopMm": 21.0,
+     "pieces": {
+      "plates": 4,
+      "tiers": 5
+     },
+     "acrylicM2": {
+      "plates": 0.15,
+      "tiers": 0.102,
+      "volumes": 0.242
+     },
+     "volumeSheets": 10,
+     "levelTable": [
+      {
+       "altitudeFt": 6000,
+       "zMm": 9.2,
+       "mergedFt": [
+        6500,
+        7000
+       ]
+      },
+      {
+       "altitudeFt": 7500,
+       "zMm": 14.8,
+       "mergedFt": [
+        8000
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 20.4,
+       "mergedFt": [
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 12000,
+       "zMm": 31.6,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 10.0,
+     "fittedExaggeration": 9.81,
+     "terrainSheets": 14,
+     "scale": 400462,
+     "mmPer1000Ft": 7.46,
+     "rawLevels": 8,
+     "levels": 6,
+     "closestLevelsFt": 500,
+     "exaggerationForAllLevels": 13.1,
+     "topMm": 60.1,
+     "terrainTopMm": 42.0,
+     "pieces": {
+      "plates": 6,
+      "tiers": 9
+     },
+     "acrylicM2": {
+      "plates": 0.193,
+      "tiers": 0.102,
+      "volumes": 0.508
+     },
+     "volumeSheets": 20,
+     "levelTable": [
+      {
+       "altitudeFt": 6000,
+       "zMm": 15.4,
+       "mergedFt": [
+        6500
+       ]
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 22.8,
+       "mergedFt": [
+        7500
+       ]
+      },
+      {
+       "altitudeFt": 8000,
+       "zMm": 30.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 37.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 45.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 12000,
+       "zMm": 60.1,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 20.0,
+     "fittedExaggeration": 20.31,
+     "terrainSheets": 29,
+     "scale": 400462,
+     "mmPer1000Ft": 15.46,
+     "rawLevels": 8,
+     "levels": 8,
+     "closestLevelsFt": 500,
+     "exaggerationForAllLevels": 13.1,
+     "topMm": 121.4,
+     "terrainTopMm": 87.0,
+     "pieces": {
+      "plates": 8,
+      "tiers": 10
+     },
+     "acrylicM2": {
+      "plates": 0.211,
+      "tiers": 0.102,
+      "volumes": 1.035
+     },
+     "volumeSheets": 40,
+     "levelTable": [
+      {
+       "altitudeFt": 6000,
+       "zMm": 28.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6500,
+       "zMm": 36.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 44.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7500,
+       "zMm": 51.8,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 8000,
+       "zMm": 59.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 75.0,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 90.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 12000,
+       "zMm": 121.4,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    }
+   ]
+  },
+  "fallon": {
+   "bounds": [
+    -119.53105349069202,
+    38.67683971316338,
+    -117.66894650930797,
+    40.11573999289952
+   ],
+   "sectors": 29,
+   "runs": [
+    {
+     "requestedExaggeration": 2.0,
+     "fittedExaggeration": 1.61,
+     "terrainSheets": 2,
+     "scale": 533961,
+     "mmPer1000Ft": 0.92,
+     "rawLevels": 26,
+     "levels": 3,
+     "closestLevelsFt": 7,
+     "exaggerationForAllLevels": 1334.9,
+     "topMm": 16.4,
+     "terrainTopMm": 6.0,
+     "pieces": {
+      "plates": 5,
+      "tiers": 5
+     },
+     "acrylicM2": {
+      "plates": 0.127,
+      "tiers": 0.086,
+      "volumes": 0.136
+     },
+     "volumeSheets": 5,
+     "levelTable": [
+      {
+       "altitudeFt": 5171,
+       "zMm": 4.7,
+       "mergedFt": [
+        6120,
+        6642,
+        6747,
+        6894,
+        6901,
+        6970,
+        7173,
+        7223,
+        7767,
+        8500,
+        8565,
+        8647,
+        8699,
+        8840,
+        9000,
+        9100,
+        9259,
+        9998,
+        10243,
+        10365,
+        10500
+       ]
+      },
+      {
+       "altitudeFt": 11058,
+       "zMm": 10.1,
+       "mergedFt": [
+        13000
+       ]
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 15.5,
+       "mergedFt": [
+        18000
+       ]
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "CARSON MOA",
+       "groundSpreadM": 701,
+       "groundSpreadMm": 2.1
+      },
+      {
+       "name": "CHURCHILL LOW MOA",
+       "groundSpreadM": 517,
+       "groundSpreadMm": 1.6
+      },
+      {
+       "name": "FALLON SOUTH 3 MOA",
+       "groundSpreadM": 1098,
+       "groundSpreadMm": 3.3
+      },
+      {
+       "name": "R-4816N",
+       "groundSpreadM": 1638,
+       "groundSpreadMm": 4.9
+      },
+      {
+       "name": "R-4816S",
+       "groundSpreadM": 1894,
+       "groundSpreadMm": 5.7
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 1163,
+       "groundSpreadMm": 3.5
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 14,
+       "groundSpreadMm": 0.0
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 99,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "FALLON NORTH 2 MOA",
+       "groundSpreadM": 1637,
+       "groundSpreadMm": 4.9
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1909,
+       "groundSpreadMm": 5.8
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1324,
+       "groundSpreadMm": 4.0
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 248,
+       "groundSpreadMm": 0.7
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1439,
+       "groundSpreadMm": 4.3
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 1388,
+       "groundSpreadMm": 4.2
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 787,
+       "groundSpreadMm": 2.4
+      },
+      {
+       "name": "R-4804A",
+       "groundSpreadM": 180,
+       "groundSpreadMm": 0.5
+      },
+      {
+       "name": "R-4812",
+       "groundSpreadM": 396,
+       "groundSpreadMm": 1.2
+      },
+      {
+       "name": "RANCH LOW MOA",
+       "groundSpreadM": 770,
+       "groundSpreadMm": 2.3
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 5.0,
+     "fittedExaggeration": 4.83,
+     "terrainSheets": 6,
+     "scale": 533961,
+     "mmPer1000Ft": 2.76,
+     "rawLevels": 26,
+     "levels": 6,
+     "closestLevelsFt": 7,
+     "exaggerationForAllLevels": 1334.9,
+     "topMm": 43.3,
+     "terrainTopMm": 18.0,
+     "pieces": {
+      "plates": 11,
+      "tiers": 11
+     },
+     "acrylicM2": {
+      "plates": 0.218,
+      "tiers": 0.095,
+      "volumes": 0.402
+     },
+     "volumeSheets": 14,
+     "levelTable": [
+      {
+       "altitudeFt": 5171,
+       "zMm": 8.0,
+       "mergedFt": [
+        6120,
+        6642,
+        6747,
+        6894,
+        6901,
+        6970
+       ]
+      },
+      {
+       "altitudeFt": 7173,
+       "zMm": 13.5,
+       "mergedFt": [
+        7223,
+        7767,
+        8500,
+        8565,
+        8647,
+        8699,
+        8840
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 18.5,
+       "mergedFt": [
+        9100,
+        9259,
+        9998,
+        10243,
+        10365,
+        10500
+       ]
+      },
+      {
+       "altitudeFt": 11058,
+       "zMm": 24.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 13000,
+       "zMm": 29.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 40.6,
+       "mergedFt": [
+        18000
+       ]
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "CARSON MOA",
+       "groundSpreadM": 701,
+       "groundSpreadMm": 6.3
+      },
+      {
+       "name": "CHURCHILL LOW MOA",
+       "groundSpreadM": 517,
+       "groundSpreadMm": 4.7
+      },
+      {
+       "name": "FALLON SOUTH 3 MOA",
+       "groundSpreadM": 1098,
+       "groundSpreadMm": 9.9
+      },
+      {
+       "name": "R-4816N",
+       "groundSpreadM": 1638,
+       "groundSpreadMm": 14.8
+      },
+      {
+       "name": "R-4816S",
+       "groundSpreadM": 1894,
+       "groundSpreadMm": 17.1
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 1163,
+       "groundSpreadMm": 10.5
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 14,
+       "groundSpreadMm": 0.1
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 99,
+       "groundSpreadMm": 0.9
+      },
+      {
+       "name": "FALLON NORTH 2 MOA",
+       "groundSpreadM": 1637,
+       "groundSpreadMm": 14.8
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1909,
+       "groundSpreadMm": 17.3
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1324,
+       "groundSpreadMm": 12.0
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 248,
+       "groundSpreadMm": 2.2
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1439,
+       "groundSpreadMm": 13.0
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 1388,
+       "groundSpreadMm": 12.6
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 787,
+       "groundSpreadMm": 7.1
+      },
+      {
+       "name": "R-4804A",
+       "groundSpreadM": 180,
+       "groundSpreadMm": 1.6
+      },
+      {
+       "name": "R-4812",
+       "groundSpreadM": 396,
+       "groundSpreadMm": 3.6
+      },
+      {
+       "name": "RANCH LOW MOA",
+       "groundSpreadM": 770,
+       "groundSpreadMm": 7.0
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 10.0,
+     "fittedExaggeration": 9.66,
+     "terrainSheets": 12,
+     "scale": 533961,
+     "mmPer1000Ft": 5.51,
+     "rawLevels": 26,
+     "levels": 9,
+     "closestLevelsFt": 7,
+     "exaggerationForAllLevels": 1334.9,
+     "topMm": 83.7,
+     "terrainTopMm": 36.0,
+     "pieces": {
+      "plates": 19,
+      "tiers": 13
+     },
+     "acrylicM2": {
+      "plates": 0.282,
+      "tiers": 0.096,
+      "volumes": 0.784
+     },
+     "volumeSheets": 27,
+     "levelTable": [
+      {
+       "altitudeFt": 5171,
+       "zMm": 12.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6120,
+       "zMm": 18.2,
+       "mergedFt": [
+        6642,
+        6747,
+        6894,
+        6901,
+        6970
+       ]
+      },
+      {
+       "altitudeFt": 7173,
+       "zMm": 24.0,
+       "mergedFt": [
+        7223,
+        7767
+       ]
+      },
+      {
+       "altitudeFt": 8500,
+       "zMm": 31.3,
+       "mergedFt": [
+        8565,
+        8647,
+        8699,
+        8840,
+        9000,
+        9100,
+        9259
+       ]
+      },
+      {
+       "altitudeFt": 9998,
+       "zMm": 39.6,
+       "mergedFt": [
+        10243,
+        10365,
+        10500
+       ]
+      },
+      {
+       "altitudeFt": 11058,
+       "zMm": 45.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 13000,
+       "zMm": 56.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 78.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 83.7,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "CARSON MOA",
+       "groundSpreadM": 701,
+       "groundSpreadMm": 12.7
+      },
+      {
+       "name": "CHURCHILL LOW MOA",
+       "groundSpreadM": 517,
+       "groundSpreadMm": 9.4
+      },
+      {
+       "name": "FALLON SOUTH 3 MOA",
+       "groundSpreadM": 1098,
+       "groundSpreadMm": 19.9
+      },
+      {
+       "name": "R-4816N",
+       "groundSpreadM": 1638,
+       "groundSpreadMm": 29.6
+      },
+      {
+       "name": "R-4816S",
+       "groundSpreadM": 1894,
+       "groundSpreadMm": 34.3
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 1163,
+       "groundSpreadMm": 21.0
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 14,
+       "groundSpreadMm": 0.3
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 99,
+       "groundSpreadMm": 1.8
+      },
+      {
+       "name": "FALLON NORTH 2 MOA",
+       "groundSpreadM": 1637,
+       "groundSpreadMm": 29.6
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1909,
+       "groundSpreadMm": 34.5
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1324,
+       "groundSpreadMm": 24.0
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 248,
+       "groundSpreadMm": 4.5
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1439,
+       "groundSpreadMm": 26.0
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 1388,
+       "groundSpreadMm": 25.1
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 787,
+       "groundSpreadMm": 14.2
+      },
+      {
+       "name": "R-4804A",
+       "groundSpreadM": 180,
+       "groundSpreadMm": 3.3
+      },
+      {
+       "name": "R-4812",
+       "groundSpreadM": 396,
+       "groundSpreadMm": 7.2
+      },
+      {
+       "name": "RANCH LOW MOA",
+       "groundSpreadM": 770,
+       "groundSpreadMm": 13.9
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 20.0,
+     "fittedExaggeration": 20.12,
+     "terrainSheets": 25,
+     "scale": 533961,
+     "mmPer1000Ft": 11.49,
+     "rawLevels": 26,
+     "levels": 13,
+     "closestLevelsFt": 7,
+     "exaggerationForAllLevels": 1334.9,
+     "topMm": 171.1,
+     "terrainTopMm": 75.0,
+     "pieces": {
+      "plates": 28,
+      "tiers": 19
+     },
+     "acrylicM2": {
+      "plates": 0.383,
+      "tiers": 0.096,
+      "volumes": 1.688
+     },
+     "volumeSheets": 57,
+     "levelTable": [
+      {
+       "altitudeFt": 5171,
+       "zMm": 23.7,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6120,
+       "zMm": 34.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6642,
+       "zMm": 40.6,
+       "mergedFt": [
+        6747,
+        6894,
+        6901,
+        6970
+       ]
+      },
+      {
+       "altitudeFt": 7173,
+       "zMm": 46.7,
+       "mergedFt": [
+        7223
+       ]
+      },
+      {
+       "altitudeFt": 7767,
+       "zMm": 53.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 8500,
+       "zMm": 61.9,
+       "mergedFt": [
+        8565,
+        8647,
+        8699,
+        8840
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 67.7,
+       "mergedFt": [
+        9100,
+        9259
+       ]
+      },
+      {
+       "altitudeFt": 9998,
+       "zMm": 79.1,
+       "mergedFt": [
+        10243,
+        10365
+       ]
+      },
+      {
+       "altitudeFt": 10500,
+       "zMm": 84.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 11058,
+       "zMm": 91.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 13000,
+       "zMm": 113.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 159.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 171.1,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "CARSON MOA",
+       "groundSpreadM": 701,
+       "groundSpreadMm": 26.4
+      },
+      {
+       "name": "CHURCHILL LOW MOA",
+       "groundSpreadM": 517,
+       "groundSpreadMm": 19.5
+      },
+      {
+       "name": "FALLON SOUTH 3 MOA",
+       "groundSpreadM": 1098,
+       "groundSpreadMm": 41.4
+      },
+      {
+       "name": "R-4816N",
+       "groundSpreadM": 1638,
+       "groundSpreadMm": 61.7
+      },
+      {
+       "name": "R-4816S",
+       "groundSpreadM": 1894,
+       "groundSpreadMm": 71.4
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 1163,
+       "groundSpreadMm": 43.8
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 14,
+       "groundSpreadMm": 0.5
+      },
+      {
+       "name": "FALLON NORTH 1 MOA",
+       "groundSpreadM": 99,
+       "groundSpreadMm": 3.7
+      },
+      {
+       "name": "FALLON NORTH 2 MOA",
+       "groundSpreadM": 1637,
+       "groundSpreadMm": 61.7
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1909,
+       "groundSpreadMm": 71.9
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1324,
+       "groundSpreadMm": 49.9
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 248,
+       "groundSpreadMm": 9.3
+      },
+      {
+       "name": "FALLON SOUTH 1 MOA",
+       "groundSpreadM": 1439,
+       "groundSpreadMm": 54.2
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 1388,
+       "groundSpreadMm": 52.3
+      },
+      {
+       "name": "FALLON SOUTH 2 MOA",
+       "groundSpreadM": 787,
+       "groundSpreadMm": 29.7
+      },
+      {
+       "name": "R-4804A",
+       "groundSpreadM": 180,
+       "groundSpreadMm": 6.8
+      },
+      {
+       "name": "R-4812",
+       "groundSpreadM": 396,
+       "groundSpreadMm": 14.9
+      },
+      {
+       "name": "RANCH LOW MOA",
+       "groundSpreadM": 770,
+       "groundSpreadMm": 29.0
+      }
+     ]
+    }
+   ]
+  },
+  "lasvegas": {
+   "bounds": [
+    -116.0801179873825,
+    35.56795059154867,
+    -114.5198820126175,
+    36.826987337449914
+   ],
+   "sectors": 27,
+   "runs": [
+    {
+     "requestedExaggeration": 2.0,
+     "fittedExaggeration": 2.06,
+     "terrainSheets": 5,
+     "scale": 467206,
+     "mmPer1000Ft": 1.34,
+     "rawLevels": 17,
+     "levels": 3,
+     "closestLevelsFt": 26,
+     "exaggerationForAllLevels": 295.7,
+     "topMm": 26.3,
+     "terrainTopMm": 15.0,
+     "pieces": {
+      "plates": 6,
+      "tiers": 6
+     },
+     "acrylicM2": {
+      "plates": 0.104,
+      "tiers": 0.077,
+      "volumes": 0.182
+     },
+     "volumeSheets": 8,
+     "levelTable": [
+      {
+       "altitudeFt": 4000,
+       "zMm": 7.5,
+       "mergedFt": [
+        4144,
+        4500,
+        5000,
+        5500,
+        5778,
+        6000,
+        6500,
+        7000,
+        7500
+       ]
+      },
+      {
+       "altitudeFt": 7974,
+       "zMm": 12.8,
+       "mergedFt": [
+        8000,
+        9000,
+        9926,
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 25.0,
+       "mergedFt": [
+        18000
+       ]
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "R-4806E",
+       "groundSpreadM": 1121,
+       "groundSpreadMm": 4.9
+      },
+      {
+       "name": "DESERT MOA",
+       "groundSpreadM": 2509,
+       "groundSpreadMm": 11.1
+      },
+      {
+       "name": "SHOSHONE MOA",
+       "groundSpreadM": 1293,
+       "groundSpreadMm": 5.7
+      },
+      {
+       "name": "SILVER NORTH MOA",
+       "groundSpreadM": 496,
+       "groundSpreadMm": 2.2
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 5.0,
+     "fittedExaggeration": 4.95,
+     "terrainSheets": 12,
+     "scale": 467206,
+     "mmPer1000Ft": 3.23,
+     "rawLevels": 17,
+     "levels": 5,
+     "closestLevelsFt": 26,
+     "exaggerationForAllLevels": 295.7,
+     "topMm": 59.0,
+     "terrainTopMm": 36.0,
+     "pieces": {
+      "plates": 11,
+      "tiers": 18
+     },
+     "acrylicM2": {
+      "plates": 0.161,
+      "tiers": 0.083,
+      "volumes": 0.433
+     },
+     "volumeSheets": 19,
+     "levelTable": [
+      {
+       "altitudeFt": 4000,
+       "zMm": 13.8,
+       "mergedFt": [
+        4144,
+        4500,
+        5000,
+        5500
+       ]
+      },
+      {
+       "altitudeFt": 5778,
+       "zMm": 19.5,
+       "mergedFt": [
+        6000,
+        6500,
+        7000
+       ]
+      },
+      {
+       "altitudeFt": 7500,
+       "zMm": 25.1,
+       "mergedFt": [
+        7974,
+        8000,
+        9000
+       ]
+      },
+      {
+       "altitudeFt": 9926,
+       "zMm": 32.9,
+       "mergedFt": [
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 55.8,
+       "mergedFt": [
+        18000
+       ]
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "R-4806E",
+       "groundSpreadM": 1121,
+       "groundSpreadMm": 11.9
+      },
+      {
+       "name": "DESERT MOA",
+       "groundSpreadM": 2509,
+       "groundSpreadMm": 26.6
+      },
+      {
+       "name": "SHOSHONE MOA",
+       "groundSpreadM": 1293,
+       "groundSpreadMm": 13.7
+      },
+      {
+       "name": "SILVER NORTH MOA",
+       "groundSpreadM": 496,
+       "groundSpreadMm": 5.3
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 10.0,
+     "fittedExaggeration": 9.89,
+     "terrainSheets": 24,
+     "scale": 467206,
+     "mmPer1000Ft": 6.45,
+     "rawLevels": 17,
+     "levels": 9,
+     "closestLevelsFt": 26,
+     "exaggerationForAllLevels": 295.7,
+     "topMm": 115.0,
+     "terrainTopMm": 72.0,
+     "pieces": {
+      "plates": 21,
+      "tiers": 23
+     },
+     "acrylicM2": {
+      "plates": 0.267,
+      "tiers": 0.083,
+      "volumes": 0.848
+     },
+     "volumeSheets": 38,
+     "levelTable": [
+      {
+       "altitudeFt": 4000,
+       "zMm": 24.6,
+       "mergedFt": [
+        4144,
+        4500
+       ]
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 31.1,
+       "mergedFt": [
+        5500
+       ]
+      },
+      {
+       "altitudeFt": 5778,
+       "zMm": 36.1,
+       "mergedFt": [
+        6000,
+        6500
+       ]
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 44.0,
+       "mergedFt": [
+        7500
+       ]
+      },
+      {
+       "altitudeFt": 7974,
+       "zMm": 50.3,
+       "mergedFt": [
+        8000
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 56.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9926,
+       "zMm": 62.9,
+       "mergedFt": [
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 108.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 115.0,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "R-4806E",
+       "groundSpreadM": 1121,
+       "groundSpreadMm": 23.7
+      },
+      {
+       "name": "DESERT MOA",
+       "groundSpreadM": 2509,
+       "groundSpreadMm": 53.1
+      },
+      {
+       "name": "SHOSHONE MOA",
+       "groundSpreadM": 1293,
+       "groundSpreadMm": 27.4
+      },
+      {
+       "name": "SILVER NORTH MOA",
+       "groundSpreadM": 496,
+       "groundSpreadMm": 10.5
+      }
+     ]
+    },
+    {
+     "requestedExaggeration": 20.0,
+     "fittedExaggeration": 20.19,
+     "terrainSheets": 49,
+     "scale": 467206,
+     "mmPer1000Ft": 13.17,
+     "rawLevels": 17,
+     "levels": 13,
+     "closestLevelsFt": 26,
+     "exaggerationForAllLevels": 295.7,
+     "topMm": 231.6,
+     "terrainTopMm": 147.0,
+     "pieces": {
+      "plates": 32,
+      "tiers": 28
+     },
+     "acrylicM2": {
+      "plates": 0.357,
+      "tiers": 0.083,
+      "volumes": 1.702
+     },
+     "volumeSheets": 77,
+     "levelTable": [
+      {
+       "altitudeFt": 4000,
+       "zMm": 47.1,
+       "mergedFt": [
+        4144
+       ]
+      },
+      {
+       "altitudeFt": 4500,
+       "zMm": 53.7,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 60.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5500,
+       "zMm": 66.9,
+       "mergedFt": [
+        5778
+       ]
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 73.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6500,
+       "zMm": 80.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 86.7,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7500,
+       "zMm": 93.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7974,
+       "zMm": 99.5,
+       "mergedFt": [
+        8000
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 113.0,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9926,
+       "zMm": 125.2,
+       "mergedFt": [
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 17000,
+       "zMm": 218.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 18000,
+       "zMm": 231.6,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": [
+      {
+       "name": "R-4806E",
+       "groundSpreadM": 1121,
+       "groundSpreadMm": 48.5
+      },
+      {
+       "name": "DESERT MOA",
+       "groundSpreadM": 2509,
+       "groundSpreadMm": 108.4
+      },
+      {
+       "name": "SHOSHONE MOA",
+       "groundSpreadM": 1293,
+       "groundSpreadMm": 55.9
+      },
+      {
+       "name": "SILVER NORTH MOA",
+       "groundSpreadM": 496,
+       "groundSpreadMm": 21.4
+      }
+     ]
+    }
+   ]
+  },
+  "seattle": {
+   "bounds": [
+    -122.9749482525953,
+    46.998416774403054,
+    -121.64505174740471,
+    47.89773886210056
+   ],
+   "sectors": 31,
+   "runs": [
+    {
+     "requestedExaggeration": 2.0,
+     "fittedExaggeration": 2.2,
+     "terrainSheets": 4,
+     "scale": 333720,
+     "mmPer1000Ft": 2.01,
+     "rawLevels": 12,
+     "levels": 5,
+     "closestLevelsFt": 200,
+     "exaggerationForAllLevels": 27.4,
+     "topMm": 31.1,
+     "terrainTopMm": 12.0,
+     "pieces": {
+      "plates": 10,
+      "tiers": 11
+     },
+     "acrylicM2": {
+      "plates": 0.147,
+      "tiers": 0.094,
+      "volumes": 0.138
+     },
+     "volumeSheets": 10,
+     "levelTable": [
+      {
+       "altitudeFt": 1100,
+       "zMm": 5.2,
+       "mergedFt": [
+        1800,
+        2000,
+        2500,
+        3000
+       ]
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 11.0,
+       "mergedFt": [
+        5000,
+        6000
+       ]
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 17.0,
+       "mergedFt": [
+        9000
+       ]
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 23.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 31.1,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 5.0,
+     "fittedExaggeration": 4.94,
+     "terrainSheets": 9,
+     "scale": 333720,
+     "mmPer1000Ft": 4.51,
+     "rawLevels": 12,
+     "levels": 6,
+     "closestLevelsFt": 200,
+     "exaggerationForAllLevels": 27.4,
+     "topMm": 66.2,
+     "terrainTopMm": 27.0,
+     "pieces": {
+      "plates": 13,
+      "tiers": 12
+     },
+     "acrylicM2": {
+      "plates": 0.143,
+      "tiers": 0.095,
+      "volumes": 0.37
+     },
+     "volumeSheets": 22,
+     "levelTable": [
+      {
+       "altitudeFt": 1100,
+       "zMm": 8.0,
+       "mergedFt": [
+        1800,
+        2000
+       ]
+      },
+      {
+       "altitudeFt": 2500,
+       "zMm": 14.3,
+       "mergedFt": [
+        3000
+       ]
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 21.1,
+       "mergedFt": [
+        5000
+       ]
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 30.1,
+       "mergedFt": [
+        7000
+       ]
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 43.6,
+       "mergedFt": [
+        10000
+       ]
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 66.2,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 10.0,
+     "fittedExaggeration": 9.89,
+     "terrainSheets": 18,
+     "scale": 333720,
+     "mmPer1000Ft": 9.03,
+     "rawLevels": 12,
+     "levels": 10,
+     "closestLevelsFt": 200,
+     "exaggerationForAllLevels": 27.4,
+     "topMm": 129.4,
+     "terrainTopMm": 54.0,
+     "pieces": {
+      "plates": 22,
+      "tiers": 21
+     },
+     "acrylicM2": {
+      "plates": 0.247,
+      "tiers": 0.098,
+      "volumes": 0.718
+     },
+     "volumeSheets": 43,
+     "levelTable": [
+      {
+       "altitudeFt": 1100,
+       "zMm": 12.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 1800,
+       "zMm": 19.3,
+       "mergedFt": [
+        2000
+       ]
+      },
+      {
+       "altitudeFt": 2500,
+       "zMm": 25.6,
+       "mergedFt": [
+        3000
+       ]
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 39.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 48.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 57.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 66.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 84.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 93.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 129.4,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    },
+    {
+     "requestedExaggeration": 20.0,
+     "fittedExaggeration": 19.77,
+     "terrainSheets": 36,
+     "scale": 333720,
+     "mmPer1000Ft": 18.06,
+     "rawLevels": 12,
+     "levels": 11,
+     "closestLevelsFt": 200,
+     "exaggerationForAllLevels": 27.4,
+     "topMm": 255.8,
+     "terrainTopMm": 108.0,
+     "pieces": {
+      "plates": 24,
+      "tiers": 21
+     },
+     "acrylicM2": {
+      "plates": 0.252,
+      "tiers": 0.098,
+      "volumes": 1.434
+     },
+     "volumeSheets": 85,
+     "levelTable": [
+      {
+       "altitudeFt": 1100,
+       "zMm": 22.9,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 1800,
+       "zMm": 35.5,
+       "mergedFt": [
+        2000
+       ]
+      },
+      {
+       "altitudeFt": 2500,
+       "zMm": 48.1,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 3000,
+       "zMm": 57.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 4000,
+       "zMm": 75.2,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 5000,
+       "zMm": 93.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 6000,
+       "zMm": 111.3,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 7000,
+       "zMm": 129.4,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 9000,
+       "zMm": 165.5,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 10000,
+       "zMm": 183.6,
+       "mergedFt": []
+      },
+      {
+       "altitudeFt": 14000,
+       "zMm": 255.8,
+       "mergedFt": []
+      }
+     ],
+     "aboveGround": []
+    }
+   ]
+  }
+ },
+ "seams": {
+  "denver": [
+   {
+    "zoom": 7,
+    "flags": "none",
+    "gapMm2": 36.16,
+    "gapPieces": 156,
+    "widestGapMm": 0.081,
+    "overlapMm2": 15.13
+   },
+   {
+    "zoom": 7,
+    "flags": "--detect-shared-borders",
+    "gapMm2": 22.94,
+    "gapPieces": 138,
+    "widestGapMm": 0.081,
+    "overlapMm2": 5.79
+   },
+   {
+    "zoom": 9,
+    "flags": "none",
+    "gapMm2": 7.8,
+    "gapPieces": 247,
+    "widestGapMm": 0.023,
+    "overlapMm2": 3.0
+   },
+   {
+    "zoom": 9,
+    "flags": "--detect-shared-borders",
+    "gapMm2": 6.67,
+    "gapPieces": 228,
+    "widestGapMm": 0.023,
+    "overlapMm2": 1.96
+   },
+   {
+    "zoom": 11,
+    "flags": "none",
+    "gapMm2": 2.07,
+    "gapPieces": 481,
+    "widestGapMm": 0.008,
+    "overlapMm2": 1.02
+   },
+   {
+    "zoom": 11,
+    "flags": "--detect-shared-borders",
+    "gapMm2": 2.02,
+    "gapPieces": 471,
+    "widestGapMm": 0.008,
+    "overlapMm2": 0.94
+   }
+  ]
+ },
+ "gaps": {
+  "denver": {
+   "plates": {
+    "columns": 2115,
+    "medianMm": 14.9,
+    "maxMm": 14.9
+   },
+   "tiers": {
+    "columns": 2115,
+    "medianMm": 29.9,
+    "maxMm": 51.8
+   }
+  },
+  "seattle": {
+   "plates": {
+    "columns": 1855,
+    "medianMm": 18.1,
+    "maxMm": 36.1
+   },
+   "tiers": {
+    "columns": 1855,
+    "medianMm": 45.1,
+    "maxMm": 67.7
+   }
+  },
+  "lasvegas": {
+   "plates": {
+    "columns": 1838,
+    "medianMm": 9.3,
+    "maxMm": 45.6
+   },
+   "tiers": {
+    "columns": 1838,
+    "medianMm": 45.6,
+    "maxMm": 97.2
+   }
+  }
+ }
+}

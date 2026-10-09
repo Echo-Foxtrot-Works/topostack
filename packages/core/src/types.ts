@@ -683,6 +683,34 @@ export interface TerrainSelection {
   attempts: Array<{ id: string; name: string; status: "selected" | "no-coverage" | "unavailable" }>;
 }
 
+/**
+ * How an airspace floor or ceiling is given, as the FAA charts it: feet above
+ * mean sea level, the ground itself, feet above the ground under the sector, a
+ * flight level in feet (FL180 is 18,000), or no limit, which only a ceiling has.
+ */
+export type AirspaceAltitude = { ref: "msl" | "agl" | "fl"; ft: number } | { ref: "sfc"; ft: 0 } | { ref: "unlimited" };
+export type SpecialUseKind = "prohibited" | "restricted" | "warning" | "alert" | "moa" | "danger";
+
+/**
+ * One airspace sector as a volume, for models that build airspace in three
+ * dimensions: its area in crop-centred millimetres and its vertical limits as
+ * charted. A special use area split into records by altitude is several volumes.
+ */
+export interface AirspaceVolumeV1 {
+  /** Unique within a load, e.g. `class-12` or `sua-340`. */
+  id: string;
+  aviationClass: "class-b" | "class-c" | "class-d" | "special-use";
+  specialUseKind?: SpecialUseKind;
+  name: string;
+  floor: Exclude<AirspaceAltitude, { ref: "unlimited" }>;
+  ceiling: Exclude<AirspaceAltitude, { ref: "sfc" }>;
+  /** The ceiling is "up to but not including". */
+  ceilingBelow?: boolean;
+  /** A pocket of a special use area whose floor differs from the area around it. */
+  exclusion?: boolean;
+  polygons: Polygon2D[];
+}
+
 export interface SourceBundleV1 {
   schemaVersion: 1;
   elevation: ElevationGrid;
@@ -708,6 +736,8 @@ export interface SourceBundleV1 {
   aviationCycle?: string;
   /** Credit for the aviation archive, added to the geometry's attribution only while the project draws aviation. */
   aviationAttribution?: SourceAttribution[];
+  /** Airspace sectors as volumes, loaded only for models that build airspace in three dimensions. Absent when never loaded. */
+  airspaceVolumes?: AirspaceVolumeV1[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
   lakeDataStatus: "available" | "unavailable" | "not-requested";
   /** Survey failures retain modeled lake depths and generate a warning. */

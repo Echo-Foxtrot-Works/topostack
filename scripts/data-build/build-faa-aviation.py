@@ -13,7 +13,10 @@ Boundaries are written as LineStrings so tile clipping never invents an edge
 along a tile seam, each special use ring running with its area on the left so
 the studio can hatch it on the inside, as the sectional does. Class B, C and D
 edges that neighbouring areas share are written once, and each area's ceiling
-and floor get candidate label points in `airspace_labels`. Runways are
+and floor get candidate label points in `airspace_labels`. Every Class B, C
+and D sector and every special use record is also written whole, as a polygon
+with its floor and ceiling (`airspace_volumes`, `sua_volumes`), for models that
+build airspace in three dimensions. Runways are
 centerlines with their width; the studio draws the outline when it is wide
 enough to read at the model's scale. NAD83 coordinates are used as WGS84 (under 2 m apart in the
 conterminous US, far below engraving resolution).
@@ -36,7 +39,7 @@ import zipfile
 
 import fiona
 import shapely
-from shapely.geometry import LineString, Point, Polygon, shape
+from shapely.geometry import LineString, Point, Polygon, mapping, shape
 from shapely.geometry.polygon import orient
 from shapely.ops import linemerge, polylabel, unary_union
 from pinned import download, file_sha256
@@ -80,6 +83,17 @@ HIGH_INTENSITY_LIGHTING = {'H', 'S'}
 MIN_OBSTACLE_AGL_FT = 200
 # Taller than any US structure (the tallest mast is about 2,060 ft): a data-entry error.
 MAX_OBSTACLE_AGL_FT = 3000
+# The contract's ceiling for a volume altitude (FL600, the top of charted special use airspace).
+MAX_VOLUME_FT = 60_000
+# Neighbouring sectors are surveyed separately and their shared edges miss each other. In the
+# 2026-10-01 cycle the slivers between Class B sectors are up to 106 m across at their widest
+# (Detroit, 52 km long; special use 23 m, Class C 12 m). A union of them, which every acrylic piece
+# is, would keep each as a slot the laser cuts. Gaps between sectors narrower than this are closed;
+# real gaps between airspaces are kilometres wide.
+SEAL_M = 150
+# AIRSPACE_VOLUME_MAX_ZOOM in the contract: volumes stay out of the deepest tiles, which
+# every engraved-aviation load reads; check-aviation-features.mjs holds the two equal.
+VOLUME_MAXZOOM = 10
 
 
 def fetch(pin, cache):
@@ -96,8 +110,9 @@ def fetch(pin, cache):
     return path
 
 
-def feature(geometry, properties, minzoom):
-    return {'type': 'Feature', 'geometry': geometry, 'properties': properties, 'tippecanoe': {'minzoom': minzoom}}
+def feature(geometry, properties, minzoom, maxzoom=None):
+    zooms = {'minzoom': minzoom} if maxzoom is None else {'minzoom': minzoom, 'maxzoom': maxzoom}
+    return {'type': 'Feature', 'geometry': geometry, 'properties': properties, 'tippecanoe': zooms}
 
 
 def rings_as_lines(geometry):
@@ -125,6 +140,153 @@ def altitude_ft(value, unit, code):
     if unit != 'FT' or number < 0:
         return None
     return int(number)
+
+
+def volume_altitude(value, unit, code):
+    """(feet, reference) for a volume's floor or ceiling, or None when it cannot be read.
+
+    References follow the contract: `msl`; `sfc` (the ground, feet 0); `agl`,
+    which the FAA codes as SFC with a height; `fl`, a flight level kept in feet;
+    and `unlimited`, which has no feet.
+    """
+    code = (code or '').strip().upper()
+    unit = (unit or '').strip().upper()
+    if code == 'UNLTD':
+        return None, 'unlimited'
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = None
+    if code == 'SFC':
+        if not number:
+            return 0, 'sfc'
+        return (int(number), 'agl') if number > 0 and unit == 'FT' else None
+    if number is None or number < 0:
+        return None
+    if code == 'STD' or unit == 'FL':
+        return int(number * 100), 'fl'
+    if code == 'MSL' and unit == 'FT':
+        return int(number), 'msl'
+    return None
+
+
+def volume_values(properties):
+    """A sector's floor and ceiling as contract properties, or None for a record without usable limits.
+
+    The SUA service writes a zero-height placeholder as an SFC ceiling; it has no volume.
+    """
+    floor = volume_altitude(properties.get('LOWER_VAL'), properties.get('LOWER_UOM'), properties.get('LOWER_CODE'))
+    ceiling = volume_altitude(properties.get('UPPER_VAL'), properties.get('UPPER_UOM'), properties.get('UPPER_CODE'))
+    if not floor or not ceiling or floor[1] == 'unlimited' or ceiling[1] == 'sfc':
+        return None
+    (floor_ft, floor_ref), (ceiling_ft, ceiling_ref) = floor, ceiling
+    if floor_ft > MAX_VOLUME_FT or (ceiling_ft is not None and ceiling_ft > MAX_VOLUME_FT):
+        return None
+    if ceiling_ft is not None and (floor_ref in (ceiling_ref, 'sfc')) and ceiling_ft <= floor_ft:
+        return None
+    values = {'floor_ft': floor_ft, 'floor_ref': floor_ref, 'ceiling_ref': ceiling_ref}
+    if ceiling_ft is not None:
+        values['ceiling_ft'] = ceiling_ft
+    if properties.get('UPPER_DESC') == 'TNI':
+        values['ceiling_below'] = True
+    return values
+
+
+def polygonal(geometry):
+    """Only the areas of a geometry; intersections and repairs can add stray lines and points."""
+    if geometry.geom_type in ('Polygon', 'MultiPolygon'):
+        return geometry
+    return unary_union([part for part in getattr(geometry, 'geoms', []) if part.geom_type in ('Polygon', 'MultiPolygon')])
+
+
+def valid(geometry):
+    """The geometry's area, repaired when scaling or rounding left it self-touching.
+
+    make_valid keeps every part of the area; buffer(0) can drop most of a polygon
+    whose ring touches itself.
+    """
+    return polygonal(geometry if geometry.is_valid else shapely.make_valid(geometry))
+
+
+def seal_sectors(geometries, families=None):
+    """The sectors with every gap narrower than SEAL_M between neighbours filled.
+
+    With `families` (one key per sector, such as the class), each family is
+    sealed on its own first: a Class D can lie across the sliver between two
+    Class B shelves and hide it from a seal of everything, yet above the D's
+    ceiling the B shelves meet alone. Then all sectors are sealed together.
+
+    Sectors within SEAL_M of each other form clusters. Each cluster is closed
+    (grown and shrunk by half the width, in metres). Each piece of what that
+    adds between two or more sectors goes to every sector it touches, but only
+    as far as half the width from that sector: a gap is never wider than the
+    width, so each of its points is covered from one side or the other, and no
+    sector grows a tail along a neighbour's edge. A narrow inlet of one
+    sector's own outline is left as charted. A model unions a different set of
+    sectors at each altitude, so a sliver given to only one of them would open
+    again wherever that one is absent; overlapping by a sliver is harmless to a
+    union. A sector with no neighbour is returned as it was.
+    """
+    geometries = list(geometries)
+    if families is not None:
+        families = list(families)
+        for family in dict.fromkeys(families):
+            members = [index for index, key in enumerate(families) if key == family]
+            for index, sealed in zip(members, seal_sectors([geometries[index] for index in members])):
+                geometries[index] = sealed
+    if len(geometries) < 2:
+        return geometries
+    reach = SEAL_M / 110_540 / math.cos(math.radians(70))  # degrees that span SEAL_M up to 70° latitude
+    tree = shapely.STRtree(geometries)
+    parent = list(range(len(geometries)))
+    def root(index):
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+    left, right = tree.query(geometries, predicate='dwithin', distance=reach)
+    for a, b in zip(left, right):
+        if a != b:
+            parent[root(a)] = root(b)
+    clusters = {}
+    for index in range(len(geometries)):
+        clusters.setdefault(root(index), []).append(index)
+    sealed = list(geometries)
+    half = SEAL_M / 2
+    for members in clusters.values():
+        if len(members) < 2:
+            continue
+        lat = sum(geometries[index].centroid.y for index in members) / len(members)
+        scale = (111_320 * math.cos(math.radians(lat)), 110_540)
+        metric = [valid(shapely.transform(geometries[index], lambda xy: xy * scale)) for index in members]
+        union = unary_union(metric)
+        fill = union.buffer(half, join_style='mitre').buffer(-half, join_style='mitre').difference(union)
+        grown = [geometry.buffer(half + 1) for geometry in metric]
+        added = {index: [] for index in range(len(members))}
+        for piece in getattr(fill, 'geoms', [fill]):
+            if piece.is_empty or piece.area == 0:
+                continue
+            near = [(index, polygonal(grown[index].intersection(piece))) for index in range(len(members))]
+            near = [(index, part) for index, part in near if part.area >= 1]  # square metres
+            if len(near) >= 2:
+                for index, part in near:
+                    added[index].append(part)
+        for position, index in enumerate(members):
+            if added[position]:
+                merged = valid(shapely.transform(unary_union([metric[position], *added[position]]), lambda xy: xy / scale))
+                # Sealing only adds; a repair that lost area keeps the sector as charted.
+                if merged.area >= geometries[index].area:
+                    sealed[index] = merged
+    return sealed
+
+
+def volume_geometry(polygon):
+    """A sector's area as 2D GeoJSON, exteriors counterclockwise, or None when nothing is left."""
+    parts = [orient(part, sign=1.0) for part in getattr(polygon, 'geoms', [polygon]) if not part.is_empty and part.area > 0]
+    if not parts:
+        return None
+    geometry = mapping(parts[0] if len(parts) == 1 else shapely.MultiPolygon(parts))
+    return json.loads(json.dumps(geometry), parse_float=lambda text: round(float(text), 6))
 
 
 def charted_airspace(records):
@@ -167,6 +329,18 @@ def airspace_features(records):
                     continue
                 written[cls].append(piece)
                 out.append(feature({'type': 'LineString', 'coordinates': coordinates}, values, airspace_minzoom(cls)))
+    return out
+
+
+def airspace_volume_features(records):
+    """Every Class B, C and D sector whole, with its floor and ceiling, numbered in source order and sealed against its neighbours."""
+    sectors = [(cls, name, values, polygon) for cls, name, properties, polygon in charted_airspace(records)
+               if (values := volume_values(properties))]
+    out = []
+    for (cls, name, values, _), polygon in zip(sectors, seal_sectors([polygon for *_, polygon in sectors], [cls for cls, *_ in sectors])):
+        geometry = volume_geometry(polygon)
+        if geometry:
+            out.append(feature(geometry, {'class': cls, 'name': name, 'sector': len(out), **values}, airspace_minzoom(cls), VOLUME_MAXZOOM))
     return out
 
 
@@ -268,6 +442,34 @@ def sua_features(collection):
     for (kind, name), geometries in areas.items():
         for line in rings_as_lines(dissolve(geometries)):
             out.append(feature(line, {'kind': kind, 'name': name}, 5))
+    return out
+
+
+def sua_volume_features(collection):
+    """Every special use record whole, with its own floor and ceiling.
+
+    Unlike the charted boundary, the records of one area are not dissolved: a
+    sector or an exclusion pocket is a different volume from the area around it.
+    """
+    records = []
+    for item in collection['features']:
+        properties = item.get('properties') or {}
+        kind = SUA_KINDS.get(properties.get('TYPE_CODE'))
+        name = (properties.get('NAME') or '').strip()
+        if not kind or not name or not item.get('geometry') or properties.get('LEVEL_CODE') == UPPER_ONLY_SUA:
+            continue
+        values = volume_values(properties)
+        polygon = shapely.force_2d(shape(item['geometry'])).buffer(0)
+        if not values or polygon.is_empty:
+            continue
+        if str(properties.get('EXCLUSION')) == '1':
+            values['exclusion'] = True
+        records.append((kind, name, values, polygon))
+    out = []
+    for (kind, name, values, _), polygon in zip(records, seal_sectors([polygon for *_, polygon in records], [name for _, name, *_ in records])):
+        geometry = volume_geometry(polygon)
+        if geometry:
+            out.append(feature(geometry, {'kind': kind, 'name': name, 'sector': len(out), **values}, 5, VOLUME_MAXZOOM))
     return out
 
 
@@ -463,6 +665,8 @@ def build_layers(pins, cache):
         'airports': airport_features(airports, runways, ends),
         'navaids': navaid_features(read_csv(fetch(files['navaids'], cache), 'NAV_BASE.csv')),
         'obstacles': obstacle_features(read_obstacle_lines(fetch(files['obstacles'], cache))),
+        'airspace_volumes': airspace_volume_features(airspace),
+        'sua_volumes': sua_volume_features(sua),
     }
 
 
@@ -479,8 +683,11 @@ def write_archive(layers, pins, output, work):
     mbtiles = work / 'aviation.mbtiles'
     # -r1 keeps every point at every zoom (tippecanoe otherwise thins points
     # below the base zoom); the browser budgets features instead of guessing.
+    # Volumes are polygons: a small Class D must not be merged into a neighbour
+    # at low zoom, and sectors that share an edge keep sharing it when simplified.
     subprocess.run(['tippecanoe', '--force', f'--output={mbtiles}', '--minimum-zoom=5', f'--maximum-zoom={pins["maxZoom"]}',
-                    '--drop-rate=1', '--no-feature-limit', '--no-tile-size-limit', '--quiet', *inputs], check=True)
+                    '--drop-rate=1', '--no-feature-limit', '--no-tile-size-limit', '--no-tiny-polygon-reduction',
+                    '--detect-shared-borders', '--quiet', *inputs], check=True)
     metadata = {'name': pins['dataset'], 'topostack_dataset': pins['dataset'], 'faa_nasr_cycle': pins['nasrCycle'],
                 'faa_obstacle_date': pins['obstacleDate'], 'faa_sua_date': pins['suaDate'],
                 'attribution': pins['name'], 'description': pins['license']}
