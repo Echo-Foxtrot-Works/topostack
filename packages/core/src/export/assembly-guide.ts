@@ -4,6 +4,7 @@ import { formatNumber as format } from "../primitives/format.js";
 import { pointInPolygon, ringBounds, simplifyClosedRing } from "../primitives/geometry2d.js";
 import { displayElevation, displayLength, elevationUnit, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
+import { airspaceFact, airspaceNeeds, airspaceSection, type GuideAirspace } from "./assembly-guide-airspace.js";
 import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterInsertIR } from "../types.js";
 
 /**
@@ -137,7 +138,7 @@ function layerNumber(layer: LayerIR): string {
  * prints from there - and each layer's outline is written once and reused by every step
  * through `<use>`, so the file grows with the layer count rather than its square.
  */
-export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = [], acrylic?: GuideAcrylic): string {
+export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, sheets: GuideSheet[], fonts: readonly GuideFont[] = [], acrylic?: GuideAcrylic, airspace?: GuideAirspace): string {
   const units = config.units;
   const unit = lengthUnit(units);
   const amount = (valueMm: number) => format(Number(displayLength(valueMm, units).toFixed(units === "imperial" ? 2 : 1)));
@@ -302,6 +303,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     ["Pieces", String(pieceTotal)],
     ["Sheets to cut", String(sheets.length)],
     ...(inserts.length ? [["Acrylic inserts", `${inserts.length} × ${length(acrylic!.thicknessMm)}`]] : []),
+    ...(airspace ? [airspaceFact(airspace)] : []),
     ["Elevation", `${elevation(ir.minElevationM)} – ${elevation(ir.maxElevationM)}`],
     ["Vertical exaggeration", `${ir.verticalExaggeration.toFixed(1)}×`],
   ].map(([term, value]) => `<div><dt>${term}</dt><dd>${value}</dd></div>`).join("");
@@ -342,6 +344,7 @@ ${assemblyGuideStyles({ fonts, sheetMaps: Boolean(sheetMaps), acrylic: inserts.l
 ${painted ? `<li>Paper or stencil film for ${plural(templates.length, "paint template")}, and paint</li>` : ""}
 ${inserts.length ? `<li>${plural(acrylicSheets.length, "sheet")} of ${length(acrylic!.thicknessMm)} clear or tinted cast acrylic${acrylic!.sheetSize ? `, each ${length(acrylic!.sheetSize.widthMm)} × ${length(acrylic!.sheetSize.heightMm)}` : ""}, for ${plural(inserts.length, "water insert")}</li>
 <li>Clear, acrylic-safe glue for the inserts (not superglue: it leaves a white haze on acrylic)</li>` : ""}
+${airspace ? airspaceNeeds(airspace, length) : ""}
 </ul>
 </div>
 <div>
@@ -379,6 +382,14 @@ ${paintSection}
 </div>
 </section>
 ${steps}
+${airspace ? airspaceSection(airspace, {
+    length,
+    diagram,
+    polygonPath: (polygon) => polygonPath(polygon, tolerance),
+    outlineId: `g-${layers[0]!.id}`,
+    sectionNumber: buildSection + 1,
+    labelSizeMm: Math.max(ir.widthMm, ir.heightMm) * 0.025,
+  }) : ""}
 <section class="page">
 <h2>Finish</h2>
 <ul>
