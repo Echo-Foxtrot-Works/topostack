@@ -15,6 +15,8 @@ import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, Point
 import { nestableParts, polygonLabel } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings, type SheetNestSettingsResult } from "./sheet-nest/resolve.js";
 import { acrylicGeometry, acrylicPanels, acrylicWoodLayers, resolveAcrylicNestSettings } from "./water-inserts.js";
+import { AIRSPACE_TINT_NAMES, airspaceAcrylicArea, airspaceGeometry, airspaceLayers, airspacePanels, backingGeometry, backingPanels } from "./airspace.js";
+import type { GuideAirspace } from "./assembly-guide-airspace.js";
 import { sheetNestJobKey } from "./sheet-nest/job-key.js";
 import { verifySheetPlan } from "./sheet-nest/verify.js";
 import { withPartLabels } from "./sheet-nest/part-labels.js";
@@ -219,6 +221,104 @@ function acrylicFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: st
   };
 }
 
+/**
+ * The airspace share of a fabrication package (docs/plans/airspace-acrylic.md):
+ * one panel per level and tint, their engraving-only companions, a master per
+ * tint, the backing sheet when sockets go through the bottom sheet, and what
+ * the manifest, README and guide say about them. Undefined without an airspace
+ * stack, which leaves every other file exactly as it was.
+ */
+function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: string) {
+  const stack = generated.airspaceStack;
+  const airspace = airspaceGeometry(generated);
+  if (!stack || !airspace) return undefined;
+  const layers = airspaceLayers(stack, { markings: false });
+  const panels = airspacePanels(airspace, config);
+  const bodies = panels.map((panel) => panelBodies(airspace, panel));
+  const panelFiles = panels.map((panel, index) => {
+    const layer = airspace.layers[panel.rootLayerIndex]!;
+    const filename = `${base}-${layer.id}${panel.cellName ? `-${panel.cellName.toLowerCase()}` : ""}.svg`;
+    const included = panel.included?.get(panel.rootLayerIndex);
+    return {
+      panel,
+      tint: layers[panel.rootLayerIndex]!.tint,
+      levelIndex: layers[panel.rootLayerIndex]!.levelIndex,
+      pieceIds: [...new Set(layer.pieces.filter((piece) => !included || included.has(piece.polygonIndex)).map((piece) => piece.id))],
+      file: { filename, blob: new Blob([panelToSvg(airspace, panel, bodies[index]!, OPERATIONS, "airspace")], { type: "image/svg+xml" }) } satisfies ExportFile,
+      engravingFile: { filename: filename.replace(/\.svg$/, "-engrave.svg"), blob: new Blob([panelToSvg(airspace, panel, bodies[index]!, ENGRAVE_ONLY, "airspace engraving")], { type: "image/svg+xml" }) } satisfies ExportFile,
+    };
+  });
+  const tints = [...new Set(panelFiles.map((entry) => entry.tint))];
+  const masters: ExportFile[] = tints.map((tint) => {
+    const own = panelFiles.flatMap((entry, index) => (entry.tint === tint ? [index] : []));
+    return { filename: `${base}-airspace-${tint}-master.svg`, blob: new Blob([masterToSvg(airspace, own.map((index) => panels[index]!), own.map((index) => bodies[index]!))], { type: "image/svg+xml" }) };
+  });
+  const backing = backingGeometry(generated);
+  const backingFiles: ExportFile[] = backing ? backingPanels(backing).map((panel) => ({
+    filename: `${base}-airspace-backing${panel.cellName ? `-${panel.cellName.toLowerCase()}` : ""}.svg`,
+    blob: new Blob([panelToSvg(backing, panel, panelBodies(backing, panel), OPERATIONS, "backing")], { type: "image/svg+xml" }),
+  })) : [];
+  const segments = stack.columns.flatMap((column) => column.segments);
+  const rodTotalMm = segments.reduce((total, segment) => total + segment.lengthMm, 0);
+  const pieceCount = stack.levels.reduce((total, level) => total + level.pieces.length, 0);
+  const stock = airspaceAcrylicArea(stack);
+  const guide: GuideAirspace = {
+    form: stack.form,
+    thicknessMm: stack.thicknessMm,
+    rod: stack.rod,
+    cutList: stack.cutList,
+    rodTotalMm,
+    backingFilenames: backingFiles.map((file) => file.filename),
+    stock,
+    ...(generated.aviationCycle ? { cycle: generated.aviationCycle } : {}),
+    levels: stack.levels.map((level) => ({
+      level,
+      files: panelFiles.filter((entry) => entry.levelIndex === level.index).map((entry) => entry.file.filename),
+    })),
+    columns: stack.columns,
+  };
+  return {
+    files: [...panelFiles.flatMap(({ file, engravingFile }) => [file, engravingFile]), ...masters, ...backingFiles],
+    guide,
+    manifest: {
+      form: stack.form,
+      thicknessMm: stack.thicknessMm,
+      kerfMm: stack.kerfMm,
+      ceilingCapFt: stack.ceilingCapFt,
+      mmPerMeter: stack.mmPerMeter,
+      topMm: stack.topMm,
+      ...(generated.aviationCycle ? { nasrCycle: generated.aviationCycle } : {}),
+      masters: masters.map((file) => file.filename),
+      backingSheet: backingFiles.map((file) => file.filename),
+      levels: stack.levels.map((level) => ({
+        index: level.index,
+        altitudeFt: level.altitudeFt,
+        mergedFt: level.mergedFt,
+        zMm: level.zMm,
+        pieces: level.pieces.map((piece) => {
+          const bounds = ringBounds(piece.polygons.flatMap((polygon) => polygon.outer));
+          return { id: piece.id, tint: piece.tint, sectorIds: piece.sectorIds, widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY, ...(piece.resting ? { resting: true } : {}) };
+        }),
+      })),
+      panels: panelFiles.map(({ panel, file, engravingFile, pieceIds, tint, levelIndex }) => ({
+        filename: file.filename, engravingFilename: engravingFile.filename, tint, levelIndex, pieceIds,
+        widthMm: panel.maxX - panel.minX, heightMm: panel.maxY - panel.minY,
+      })),
+      rod: stack.rod,
+      cutList: stack.cutList,
+      columns: stack.columns,
+    },
+    readme: (shownLength: (valueMm: number) => string) => {
+      const tintText = (Object.keys(stock) as Array<keyof typeof stock>).map((tint) => `${AIRSPACE_TINT_NAMES[tint]}`).join(", ");
+      const rods = segments.length
+        ? `${segments.length} rod segment${segments.length === 1 ? "" : "s"} hold them up: ${shownLength(stack.rod.sizeMm)} ${stack.rod.shape} rod of any material, cut to ${stack.cutList.length} length${stack.cutList.length === 1 ? "" : "s"} (${shownLength(rodTotalMm)} in all; the assembly guide lists each length and where it goes). Each piece has the rods it rests on engraved as outlines on its top face. Sockets for the lowest rods are cut into the terrain sheets, ${shownLength(stack.rod.fitClearanceMm)} wider than the rod on every side. `
+        : "";
+      const backingText = backingFiles.length ? `Some sockets go through the bottom sheet: glue the backing sheet (${backingFiles.map((file) => file.filename).join(", ")}) under the model so those rods stand on it. ` : "";
+      return `Airspace in acrylic (${stack.form}): ${pieceCount} piece${pieceCount === 1 ? "" : "s"} on ${stack.levels.length} level${stack.levels.length === 1 ? "" : "s"} of ${shownLength(stack.thicknessMm)} ${tintText} acrylic, at true height over the terrain. Cut them from the -airspace-<tint>-NN.svg panels (NN is the level, lowest first), with a master per tint; they are a separate job with your acrylic settings, never the wood's. Their CUT paths carry ${shownLength(stack.kerfMm)} of acrylic kerf compensation. Frosted shelves, sector edges and rod outlines are engraved on each piece's top face (not mirrored). Pieces carry no engraved ids, since clear acrylic shows every mark: the assembly guide names each one. ${rods}${backingText}Glue acrylic with a clear, acrylic-safe glue, not cyanoacrylate (superglue), which fogs it white. The airspace shown is from FAA data${generated.aviationCycle ? ` of the ${generated.aviationCycle} cycle` : ""} and is not for navigation.\n\n`;
+    },
+  };
+}
+
 export function buildFabricationPackage(generated: GeometryIRV1, config: ProjectConfigV1, options: PackageOptions = {}): FabricationPackageV1 {
   const unlabelled = { ...generated, projectId: config.id, projectName: config.name };
   if (config.outputMode !== "stack") throw new Error("Choose layered relief before exporting fabrication files.");
@@ -255,6 +355,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   }));
   const master: ExportFile = { filename: `${base}-master.svg`, blob: new Blob([masterToSvg(ir, panels, bodies)], { type: "image/svg+xml" }) };
   const acrylic = acrylicFiles(unlabelled, config, base, options.acrylicSheetPlan);
+  const airspace = airspaceFiles(unlabelled, config, base);
   const manifest = {
     schemaVersion: 1,
     project: config,
@@ -293,6 +394,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
           fileCount: panelFiles.reduce((total, { paintFiles }) => total + paintFiles.length, 0),
         } : undefined,
         ...(acrylic ? { waterInserts: acrylic.manifest } : {}),
+        ...(airspace ? { airspaceStack: airspace.manifest } : {}),
         sheetNesting: nested ? {
           engine: nested.plan.engine,
           settings: nested.plan.settings,
@@ -371,11 +473,13 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
     ? `No safe material nests fit the requested ${shownLength(config.glueMarginMm)} glue margin. A nested piece has to sit wholly inside one donor piece, and a work-area seam usually cuts through that room, so splitting a model normally costs its nesting.\n\n`
     : `No safe material nests fit the requested ${shownLength(config.glueMarginMm)} glue margin, so every layer remains on its own panel.\n\n`) : "Material-saving nesting is disabled.\n\n";
   const water = acrylic ? acrylic.readme(shownLength) : "";
-  const readme = `${ir.projectName}\n\n${ir.layers.length} layers at ${shownLength(config.materialThicknessMm)} each\nFinished stack height: ${shownLength(ir.layers.length * config.materialThicknessMm)}\n${vertical}${fittedDepths}${linework}${nested ? `Stock sheets: ${panels.length}` : `Fabrication panels: ${panels.length}`}\n\nCUT ${CUT}\nSCORE ${SCORE}\nENGRAVE ${ENGRAVE}\n${(ir.splitPlan || nested) && config.showAssemblyLabels ? `ASSEMBLY ${ASSEMBLY}\n` : ""}\nEvery complete panel and the master SVG place engraved and scored paths in named ENGRAVE and SCORE groups, both using Atomm blue for line engraving, separate from red CUT paths. Each panel also has a registered -engrave.svg companion containing the same ENGRAVE paths only. Use either the complete panel SVG, or pair its engraving-only companion with a cut workflow; do not process both engraving copies in the same job.\n\n${alignment}${kerf}${seams}${nesting}${nested ? sheetNestingText(nested, shownLength) : ""}${paint}${water}Import the master SVG into xTool Studio, or use the fabrication-panel SVGs. In xTool Studio, choose Score for blue linework and Cut for red outlines. Engrave fills closed shapes; use it only for intentionally filled markers, not alignment outlines, contours, or line labels. Marker clearances are gaps in the line geometry; there is no white engraving operation. Verify each color layer's processing type, dimensions, and material settings before fabrication. Terrain data is decorative and is not survey or engineering data.\n\n${EXPORT_CREDIT}\n`;
+  const airspaceText = airspace ? airspace.readme(shownLength) : "";
+  const readme = `${ir.projectName}\n\n${ir.layers.length} layers at ${shownLength(config.materialThicknessMm)} each\nFinished stack height: ${shownLength(ir.layers.length * config.materialThicknessMm)}\n${vertical}${fittedDepths}${linework}${nested ? `Stock sheets: ${panels.length}` : `Fabrication panels: ${panels.length}`}\n\nCUT ${CUT}\nSCORE ${SCORE}\nENGRAVE ${ENGRAVE}\n${(ir.splitPlan || nested) && config.showAssemblyLabels ? `ASSEMBLY ${ASSEMBLY}\n` : ""}\nEvery complete panel and the master SVG place engraved and scored paths in named ENGRAVE and SCORE groups, both using Atomm blue for line engraving, separate from red CUT paths. Each panel also has a registered -engrave.svg companion containing the same ENGRAVE paths only. Use either the complete panel SVG, or pair its engraving-only companion with a cut workflow; do not process both engraving copies in the same job.\n\n${alignment}${kerf}${seams}${nesting}${nested ? sheetNestingText(nested, shownLength) : ""}${paint}${water}${airspaceText}Import the master SVG into xTool Studio, or use the fabrication-panel SVGs. In xTool Studio, choose Score for blue linework and Cut for red outlines. Engrave fills closed shapes; use it only for intentionally filled markers, not alignment outlines, contours, or line labels. Marker clearances are gaps in the line geometry; there is no white engraving operation. Verify each color layer's processing type, dimensions, and material settings before fabrication. Terrain data is decorative and is not survey or engineering data.\n\n${EXPORT_CREDIT}\n`;
   const files: ExportFile[] = [
     ...panelFiles.flatMap(({ file, engravingFile, paintFiles }) => [file, engravingFile, ...paintFiles]),
     master,
     ...(acrylic ? [...acrylic.files, acrylic.master] : []),
+    ...(airspace ? airspace.files : []),
     { filename: `${base}-assembly-guide.html`, blob: new Blob([assemblyGuideToHtml(ir, config, panelFiles.map(({ panel, file, paintTemplates }) => ({
       filename: file.filename,
       // A split sheet may hold only some of its nest family's layers.
@@ -384,7 +488,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
       included: panel.included,
       paintTemplates: paintTemplates.map((template) => ({ kind: template.kind, filename: template.file.filename })),
       ...(nested ? { map: sheetMap(ir, nested.sheets[panel.sheetIndex!]!) } : {}),
-    })), options.guideFonts, acrylic?.guide)], { type: "text/html" }) },
+    })), options.guideFonts, acrylic?.guide, airspace?.guide)], { type: "text/html" }) },
     { filename: `${base}-project.json`, blob: new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }) },
     { filename: "README.txt", blob: new Blob([readme], { type: "text/plain" }) },
     { filename: "ATTRIBUTION.txt", blob: new Blob([attribution], { type: "text/plain" }) },
