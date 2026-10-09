@@ -196,7 +196,14 @@ From the [spike](../reports/airspace-acrylic-spike-2026-10-09.md), 300 mm wide, 
 
    The guide lists rods and glue together for such a sheet and says to stand those rods before gluing it on.
    - **On real data at 10×:** volume sheets reach at most 47 mm from their glue (Denver, Seattle, Las Vegas), so reach alone adds nothing. One Seattle stack leans past its base rods and gains one rod. Plates and tiers keep every piece. With the finer outline sampling, Denver plates goes from 39 to 42 rods; Las Vegas tiers with through rods goes from 36 to 31, since its reach samples no longer come from the coarser shared grid. Las Vegas volumes stays at 6–8 s, most of it in building the stack.
-5. **Agents and polish.** `airspaceStack` in `ProjectRequestV1`, REST, MCP and WebMCP, plan notes (height, rod list), the MCP guide, the e2e spec, and docs.
+5. **Agents — built 2026-10-09.** `ProjectRequestV1.airspaceStack` (`packages/core/src/project/`):
+   - **The field.** `false` turns it off. An object turns it on from `DEFAULT_AIRSPACE_STACK`; on a design that already has it, only the fields given change, and every class off drops it, as aviation does. It is additive, so `requestVersion` stays 1.
+   - **Limits.** The ranges are `AIRSPACE_STACK_LIMITS`, which `validateProject`, the parser and `AIRSPACE_STACK_SCHEMA` share. `describeProject` round-trips the setting.
+   - **Plan.** `planFromRelief` adds `plan.airspace`: form, cap and `topMm`, the acrylic's top on the terrain's scale above the land minimum, at the design's cap or 10,000 ft. The Worker's plan notes give that height, warn past 250 mm and below 10× exaggeration, say flat output leaves the airspace out, and say the studio places the rods. Rods and the cut list need geometry, which the Worker never generates.
+   - **FAA credit.** `projectDrawsAviation` counts the setting, so FAA attribution and the coverage note follow it.
+   - **MCP and WebMCP.** MCP and REST read the field through the shared schema. The making-a-model resource has a paragraph on it. WebMCP's `topostack_update_design` takes it, and `topostack_get_design` reports the generated pieces, levels, height, rods and total rod length.
+   - **Tests and guides.** `e2e/airspace.spec.ts` has a browser agent build tiers on through rods. The agent API guide now lists `aviation` and `airspaceStack`; the MCP and browser-agent guides describe the notes and state.
+   - Not done: a 2D cut view of the airspace levels in the studio.
 
 ## Verification
 

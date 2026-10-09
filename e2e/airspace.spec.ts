@@ -34,3 +34,37 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   expect(manifest.project.airspaceStack.form).toBe("tiers");
   expect(manifest.result.fabrication.airspaceStack.levels.length).toBeGreaterThan(0);
 });
+
+test("builds the airspace a browser agent asks for, on through rods", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "WebMCP is a Chromium API; the stand-in only needs one engine.");
+  test.setTimeout(180_000);
+  await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  await page.addInitScript(() => {
+    const tools = new Map<string, { execute: (input: unknown) => Promise<unknown> }>();
+    (window as unknown as { agentTools: typeof tools }).agentTools = tools;
+    Object.defineProperty(document, "modelContext", {
+      configurable: true,
+      value: { registerTool(tool: { name: string; execute: (input: unknown) => Promise<unknown> }) { tools.set(tool.name, tool); } },
+    });
+  });
+  type ToolResult = { content: Array<{ text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean };
+  const call = (name: string, input: Record<string, unknown> = {}) => page.evaluate(([tool, args]) =>
+    (window as unknown as { agentTools: Map<string, { execute: (input: unknown) => Promise<unknown> }> }).agentTools.get(tool)!.execute(args), [name, input] as const) as Promise<ToolResult>;
+
+  await page.goto("/studio");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { agentTools: Map<string, unknown> }).agentTools.size), { timeout: 30_000 }).toBe(7);
+  const updated = await call("topostack_update_design", { airspaceStack: { form: "tiers", rod: { joint: "through" } } });
+  expect(updated.isError).toBeFalsy();
+  const generated = await call("topostack_generate_preview");
+  expect(generated.isError).toBeFalsy();
+  const airspace = (generated.structuredContent as { airspace?: { form: string; pieces: number; rods: number } }).airspace;
+  expect(airspace).toMatchObject({ form: "tiers" });
+  expect(airspace!.pieces).toBeGreaterThan(0);
+  expect(airspace!.rods).toBeGreaterThan(0);
+  expect(generated.content[0]!.text).toMatch(/Airspace: \d+ acrylic pieces on \d+ levels \(tiers\)/);
+  // The studio shows what the agent chose.
+  await page.getByRole("button", { name: "Expand all" }).click();
+  await expect(page.getByRole("switch", { name: "Airspace in 3D", exact: true })).toBeChecked();
+  await expect(page.getByRole("combobox", { name: "Rod joint" })).toHaveValue("through");
+});

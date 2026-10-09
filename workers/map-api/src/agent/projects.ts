@@ -16,6 +16,12 @@ import { PUBLIC_HOUR_CACHE } from "../paths";
 const MAX_AGENT_BODY_BYTES = 128_000;
 /** Plans past this many sheets get a note suggesting thicker material or less exaggeration. */
 const MANY_SHEETS = 60;
+/** Near this exaggeration a whole Class B's shelves sit far enough apart to cut as separate levels. */
+const AIRSPACE_SEPARATES_AT = 10;
+/** Airspace taller than this is hard to build, ship and display; the studio warns past it too. */
+const AIRSPACE_TALL_MM = 250;
+
+const whole = (value: number) => Math.round(value).toLocaleString("en-US");
 
 export class AgentError extends Error {
   constructor(readonly status: number, message: string, readonly errors: RequestIssue[] = []) { super(message); this.name = "AgentError"; }
@@ -107,8 +113,26 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   if (projectDrawsAviation(project)) notes.push(coverage.aviation
     ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
     : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
+  notes.push(...airspaceNotes(project, plan));
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;
   if (project.widthMm > bedWidth || project.heightMm > bedHeight) notes.push("The model is larger than the laser bed, so each sheet is split into pieces with alignment tabs.");
+  return notes;
+}
+
+/** What the airspace in acrylic will come to; its rods are placed only when the studio generates the model. */
+function airspaceNotes(project: ProjectConfigV1, plan: ModelPlan): string[] {
+  const settings = project.airspaceStack;
+  if (!settings) return [];
+  if (!plan.airspace) return ["Airspace in acrylic is built over layered models only, so flat output leaves it out."];
+  const { form, ceilingCapFt, capIsDefault, topMm } = plan.airspace;
+  const notes: string[] = [];
+  if (topMm !== undefined) {
+    notes.push(`Airspace in acrylic (${form}) rises to about ${whole(topMm)} mm above the base at ${whole(ceilingCapFt)} ft${capIsDefault ? "; the studio caps it at the highest Class B or C ceiling in the area, so it can come out taller or shorter" : ""}.`);
+    if (topMm > AIRSPACE_TALL_MM) notes.push(`That is taller than ${AIRSPACE_TALL_MM} mm. A lower airspaceStack.ceilingCapFt or less exaggeration makes it easier to build and display.`);
+  }
+  if (plan.fittedVerticalExaggeration < AIRSPACE_SEPARATES_AT) notes.push(`At ${plan.fittedVerticalExaggeration.toFixed(1).replace(/\.0$/, "")}× some airspace levels sit too close to cut apart and are merged; a whole Class B separates into its shelves near ${AIRSPACE_SEPARATES_AT}×.`);
+  const { rod } = settings;
+  notes.push(`The studio places the ${rod.sizeMm} mm ${rod.shape} rods (${rod.joint === "through" ? "one per column, through holes in the pieces" : "short segments glued between levels"}) when it generates the model; the assembly guide lists every rod length to cut.`);
   return notes;
 }
 

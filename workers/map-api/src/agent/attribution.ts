@@ -23,8 +23,9 @@ const BASE: AttributionEntry[] = [
 
 const GEOCODER: AttributionEntry = { name: "Geoapify place search", license: "© OpenStreetMap contributors (ODbL)", url: "https://www.geoapify.com/" };
 
-/** True when a project draws any FAA aviation detail (identifiers alone draw nothing). */
-export function projectDrawsAviation(project: Pick<ProjectConfigV1, "aviation">): boolean {
+/** True when a project draws any FAA aviation detail (identifiers alone draw nothing) or builds airspace in acrylic over a layered model. */
+export function projectDrawsAviation(project: Pick<ProjectConfigV1, "aviation" | "airspaceStack" | "outputMode">): boolean {
+  if (project.airspaceStack && project.outputMode === "stack") return true;
   return Object.entries(project.aviation ?? {}).some(([key, enabled]) => key !== "labels" && enabled === true);
 }
 

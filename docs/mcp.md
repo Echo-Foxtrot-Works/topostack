@@ -91,7 +91,9 @@ The tool schemas reuse `PROJECT_REQUEST_SCHEMA` and make `requestVersion` option
 
 `estimateRelief` (`agent/relief.ts`) picks the finest zoom from 12 down whose tiles cover the crop in at most four, and reads them through the Worker's own terrain route and caches. Only samples inside the crop count, and only inside the inscribed ellipse for a circle. A sample that would widen the range is dropped as a tile artifact when it differs from the median of the ring two pixels out by more than the larger of 400 m and a 2.5:1 slope over those two pixels; Lake Tahoe's zoom-10 tile holds such patches. When the crop has samples at or below 0 m as well as land, it is coastal: the minimum becomes 0 and the stack is sized from the land. A crop narrower than one sample uses the sample nearest its centre. `planFromRelief` (core) turns the range into the plan.
 
-`planNotes` (`agent/projects.ts`) adds plain sentences, in this order: always, the sampled zoom and that the studio's count is authoritative; relief under 20 m (worded for flat or layered output); a layered stack over 60 sheets; a coastal crop; surveyed lakes in a layered crop with water depth on; a model larger than the laser bed.
+`planNotes` (`agent/projects.ts`) adds plain sentences, in this order: always, the sampled zoom and that the studio's count is authoritative; relief under 20 m (worded for flat or layered output); a layered stack over 60 sheets; a coastal crop; surveyed lakes in a layered crop with water depth on; aviation detail or airspace in acrylic (the FAA cycle, or no FAA data in the area); for `airspaceStack`, its estimated height at the ceiling cap, a height over 250 mm, a fitted exaggeration under 10× (levels merge), and that the studio places the rods (or, for flat output, that it is left out); a model larger than the laser bed.
+
+With `airspaceStack`, `planFromRelief` adds `plan.airspace`: the form, the cap the height is estimated at (the design's own, or 10,000 ft with `capIsDefault`, since the studio takes the cap from the highest Class B or C ceiling in the data), and `topMm` on the terrain's own vertical scale above the land minimum. Rods and the cut list need generated geometry, so only the studio has them; `topostack_get_design` reports them once generated. `projectDrawsAviation` counts a layered design with `airspaceStack`, so the FAA credit and coverage note follow it.
 
 Resources: `topostack://guide/making-a-model` (Markdown advice on materials and sizes), `topostack://data/sources` (the dataset manifest), `topostack://schema/project-request-v1`, and the preview. An unknown URI is `-32002`. Prompts: `design_topo_map` and `plan_for_my_laser`. Their arguments are cleaned with `cleanRequestText` and capped at 160 characters before they are placed in the message.
 
@@ -161,7 +163,7 @@ Every page view on those paths now runs the Worker, which counts toward Workers 
 
   | Tool | Effect |
   | --- | --- |
-  | `topostack_get_design` | Reads the design, generation state, status and export readiness. It reports a sheet count only when the geometry matches the current settings. |
+  | `topostack_get_design` | Reads the design, generation state, status and export readiness. It reports a sheet count, and the airspace's pieces, levels, height and rods, only when the geometry matches the current settings. |
   | `topostack_search_places` | Runs the studio's own place search |
   | `topostack_set_area` | Moves the design, as choosing a search result does |
   | `topostack_update_design` | Applies a `PROJECT_REQUEST_PATCH_SCHEMA` patch without `area` or `markers`, as one undo step |

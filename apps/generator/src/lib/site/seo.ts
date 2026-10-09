@@ -213,7 +213,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Let Chrome's agent or Claude in Chrome read and change your open design through WebMCP, generate it and open the export dialog, with every edit undoable.",
     label: "Browser agents",
     published: "2026-09-25",
-    updated: "2026-09-25",
+    updated: "2026-10-09",
     image: socialCard("guides-browser-agents", "Browser agents guide card with the TopoStack studio's controls beside a Crater Lake relief."),
   },
   "/guides/mcp-server": {
@@ -221,7 +221,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "The tools, resources and prompts of TopoStack's remote MCP server, the in-chat preview app, protocol behavior, error codes and rate limits.",
     label: "MCP server reference",
     published: "2026-09-25",
-    updated: "2026-10-07",
+    updated: "2026-10-09",
     image: socialCard("guides-mcp-server", "MCP server reference card with a Mount Rainier model previewed inside a chat as stacked sheets."),
   },
   "/guides/agent-api": {
@@ -229,7 +229,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every field of the TopoStack project request, how studio links work, and the HTTP routes that plan models and make links, with errors and limits.",
     label: "Project request and HTTP API",
     published: "2026-09-25",
-    updated: "2026-10-07",
+    updated: "2026-10-09",
     image: socialCard("guides-agent-api", "Project request and HTTP API card with a layered Lake Tahoe relief rendered in the studio."),
   },
   "/guides/export-files": {

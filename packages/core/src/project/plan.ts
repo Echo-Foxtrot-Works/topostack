@@ -1,6 +1,7 @@
-import type { ProjectConfigV1 } from "../types.js";
+import type { AirspaceStackForm, ProjectConfigV1 } from "../types.js";
+import { AIRSPACE_DEFAULT_CAP_FT, airspaceMaterial } from "../pipeline/airspace-settings.js";
 import { groundWidthMFor, planTerrainStack } from "../pipeline/stack-plan.js";
-import { EARTH_RADIUS_M } from "../primitives/units.js";
+import { EARTH_RADIUS_M, FEET_PER_METER } from "../primitives/units.js";
 import { boundsForProject } from "./bounds.js";
 
 /** The lowest and highest ground in a crop, from a coarse sample of the terrain. */
@@ -33,6 +34,17 @@ export interface ModelPlan {
   minElevationM: number;
   maxElevationM: number;
   reliefM: number;
+  /** Airspace in acrylic, when a layered design builds it. */
+  airspace?: AirspacePlan;
+}
+
+export interface AirspacePlan {
+  form: AirspaceStackForm;
+  /** The cap the height is estimated at: the design's own, or the default when the studio would take it from the data. */
+  ceilingCapFt: number;
+  capIsDefault: boolean;
+  /** The top of the highest piece above the base of the stack, at the cap. Absent when the relief gives no vertical scale. */
+  topMm?: number;
 }
 
 
@@ -59,5 +71,19 @@ export function planFromRelief(config: ProjectConfigV1, relief: ReliefSample): M
     minElevationM: relief.minM,
     maxElevationM: relief.maxM,
     reliefM,
+    ...(flat || !config.airspaceStack ? {} : { airspace: airspacePlan(config, relief.minM, stack.metersPerLayer) }),
   };
+}
+
+/**
+ * Airspace sits on the terrain's own vertical scale above the land base, so
+ * its height follows from the cap; the studio caps at the highest Class B or C
+ * ceiling in the data, which only generation reads.
+ */
+function airspacePlan(config: ProjectConfigV1, baseM: number, metersPerLayer: number): AirspacePlan {
+  const settings = config.airspaceStack!;
+  const ceilingCapFt = settings.ceilingCapFt ?? AIRSPACE_DEFAULT_CAP_FT;
+  const t = config.materialThicknessMm;
+  const topMm = t + ((ceilingCapFt / FEET_PER_METER - baseM) / metersPerLayer) * t + airspaceMaterial(config)!.thicknessMm;
+  return { form: settings.form, ceilingCapFt, capIsDefault: settings.ceilingCapFt === undefined, ...(metersPerLayer > 0 && Number.isFinite(topMm) ? { topMm } : {}) };
 }

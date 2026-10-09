@@ -52,6 +52,8 @@ Coverage is Web Mercator (±85° latitude). A box crossing the antimeridian has 
 
 Water, water depth, roads, trails, elevation labels, a north arrow and a scale bar are on by default; road labels, boundaries and a coordinate grid are off. In the United States, \`aviation\` adds FAA detail like a VFR sectional's: \`airspace\` (Class B, C and D), \`specialUse\`, \`runways\`, \`airports\`, \`navaids\`, \`obstacles\` and \`labels\` (identifiers and airspace altitudes), all off unless set. It is decorative and never for navigation; check_coverage says whether an area has it. A \`title\` of up to three lines is engraved on the model; \`markers\` add up to ${PROJECT_REQUEST_LIMITS.markers} engraved points of interest.
 
+\`airspaceStack\` builds the Class B, C and special use airspace (and optionally Class D lids) over a layered US model in acrylic, at true height on the model's own vertical scale, held on rods the maker cuts to length; like the aviation detail, it is decorative and never for navigation. Choose \`form\`: \`plates\` (clear plates where airspace starts or ends), \`tiers\` (the tinted wedding cake) or \`volumes\` (solid, and acrylic-hungry). A whole Class B needs a 100–160 km area and about 10× \`verticalExaggeration\` before its shelves separate; plan_model estimates the height, and \`ceilingCapFt\` keeps it practical. \`false\` turns it off.
+
 ## Handing over
 
 Share the studio link. Opening it generates the model; the user checks the 3D preview, then chooses Export for per-sheet SVG files, a master layout, an assembly guide, and ATTRIBUTION.txt. Output is decorative, not survey-grade.

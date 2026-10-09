@@ -1,5 +1,6 @@
-import { DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AirspaceRodSettingsV1, type AirspaceStackForm, type AirspaceStackSettingsV1, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
 import { fnv1aHex, stableStringify } from "../primitives/hash.js";
+import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, MERCATOR_MAX_LATITUDE, wrapLongitude, zoomForBounds } from "./bounds.js";
 import { parseProject } from "./parse.js";
 
@@ -31,6 +32,20 @@ export interface ProjectRequestDetails {
 /** FAA aviation detail (US only; decorative, never for navigation). Every switch is off unless set. */
 export type ProjectRequestAviation = Partial<AviationDetailsV1>;
 
+/**
+ * Airspace in acrylic (US only; layered output; never for navigation). On a
+ * design without it, the fields given apply over the studio's defaults; on one
+ * with it, only they change. `false` in its place turns it off.
+ */
+export interface ProjectRequestAirspaceStack {
+  form?: AirspaceStackForm;
+  classes?: Partial<AirspaceStackSettingsV1["classes"]>;
+  ceilingCapFt?: number;
+  thicknessMm?: number;
+  kerfMm?: number;
+  rod?: Partial<AirspaceRodSettingsV1>;
+}
+
 export interface ProjectRequestMarker {
   lat: number;
   lon: number;
@@ -61,6 +76,7 @@ export interface ProjectRequestSettings {
   contourCount?: number;
   details?: ProjectRequestDetails;
   aviation?: ProjectRequestAviation;
+  airspaceStack?: ProjectRequestAirspaceStack | false;
   /** Up to three lines engraved as a title; an empty string removes it. */
   title?: string;
   laser?: ProjectRequestLaser;
@@ -96,6 +112,8 @@ export const PROJECT_REQUEST_DETAIL_KEYS = ["water", "waterDepth", "roads", "tra
 
 export const PROJECT_REQUEST_AVIATION_KEYS = ["airspace", "specialUse", "runways", "airports", "navaids", "obstacles", "labels"] as const satisfies readonly (keyof AviationDetailsV1)[];
 
+export const PROJECT_REQUEST_AIRSPACE_CLASS_KEYS = ["B", "C", "D", "specialUse"] as const satisfies readonly (keyof AirspaceStackSettingsV1["classes"])[];
+
 const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> = {
   water: "showWater",
   waterDepth: "showWaterDepth",
@@ -109,7 +127,7 @@ const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> 
   scaleBar: "showScaleBar",
 };
 
-const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "title", "laser", "markers"] as const;
+const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "airspaceStack", "title", "laser", "markers"] as const;
 const DEFAULT_PLACE_LABEL = "Custom coordinates";
 const DEFAULT_NAME = "Terrain model";
 
@@ -196,28 +214,45 @@ function areaValue(value: unknown, issues: Issues): ProjectRequestArea | undefin
   return { center: { lat, lon }, widthKm };
 }
 
-function detailsValue(value: unknown, issues: Issues): ProjectRequestDetails | undefined {
-  if (!isRecord(value)) return issues.add("details", "Must be an object of true/false switches.");
-  unknownKeys(value, PROJECT_REQUEST_DETAIL_KEYS, "details", issues);
-  const details: ProjectRequestDetails = {};
-  for (const key of PROJECT_REQUEST_DETAIL_KEYS) {
+function switches<K extends string>(value: unknown, keys: readonly K[], path: string, issues: Issues): Partial<Record<K, boolean>> | undefined {
+  if (!isRecord(value)) return issues.add(path, "Must be an object of true/false switches.");
+  unknownKeys(value, keys, path, issues);
+  const result: Partial<Record<K, boolean>> = {};
+  for (const key of keys) {
     if (value[key] === undefined) continue;
-    if (typeof value[key] !== "boolean") issues.add(`details.${key}`, "Must be true or false.");
-    else details[key] = value[key];
+    if (typeof value[key] !== "boolean") issues.add(`${path}.${key}`, "Must be true or false.");
+    else result[key] = value[key];
   }
-  return details;
+  return result;
 }
 
-function aviationValue(value: unknown, issues: Issues): ProjectRequestAviation | undefined {
-  if (!isRecord(value)) return issues.add("aviation", "Must be an object of true/false switches.");
-  unknownKeys(value, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
-  const aviation: ProjectRequestAviation = {};
-  for (const key of PROJECT_REQUEST_AVIATION_KEYS) {
-    if (value[key] === undefined) continue;
-    if (typeof value[key] !== "boolean") issues.add(`aviation.${key}`, "Must be true or false.");
-    else aviation[key] = value[key];
+const defined = <T extends object>(record: T): T => Object.fromEntries(Object.entries(record).filter(([, entry]) => entry !== undefined)) as T;
+
+function airspaceStackValue(value: unknown, issues: Issues): ProjectRequestAirspaceStack | false | undefined {
+  if (value === false) return false;
+  if (!isRecord(value)) return issues.add("airspaceStack", "Must be false, or an object of airspace settings.");
+  unknownKeys(value, ["form", "classes", "ceilingCapFt", "thicknessMm", "kerfMm", "rod"], "airspaceStack", issues);
+  const limits = AIRSPACE_STACK_LIMITS;
+  const stack: ProjectRequestAirspaceStack = {
+    form: value.form === undefined ? undefined : oneOf(value.form, "airspaceStack.form", AIRSPACE_STACK_FORMS, issues),
+    classes: value.classes === undefined ? undefined : switches(value.classes, PROJECT_REQUEST_AIRSPACE_CLASS_KEYS, "airspaceStack.classes", issues),
+  };
+  for (const key of ["ceilingCapFt", "thicknessMm", "kerfMm"] as const) {
+    if (value[key] !== undefined) stack[key] = numberIn(value[key], `airspaceStack.${key}`, limits[key], issues);
   }
-  return aviation;
+  if (value.rod !== undefined) {
+    const rod = value.rod;
+    if (!isRecord(rod)) return issues.add("airspaceStack.rod", "Must be an object.");
+    unknownKeys(rod, ["shape", "sizeMm", "fitClearanceMm", "socketDepthMm", "joint"], "airspaceStack.rod", issues);
+    stack.rod = defined({
+      shape: rod.shape === undefined ? undefined : oneOf(rod.shape, "airspaceStack.rod.shape", ["round", "square"] as const, issues),
+      sizeMm: rod.sizeMm === undefined ? undefined : numberIn(rod.sizeMm, "airspaceStack.rod.sizeMm", limits.rodSizeMm, issues),
+      fitClearanceMm: rod.fitClearanceMm === undefined ? undefined : numberIn(rod.fitClearanceMm, "airspaceStack.rod.fitClearanceMm", limits.fitClearanceMm, issues),
+      socketDepthMm: rod.socketDepthMm === undefined ? undefined : numberIn(rod.socketDepthMm, "airspaceStack.rod.socketDepthMm", limits.socketDepthMm, issues),
+      joint: rod.joint === undefined ? undefined : oneOf(rod.joint, "airspaceStack.rod.joint", ["segments", "through"] as const, issues),
+    });
+  }
+  return defined(stack);
 }
 
 function laserValue(value: unknown, issues: Issues): ProjectRequestLaser | undefined {
@@ -269,8 +304,9 @@ function settingsValue(record: Record<string, unknown>, issues: Issues): Project
   if (record.materialThicknessMm !== undefined) settings.materialThicknessMm = numberIn(record.materialThicknessMm, "materialThicknessMm", limits.materialThicknessMm, issues);
   if (record.verticalExaggeration !== undefined) settings.verticalExaggeration = numberIn(record.verticalExaggeration, "verticalExaggeration", limits.verticalExaggeration, issues);
   if (record.contourCount !== undefined) settings.contourCount = numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
-  if (record.details !== undefined) settings.details = detailsValue(record.details, issues);
-  if (record.aviation !== undefined) settings.aviation = aviationValue(record.aviation, issues);
+  if (record.details !== undefined) settings.details = switches(record.details, PROJECT_REQUEST_DETAIL_KEYS, "details", issues);
+  if (record.aviation !== undefined) settings.aviation = switches(record.aviation, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
+  if (record.airspaceStack !== undefined) settings.airspaceStack = airspaceStackValue(record.airspaceStack, issues);
   if (record.title !== undefined) settings.title = titleValue(record.title, issues);
   if (record.laser !== undefined) settings.laser = laserValue(record.laser, issues);
   if (record.markers !== undefined) settings.markers = markersValue(record.markers, issues);
@@ -355,6 +391,7 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
     // All off drops the setting, so the design reads exactly as one without aviation.
     patch.aviation = PROJECT_REQUEST_AVIATION_KEYS.some((key) => aviation[key]) ? aviation : undefined;
   }
+  if (change.airspaceStack !== undefined) patch.airspaceStack = airspaceStackPatch(project.airspaceStack, change.airspaceStack);
   if (change.title !== undefined) {
     patch.plaque = change.title
       ? { enabled: true, text: change.title, sizeMm: project.plaque?.sizeMm ?? DEFAULT_PLAQUE_SIZE_MM, placement: project.plaque?.placement ?? { anchor: "bottom-left", offset: { x: 0, y: 0 } }, ...(project.plaque?.font ? { font: project.plaque.font } : {}) }
@@ -370,6 +407,16 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
     }));
   }
   return patch;
+}
+
+/** The airspace settings a change leaves: its fields over the design's own, or over the defaults when it had none. */
+function airspaceStackPatch(current: AirspaceStackSettingsV1 | undefined, change: ProjectRequestAirspaceStack | false): AirspaceStackSettingsV1 | undefined {
+  if (change === false) return undefined;
+  const base = current ?? DEFAULT_AIRSPACE_STACK;
+  const { classes, rod, ...rest } = change;
+  const merged: AirspaceStackSettingsV1 = { ...base, ...rest, classes: { ...base.classes, ...classes }, rod: { ...base.rod, ...rod } };
+  // Every kind off drops the setting, as for aviation detail, so the design reads exactly as one without airspace.
+  return PROJECT_REQUEST_AIRSPACE_CLASS_KEYS.some((key) => merged.classes[key]) ? merged : undefined;
 }
 
 /**
@@ -419,6 +466,7 @@ export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
     contourCount: project.engravingContourCount,
     details,
     ...(project.aviation ? { aviation: { ...project.aviation } } : {}),
+    ...(project.airspaceStack ? { airspaceStack: { ...project.airspaceStack, classes: { ...project.airspaceStack.classes }, rod: { ...project.airspaceStack.rod } } } : {}),
     ...(project.plaque?.enabled ? { title: project.plaque.text } : {}),
     laser: { kerfMm: project.laserKerfMm, workAreaWidthMm: project.workAreaWidthMm, workAreaHeightMm: project.workAreaHeightMm },
     markers: project.markers.filter((marker) => marker.symbol !== "custom").map((marker) => ({ lat: marker.lat, lon: marker.lon, symbol: marker.symbol as BuiltInMarkerSymbol, ...(marker.name ? { name: marker.name } : {}) })),

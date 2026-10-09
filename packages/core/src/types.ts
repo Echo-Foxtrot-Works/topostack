@@ -516,6 +516,15 @@ export interface ProjectConfigV1 {
  */
 export type AirspaceStackForm = "plates" | "tiers" | "volumes";
 export const AIRSPACE_STACK_FORMS = ["plates", "tiers", "volumes"] as const satisfies readonly AirspaceStackForm[];
+/** The ranges `validateProject` holds airspace settings to; the agent request contract publishes the same. */
+export const AIRSPACE_STACK_LIMITS = {
+  ceilingCapFt: { min: 1_000, max: 60_000 },
+  thicknessMm: { min: 1, max: 10 },
+  kerfMm: { min: 0, max: 1 },
+  rodSizeMm: { min: 2, max: 12 },
+  fitClearanceMm: { min: 0, max: 0.5 },
+  socketDepthMm: { min: 1, max: 30 },
+} as const;
 export type AirspaceRodShape = "round" | "square";
 /** How a rod meets the acrylic: short segments glued between levels, or one rod per column through every piece. */
 export type AirspaceRodJoint = "segments" | "through";
