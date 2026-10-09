@@ -3,7 +3,8 @@ import importlib
 import json
 import unittest
 
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import unary_union
 
 aviation = importlib.import_module('build-faa-aviation')
 
@@ -112,6 +113,125 @@ class Airspace(unittest.TestCase):
             {'properties': {'TYPE_CODE': 'R', 'NAME': 'R-2601D', 'LEVEL_CODE': 'U'}, 'geometry': SQUARE},
         ]}
         self.assertEqual({item['properties']['name'] for item in aviation.sua_features(collection)}, {'R-2601A', 'R-2601B'})
+
+
+def sua(name, lower, upper, kind='MOA', exclusion='0', geometry=SQUARE):
+    (lower_val, lower_uom, lower_code), (upper_val, upper_uom, upper_code) = lower, upper
+    return {'properties': {'TYPE_CODE': kind, 'NAME': name, 'LEVEL_CODE': 'L', 'EXCLUSION': exclusion,
+                           'LOWER_VAL': lower_val, 'LOWER_UOM': lower_uom, 'LOWER_CODE': lower_code,
+                           'UPPER_VAL': upper_val, 'UPPER_UOM': upper_uom, 'UPPER_CODE': upper_code}, 'geometry': geometry}
+
+
+class Volumes(unittest.TestCase):
+    def test_reads_every_altitude_code(self):
+        read = aviation.volume_altitude
+        self.assertEqual(read('8000', 'FT', 'MSL'), (8000, 'msl'))
+        self.assertEqual(read('0', 'FT', 'SFC'), (0, 'sfc'))
+        self.assertEqual(read('500', 'FT', 'SFC'), (500, 'agl'))  # the FAA codes AGL as SFC with a height
+        self.assertEqual(read('180', 'FL', 'STD'), (18000, 'fl'))
+        self.assertEqual(read(None, None, 'UNLTD'), (None, 'unlimited'))
+        self.assertIsNone(read('-9998', None, None))  # sentinel
+        self.assertIsNone(read('8000', 'M', 'MSL'))
+
+    def test_class_sectors_keep_their_own_floors(self):
+        features = aviation.airspace_volume_features([
+            (airspace('B'), SQUARE), (airspace('B', LOWER_CODE='MSL', LOWER_VAL='8000'), SQUARE),
+            (airspace('D', UPPER_VAL='7800', UPPER_DESC='TNI'), SQUARE), (airspace('E'), SQUARE),
+            (airspace('D', UPPER_VAL='-9998', UPPER_UOM=None, UPPER_CODE=None), SQUARE),
+        ])
+        self.assertEqual([item['properties'] for item in features], [
+            {'class': 'B', 'name': 'TEST CLASS B', 'sector': 0, 'floor_ft': 0, 'floor_ref': 'sfc', 'ceiling_ft': 12000, 'ceiling_ref': 'msl'},
+            {'class': 'B', 'name': 'TEST CLASS B', 'sector': 1, 'floor_ft': 8000, 'floor_ref': 'msl', 'ceiling_ft': 12000, 'ceiling_ref': 'msl'},
+            {'class': 'D', 'name': 'TEST CLASS D', 'sector': 2, 'floor_ft': 0, 'floor_ref': 'sfc', 'ceiling_ft': 7800, 'ceiling_ref': 'msl', 'ceiling_below': True},
+        ])
+        self.assertEqual([item['tippecanoe'] for item in features], [{'minzoom': 5, 'maxzoom': 10}, {'minzoom': 5, 'maxzoom': 10}, {'minzoom': 7, 'maxzoom': 10}])
+        polygon = features[0]['geometry']
+        self.assertEqual(polygon['type'], 'Polygon')
+        self.assertEqual(len(polygon['coordinates']), 2)  # the hole survives
+        self.assertTrue(all(len(point) == 2 for ring in polygon['coordinates'] for point in ring))
+        signed = lambda points: sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(points, points[1:]))
+        self.assertGreater(signed(polygon['coordinates'][0]), 0)
+
+    def test_special_use_records_stay_apart_with_their_limits(self):
+        pocket = {'type': 'Polygon', 'coordinates': [[[-104.6, 39.4], [-104.4, 39.4], [-104.4, 39.6], [-104.6, 39.6], [-104.6, 39.4]]]}
+        features = aviation.sua_volume_features({'features': [
+            sua('DESERT MOA', ('100', 'FT', 'SFC'), ('180', 'FL', 'STD')),
+            sua('DESERT MOA', ('1500', 'FT', 'SFC'), ('180', 'FL', 'STD'), exclusion='1', geometry=pocket),
+            sua('R-4806W', ('0', 'FT', 'SFC'), (None, None, 'UNLTD'), kind='R'),
+            sua('A-1', ('0', 'FT', 'SFC'), ('0', 'FT', 'SFC'), kind='A'),  # zero-height placeholder
+            sua('W-1', ('5000', 'FT', 'MSL'), ('4000', 'FT', 'MSL'), kind='W'),  # inverted
+        ]})
+        self.assertEqual([item['properties'] for item in features], [
+            {'kind': 'moa', 'name': 'DESERT MOA', 'sector': 0, 'floor_ft': 100, 'floor_ref': 'agl', 'ceiling_ft': 18000, 'ceiling_ref': 'fl'},
+            {'kind': 'moa', 'name': 'DESERT MOA', 'sector': 1, 'floor_ft': 1500, 'floor_ref': 'agl', 'ceiling_ft': 18000, 'ceiling_ref': 'fl', 'exclusion': True},
+            {'kind': 'restricted', 'name': 'R-4806W', 'sector': 2, 'floor_ft': 0, 'floor_ref': 'sfc', 'ceiling_ref': 'unlimited'},
+        ])
+
+    def test_seals_the_slivers_between_neighbouring_sectors(self):
+        # A core and a shelf around it whose shared edge misses by about 20 m, and a far shelf 2 km away.
+        metre = 1 / 111_000
+        core = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01)])
+        gap = 20 * metre
+        shelf = Polygon([(-0.01, -0.01), (0.02, -0.01), (0.02, 0.02), (-0.01, 0.02)],
+                        [[(-gap, -gap), (-gap, 0.01 + gap), (0.01 + gap, 0.01 + gap), (0.01 + gap, -gap)]])
+        far = Polygon([(0.04, 0), (0.05, 0), (0.05, 0.01), (0.04, 0.01)])
+        sealed = aviation.seal_sectors([core, shelf, far])
+        self.assertEqual(unary_union([core, shelf]).geom_type, 'MultiPolygon')  # as surveyed: the core floats in a 20 m moat
+        joined = unary_union(sealed[:2])
+        self.assertEqual(joined.geom_type, 'Polygon')
+        self.assertEqual(len(joined.interiors), 0)  # no slot left between core and shelf
+        self.assertAlmostEqual(joined.area, Polygon([(-0.01, -0.01), (0.02, -0.01), (0.02, 0.02), (-0.01, 0.02)]).area, places=9)
+        # The moat goes to both, so the core alone and the shelf alone each reach the other's edge.
+        self.assertAlmostEqual(sealed[0].union(shelf).area, joined.area, places=9)
+        self.assertAlmostEqual(sealed[1].union(core).area, joined.area, places=9)
+        self.assertTrue(sealed[2].equals(far))  # beyond reach: untouched
+
+    def test_seals_a_family_where_another_class_hides_the_sliver(self):
+        # Two Class B shelves 40 m apart with a Class D lying across the gap: sealed all together the D
+        # fills it, but above the D's ceiling the shelves meet alone and must not leave a slot.
+        metre = 1 / 111_000
+        west = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01)])
+        east = Polygon([(0.01 + 40 * metre, 0), (0.02, 0), (0.02, 0.01), (0.01 + 40 * metre, 0.01)])
+        tower = Polygon([(0.008, -0.001), (0.012, -0.001), (0.012, 0.011), (0.008, 0.011)])
+        blind = aviation.seal_sectors([west, east, tower])
+        self.assertEqual(unary_union(blind[:2]).geom_type, 'MultiPolygon')
+        sealed = aviation.seal_sectors([west, east, tower], ['B', 'B', 'D'])
+        self.assertEqual(unary_union(sealed[:2]).geom_type, 'Polygon')
+
+    def test_keeps_real_gaps_between_airspaces(self):
+        metre = 1 / 111_000
+        west = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01)])
+        east = Polygon([(0.01 + 200 * metre, 0), (0.02, 0), (0.02, 0.01), (0.01 + 200 * metre, 0.01)])
+        sealed = aviation.seal_sectors([west, east])
+        self.assertTrue(sealed[0].equals(west) and sealed[1].equals(east))
+
+    def test_a_sliver_does_not_grow_a_tail_along_a_neighbour(self):
+        # A long sliver between two shelves, with a third sector touching only its end: the third may
+        # take the end within reach, never the whole 5 km strip along the others.
+        metre = 1 / 111_000
+        gap = 40 * metre
+        south = Polygon([(0, 0), (0.05, 0), (0.05, 0.01), (0, 0.01)])
+        north = Polygon([(0, 0.01 + gap), (0.05, 0.01 + gap), (0.05, 0.02), (0, 0.02)])
+        end = Polygon([(0.05 + gap, 0), (0.06, 0), (0.06, 0.02), (0.05 + gap, 0.02)])
+        sealed = aviation.seal_sectors([south, north, end])
+        self.assertEqual(unary_union(sealed[:2]).geom_type, 'Polygon')
+        reach = sealed[2].hausdorff_distance(end) / metre
+        self.assertLess(reach, 80)
+
+    def test_keeps_a_sectors_own_narrow_inlet(self):
+        # A 50 m inlet cut into one sector, with a neighbour far along its other side: not a gap between sectors.
+        metre = 1 / 111_000
+        inlet = 50 * metre
+        notched = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0.005 + inlet, 0.01), (0.005 + inlet, 0.005), (0.005, 0.005), (0.005, 0.01), (0, 0.01)])
+        neighbour = Polygon([(0.01 + 100 * metre, 0), (0.02, 0), (0.02, 0.01), (0.01 + 100 * metre, 0.01)])
+        sealed = aviation.seal_sectors([notched, neighbour])
+        self.assertTrue(sealed[0].contains(Point(0.01 + 50 * metre, 0.005)))  # the 100 m gap between the two is closed
+        self.assertFalse(sealed[0].contains(Point(0.005 + inlet / 2, 0.0075)))  # the inlet stays open
+
+    def test_skips_upper_altitude_special_use_volumes(self):
+        record = sua('R-1', ('180', 'FL', 'STD'), ('450', 'FL', 'STD'), kind='R')
+        record['properties']['LEVEL_CODE'] = 'U'
+        self.assertEqual(aviation.sua_volume_features({'features': [record]}), [])
 
 
 def base(site, **extra):

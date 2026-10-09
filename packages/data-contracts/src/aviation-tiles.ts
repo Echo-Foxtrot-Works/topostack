@@ -16,13 +16,20 @@ import { isMercatorBoundsTuple } from "./geo-bounds.ts";
  * area. Runways are centerlines with their width; the model draws the outline
  * when it is wide enough to read.
  *
+ * Airspace is also stored as volumes (`airspace_volumes`, `sua_volumes`): one
+ * polygon per sector with its floor and ceiling as charted, for models that
+ * build airspace in three dimensions. A sector is cut by tile seams like any
+ * polygon; the browser unions a sector's pieces by its `sector` number. Special
+ * use sectors are not dissolved: the records of one area keep their own floors
+ * and ceilings, exclusion pockets included.
+ *
  * Airport and obstacle properties carry what the sectional legend draws from:
  * fuel (ticks), rotating beacon (star), hard surface and runway layout (filled
  * or patterned symbols), high-intensity lights, wind turbines and groups. They
  * are optional, so an archive written before them still parses.
  */
 
-export const AVIATION_LAYERS = ["airspace", "airspace_labels", "sua", "runways", "airports", "navaids", "obstacles"] as const;
+export const AVIATION_LAYERS = ["airspace", "airspace_labels", "sua", "runways", "airports", "navaids", "obstacles", "airspace_volumes", "sua_volumes"] as const;
 export type AviationLayer = (typeof AVIATION_LAYERS)[number];
 
 export const AIRSPACE_CLASSES = ["B", "C", "D"] as const;
@@ -57,6 +64,31 @@ export interface AirspaceLabelProperties {
   clearanceM: number;
 }
 export interface SuaProperties { kind: SuaKind; name: string }
+
+/**
+ * How a floor or ceiling is given. `msl` is feet above mean sea level; `sfc`
+ * is the ground itself (feet 0); `agl` is feet above the ground under the
+ * sector; `fl` is a flight level, stored in feet (FL180 is 18,000); `unlimited`
+ * has no value and is a ceiling only.
+ */
+const ALTITUDE_REFERENCES = ["msl", "sfc", "agl", "fl", "unlimited"] as const;
+export type AltitudeReference = (typeof ALTITUDE_REFERENCES)[number];
+
+/** The vertical limits every volume carries. */
+export interface VolumeAltitudes {
+  /** Feet; 0 when the floor is the surface. */
+  floorFt: number;
+  floorRef: Exclude<AltitudeReference, "unlimited">;
+  /** Feet; absent only when the ceiling is unlimited. */
+  ceilingFt?: number;
+  ceilingRef: Exclude<AltitudeReference, "sfc">;
+  /** The ceiling is "up to but not including". */
+  ceilingBelow?: boolean;
+}
+/** One Class B, C or D sector. `sector` is unique within the layer and joins a sector's tile pieces. */
+export interface AirspaceVolumeProperties extends VolumeAltitudes { class: AirspaceClass; name: string; sector: number }
+/** One special use airspace record. `exclusion` marks a pocket whose floor differs from the area around it. */
+export interface SuaVolumeProperties extends VolumeAltitudes { kind: SuaKind; name: string; sector: number; exclusion?: boolean }
 export interface RunwayProperties { airport: string; runway: string; widthFt: number; lengthFt: number }
 /** One runway centerline, `[x1, y1, x2, y2]` in meters east and north of the airport reference point. */
 export type RunwayPatternSegment = [number, number, number, number];
@@ -98,11 +130,22 @@ export interface AviationPropertiesByLayer {
   airports: AirportProperties;
   navaids: NavaidProperties;
   obstacles: ObstacleProperties;
+  airspace_volumes: AirspaceVolumeProperties;
+  sua_volumes: SuaVolumeProperties;
 }
 
-/** Geometry each layer carries in the archive (vector tile type 1 point, 2 line). */
-export const AVIATION_LAYER_GEOMETRY: Record<AviationLayer, "point" | "line"> = {
+/**
+ * Deepest zoom the volume layers are written at. Sector edges at zoom 10 sit
+ * within about 10 m, far below what a model shows, and stopping there keeps
+ * the polygons out of the zoom 11 and 12 tiles every engraved-aviation load reads.
+ */
+export const AIRSPACE_VOLUME_MAX_ZOOM = 10;
+export const AIRSPACE_VOLUME_LAYERS = ["airspace_volumes", "sua_volumes"] as const satisfies readonly AviationLayer[];
+
+/** Geometry each layer carries in the archive (vector tile type 1 point, 2 line, 3 polygon). */
+export const AVIATION_LAYER_GEOMETRY: Record<AviationLayer, "point" | "line" | "polygon"> = {
   airspace: "line", airspace_labels: "point", sua: "line", runways: "line", airports: "point", navaids: "point", obstacles: "point",
+  airspace_volumes: "polygon", sua_volumes: "polygon",
 };
 
 // Tile properties are snake_case, as vector tile schemas conventionally are.
@@ -165,6 +208,43 @@ function parseSua(raw: Raw): SuaProperties | undefined {
   return kind && name ? { kind, name } : undefined;
 }
 
+/** Highest altitude a volume may carry, in feet: FL600, the top of charted special use airspace. */
+const MAX_VOLUME_FT = 60_000;
+
+function volumeAltitudes(raw: Raw): VolumeAltitudes | undefined {
+  const floorRef = member(ALTITUDE_REFERENCES, raw.floor_ref);
+  const ceilingRef = member(ALTITUDE_REFERENCES, raw.ceiling_ref);
+  const floorFt = feet(raw, "floor_ft", MAX_VOLUME_FT);
+  const ceilingFt = feet(raw, "ceiling_ft", MAX_VOLUME_FT);
+  if (!floorRef || floorRef === "unlimited" || floorFt === undefined || (floorRef === "sfc") !== (floorFt === 0)) return undefined;
+  if (!ceilingRef || ceilingRef === "sfc" || (ceilingRef === "unlimited") !== (ceilingFt === undefined) || ceilingFt === 0) return undefined;
+  // Floor and ceiling measured from the same datum must enclose some height.
+  if (ceilingFt !== undefined && (floorRef === ceilingRef || floorRef === "sfc") && ceilingFt <= floorFt) return undefined;
+  return compact({ floorFt, floorRef, ceilingFt, ceilingRef, ceilingBelow: raw.ceiling_below === true ? true : undefined });
+}
+
+const sectorNumber = (raw: Raw): number | undefined => {
+  const value = raw.sector;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
+};
+
+function parseAirspaceVolume(raw: Raw): AirspaceVolumeProperties | undefined {
+  const cls = member(AIRSPACE_CLASSES, raw.class);
+  const name = text(raw, "name");
+  const sector = sectorNumber(raw);
+  const altitudes = volumeAltitudes(raw);
+  return cls && name && sector !== undefined && altitudes ? { class: cls, name, sector, ...altitudes } : undefined;
+}
+
+function parseSuaVolume(raw: Raw): SuaVolumeProperties | undefined {
+  const kind = member(SUA_KINDS, raw.kind);
+  const name = text(raw, "name");
+  const sector = sectorNumber(raw);
+  const altitudes = volumeAltitudes(raw);
+  if (!kind || !name || sector === undefined || !altitudes) return undefined;
+  return compact({ kind, name, sector, ...altitudes, exclusion: raw.exclusion === true ? true : undefined });
+}
+
 function parseRunway(raw: Raw): RunwayProperties | undefined {
   const airport = text(raw, "airport", 8);
   const runway = text(raw, "runway", 16);
@@ -206,6 +286,7 @@ function parseObstacle(raw: Raw): ObstacleProperties | undefined {
 
 const PARSERS: { [L in AviationLayer]: (raw: Raw) => AviationPropertiesByLayer[L] | undefined } = {
   airspace: parseAirspace, airspace_labels: parseAirspaceLabel, sua: parseSua, runways: parseRunway, airports: parseAirport, navaids: parseNavaid, obstacles: parseObstacle,
+  airspace_volumes: parseAirspaceVolume, sua_volumes: parseSuaVolume,
 };
 
 export function isAviationLayer(value: unknown): value is AviationLayer {
