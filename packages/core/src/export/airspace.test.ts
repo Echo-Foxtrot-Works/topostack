@@ -97,6 +97,25 @@ describe("airspace export", { timeout: 60_000 }, () => {
     expect(guide).toContain(">R1<");
   });
 
+  it("cuts holes for through rods and gives the height to glue every piece at", async () => {
+    const rod = { ...DEFAULT_AIRSPACE_STACK.rod, joint: "through" as const };
+    const through = build({ form: "tiers", kerfMm: 0.1, rod }, [core, shelf], named);
+    const passing = through.airspaceStack!.columns.find((column) => column.segments[0]!.throughPieceIds?.length)!;
+    expect(passing).toBeDefined();
+    const pkg = packaged(through, { form: "tiers", kerfMm: 0.1, rod });
+    const guide = await text(pkg, "-assembly-guide.html");
+    expect(guide).toContain("Rod heights");
+    expect(guide).toContain(`<td>${passing.id}</td>`);
+    expect(guide).toContain("(on top)");
+    expect(guide).toContain("Slide each piece down its rods");
+    expect(await text(pkg, "README.txt")).toContain("rising through holes in the pieces it carries");
+    // The piece the rod passes has its hole in the CUT path: an extra subpath around the rod.
+    const holed = through.airspaceStack!.levels.findIndex((level) => level.pieces.some((piece) => piece.id === passing.segments[0]!.throughPieceIds![0]));
+    const panel = await text(pkg, `-airspace-blue-${String(holed + 1).padStart(2, "0")}.svg`);
+    const cut = panel.slice(panel.indexOf('<g id="CUT"'));
+    expect((cut.match(/M/g) ?? []).length).toBeGreaterThan(1);
+  });
+
   it("puts each piece on its own panel when a level outgrows the work area", () => {
     // A second shelf apart from the first, so the lowest level holds two pieces.
     const east = volume("east", "class-b", square(118, -60, 145, 60), { ref: "msl", ft: SHELF }, { ref: "msl", ft: CEILING });

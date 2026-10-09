@@ -277,6 +277,7 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
       files: panelFiles.filter((entry) => entry.levelIndex === level.index).map((entry) => entry.file.filename),
     })),
     columns: stack.columns,
+    woodMm: config.materialThicknessMm,
   };
   return {
     files: [...panelFiles.flatMap(({ file, engravingFile }) => [file, engravingFile]), ...masters, ...backingFiles],
@@ -312,7 +313,9 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
     readme: (shownLength: (valueMm: number) => string) => {
       const tintText = (Object.keys(stock) as Array<keyof typeof stock>).map((tint) => `${AIRSPACE_TINT_NAMES[tint]}`).join(", ");
       const rods = segments.length
-        ? `${segments.length} rod segment${segments.length === 1 ? "" : "s"} hold them up: ${shownLength(stack.rod.sizeMm)} ${stack.rod.shape} rod of any material, cut to ${stack.cutList.length} length${stack.cutList.length === 1 ? "" : "s"} (${shownLength(rodTotalMm)} in all; the assembly guide lists each length and where it goes). Each piece has the rods it rests on engraved as outlines on its top face. Sockets for the lowest rods are cut into the terrain sheets, ${shownLength(stack.rod.fitClearanceMm)} wider than the rod on every side. `
+        ? stack.rod.joint === "through"
+          ? `${segments.length} rod${segments.length === 1 ? "" : "s"} hold them up, each standing in a socket in the terrain and rising through holes in the pieces it carries to end under the highest: ${shownLength(stack.rod.sizeMm)} ${stack.rod.shape} rod of any material, cut to ${stack.cutList.length} length${stack.cutList.length === 1 ? "" : "s"} (${shownLength(rodTotalMm)} in all). The assembly guide gives each length and the height to glue every piece at. Sockets and holes are ${shownLength(stack.rod.fitClearanceMm)} wider than the rod on every side. `
+          : `${segments.length} rod segment${segments.length === 1 ? "" : "s"} hold them up: ${shownLength(stack.rod.sizeMm)} ${stack.rod.shape} rod of any material, cut to ${stack.cutList.length} length${stack.cutList.length === 1 ? "" : "s"} (${shownLength(rodTotalMm)} in all; the assembly guide lists each length and where it goes). Each piece has the rods it rests on engraved as outlines on its top face. Sockets for the lowest rods are cut into the terrain sheets, ${shownLength(stack.rod.fitClearanceMm)} wider than the rod on every side. `
         : "";
       const backingText = backingFiles.length ? `Some sockets go through the bottom sheet: glue the backing sheet (${backingFiles.map((file) => file.filename).join(", ")}) under the model so those rods stand on it. ` : "";
       return `Airspace in acrylic (${stack.form}): ${pieceCount} piece${pieceCount === 1 ? "" : "s"} on ${stack.levels.length} level${stack.levels.length === 1 ? "" : "s"} of ${shownLength(stack.thicknessMm)} ${tintText} acrylic, at true height over the terrain. Cut them from the -airspace-<tint>-NN.svg panels (NN is the level, lowest first), with a master per tint; they are a separate job with your acrylic settings, never the wood's. Their CUT paths carry ${shownLength(stack.kerfMm)} of acrylic kerf compensation. Frosted shelves, sector edges and rod outlines are engraved on each piece's top face (not mirrored). Pieces carry no engraved ids, since clear acrylic shows every mark: the assembly guide names each one. ${rods}${backingText}Glue acrylic with a clear, acrylic-safe glue, not cyanoacrylate (superglue), which fogs it white. The airspace shown is from FAA data${cycle ? ` of the ${cycle} cycle` : ""} and is not for navigation.\n\n`;

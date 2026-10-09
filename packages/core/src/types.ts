@@ -1075,6 +1075,11 @@ export interface AirspaceSegmentIR {
   lengthMm: number;
   /** The cut-list entry this segment is cut as. */
   rodId: string;
+  /**
+   * The `through` joint: pieces below the head the rod passes through, lowest
+   * first. Each has a hole for the rod and is glued at its own height on it.
+   */
+  throughPieceIds?: string[];
 }
 
 /** Rod segments standing at one point, one above another. */
