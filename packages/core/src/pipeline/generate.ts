@@ -221,7 +221,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   const waterInserts = water?.inserts ?? [];
   if (water) stage("water-inserts");
   // On the unsplit sheets, with every lake opening known: pieces clear the terrain that was cut.
-  const airspaceStack = flatEngraving ? undefined : buildAirspaceStack(config, source, layers, ladder, context.clip, context.warnings);
+  const airspaceStack = flatEngraving ? undefined : buildAirspaceStack(config, source, layers, ladder, context.clip, waterInserts, context.warnings);
   if (airspaceStack) stage("airspace");
 
   // Before nesting: cavities record indices into a donor's polygons and holes
