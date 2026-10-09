@@ -22,3 +22,7 @@
   line-height: 1.5;
   color: var(--loidolt-text-muted);
 }
+
+/* Airspace in 3D: the form and rod-shape choices and the ceiling cap, laid out like the length fields beside them. */
+.airspace-select, .airspace-number { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.airspace-select select { min-height: 32px; padding: 4px 8px; font: inherit; color: var(--loidolt-text); background: var(--loidolt-surface-alt); border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); }

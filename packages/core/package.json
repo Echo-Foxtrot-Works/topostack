@@ -13,6 +13,10 @@
     "./project": {
       "types": "./dist/project/index.d.ts",
       "import": "./dist/project/index.js"
+    },
+    "./airspace": {
+      "types": "./dist/airspace.d.ts",
+      "import": "./dist/airspace.js"
     }
   },
   "scripts": {

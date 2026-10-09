@@ -1,4 +1,4 @@
-import { acrylicPanelGroups, AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -121,6 +121,11 @@ export function acrylicPanelCount(geometry: Pick<GeometryIRV1, "waterInserts" | 
   return material ? acrylicPanelGroups(geometry.waterInserts ?? [], material, project).length : 0;
 }
 
+/** How many airspace panels the export writes, by the grouping the export itself uses. */
+export function airspacePanelCount(geometry: Pick<GeometryIRV1, "airspaceStack">, project: Pick<ProjectConfigV1, "workAreaWidthMm" | "workAreaHeightMm">): number {
+  return geometry.airspaceStack ? airspacePanelGroups(geometry.airspaceStack, project).length : 0;
+}
+
 const warningKey = (warning: Warning): string => `${warning.code}-${warning.message}`;
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
@@ -184,7 +189,8 @@ export function sectionSummary(section: ConfigSectionId, project: ProjectConfigV
       const contours = project.smoothing === 1 ? "Smooth contours" : "Standard contours";
       const paint = project.outputMode === "stack" && project.paintTemplates.length ? " · Paint templates" : "";
       const acrylic = project.outputMode === "stack" && project.waterInserts ? " · Acrylic water" : "";
-      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}${acrylic}`;
+      const airspace = project.outputMode === "stack" && project.airspaceStack ? " · Airspace in 3D" : "";
+      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}${acrylic}${airspace}`;
     }
   }
 }

@@ -781,6 +781,10 @@ export interface SourceBundleV1 {
   aviationAttribution?: SourceAttribution[];
   /** Airspace sectors as volumes, loaded only for models that build airspace in three dimensions. Absent when never loaded. */
   airspaceVolumes?: AirspaceVolumeV1[];
+  /** How the airspace volumes loaded; `not-covered` is outside FAA coverage, where `airspaceVolumes` is empty. */
+  airspaceStatus?: "available" | "partial" | "unavailable" | "not-covered";
+  /** Effective date of the FAA NASR cycle the airspace volumes come from. */
+  airspaceCycle?: string;
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
   lakeDataStatus: "available" | "unavailable" | "not-requested";
   /** Survey failures retain modeled lake depths and generate a warning. */
@@ -1102,6 +1106,8 @@ export interface AirspaceStackIR {
   topMm: number;
   levels: AirspaceLevelIR[];
   rod: AirspaceRodSettingsV1;
+  /** FAA NASR cycle the airspace comes from, for exports and their not-for-navigation notes. */
+  cycle?: string;
   columns: AirspaceColumnIR[];
   /** Longest first. */
   cutList: AirspaceRodCutIR[];

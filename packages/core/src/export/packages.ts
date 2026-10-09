@@ -232,8 +232,9 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
   const stack = generated.airspaceStack;
   const airspace = airspaceGeometry(generated);
   if (!stack || !airspace) return undefined;
+  const cycle = stack.cycle ?? generated.aviationCycle;
   const layers = airspaceLayers(stack, { markings: false });
-  const panels = airspacePanels(airspace, config);
+  const panels = airspacePanels(generated, airspace, config);
   const bodies = panels.map((panel) => panelBodies(airspace, panel));
   const panelFiles = panels.map((panel, index) => {
     const layer = airspace.layers[panel.rootLayerIndex]!;
@@ -270,7 +271,7 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
     rodTotalMm,
     backingFilenames: backingFiles.map((file) => file.filename),
     stock,
-    ...(generated.aviationCycle ? { cycle: generated.aviationCycle } : {}),
+    ...(cycle ? { cycle } : {}),
     levels: stack.levels.map((level) => ({
       level,
       files: panelFiles.filter((entry) => entry.levelIndex === level.index).map((entry) => entry.file.filename),
@@ -287,7 +288,7 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
       ceilingCapFt: stack.ceilingCapFt,
       mmPerMeter: stack.mmPerMeter,
       topMm: stack.topMm,
-      ...(generated.aviationCycle ? { nasrCycle: generated.aviationCycle } : {}),
+      ...(cycle ? { nasrCycle: cycle } : {}),
       masters: masters.map((file) => file.filename),
       backingSheet: backingFiles.map((file) => file.filename),
       levels: stack.levels.map((level) => ({
@@ -314,7 +315,7 @@ function airspaceFiles(generated: GeometryIRV1, config: ProjectConfigV1, base: s
         ? `${segments.length} rod segment${segments.length === 1 ? "" : "s"} hold them up: ${shownLength(stack.rod.sizeMm)} ${stack.rod.shape} rod of any material, cut to ${stack.cutList.length} length${stack.cutList.length === 1 ? "" : "s"} (${shownLength(rodTotalMm)} in all; the assembly guide lists each length and where it goes). Each piece has the rods it rests on engraved as outlines on its top face. Sockets for the lowest rods are cut into the terrain sheets, ${shownLength(stack.rod.fitClearanceMm)} wider than the rod on every side. `
         : "";
       const backingText = backingFiles.length ? `Some sockets go through the bottom sheet: glue the backing sheet (${backingFiles.map((file) => file.filename).join(", ")}) under the model so those rods stand on it. ` : "";
-      return `Airspace in acrylic (${stack.form}): ${pieceCount} piece${pieceCount === 1 ? "" : "s"} on ${stack.levels.length} level${stack.levels.length === 1 ? "" : "s"} of ${shownLength(stack.thicknessMm)} ${tintText} acrylic, at true height over the terrain. Cut them from the -airspace-<tint>-NN.svg panels (NN is the level, lowest first), with a master per tint; they are a separate job with your acrylic settings, never the wood's. Their CUT paths carry ${shownLength(stack.kerfMm)} of acrylic kerf compensation. Frosted shelves, sector edges and rod outlines are engraved on each piece's top face (not mirrored). Pieces carry no engraved ids, since clear acrylic shows every mark: the assembly guide names each one. ${rods}${backingText}Glue acrylic with a clear, acrylic-safe glue, not cyanoacrylate (superglue), which fogs it white. The airspace shown is from FAA data${generated.aviationCycle ? ` of the ${generated.aviationCycle} cycle` : ""} and is not for navigation.\n\n`;
+      return `Airspace in acrylic (${stack.form}): ${pieceCount} piece${pieceCount === 1 ? "" : "s"} on ${stack.levels.length} level${stack.levels.length === 1 ? "" : "s"} of ${shownLength(stack.thicknessMm)} ${tintText} acrylic, at true height over the terrain. Cut them from the -airspace-<tint>-NN.svg panels (NN is the level, lowest first), with a master per tint; they are a separate job with your acrylic settings, never the wood's. Their CUT paths carry ${shownLength(stack.kerfMm)} of acrylic kerf compensation. Frosted shelves, sector edges and rod outlines are engraved on each piece's top face (not mirrored). Pieces carry no engraved ids, since clear acrylic shows every mark: the assembly guide names each one. ${rods}${backingText}Glue acrylic with a clear, acrylic-safe glue, not cyanoacrylate (superglue), which fogs it white. The airspace shown is from FAA data${cycle ? ` of the ${cycle} cycle` : ""} and is not for navigation.\n\n`;
     },
   };
 }

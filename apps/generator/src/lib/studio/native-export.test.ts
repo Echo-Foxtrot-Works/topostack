@@ -143,6 +143,26 @@ describe("export choices", () => {
     await expect(prepareSelectedDownload(output, "acrylic")).rejects.toThrow(/no lake became an acrylic insert/i);
   });
 
+  it("offers the airspace as its own bundle and keeps it out of the wood and acrylic ones", async () => {
+    const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
+    const airspace = ["ridge-airspace-blue-01", "ridge-airspace-magenta-02", "ridge-airspace-clear-03-a3-1"];
+    const withAirspace: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
+      ...wood.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]),
+      ...airspace.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]),
+      file("ridge-airspace-blue-master.svg"), file("ridge-airspace-backing.svg"), file("ridge-airspace-backing-b2.svg"),
+      file("ridge-acrylic-03.svg"), file("ridge-assembly-guide.html"), file("README.txt"), file("ATTRIBUTION.txt"),
+    ] };
+    for (const option of ["panels", "engravings", "acrylic"] as const) {
+      const files = unzipSync(new Uint8Array(await (await prepareSelectedDownload(withAirspace, option)).blob.arrayBuffer()));
+      expect(Object.keys(files).some((name) => name.includes("airspace"))).toBe(false);
+    }
+    const download = await prepareSelectedDownload(withAirspace, "airspace");
+    const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
+    expect(Object.keys(files)).toEqual([...airspace.flatMap((sheet) => [`${sheet}.svg`, `${sheet}-engrave.svg`]), "ridge-airspace-blue-master.svg", "ridge-airspace-backing.svg", "ridge-airspace-backing-b2.svg", "README.txt", "ATTRIBUTION.txt"]);
+    expect(download.filename).toBe("ridge-layer-01-airspace.zip");
+    await expect(prepareSelectedDownload(output, "airspace")).rejects.toThrow(/no airspace was built/i);
+  });
+
   it("bundles every file for the everything option", async () => {
     const download = await prepareSelectedDownload(output, "all");
     expect(download).toMatchObject({ filename: "ridge-layer-01-project-files.zip", fileCount: output.files.length });

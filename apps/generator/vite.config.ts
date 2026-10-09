@@ -36,7 +36,8 @@ export default defineConfig({
             // The project parser serves saved, imported and shared projects, and
             // the agent request contract only the lazily loaded WebMCP tools, so
             // they stay with their importers rather than in this startup chunk.
-            { name: "core", test: /\/packages\/core\/src\/(?!export\/|project\/(?:parse|request|schema|plan)\.ts)|node_modules\/(?:polygon-clipping|d3-contour|clipper-lib)/, priority: 25 },
+            // The airspace stage is loaded only by projects that build airspace.
+            { name: "core", test: /\/packages\/core\/src\/(?!export\/|project\/(?:parse|request|schema|plan)\.ts|airspace\.ts|pipeline\/airspace-(?:stack|supports)\.ts)|node_modules\/(?:polygon-clipping|d3-contour|clipper-lib)/, priority: 25 },
             // Capture shared site dependencies before guides so the homepage
             // never needs the guide content chunk. Split shared JS by actual
             // consumers to avoid loading guide-only navigation on the homepage.

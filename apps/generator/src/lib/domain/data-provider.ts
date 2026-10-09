@@ -1,6 +1,6 @@
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { apiBase } from "$lib/domain/api-base";
-import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { dataZoom, fittingTileWindow } from "$lib/domain/tile-math";
@@ -21,6 +21,26 @@ export async function loadAviation(bounds: GeoBounds, zoom: number, config: Proj
   } catch (error) {
     if (signal?.aborted) throw error;
     return { aviationMarkings: [], aviationStatus: "unavailable", aviationAttribution: [] };
+  }
+}
+
+/**
+ * Airspace sectors as volumes, for models that build airspace in acrylic.
+ * Imported on demand like aviation. Outside FAA coverage the volumes are empty;
+ * when loading fails they stay absent, so generation can tell "not loaded"
+ * from "no airspace here".
+ */
+export async function loadAirspace(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "airspaceVolumes" | "airspaceStatus" | "airspaceCycle">> {
+  const settings = config.airspaceStack;
+  if (!settings) return {};
+  try {
+    const { loadAirspaceVolumes } = await import("$lib/domain/airspace-volumes");
+    const { classes } = settings;
+    const { volumes, status, cycle } = await loadAirspaceVolumes(bounds, zoom, config, { classes: classes.B || classes.C || classes.D, specialUse: classes.specialUse }, signal);
+    return { airspaceVolumes: volumes, airspaceStatus: status, ...(cycle ? { airspaceCycle: cycle } : {}) };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return { airspaceStatus: "unavailable" };
   }
 }
 
@@ -75,7 +95,8 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     onStage?.("preparing");
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
     const aviation = sourceRequirements(config).aviation ? { aviationMarkings: e2eAviationFixture(config), aviationStatus: "available" as const, aviationCycle: "2026-01-01" } : {};
-    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation } };
+    const airspace = sourceRequirements(config).airspace ? { airspaceVolumes: e2eAirspaceFixture(fixture), airspaceStatus: "available" as const, airspaceCycle: "2026-01-01" } : {};
+    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation, ...airspace } };
   }
   const zoom = dataZoom(config.location.zoom);
   const userSignal = signal;
@@ -84,7 +105,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
   try {
     // Ocean polygons are how geometry separates bathymetry from land relief,
     // so depth modeling needs vectors even when shoreline scoring is hidden.
-    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas, aviation: aviationRequested } = sourceRequirements(config);
+    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas, aviation: aviationRequested, airspace: airspaceRequested } = sourceRequirements(config);
     let loaded;
     try {
       // Choose elevation detail from the crop, independently of the camera zoom.
@@ -111,6 +132,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
             })
           : Promise.resolve({ areas: [] as WaterAreaV1[], status: "not-requested" as const }),
         aviationRequested ? loadAviation(bounds, zoom, config, signal) : Promise.resolve(undefined),
+        airspaceRequested ? loadAirspace(bounds, zoom, config, signal) : Promise.resolve(undefined),
       ]);
     } catch (error) {
       if (userSignal?.aborted) throw error;
@@ -119,15 +141,15 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
       onStage?.("preparing");
       const source = createSyntheticSource({ ...config, location: { ...config.location, bounds } });
       return {
-        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested", ...(aviationRequested ? { aviationMarkings: [], aviationStatus: "unavailable" as const } : {}) },
+        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested", ...(aviationRequested ? { aviationMarkings: [], aviationStatus: "unavailable" as const } : {}), ...(airspaceRequested ? { airspaceStatus: "unavailable" as const } : {}) },
         fallback: true,
         fallbackReason: errorMessage(error, "The terrain service could not be reached."),
       };
     }
     signal.throwIfAborted();
     onStage?.("preparing");
-    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation, airspace] = loaded;
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, ...airspace, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth
@@ -152,6 +174,16 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
 }
 
 /** A Class B ring, a runway and an airport for the Playwright build, which never reaches the map API. */
+/** A small Class B over the e2e terrain: a core from the surface and a shelf around it, both clear of the ground. */
+function e2eAirspaceFixture(source: SourceBundleV1): AirspaceVolumeV1[] {
+  const topFt = Math.round(source.elevation.max / 0.3048);
+  const square = (half: number) => [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }];
+  return [
+    { id: "e2e-core", aviationClass: "class-b", name: "E2E CLASS B", floor: { ref: "sfc", ft: 0 }, ceiling: { ref: "msl", ft: topFt + 4_000 }, polygons: [{ outer: square(30), holes: [] }] },
+    { id: "e2e-shelf", aviationClass: "class-b", name: "E2E CLASS B", floor: { ref: "msl", ft: topFt + 1_500 }, ceiling: { ref: "msl", ft: topFt + 4_000 }, polygons: [{ outer: square(70), holes: [[...square(30)].reverse()] }] },
+  ];
+}
+
 function e2eAviationFixture(config: ProjectConfigV1): MarkingFeature[] {
   const half = Math.min(config.widthMm, config.heightMm) * 0.3;
   return [

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pointInPolygon, ringBounds } from "../primitives/geometry2d.js";
 import { parsePathPoints } from "../test-support/sources.js";
 import { build, core, plain, project, shelf, square, volume, SHELF, CEILING } from "../test-support/airspace.js";
-import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-stack.js";
+import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import type { FabricationPackageV1, GeometryIRV1, ProjectConfigV1 } from "../types.js";
 import { buildFabricationPackage } from "./packages.js";
 import { exportBlockReason } from "./export-policy.js";
@@ -100,10 +100,11 @@ describe("airspace export", { timeout: 60_000 }, () => {
   it("puts each piece on its own panel when a level outgrows the work area", () => {
     // A second shelf apart from the first, so the lowest level holds two pieces.
     const east = volume("east", "class-b", square(118, -60, 145, 60), { ref: "msl", ft: SHELF }, { ref: "msl", ft: CEILING });
-    const airspace = airspaceGeometry(build({ form: "tiers" }, [core, shelf, east], named))!;
+    const withEast = build({ form: "tiers" }, [core, shelf, east], named);
+    const airspace = airspaceGeometry(withEast)!;
     const level = airspace.layers.findIndex((layer) => new Set(layer.pieces.map((piece) => piece.id)).size > 1);
     expect(level).toBeGreaterThanOrEqual(0);
-    const panels = airspacePanels(airspace, { workAreaWidthMm: 120, workAreaHeightMm: 120 }).filter((panel) => panel.rootLayerIndex === level);
+    const panels = airspacePanels(withEast, airspace, { workAreaWidthMm: 120, workAreaHeightMm: 120 }).filter((panel) => panel.rootLayerIndex === level);
     expect(panels.length).toBe(new Set(airspace.layers[level]!.pieces.map((piece) => piece.id)).size);
     expect(panels.every((panel) => panel.cellName)).toBe(true);
   });

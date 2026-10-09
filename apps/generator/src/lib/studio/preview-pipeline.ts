@@ -1,5 +1,6 @@
 import { projectFonts, type GeometryIRV1, type ProjectConfigV1, type SourceBundleV1, type TextFont } from "@topostack/core";
 import { ensureFonts } from "$lib/domain/fonts";
+import { ensureAirspaceStage } from "$lib/domain/airspace-stage";
 import type { GeometryWorkerClient, WarmGeometryWorker } from "$lib/workers/geometry-worker-client";
 import { ModuleLoadError } from "$lib/studio/lazy-load";
 
@@ -73,7 +74,8 @@ export class PreviewPipeline {
       load.catch(() => { if (this.clientLoad === load) this.clientLoad = undefined; });
     }
     // The page draws the result's text too (previews, exports), so its fonts must load here as well as in the worker.
-    const [client] = await Promise.all([this.client ?? this.clientLoad, this.loadFonts(projectFonts(config))]);
+    // The airspace stage, like the fonts, is registered in the page too: generation falls back to it when no worker starts.
+    const [client] = await Promise.all([this.client ?? this.clientLoad, this.loadFonts(projectFonts(config)), config.airspaceStack ? ensureAirspaceStage() : undefined]);
     if (revision !== this.revision || this.disposed) throw new DOMException("Preview superseded", "AbortError");
     return client.run(config, source);
   }
