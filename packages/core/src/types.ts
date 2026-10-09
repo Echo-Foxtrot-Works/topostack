@@ -1047,7 +1047,37 @@ export interface AirspacePieceIR {
   edges?: AirspaceEdgeIR[];
   /** The sectors (source volume ids) the piece shows. */
   sectorIds: string[];
+  /** Rod outlines engraved on the top face where a segment stands on the piece or is glued under it. */
+  locators?: Point2D[][];
+  /** Glued flat on the surface right under it (volumes resting on the sheet below), so it needs no rods. */
+  resting?: boolean;
 }
+
+/** Where a rod segment's lower end sits: a socket cut down through terrain sheets, or the top face of a lower piece. */
+export type AirspaceSeatIR =
+  | { kind: "terrain"; /** The whole sheet the rod stands on; -1 is the backing sheet under the model. */ floorLayerIndex: number; /** Sheets the socket is cut through. */ socketLayerIndices: number[] }
+  | { kind: "piece"; pieceId: string };
+
+/** One length of rod between a seat and the underside of the piece it holds. */
+export interface AirspaceSegmentIR {
+  id: string;
+  seat: AirspaceSeatIR;
+  headPieceId: string;
+  /** Height of the rod's lower end (socket floor or seat top) above the table. */
+  bottomMm: number;
+  /** Height of the piece's underside above the table. */
+  topMm: number;
+  /** The length to cut, rounded to half a millimetre. */
+  lengthMm: number;
+  /** The cut-list entry this segment is cut as. */
+  rodId: string;
+}
+
+/** Rod segments standing at one point, one above another. */
+export interface AirspaceColumnIR { id: string; point: Point2D; segments: AirspaceSegmentIR[] }
+
+/** One line of the rod cut list: every segment of one length. */
+export interface AirspaceRodCutIR { id: string; lengthMm: number; count: number }
 
 /** One height at which acrylic is cut: an altitude level for plates and tiers, an acrylic sheet for volumes. */
 export interface AirspaceLevelIR {
@@ -1072,6 +1102,15 @@ export interface AirspaceStackIR {
   topMm: number;
   levels: AirspaceLevelIR[];
   rod: AirspaceRodSettingsV1;
+  columns: AirspaceColumnIR[];
+  /** Longest first. */
+  cutList: AirspaceRodCutIR[];
+  /**
+   * A plain sheet the size of the model glued under it, which rods socketed
+   * through the bottom sheet stand on. Ground at the land minimum is only the
+   * bottom sheet, so on flat land most sockets need it.
+   */
+  backingSheet: boolean;
 }
 
 /** Why a generation warns; a stable code the studio and agents key their wording and actions on. */
@@ -1107,7 +1146,8 @@ export type GeometryWarningCode =
   | "AIRSPACE_TERRACED"
   | "AIRSPACE_PIECES_DROPPED"
   | "AIRSPACE_TALL"
-  | "AIRSPACE_ACRYLIC_HEAVY";
+  | "AIRSPACE_ACRYLIC_HEAVY"
+  | "AIRSPACE_PIECE_UNSUPPORTED";
 
 export interface GeometryWarning {
   code: GeometryWarningCode;

@@ -1,9 +1,10 @@
 import { clipPolyline, ringBounds, signedArea, type Bounds2D } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons, windowPolygons } from "../primitives/offset.js";
 import { normalizedPolygons } from "./water-inserts.js";
+import { placeAirspaceSupports } from "./airspace-supports.js";
 import type {
   AirspaceEdgeIR, AirspaceLevelIR, AirspacePieceIR, AirspaceStackIR, AirspaceStackSettingsV1, AirspaceTint, AirspaceVolumeV1,
-  GeometryWarning, LayerIR, Point2D, Polygon2D, ProjectConfigV1, SourceBundleV1,
+  GeometryWarning, LayerIR, Point2D, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR,
 } from "../types.js";
 import type { ElevationLadder } from "./generation-context.js";
 
@@ -103,28 +104,32 @@ function closed(polygons: Polygon2D[], minimumFeatureMm: number): Polygon2D[] {
   return offsetPolygons(offsetPolygons(polygons, radius, "miter"), -radius, "miter");
 }
 
-/**
- * A part's area split by the terrain under it, each band no more than `spanLayers`
- * sheets of ground deep, with the highest ground in the band. Ground is read
- * from the cut sheets themselves, so a piece over a band clears what was cut.
- */
-function groundBands(polygons: Polygon2D[], layers: LayerIR[], scale: Scale, spanLayers: number): Array<{ polygons: Polygon2D[]; groundM: number }> {
-  const window = boundsOf(polygons);
-  const local = layers.map((layer) => windowPolygons(layer.polygons, window));
-  let top = 0;
-  while (top + 1 < layers.length && clipPolygons(polygons, local[top + 1]!, "intersection").length) top += 1;
-  const bands: Array<{ polygons: Polygon2D[]; groundM: number }> = [];
-  for (let low = 0; low <= top; low += spanLayers) {
-    const high = Math.min(low + spanLayers - 1, top);
-    const within = low === 0 ? polygons : clipPolygons(polygons, local[low]!, "intersection");
-    const band = high < top ? clipPolygons(within, local[high + 1]!, "difference") : within;
-    if (band.length) bands.push({ polygons: band, groundM: scale.baseM + (layers[high]!.index + 1) * scale.metersPerLayer - scale.metersPerLayer });
-  }
-  return bands;
+/** A sector whose floor or ceiling is given above the ground under it, with its area over each sheet. */
+interface GroundSector {
+  volume: AirspaceVolumeV1;
+  /** `over[k]`: the part of the sector over sheet k or higher. Sheets nest, so each is cut from the one before. */
+  over: Polygon2D[][];
+  /** Altitude of the top face of each sheet. */
+  groundM: number[];
+  floor: (groundM: number) => number | null;
+  ceiling: (groundM: number) => number;
+  floorFromGround: boolean;
+  ceilingFromGround: boolean;
 }
 
-/** Resolve one sector's limits; floors and ceilings given above ground are split into terraces over the terrain. */
-function resolveParts(volume: AirspaceVolumeV1, polygons: Polygon2D[], settings: AirspaceStackSettingsV1, capM: number, layers: LayerIR[], scale: Scale, spanLayers: number): Part[] {
+function overSheets(polygons: Polygon2D[], layers: LayerIR[]): Polygon2D[][] {
+  const window = boundsOf(polygons);
+  const over: Polygon2D[][] = [polygons];
+  for (let index = 1; index < layers.length; index += 1) {
+    const next = clipPolygons(over[index - 1]!, windowPolygons(layers[index]!.polygons, window), "intersection");
+    if (!next.length) break;
+    over.push(next);
+  }
+  return over;
+}
+
+/** Resolve one sector's limits: a part with fixed limits, or a sector to be stepped over the ground once the levels are known. */
+function resolveSector(volume: AirspaceVolumeV1, polygons: Polygon2D[], settings: AirspaceStackSettingsV1, capM: number, layers: LayerIR[], scale: Scale): Part | GroundSector | undefined {
   const isLid = volume.aviationClass === "class-d";
   const fixed = (altitude: AirspaceVolumeV1["ceiling"]) => (altitude.ref === "msl" || altitude.ref === "fl" ? altitude.ft * FEET : undefined);
   const ceilingFixed = volume.ceiling.ref === "unlimited" ? capM : fixed(volume.ceiling);
@@ -132,23 +137,53 @@ function resolveParts(volume: AirspaceVolumeV1, polygons: Polygon2D[], settings:
   const surfaceFloor = volume.floor.ref === "sfc" && settings.form === "tiers" && !isLid;
   const floorFromGround = volume.floor.ref === "agl" || surfaceFloor;
   const ceilingFromGround = volume.ceiling.ref === "agl";
-  const make = (area: Polygon2D[], floorM: number | null, ceilingM: number, fromGround: boolean): Part[] => {
-    const ceiling = Math.min(ceilingM, capM);
-    if (floorM !== null && floorM >= ceiling) return [];
-    return [{ volume, polygons: area, floorM, ceilingM: ceiling, floorFromGround: fromGround && floorFromGround, ceilingFromGround: fromGround && ceilingFromGround }];
-  };
+  const floorFixed = volume.floor.ref === "sfc" ? null : fixed(volume.floor) ?? null;
   if (!floorFromGround && !ceilingFromGround) {
-    const floorM = volume.floor.ref === "sfc" ? null : fixed(volume.floor)!;
-    return make(polygons, floorM, ceilingFixed!, false);
+    const ceilingM = Math.min(ceilingFixed!, capM);
+    return floorFixed !== null && floorFixed >= ceilingM ? undefined : { volume, polygons, floorM: floorFixed, ceilingM, floorFromGround: false, ceilingFromGround: false };
   }
   const floorAbove = volume.floor.ref === "agl" ? volume.floor.ft * FEET : 0;
   const ceilingAbove = volume.ceiling.ref === "agl" ? volume.ceiling.ft * FEET : 0;
-  return groundBands(polygons, layers, scale, spanLayers).flatMap((band) => make(
-    band.polygons,
-    floorFromGround ? band.groundM + floorAbove : volume.floor.ref === "sfc" ? null : fixed(volume.floor)!,
-    ceilingFromGround ? band.groundM + ceilingAbove : ceilingFixed!,
-    true,
-  ));
+  const over = overSheets(polygons, layers);
+  return {
+    volume, over, floorFromGround, ceilingFromGround,
+    groundM: over.map((_, index) => scale.baseM + layers[index]!.index * scale.metersPerLayer),
+    floor: (groundM) => (floorFromGround ? groundM + floorAbove : floorFixed),
+    ceiling: (groundM) => Math.min(ceilingFromGround ? groundM + ceilingAbove : ceilingFixed!, capM),
+  };
+}
+
+/**
+ * A stepped sector as parts: its sheets grouped by the level each step's floor
+ * snaps up to (the first fixed altitude at or above it, below its ceiling),
+ * and steps that meet no level grouped by `spanLayers` sheets of ground. Each
+ * group is one region cut from the sheets once, so a piece is never a pile of
+ * contour-thin fragments. A step's floor is its highest ground plus the height
+ * above it, and its ceiling the lowest, so the step clears the ground it spans.
+ */
+function steppedParts(sector: GroundSector, fixed: number[], spanLayers: number): Part[] {
+  const top = sector.over.length - 1;
+  const keys = sector.groundM.map((ground, index) => {
+    const floor = sector.floor(ground);
+    const ceiling = sector.ceiling(ground);
+    const snapped = sector.floorFromGround && floor !== null ? fixed.find((level) => level >= floor - 1e-6 && level < ceiling) : undefined;
+    const floorKey = !sector.floorFromGround ? "fixed" : snapped !== undefined ? `level-${snapped}` : `ground-${Math.floor(index / spanLayers)}`;
+    const ceilingKey = sector.ceilingFromGround ? `ground-${Math.floor(index / spanLayers)}` : "fixed";
+    return { key: `${floorKey}|${ceilingKey}`, snapped };
+  });
+  const parts: Part[] = [];
+  for (let low = 0; low <= top;) {
+    let high = low;
+    while (high + 1 <= top && keys[high + 1]!.key === keys[low]!.key) high += 1;
+    const polygons = high < top ? clipPolygons(sector.over[low]!, sector.over[high + 1]!, "difference") : sector.over[low]!;
+    const floor = keys[low]!.snapped ?? sector.floor(sector.groundM[high]!);
+    const ceiling = sector.ceiling(sector.groundM[low]!);
+    if (polygons.length && (floor === null || floor < ceiling)) {
+      parts.push({ volume: sector.volume, polygons, floorM: floor, ceilingM: ceiling, floorFromGround: sector.floorFromGround, ceilingFromGround: sector.ceilingFromGround });
+    }
+    low = high + 1;
+  }
+  return parts;
 }
 
 /**
@@ -226,6 +261,14 @@ function piece(id: string, tint: AirspaceTint, polygons: Polygon2D[], parts: Par
   return { id, tint, polygons, sectorIds: [...new Set(parts.map((part) => part.volume.id))], ...extra };
 }
 
+const boxesOverlap = (a: Bounds2D, b: Bounds2D) => a.minX <= b.maxX && b.minX <= a.maxX && a.minY <= b.maxY && b.minY <= a.maxY;
+
+/** The parts that share area with a piece; their boxes rule most out before any boolean. */
+function partsWithin(parts: Part[], polygons: Polygon2D[]): Part[] {
+  const box = boundsOf(polygons);
+  return parts.filter((part) => boxesOverlap(boundsOf(part.polygons), box) && clipPolygons(part.polygons, polygons, "intersection").length > 0);
+}
+
 function stepLevels(builder: Builder, parts: Part[], altitudes: number[][], snap: (altitudeM: number) => number, form: "plates" | "tiers"): AirspaceLevelIR[] {
   const { scale } = builder;
   const levels: AirspaceLevelIR[] = [];
@@ -241,13 +284,14 @@ function stepLevels(builder: Builder, parts: Part[], altitudes: number[][], snap
     if (form === "plates") {
       const members = [...floors, ...ceilings, ...through];
       const outline = pieceOutline(builder, members.flatMap((part) => part.polygons), zMm);
+      const shelves = [...floors, ...ceilings];
+      const frosted = shelves.length && outline.length ? closed(union(shelves.flatMap((part) => part.polygons)), builder.config.minimumFeatureMm) : [];
       outline.forEach((polygon, n) => {
         const own = [polygon];
-        const shelves = [...floors, ...ceilings];
-        const frost = shelves.length ? clipPolygons(closed(union(shelves.flatMap((part) => part.polygons)), builder.config.minimumFeatureMm), own, "intersection") : [];
-        pieces.push(piece(`A${index + 1}-${n + 1}`, "clear", own, members.filter((part) => clipPolygons(part.polygons, own, "intersection").length), {
+        const frost = frosted.length ? clipPolygons(frosted, own, "intersection") : [];
+        pieces.push(piece(`A${index + 1}-${n + 1}`, "clear", own, partsWithin(members, own), {
           frost: normalizedPolygons(frost, builder.config.minimumFeatureMm),
-          edges: edgesWithin(through, own),
+          edges: edgesWithin(partsWithin(through, own), own),
         }));
       });
     } else {
@@ -255,7 +299,7 @@ function stepLevels(builder: Builder, parts: Part[], altitudes: number[][], snap
         const members = [...floors, ...ceilings].filter((part) => airspaceTint(part.volume) === tint);
         if (!members.length) continue;
         for (const polygon of pieceOutline(builder, members.flatMap((part) => part.polygons), zMm)) {
-          pieces.push(piece(`A${index + 1}-${pieces.length + 1}`, tint, [polygon], members.filter((part) => clipPolygons(part.polygons, [polygon], "intersection").length)));
+          pieces.push(piece(`A${index + 1}-${pieces.length + 1}`, tint, [polygon], partsWithin(members, [polygon])));
         }
       }
     }
@@ -309,7 +353,7 @@ function sliceLevels(builder: Builder, parts: Part[]): AirspaceLevelIR[] {
  * not ask for one. Runs on the unsplit sheets after water inserts are cut, so
  * every hole a later stage adds to a sheet is already known.
  */
-export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundleV1, layers: LayerIR[], ladder: ElevationLadder, clip: Point2D[], warnings: GeometryWarning[]): AirspaceStackIR | undefined {
+export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundleV1, layers: LayerIR[], ladder: ElevationLadder, clip: Point2D[], inserts: WaterInsertIR[], warnings: GeometryWarning[]): AirspaceStackIR | undefined {
   const settings = config.airspaceStack;
   const material = airspaceMaterial(config);
   if (!settings || !material) return undefined;
@@ -331,10 +375,13 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
     .flatMap((volume) => (volume.ceiling.ref === "msl" || volume.ceiling.ref === "fl" ? [volume.ceiling.ft] : []));
   const ceilingCapFt = settings.ceilingCapFt ?? (charted.length ? Math.max(...charted) : AIRSPACE_DEFAULT_CAP_FT);
   const spanLayers = Math.max(1, Math.floor(gapMm / t));
-  let parts = volumes.flatMap((volume) => {
+  const resolved = volumes.flatMap((volume) => {
     const inside = clipPolygons(volume.polygons, crop, "intersection");
-    return inside.length ? resolveParts(volume, inside, settings, ceilingCapFt * FEET, layers, scale, spanLayers) : [];
+    return (inside.length ? resolveSector(volume, inside, settings, ceilingCapFt * FEET, layers, scale) : undefined) ?? [];
   });
+  const fixedParts = resolved.filter((entry): entry is Part => "polygons" in entry);
+  const fixedAltitudes = [...new Set(fixedParts.flatMap((part) => [...(part.floorM === null ? [] : [part.floorM]), part.ceilingM]))].sort((a, b) => a - b);
+  let parts = [...fixedParts, ...resolved.filter((entry): entry is GroundSector => "over" in entry).flatMap((sector) => steppedParts(sector, fixedAltitudes, spanLayers))];
   // A floor below the land stands on the ground; a part whose ceiling is below it is underground.
   parts = parts
     .map((part) => (part.floorM !== null && !part.floorFromGround && scale.z(part.floorM) <= t ? { ...part, floorM: null } : part))
@@ -362,7 +409,12 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
     code: "AIRSPACE_PIECES_DROPPED",
     message: `${builder.dropped.count} airspace ${builder.dropped.count === 1 ? "piece was" : "pieces were"} left out because ${builder.dropped.count === 1 ? "it was" : "they were"} smaller than 10 cm² after the terrain and the crop cut ${builder.dropped.count === 1 ? "it" : "them"}.`,
   });
+  const stack: AirspaceStackIR = { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm: 0, levels, rod: { ...settings.rod }, columns: [], cutList: [], backingSheet: false };
+  // Rods hold the pieces, and their sockets become holes in the sheets; a piece no rod can hold is left out.
+  placeAirspaceSupports(stack, layers, inserts, t, config.minimumFeatureMm, warnings);
+  levels = stack.levels;
   const topMm = levels.length ? Math.max(...levels.map((level) => level.zMm + material.thicknessMm)) : 0;
+  stack.topMm = topMm;
   if (topMm > AIRSPACE_TALL_MM) warnings.push({
     code: "AIRSPACE_TALL",
     message: `The airspace stands ${Math.round(topMm)} mm tall. Lower the airspace ceiling cap or Vertical exaggeration for a model that is easier to build and display.`,
@@ -375,5 +427,5 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
       message: `Solid airspace takes acrylic covering the model ${footprints.toFixed(1)} times over. Plates or tiers use far less.`,
     });
   }
-  return { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm, levels, rod: { ...settings.rod } };
+  return stack;
 }
