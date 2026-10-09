@@ -15,8 +15,9 @@ import type {
  * where a socket is cut down through the top sheets. A piece takes columns
  * spread by farthest-point choice until its centroid lies inside them and every
  * part of it is within half a span of one. A piece glued flat on the surface
- * right under it needs none. A piece that cannot be held is left out rather
- * than exported floating.
+ * right under it needs none, except under a part that reaches too far from the
+ * glue, or when the glued stack it joins would lean past the rods holding it.
+ * A piece that cannot be held is left out rather than exported floating.
  */
 
 /** Rod surface to a piece's edge. */
@@ -32,6 +33,8 @@ const SMALL_PIECE_MM2 = 3_000;
 const MAX_COLUMNS_PER_PIECE = 16;
 /** A piece lying on the surface under it over this share of its area is glued there instead of held on rods. */
 const RESTING_SHARE = 0.25;
+/** Contact smaller than this is a touch along an edge, not a glue joint. */
+const TOUCH_MM2 = 1;
 const CUT_STEP_MM = 0.5;
 /** Through rods sit on one grid for every piece, so a rod can rise through one piece to hold the next. */
 const THROUGH_GRID_MM = 8;
@@ -147,6 +150,8 @@ function seatAt(context: Context, point: Point2D, zMm: number, terrainOnly = fal
   const { rodRadius, woodMm } = context;
   const below = terrainOnly ? [] : context.placed.filter((entry) => entry.topMm <= zMm + 1e-6).sort((a, b) => b.topMm - a.topMm);
   const seatPiece = below.find((entry) => pointInPreparedPolygons(point, entry.prepared));
+  // A piece lying right on the one below is glued to it there, not held on a rod.
+  if (seatPiece && seatPiece.topMm > zMm - 1e-6) return undefined;
   const bottomMm = seatPiece ? seatPiece.topMm : undefined;
   // Pieces between the seat and the head must keep clear of the rod.
   for (const entry of below) {
@@ -212,9 +217,12 @@ function candidatePoints(piece: AirspacePieceIR, prepared: PreparedPolygons, mar
       if (clearOfEdges(point, prepared, margin)) valid.push(point);
     }
   }
-  // The outline itself must be within reach too.
+  // The outline itself must be within reach too, sampled about every half step along it.
   for (const polygon of piece.polygons) {
-    polygon.outer.forEach((point, index) => { if (index % 4 === 0) samples.push(point); });
+    let last: Point2D | undefined;
+    for (const point of polygon.outer) {
+      if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= step / 2) { samples.push(point); last = point; }
+    }
   }
   return { valid, samples };
 }
@@ -257,14 +265,107 @@ function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples:
   return chosen;
 }
 
-/** True when the piece lies glued on the surface right under it over enough of its area: a lower piece's top, or a sheet's. */
-function resting(context: Context, piece: AirspacePieceIR, zMm: number): boolean {
-  const pieceArea = area(piece.polygons);
-  const under = context.placed.filter((entry) => Math.abs(entry.topMm - zMm) < 1e-6).flatMap((entry) => entry.piece.polygons);
+/** Where a piece lies on the surface right under it, glued: lower pieces' tops and a sheet's. */
+interface Contact { glued: Polygon2D[]; areaMm2: number; pieceIds: string[]; onTerrain: boolean }
+
+function contactOf(context: Context, piece: AirspacePieceIR, zMm: number): Contact {
+  const onPieces = context.placed.filter((entry) => Math.abs(entry.topMm - zMm) < 1e-6)
+    .map((entry) => ({ id: entry.piece.id, glued: clipPolygons(piece.polygons, entry.piece.polygons, "intersection") }))
+    .filter((entry) => area(entry.glued) > TOUCH_MM2);
   const sheet = context.layers.findIndex((layer) => Math.abs((layer.index + 1) * context.woodMm - zMm) < 1e-6);
   const surface = sheet >= 0 ? clipPolygons(context.layers[sheet]!.polygons, context.layers[sheet + 1]?.polygons ?? [], "difference") : [];
-  const contact = [...under, ...surface];
-  return contact.length > 0 && area(clipPolygons(piece.polygons, contact, "intersection")) >= RESTING_SHARE * pieceArea;
+  const onSheet = surface.length ? clipPolygons(piece.polygons, surface, "intersection") : [];
+  const glued = [...onPieces.flatMap((entry) => entry.glued), ...onSheet];
+  return { glued, areaMm2: area(glued), pieceIds: onPieces.map((entry) => entry.id), onTerrain: area(onSheet) > TOUCH_MM2 };
+}
+
+/**
+ * Pieces glued face to face are one rigid stack. A stack glued to the terrain
+ * stands on it; any other hangs on the rods under its pieces, which must
+ * surround its centre of mass (pieces are one thickness, so their areas weigh).
+ * A stack no wider than a small piece may hang on two, as a small piece does.
+ */
+interface GluedStack { ids: string[]; grounded: boolean; areaMm2: number; largestMm2: number; moment: Point2D; points: Point2D[] }
+
+/** The stack a newly placed piece makes with the stacks it is glued to. */
+function joinStack(stacks: Map<string, GluedStack>, piece: AirspacePieceIR, contact: Contact): GluedStack {
+  const pieceArea = area(piece.polygons);
+  const middle = centroid(piece.polygons);
+  const joined = [...new Set(contact.pieceIds.flatMap((id) => stacks.get(id) ?? []))];
+  const stack: GluedStack = {
+    ids: [piece.id, ...joined.flatMap((entry) => entry.ids)],
+    grounded: contact.onTerrain || joined.some((entry) => entry.grounded),
+    areaMm2: pieceArea + joined.reduce((sum, entry) => sum + entry.areaMm2, 0),
+    largestMm2: Math.max(pieceArea, ...joined.map((entry) => entry.largestMm2)),
+    moment: joined.reduce((sum, entry) => ({ x: sum.x + entry.moment.x, y: sum.y + entry.moment.y }), { x: middle.x * pieceArea, y: middle.y * pieceArea }),
+    points: joined.flatMap((entry) => entry.points),
+  };
+  for (const id of stack.ids) stacks.set(id, stack);
+  return stack;
+}
+
+/** True when a hanging stack's centre of mass is outside the rods under it. */
+function leans(stack: GluedStack, points = stack.points): boolean {
+  if (stack.grounded || stack.largestMm2 < SMALL_PIECE_MM2) return false;
+  const hull = convexHull(points);
+  return hull.length < 4 || !pointInRing({ x: stack.moment.x / stack.areaMm2, y: stack.moment.y / stack.areaMm2 }, hull);
+}
+
+/**
+ * Rods under the parts of a resting piece off the glue: where it reaches more
+ * than half a span from the glue, and until its stack no longer leans. Rods
+ * never stand on a piece of the same stack, which would not hold it up.
+ * Undefined when they cannot do both, unless `partial`.
+ */
+function holdOverhang(candidates: Candidate[], far: Point2D[], stack: GluedStack, glued: PreparedPolygons, rod: AirspaceRodSettingsV1, partial: boolean): Candidate[] | undefined {
+  const reach = MAX_SPAN_MM / 2;
+  const distance = (a: Point2D, b: Point2D) => Math.hypot(a.x - b.x, a.y - b.y);
+  const own = new Set(stack.ids);
+  const usable = candidates.filter((candidate) => !pointInPreparedPolygons(candidate.point, glued) && !(candidate.seat.kind === "piece" && own.has(candidate.seat.pieceId)));
+  const chosen: Candidate[] = [];
+  const points = (extra: Candidate[] = []) => [...stack.points, ...chosen.map((entry) => entry.point), ...extra.map((entry) => entry.point)];
+  const open = () => far.filter((sample) => !points().some((point) => distance(point, sample) <= reach));
+  while ((open().length || leans(stack, points())) && chosen.length < MAX_COLUMNS_PER_PIECE) {
+    const uncovered = open();
+    let best: Candidate | undefined;
+    let bestScore = 0;
+    for (const candidate of usable) {
+      if (chosen.some((entry) => distance(entry.point, candidate.point) < rod.sizeMm * 2)) continue;
+      // Cover the far parts first; then spread from the rods already under the stack, best of all
+      // to a point that brings its centre of mass inside them.
+      const spread = Math.min(...points().map((point) => distance(point, candidate.point)));
+      const score = uncovered.length
+        ? uncovered.filter((sample) => distance(candidate.point, sample) <= reach).length
+        : (leans(stack, points([candidate])) ? 0 : MAX_SPAN_MM * 10) + spread;
+      if (score > bestScore) { bestScore = score; best = candidate; }
+    }
+    if (!best) break;
+    chosen.push(best);
+  }
+  if (!open().length && !leans(stack, points())) return chosen;
+  return partial && chosen.length ? chosen : undefined;
+}
+
+/**
+ * Columns for a piece from the candidates `choose` accepts. With through rods:
+ * on the shared grid, then the piece's own finer grid (which finds room the
+ * shared one misses on a small piece or rugged ground), then glued segments
+ * clear of every through rod rather than none.
+ */
+function holdPiece(context: Context, piece: AirspacePieceIR, prepared: PreparedPolygons, zMm: number, choose: (candidates: Candidate[]) => Candidate[] | undefined): { columns: Candidate[]; segmented: boolean } | undefined {
+  const through = context.rods;
+  const margin = context.rodRadius + PIECE_EDGE_MM;
+  const fine = candidatePoints(piece, prepared, margin).valid;
+  if (!through) {
+    const columns = choose(fine.flatMap((point) => seatAt(context, point, zMm) ?? []));
+    return columns && { columns, segmented: false };
+  }
+  const shared = candidatePoints(piece, prepared, margin, context.rodSpacingMm).valid.filter((point) => !crowded(context, point));
+  const open = fine.filter((point) => !crowded(context, point));
+  const columns = choose(shared.flatMap((point) => throughAt(context, point, zMm) ?? [])) ?? choose(open.flatMap((point) => throughAt(context, point, zMm) ?? []));
+  if (columns) return { columns, segmented: false };
+  const segments = choose([...shared, ...open].filter((point) => !through.has(pointKey(point))).flatMap((point) => seatAt(context, point, zMm) ?? []));
+  return segments && { columns: segments, segmented: true };
 }
 
 /**
@@ -289,48 +390,53 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   };
   const standing: Standing[] = [];
   const unsupported: string[] = [];
+  const overhanging: string[] = [];
+  const stacks = new Map<string, GluedStack>();
+  const stand = (piece: AirspacePieceIR, zMm: number, held: { columns: Candidate[]; segmented: boolean }, glued: GluedStack) => {
+    const through = context.rods;
+    for (const column of held.columns) {
+      glued.points.push(column.point);
+      // A through rod glued where it passes a piece holds that piece's stack too.
+      for (const id of column.passes ?? []) if (stacks.get(id) !== glued) stacks.get(id)?.points.push(column.point);
+      if (!through || held.segmented) {
+        standing.push({ ...column, headPieceId: piece.id, topMm: zMm });
+        context.segmentPoints.set(pointKey(column.point), column.point);
+      } else if (column.rod) {
+        // The rod rises on through the piece it held, which now hangs on it at its own height.
+        column.rod.throughPieceIds = column.passes ?? [];
+        column.rod.headPieceId = piece.id;
+        column.rod.topMm = zMm;
+      } else {
+        through.set(pointKey(column.point), { point: column.point, seat: column.seat, bottomMm: column.bottomMm, topMm: zMm, headPieceId: piece.id, throughPieceIds: column.passes ?? [] });
+      }
+    }
+  };
   for (const level of [...stack.levels].sort((a, b) => a.zMm - b.zMm)) {
     level.pieces = level.pieces.filter((piece) => {
       const prepared = preparePolygons(piece.polygons);
       const placed: Placed = { piece, zMm: level.zMm, topMm: level.zMm + stack.thicknessMm, prepared };
-      if (resting(context, piece, level.zMm)) {
+      const { samples } = candidatePoints(piece, prepared, context.rodRadius + PIECE_EDGE_MM);
+      const contact = contactOf(context, piece, level.zMm);
+      if (contact.areaMm2 >= RESTING_SHARE * area(piece.polygons)) {
         piece.resting = true;
+        const glued = joinStack(stacks, piece, contact);
+        const gluedPrepared = preparePolygons(contact.glued);
+        const far = samples.filter((sample) => !pointInPreparedPolygons(sample, gluedPrepared) && clearOfEdges(sample, gluedPrepared, MAX_SPAN_MM / 2));
+        if (far.length || leans(glued)) {
+          const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, rod, false))
+            ?? holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, rod, true));
+          if (held) stand(piece, level.zMm, held, glued);
+          if (far.some((sample) => !glued.points.some((point) => Math.hypot(point.x - sample.x, point.y - sample.y) <= MAX_SPAN_MM / 2)) || leans(glued)) overhanging.push(piece.id);
+        }
         context.placed.push(placed);
         return true;
       }
-      const through = context.rods;
-      const margin = context.rodRadius + PIECE_EDGE_MM;
-      const { valid, samples } = candidatePoints(piece, prepared, margin, through ? context.rodSpacingMm : undefined);
-      let columns = chooseColumns(piece, valid.flatMap((point) => (through ? (crowded(context, point) ? undefined : throughAt(context, point, level.zMm)) : seatAt(context, point, level.zMm)) ?? []), samples, rod);
-      let segmented = false;
-      if (through && !columns) {
-        // Off the shared grid, the piece's own finer grid finds room the shared one misses (a small
-        // piece, rugged ground). Failing a through rod there, it stands on glued segments, clear of
-        // every through rod, rather than being left out.
-        const fine = candidatePoints(piece, prepared, margin).valid.filter((point) => !crowded(context, point));
-        columns = chooseColumns(piece, fine.flatMap((point) => throughAt(context, point, level.zMm) ?? []), samples, rod);
-        segmented = !columns;
-        if (segmented) columns = chooseColumns(piece, [...valid, ...fine].filter((point) => !through.has(pointKey(point)) && !crowded(context, point)).flatMap((point) => seatAt(context, point, level.zMm) ?? []), samples, rod);
-      }
-      if (!columns) {
+      const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => chooseColumns(piece, candidates, samples, rod));
+      if (!held) {
         unsupported.push(piece.id);
         return false;
       }
-      for (const column of columns) {
-        if (!through || segmented) {
-          standing.push({ ...column, headPieceId: piece.id, topMm: level.zMm });
-          context.segmentPoints.set(pointKey(column.point), column.point);
-          continue;
-        }
-        if (column.rod) {
-          // The rod rises on through the piece it held, which now hangs on it at its own height.
-          column.rod.throughPieceIds = column.passes ?? [];
-          column.rod.headPieceId = piece.id;
-          column.rod.topMm = level.zMm;
-        } else {
-          through.set(pointKey(column.point), { point: column.point, seat: column.seat, bottomMm: column.bottomMm, topMm: level.zMm, headPieceId: piece.id, throughPieceIds: column.passes ?? [] });
-        }
-      }
+      stand(piece, level.zMm, held, joinStack(stacks, piece, contact));
       context.placed.push(placed);
       return true;
     });
@@ -339,6 +445,10 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   if (unsupported.length) warnings.push({
     code: "AIRSPACE_PIECE_UNSUPPORTED",
     message: `${unsupported.length} airspace ${unsupported.length === 1 ? "piece was" : "pieces were"} left out because no rod could hold ${unsupported.length === 1 ? "it" : "them"} clear of the terrain and the pieces below. A thinner rod helps.`,
+  });
+  if (overhanging.length) warnings.push({
+    code: "AIRSPACE_OVERHANG",
+    message: `${overhanging.length} glued airspace ${overhanging.length === 1 ? "sheet reaches" : "sheets reach"} past the rods that could stand under ${overhanging.length === 1 ? "it" : "them"}. Prop ${overhanging.length === 1 ? "it" : "them"} while the glue sets.`,
   });
   if (context.rods) {
     for (const entry of context.rods.values()) standing.push({ point: entry.point, seat: entry.seat, bottomMm: entry.bottomMm, headPieceId: entry.headPieceId, topMm: entry.topMm, ...(entry.throughPieceIds.length ? { throughPieceIds: entry.throughPieceIds } : {}) });

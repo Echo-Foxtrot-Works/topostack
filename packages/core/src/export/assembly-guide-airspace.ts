@@ -91,6 +91,8 @@ export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceC
   // Rods rising from the terrain; where none could reach a piece, short segments stand on the piece below.
   const rising = airspace.columns.filter((column) => column.segments.length === 1 && column.segments[0]!.seat.kind === "terrain");
   const standingOnPieces = segments.some((segment) => segment.seat.kind === "piece");
+  const restingIds = new Set(airspace.levels.flatMap(({ level }) => level.pieces.filter((piece) => piece.resting).map((piece) => piece.id)));
+  const overhangRods = segments.some((segment) => restingIds.has(segment.headPieceId));
   const heightRows = through ? rising.map((column) => {
     const rod = column.segments[0]!;
     const held = [...(rod.throughPieceIds ?? []), rod.headPieceId].map((id) => `<strong>${escapeXml(id)}</strong> at ${length((zOf.get(id) ?? rod.topMm) - faceMm(rod))}${id === rod.headPieceId ? " (on top)" : ""}`).join(", ");
@@ -100,7 +102,7 @@ export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceC
     const rods = rodsUnder(level);
     const lengths = [...new Set(rods.map((segment) => segment.rodId))].map((id) => `${rods.filter((segment) => segment.rodId === id).length} × ${id}`).join(", ");
     const resting = level.pieces.filter((piece) => piece.resting).map((piece) => piece.id);
-    return `<tr><td>${level.index + 1}</td><td>${feet(level.altitudeFt)}${level.mergedFt.length ? ` <span class="muted">(with ${level.mergedFt.map(feet).join(", ")})</span>` : ""}</td><td>${length(level.zMm)}</td><td>${level.pieces.map((piece) => escapeXml(piece.id)).join(", ")}</td><td>${lengths || (resting.length ? "glued on the level below" : "")}</td><td>${files.map((file) => `<code>${escapeXml(file)}</code>`).join("<br>")}</td></tr>`;
+    return `<tr><td>${level.index + 1}</td><td>${feet(level.altitudeFt)}${level.mergedFt.length ? ` <span class="muted">(with ${level.mergedFt.map(feet).join(", ")})</span>` : ""}</td><td>${length(level.zMm)}</td><td>${level.pieces.map((piece) => escapeXml(piece.id)).join(", ")}</td><td>${[lengths, resting.length ? "glued on the level below" : ""].filter(Boolean).join("; ")}</td><td>${files.map((file) => `<code>${escapeXml(file)}</code>`).join("<br>")}</td></tr>`;
   }).join("");
   const cutRows = airspace.cutList.map((rod) => `<tr><td><strong>${escapeXml(rod.id)}</strong></td><td>${length(rod.lengthMm)}</td><td>${rod.count}</td></tr>`).join("");
   const steps = [
@@ -115,7 +117,7 @@ export function airspaceSection(airspace: GuideAirspace, context: GuideAirspaceC
       "Build the airspace from the lowest level up. For each level, stand its rods where the map shows them: in their sockets in the terrain, or on the rod outlines engraved on the pieces below, with a dot of glue.",
       "Peel the underside film off the level's pieces, dry-fit them so every rod meets the outline engraved on the piece (seen through the acrylic), then glue each rod top with a small drop and let it set before the next level.",
     ]),
-    ...(airspace.form === "volumes" ? ["Stacked sheets of a volume are glued face to face on the sheet below with thin, even beads, so no rod is needed between them."] : []),
+    ...(airspace.form === "volumes" ? [`Stacked sheets of a volume are glued face to face on the sheet below with thin, even beads, so no rod is needed between them.${overhangRods ? " Where a sheet reaches out past the one below, rods stand under the part that reaches, as the map shows; stand them before gluing the sheet on." : ""}`] : []),
     "Peel the top films last.",
   ];
   return `<section class="page">

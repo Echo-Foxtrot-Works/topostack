@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pointInPolygon, ringBounds } from "../primitives/geometry2d.js";
 import { parsePathPoints } from "../test-support/sources.js";
-import { build, core, plain, project, shelf, square, volume, SHELF, CEILING } from "../test-support/airspace.js";
+import { build, cap, core, plain, project, shelf, square, stem, volume, SHELF, CEILING } from "../test-support/airspace.js";
 import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import type { FabricationPackageV1, GeometryIRV1, ProjectConfigV1 } from "../types.js";
 import { buildFabricationPackage } from "./packages.js";
@@ -114,6 +114,13 @@ describe("airspace export", { timeout: 60_000 }, () => {
     const panel = await text(pkg, `-airspace-blue-${String(holed + 1).padStart(2, "0")}.svg`);
     const cut = panel.slice(panel.indexOf('<g id="CUT"'));
     expect((cut.match(/M/g) ?? []).length).toBeGreaterThan(1);
+  });
+
+  it("tells the maker to stand rods under a volume sheet that reaches past the one below", async () => {
+    const leaning = build({ form: "volumes" }, [stem, cap], named);
+    const guide = await text(packaged(leaning, { form: "volumes" }), "-assembly-guide.html");
+    expect(guide).toContain("rods stand under the part that reaches");
+    expect(guide).toMatch(/\d+ × R\d+; glued on the level below/);
   });
 
   it("puts each piece on its own panel when a level outgrows the work area", () => {
