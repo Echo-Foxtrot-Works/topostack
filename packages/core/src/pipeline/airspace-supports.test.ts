@@ -4,7 +4,7 @@ import { DEFAULT_AIRSPACE_STACK } from "./airspace-settings.js";
 import { placeAirspaceSupports, rodFootprint } from "./airspace-supports.js";
 import { hiddenMarkIssues } from "./hidden-marks.js";
 import { pointInRing } from "../primitives/geometry2d.js";
-import { build, core, inside, shelf, square, t, tower } from "../test-support/airspace.js";
+import { build, cap, core, inside, shelf, square, stem, t, tower } from "../test-support/airspace.js";
 
 const pieces = (stack: AirspaceStackIR) => new Map(stack.levels.flatMap((level) => level.pieces.map((piece) => [piece.id, { piece, zMm: level.zMm }] as const)));
 
@@ -94,6 +94,17 @@ describe("airspace supports in a generated stack", () => {
     checkSupports(result);
   });
 
+  it("stands rods under the sheets that widen a floating volume past the rods under its base", () => {
+    const result = build({ form: "volumes" }, [stem, cap]);
+    const stack = result.airspaceStack!;
+    checkSupports(result);
+    const resting = new Set(stack.levels.flatMap((level) => level.pieces.filter((piece) => piece.resting).map((piece) => piece.id)));
+    const under = stack.columns.filter((column) => column.segments.some((segment) => resting.has(segment.headPieceId)));
+    expect(under.length).toBeGreaterThan(0);
+    expect(under.every((column) => column.point.y > -10)).toBe(true);
+    expect(result.warnings.map((warning) => warning.code)).not.toContain("AIRSPACE_OVERHANG");
+  });
+
   it("goes through the bottom sheet onto a backing sheet over ground at the land minimum", () => {
     const stack = build({ form: "plates" }, [core, shelf]).airspaceStack!;
     expect(stack.backingSheet).toBe(true);
@@ -181,6 +192,68 @@ describe("airspace supports on their own", () => {
     expect(warnings).toEqual([]);
     expect(result.columns.length).toBeGreaterThanOrEqual(2);
     for (const column of result.columns) expect(column.point.y % 8).not.toBe(0);
+  });
+
+  describe("glued stacks", () => {
+    const levels = (...entries: Array<[number, AirspacePieceIR[]]>): AirspaceStackIR => ({
+      ...stack(entries[0]![1][0]!), form: "volumes", topMm: entries.at(-1)![0] + 3,
+      levels: entries.map(([zMm, pieces], index) => ({ index, altitudeFt: 5_000 + index * 500, mergedFt: [], zMm, pieces })),
+    });
+    const flat = () => [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, 100, 100))];
+    const heads = (result: AirspaceStackIR, id: string) => result.columns.filter((column) => column.segments.some((segment) => segment.headPieceId === id));
+
+    it.each(["segments", "through"] as const)("stands %s rods under a sheet that leans its floating stack past the rods below", (joint) => {
+      // The base hangs on rods at the west end; the sheet glued on it reaches 100 mm east.
+      const result = levels([30, [plate("A1-1", square(-80, -30, -20, 30))]], [33, [plate("A2-1", square(-80, -30, 80, 30))]]);
+      result.rod = { ...result.rod, joint };
+      const warnings: GeometryIRV1["warnings"] = [];
+      placeAirspaceSupports(result, flat(), [], 3, 0.8, warnings);
+      expect(warnings).toEqual([]);
+      const top = result.levels[1]!.pieces[0]!;
+      expect(top.resting).toBe(true);
+      const under = heads(result, "A2-1");
+      expect(under.length).toBeGreaterThan(0);
+      for (const column of under) {
+        expect(column.point.x).toBeGreaterThan(-20);
+        expect(column.segments.every((segment) => segment.seat.kind === "terrain")).toBe(true);
+      }
+      // The stack's centre of mass, 3,600 mm² at x -50 and 9,600 at 0, is inside every rod under it.
+      expect(convexContains(result.columns.map((column) => column.point), { x: (-50 * 3_600) / 13_200, y: 0 })).toBe(true);
+    });
+
+    it("stands rods under a sheet glued to the terrain where it reaches too far from the glue", () => {
+      // The terrain's top sheet ends at x -30: the plate lies glued on it there and reaches 110 mm past.
+      const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, -30, 100))];
+      const warnings: GeometryIRV1["warnings"] = [];
+      const result = levels([6, [plate("A1-1", square(-80, -30, 80, 30))]]);
+      placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+      expect(warnings).toEqual([]);
+      expect(result.levels[0]!.pieces[0]!.resting).toBe(true);
+      const under = heads(result, "A1-1");
+      expect(under.length).toBeGreaterThan(0);
+      expect(under.every((column) => column.point.x > -30)).toBe(true);
+      // Its far corners are within half a span of a rod.
+      for (const corner of [{ x: 80, y: -30 }, { x: 80, y: 30 }]) expect(under.some((column) => Math.hypot(column.point.x - corner.x, column.point.y - corner.y) <= 75)).toBe(true);
+    });
+
+    it("never stands a rod of no length under a piece lying partly on another", () => {
+      const result = levels([30, [plate("A1-1", square(-80, -30, -20, 30))]], [33, [plate("A2-1", square(-30, -30, 80, 30))]]);
+      placeAirspaceSupports(result, flat(), [], 3, 0.8, []);
+      expect(result.levels[1]!.pieces[0]!.resting).toBeFalsy();
+      const segments = result.columns.flatMap((column) => column.segments);
+      expect(segments.every((segment) => segment.topMm - segment.bottomMm > 1)).toBe(true);
+      expect(heads(result, "A2-1").every((column) => column.point.x > -20)).toBe(true);
+    });
+
+    it("hangs a stack of small sheets on the two rods under its base", () => {
+      const small = (id: string) => plate(id, square(0, 0, 40, 40));
+      const warnings: GeometryIRV1["warnings"] = [];
+      const result = levels([30, [small("A1-1")]], [33, [small("A2-1")]], [36, [small("A3-1")]]);
+      placeAirspaceSupports(result, flat(), [], 3, 0.8, warnings);
+      expect(warnings).toEqual([]);
+      expect(result.columns).toHaveLength(2);
+      expect(heads(result, "A1-1")).toHaveLength(2);
+    });
   });
 
   it("leaves out a piece too narrow for a rod, and says so", () => {

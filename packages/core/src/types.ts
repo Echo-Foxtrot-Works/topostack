@@ -1158,7 +1158,8 @@ export type GeometryWarningCode =
   | "AIRSPACE_PIECES_DROPPED"
   | "AIRSPACE_TALL"
   | "AIRSPACE_ACRYLIC_HEAVY"
-  | "AIRSPACE_PIECE_UNSUPPORTED";
+  | "AIRSPACE_PIECE_UNSUPPORTED"
+  | "AIRSPACE_OVERHANG";
 
 export interface GeometryWarning {
   code: GeometryWarningCode;

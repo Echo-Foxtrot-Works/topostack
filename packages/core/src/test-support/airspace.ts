@@ -41,6 +41,9 @@ export const shelf: AirspaceVolumeV1 = {
   polygons: [{ outer: square(-140, -60, 110, 60), holes: [square(19.98, -30.02, 80.02, 30.02).reverse()] }],
 };
 export const tower = volume("tower", "class-d", circleRing(50, 0, 12), { ref: "sfc", ft: 0 }, { ref: "msl", ft: sheetsUp(16) });
+// A floating volume that widens three sheets up, so the stack leans north past the rods under its base.
+export const stem = volume("stem", "class-b", square(40, -60, 100, -10), { ref: "msl", ft: sheetsUp(8) }, { ref: "msl", ft: sheetsUp(14) });
+export const cap = volume("cap", "class-b", square(40, -60, 100, 90), { ref: "msl", ft: sheetsUp(11) }, { ref: "msl", ft: sheetsUp(14) });
 
 export function build(settings: Partial<AirspaceStackSettingsV1>, volumes: AirspaceVolumeV1[] | undefined, config: Partial<ProjectConfigV1> = {}): GeometryIRV1 {
   const airspaceStack = { ...DEFAULT_AIRSPACE_STACK, ...settings, classes: { ...DEFAULT_AIRSPACE_STACK.classes, ...settings.classes } };
