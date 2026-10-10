@@ -13,8 +13,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@loidolt/theme-styles": "^0.9.1",
-    "@loidolt/theme-svelte": "^0.9.1",
+    "@loidolt/theme-styles": "^0.10.0",
+    "@loidolt/theme-svelte": "^0.10.0",
     "@lucide/svelte": "^1.52.0",
     "@mapbox/vector-tile": "^3.0.0",
     "@topostack/core": "*",

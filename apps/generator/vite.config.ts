@@ -27,7 +27,9 @@ export default defineConfig({
             { name: "theme-styles", test: /node_modules\/@loidolt\/.*\.css(?:\?|$)/, priority: 50 },
             { name: "three", test: /node_modules\/three/, priority: 40 },
             { name: "maplibre", test: /node_modules\/maplibre-gl/, priority: 40 },
-            { name: "ui", test: /node_modules\/(?:@lucide\/svelte|svelte|bits-ui)/, priority: 30 },
+            // Split by consumer, so the homepage does not load UI code only the
+            // studio uses (the settings rail's tabs and their roving focus).
+            { name: "ui", test: /node_modules\/(?:@lucide\/svelte|svelte|bits-ui)/, priority: 30, entriesAware: true },
             // The geometry engine is many small modules that the studio, its worker,
             // and the packaging code import in different subsets. Left to itself
             // the bundler splits them per consumer, which costs more in chunk
