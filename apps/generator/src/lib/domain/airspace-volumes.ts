@@ -34,7 +34,12 @@ export interface AirspaceVolumeData {
 }
 
 /** Which sectors a load reads: Class B, C and D, special use airspace, or both. */
-export interface AirspaceVolumeRequest { classes: boolean; specialUse: boolean }
+export interface AirspaceVolumeRequest {
+  classes: boolean;
+  specialUse: boolean;
+  /** When present, discard disabled classes before ranking and truncation. */
+  classFilter?: Pick<NonNullable<ProjectConfigV1["airspaceStack"]>["classes"], "B" | "C" | "D">;
+}
 
 /** @public Wired into the source loader with the airspace stack setting (plan phase 2). */
 export async function loadAirspaceVolumes(
@@ -50,6 +55,12 @@ export async function loadAirspaceVolumes(
   const archive = createArchive(`${apiBase()}/v1/aviation.pmtiles`, signal);
   const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
   const { nasrCycle } = parseAviationArchiveMetadata(metadata);
+  // Older archives have chart linework but no 3D sectors. Missing layers are
+  // unavailable data, not evidence that the crop contains no airspace.
+  const published = (metadata as { vector_layers?: Array<{ id?: string }> }).vector_layers;
+  if (!Array.isArray(published) || [...layers].some((name) => !published.some((layer) => layer?.id === name))) {
+    throw new Error("The aviation archive does not publish the requested airspace volume layers.");
+  }
   signal?.throwIfAborted();
   // The layers stop at AIRSPACE_VOLUME_MAX_ZOOM; deeper tiles would hold none of them.
   const { window, projectPoint } = archiveTileWindow(header, bounds, Math.min(Math.round(requestedZoom) + 1, AIRSPACE_VOLUME_MAX_ZOOM), config);
@@ -68,8 +79,9 @@ export async function loadAirspaceVolumes(
         if (feature.type !== 3) continue;
         const properties = parseAviationProperties(layerName, feature.properties);
         if (!properties) continue;
+        if ("class" in properties && request.classFilter && !request.classFilter[properties.class]) continue;
         const geometry = feature.loadGeometry();
-        consumeGeometry(geometry);
+        consumeGeometry(geometry, true);
         const polygons = projectedPolygons(geometry, (point) => projectPoint(tile, feature.extent, point));
         if (polygons.length) pieces.push({ key: `${layerName === "airspace_volumes" ? "class" : "sua"}-${properties.sector}`, properties, polygons });
       }
@@ -84,17 +96,23 @@ export async function loadAirspaceVolumes(
     else sectors.set(piece.key, { properties: piece.properties, polygons: [...piece.polygons] });
   }
   const crop = cropRectangle(config.widthMm, config.heightMm);
-  const volumes = [...sectors].flatMap(([id, { properties, polygons }]): AirspaceVolumeV1[] => {
-    const inside = sectorInCrop(polygons, crop, config.minimumFeatureMm);
-    return inside.length ? [volume(id, properties, inside)] : [];
-  });
+  const volumes: AirspaceVolumeV1[] = [];
+  let partial = false;
+  let sectorIndex = 0;
+  for (const [id, { properties, polygons }] of sectors) {
+    if (sectorIndex++ % 16 === 0) await yieldForCancellation(signal);
+    const result = sectorInCrop(polygons, crop, config.minimumFeatureMm);
+    partial ||= result.partial;
+    if (result.polygons.length) volumes.push(volume(id, properties, result.polygons));
+  }
+  signal?.throwIfAborted();
   const ranked = volumes
     .map((item) => ({ item, area: item.polygons.reduce((sum, polygon) => sum + polygonArea(polygon), 0) }))
     .sort((left, right) => right.area - left.area || left.item.id.localeCompare(right.item.id))
     .map(({ item }) => item);
   return {
     volumes: ranked.slice(0, MAX_AIRSPACE_VOLUMES),
-    status: ranked.length > MAX_AIRSPACE_VOLUMES ? "partial" : "available",
+    status: partial || ranked.length > MAX_AIRSPACE_VOLUMES ? "partial" : "available",
     cycle: nasrCycle,
   };
 }
@@ -109,19 +127,19 @@ const toMultiPolygon = (polygons: Polygon2D[]): MultiPolygon => polygons.map((po
   [polygon.outer, ...polygon.holes].map((ring) => ring.map((point) => [point.x, point.y] as Pair)));
 
 /** One sector's tile pieces unioned and cut to the crop; the buffers tiles share overlap exactly. */
-function sectorInCrop(polygons: Polygon2D[], crop: MultiPolygon, minimumFeatureMm: number): Polygon2D[] {
+function sectorInCrop(polygons: Polygon2D[], crop: MultiPolygon, minimumFeatureMm: number): { polygons: Polygon2D[]; partial: boolean } {
   const pieces = toMultiPolygon(polygons);
   try {
-    return multiPolygonToAreas(polygonClipping.intersection(polygonClipping.union(pieces[0]!, ...pieces.slice(1)), crop), minimumFeatureMm);
+    return { polygons: multiPolygonToAreas(polygonClipping.intersection(polygonClipping.union(pieces[0]!, ...pieces.slice(1)), crop), minimumFeatureMm), partial: false };
   } catch {
     // polygon-clipping can refuse near-degenerate input; cut the pieces one by one instead of losing the sector.
-    return pieces.flatMap((piece) => {
+    return { partial: true, polygons: pieces.flatMap((piece) => {
       try {
         return multiPolygonToAreas(polygonClipping.intersection([piece], crop), minimumFeatureMm);
       } catch {
         return [];
       }
-    });
+    }) };
   }
 }
 

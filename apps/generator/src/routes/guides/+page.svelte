@@ -4,7 +4,7 @@
   import { DOCS_NAV } from "$lib/site/docs";
 </script>
 
-<Article title="Guides" intro="Everything you need to turn real terrain into a finished piece: step-by-step workflows, how terrain and lake depths are built, and where the map data comes from.">
+<Article title="Guides" intro="Everything you need to turn real terrain into a finished piece: step-by-step workflows, airspace in acrylic, how terrain and lake depths are built, and where the map data comes from.">
   {#each DOCS_NAV as group (group.id)}
     <section id={group.id} aria-labelledby={`${group.id}-title`}>
       <h2 id={`${group.id}-title`}>{group.title}</h2>

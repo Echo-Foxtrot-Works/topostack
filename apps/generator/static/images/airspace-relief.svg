@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="280" viewBox="0 0 460 280" fill="none">
+  <title>Airspace centered above an airport</title>
+  <desc>A compact line illustration of three widening airspace shelves on rods, centered over the airport on a layered terrain map. The footprints and heights are conceptual, not an aviation chart.</desc>
+  <g stroke="#c54b1e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <g opacity=".25" stroke-width="1" stroke-dasharray="3 6">
+      <path d="M230 45V65M72 108V218M388 108V218"/>
+    </g>
+    <g opacity=".35" stroke-width="1">
+      <path d="M50 212 230 271 410 212M50 208V218M230 267V275M410 208V218"/>
+      <path d="M402 108H417V186H402M412 108H421M412 186H421"/>
+    </g>
+    <!-- The map's projected center is (230, 204), also the airport center. -->
+    <path d="M65 204 230 150 395 204 230 258Z"/>
+    <path d="M65 204V216L230 270 395 216V204M230 258V270"/>
+    <path d="M65 208 230 262 395 208M65 212 230 266 395 212" opacity=".55"/>
+    <!-- Inset and compress the terrain contours to fit the projected map face. -->
+    <g opacity=".5" transform="translate(48 65) scale(.7)">
+      <path d="M86 201C104 190 109 172 139 172C161 171 164 184 181 183C194 183 211 186 211 195C210 206 192 211 171 213C142 218 100 213 86 201Z"/>
+      <path d="M105 194C119 184 120 178 140 178C157 179 160 189 175 189C190 190 192 197 177 202C155 209 115 205 105 194Z"/>
+      <path d="M124 191C132 180 149 182 154 188C160 194 172 191 172 197C164 202 137 200 124 191Z"/>
+      <path d="M139 190C144 186 155 190 157 195C151 197 141 195 139 190Z"/>
+    </g>
+    <!-- The runway crossing shares the shelves' vertical centerline. -->
+    <g transform="translate(230 204) rotate(-18)" stroke-width="1.5">
+      <path d="M-20 0H20M-13 6H13M-6-12 6 12"/>
+      <path d="M-18-3V3M18-3V3" stroke-width="1"/>
+    </g>
+    <!-- Two quiet supports connect the shelves to the map's top face. -->
+    <g opacity=".3" stroke-width="1">
+      <path d="M184 204V152M276 204V152"/>
+    </g>
+    <!-- All shelf centers are x=230, directly above the airport. -->
+    <!-- Fainter rear edges leave three distinct, stronger front edges. -->
+    <path d="M169 168a61 18 0 0 1 122 0" opacity=".35"/>
+    <path d="M169 168a61 18 0 0 0 122 0" stroke-width="1.5"/>
+    <path d="M169 168V171C169 181 196 189 230 189S291 181 291 171V168" opacity=".55"/>
+    <path d="M126 140a104 31 0 0 1 208 0" opacity=".35"/>
+    <path d="M126 140a104 31 0 0 0 208 0" stroke-width="1.5"/>
+    <path d="M126 140V143C126 160 173 174 230 174S334 160 334 143V140" opacity=".55"/>
+    <path d="M85 110a145 44 0 0 1 290 0" opacity=".35"/>
+    <path d="M85 110a145 44 0 0 0 290 0" stroke-width="1.5"/>
+    <path d="M85 110V113C85 137 150 157 230 157S375 137 375 113V110" opacity=".55"/>
+  </g>
+</svg>

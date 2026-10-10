@@ -1047,6 +1047,11 @@ export type AirspaceTint = "clear" | "blue" | "magenta";
 /** A sector edge engraved on a piece, styled as its class is charted. */
 export interface AirspaceEdgeIR { aviationClass: AviationClass; points: Point2D[] }
 
+/** Source limits retained independently of level merging, terrain stepping and the ceiling cap. */
+export interface AirspaceSectorIR extends Pick<AirspaceVolumeV1, "id" | "name" | "aviationClass" | "specialUseKind" | "floor" | "ceiling" | "ceilingBelow" | "exclusion"> {
+  ceilingCapped: boolean;
+}
+
 /** One acrylic piece of an airspace level. */
 export interface AirspacePieceIR {
   /** `A<level>-<n>`, unique in the stack. */
@@ -1056,8 +1061,10 @@ export interface AirspacePieceIR {
   polygons: Polygon2D[];
   /** Plates: the shelves that start or end at this level, frost-engraved. */
   frost?: Polygon2D[];
-  /** Plates: edges of sectors that pass through this level, inside the piece. */
+  /** Chart edges and special-use hatching, clipped to the piece. */
   edges?: AirspaceEdgeIR[];
+  /** Chart labels and notices engraved on the top face. */
+  markings?: OperationPath[];
   /** The sectors (source volume ids) the piece shows. */
   sectorIds: string[];
   /** Rod outlines engraved on the top face where a segment stands on the piece or is glued under it. */
@@ -1120,6 +1127,8 @@ export interface AirspaceStackIR {
   topMm: number;
   levels: AirspaceLevelIR[];
   rod: AirspaceRodSettingsV1;
+  /** Optional for compatibility with older geometry; original charted limits. */
+  sectors?: AirspaceSectorIR[];
   /** FAA NASR cycle the airspace comes from, for exports and their not-for-navigation notes. */
   cycle?: string;
   columns: AirspaceColumnIR[];
@@ -1161,6 +1170,10 @@ export type GeometryWarningCode =
   | "WATER_INSERT_SKIPPED"
   | "WATER_INSERT_PROUD"
   | "WATER_INSERT_OVERSIZE"
+  | "AIRSPACE_LABELS_OMITTED"
+  | "AIRSPACE_DATA_PARTIAL"
+  | "AIRSPACE_TOO_COMPLEX"
+  | "AIRSPACE_PIECES_OVERLAP"
   | "AIRSPACE_NOT_LOADED"
   | "AIRSPACE_LEVELS_MERGED"
   | "AIRSPACE_TERRACED"
@@ -1186,6 +1199,8 @@ export interface GeometryIRV1 {
   vectorStatus: SourceBundleV1["vectorStatus"];
   aviationStatus?: AviationStatus;
   aviationCycle?: string;
+  /** Status of the volume source used for this layered airspace model. */
+  airspaceStatus?: SourceBundleV1["airspaceStatus"];
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;

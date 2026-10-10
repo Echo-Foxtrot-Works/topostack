@@ -1,0 +1,231 @@
+{
+  "checkedAt": "2026-10-09T22:33:33.279Z",
+  "expected": {
+    "dataset": "faa-aviation-2026-10-01-v2",
+    "sha256": "de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793",
+    "bytes": 38297461,
+    "features": {
+      "airspace": 1643,
+      "airspace_labels": 13278,
+      "sua": 1179,
+      "runways": 8500,
+      "airports": 18832,
+      "navaids": 1523,
+      "obstacles": 184123,
+      "airspace_volumes": 1287,
+      "sua_volumes": 1439
+    },
+    "sources": {
+      "classAirspace": "7057b1a982d5dd5df4d92a5101d222854b415c5ad163d464de36d94100e20201",
+      "airports": "aba48ea877f249d9b8cd63988b14b3432a6a09ad1fbe9561a5e6443c99c03dd0",
+      "navaids": "c169cba36c91ff1f89e914c1ab7f3aa09a3149867b8dc53c2f307920a417682e",
+      "obstacles": "3eedb38beb5c10babf59455c3dfa06d0f7679a132b773afd6ef665b6ba5688d3",
+      "sua": "d856b831f2464c1323d688f3bc46f1827953f8d9658dab023a50de8a745829ab"
+    }
+  },
+  "public": [
+    {
+      "environment": "development",
+      "origin": "https://dev.topostack.app",
+      "manifestStatus": 200,
+      "advertised": {
+        "id": "faa-aviation-2026-10-01-v1",
+        "name": "FAA aeronautical data, NASR cycle 2026-10-01",
+        "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/",
+        "license": "Public domain (U.S. Government work). FAA Aeronautical Information Services; not for navigation.",
+        "version": "2026-10-01",
+        "archive": "/v1/aviation.pmtiles",
+        "optional": true,
+        "maxZoom": 12
+      },
+      "archive": {
+        "status": 206,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "bytes": 35196578,
+        "datasetHeader": "mapzen-terrarium+protomaps-20260905-z12-v1",
+        "cacheStatus": null,
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "cycle": "2026-10-01",
+        "layers": [
+          "airports",
+          "airspace",
+          "airspace_labels",
+          "navaids",
+          "obstacles",
+          "runways",
+          "sua"
+        ],
+        "header": {
+          "minZoom": 5,
+          "maxZoom": 12
+        },
+        "volumeLayerDetails": []
+      }
+    },
+    {
+      "environment": "production",
+      "origin": "https://topostack.app",
+      "manifestStatus": 200,
+      "advertised": {
+        "id": "faa-aviation-2026-10-01-v1",
+        "name": "FAA aeronautical data, NASR cycle 2026-10-01",
+        "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/",
+        "license": "Public domain (U.S. Government work). FAA Aeronautical Information Services; not for navigation.",
+        "version": "2026-10-01",
+        "archive": "/v1/aviation.pmtiles",
+        "optional": true,
+        "maxZoom": 12
+      },
+      "archive": {
+        "status": 206,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "bytes": 35196578,
+        "datasetHeader": "mapzen-terrarium+protomaps-20260905-z12-v1",
+        "cacheStatus": null,
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "cycle": "2026-10-01",
+        "layers": [
+          "airports",
+          "airspace",
+          "airspace_labels",
+          "navaids",
+          "obstacles",
+          "runways",
+          "sua"
+        ],
+        "header": {
+          "minZoom": 5,
+          "maxZoom": 12
+        },
+        "volumeLayerDetails": []
+      }
+    }
+  ],
+  "r2": [
+    {
+      "bucket": "topostack-vector-data-development",
+      "environment": "development",
+      "pointerStatus": 200,
+      "pointer": {
+        "schemaVersion": 1,
+        "logicalKey": "aviation/current.pmtiles",
+        "objectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/40ab9dca-b27c-4832-a7fa-0ebb8cf306bf.pmtiles",
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "sha256": "677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34",
+        "bytes": 35196578,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "verifiedAt": "2026-10-05T18:14:14.046Z",
+        "previousObjectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/801ff40e-be20-402e-b128-daeb847c7387.pmtiles"
+      },
+      "activeArchive": {
+        "status": 206,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "bytes": 35196578,
+        "datasetHeader": null,
+        "cacheStatus": null,
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "cycle": "2026-10-01",
+        "layers": [
+          "airports",
+          "airspace",
+          "airspace_labels",
+          "navaids",
+          "obstacles",
+          "runways",
+          "sua"
+        ],
+        "header": {
+          "minZoom": 5,
+          "maxZoom": 12
+        },
+        "volumeLayerDetails": []
+      },
+      "actualSha256": "677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34",
+      "actualBytes": 35196578,
+      "matchesLocalBuild": false,
+      "legacyObject": {
+        "status": 404,
+        "bytes": 0,
+        "lastModified": null
+      },
+      "localBuildObjects": [
+        {
+          "key": "archives/de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793/d7fa069d-2c15-45cb-9b43-004986528481.pmtiles",
+          "size": 38297461,
+          "uploaded": "2026-10-09T22:24:08.182Z"
+        }
+      ],
+      "stagedVerification": [
+        {
+          "objectKey": "archives/de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793/d7fa069d-2c15-45cb-9b43-004986528481.pmtiles",
+          "uploaded": "2026-10-09T22:24:08.182Z",
+          "dataset": "faa-aviation-2026-10-01-v2",
+          "cycle": "2026-10-01",
+          "layers": [
+            "airports",
+            "airspace",
+            "airspace_labels",
+            "airspace_volumes",
+            "navaids",
+            "obstacles",
+            "runways",
+            "sua",
+            "sua_volumes"
+          ],
+          "sha256": "de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793",
+          "bytes": 38297461,
+          "matchesLocalBuild": true
+        }
+      ]
+    },
+    {
+      "bucket": "topostack-vector-data",
+      "environment": "production",
+      "pointerStatus": 200,
+      "pointer": {
+        "schemaVersion": 1,
+        "logicalKey": "aviation/current.pmtiles",
+        "objectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/a03327f1-979a-402c-b3c0-65689a17f244.pmtiles",
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "sha256": "677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34",
+        "bytes": 35196578,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "verifiedAt": "2026-10-05T18:14:18.777Z",
+        "previousObjectKey": null
+      },
+      "activeArchive": {
+        "status": 206,
+        "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+        "bytes": 35196578,
+        "datasetHeader": null,
+        "cacheStatus": null,
+        "dataset": "faa-aviation-2026-10-01-v1",
+        "cycle": "2026-10-01",
+        "layers": [
+          "airports",
+          "airspace",
+          "airspace_labels",
+          "navaids",
+          "obstacles",
+          "runways",
+          "sua"
+        ],
+        "header": {
+          "minZoom": 5,
+          "maxZoom": 12
+        },
+        "volumeLayerDetails": []
+      },
+      "actualSha256": "677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34",
+      "actualBytes": 35196578,
+      "matchesLocalBuild": false,
+      "legacyObject": {
+        "status": 404,
+        "bytes": 0,
+        "lastModified": null
+      },
+      "localBuildObjects": []
+    }
+  ],
+  "finishedAt": "2026-10-09T22:34:07.793Z"
+}

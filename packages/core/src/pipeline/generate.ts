@@ -311,6 +311,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     vectorStatus: source.vectorStatus,
     ...(source.aviationStatus ? { aviationStatus: source.aviationStatus } : {}),
     ...(source.aviationCycle ? { aviationCycle: source.aviationCycle } : {}),
+    ...(!flatEngraving && config.airspaceStack && source.airspaceStatus ? { airspaceStatus: source.airspaceStatus } : {}),
     lakeDataStatus: source.lakeDataStatus,
     datasetVersion: source.datasetVersion,
     bounds: source.bounds,

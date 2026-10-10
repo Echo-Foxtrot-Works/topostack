@@ -14,7 +14,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { aviationStroke, type GeometryIRV1 } from "@topostack/core";
+  import { airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -35,7 +35,7 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  import { addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
+  import { airspaceBody, airspaceBodyKey, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
   const isEmbedded = getEmbedded();
   let zoom = $state(1);
   let fitDistance = 320;
@@ -65,6 +65,7 @@
     sceneResources: Array<{ dispose: () => void }>;
     /** Extruded layer bodies surviving across rebuilds, by layer id. */
     layerMeshes: Map<string, CachedLayer>;
+    airspaceBodies: Map<string, CachedAirspaceBody>;
   }
 
 
@@ -286,7 +287,7 @@
       controls.removeEventListener("change", requestRender);
       controls.removeEventListener("change", updateZoom);
     };
-    runtime = { renderer, camera, topCamera, topDown: false, controls, rig, content, resizeObserver, frame: 0, environmentTarget, texture, keyLight, detachContextHandlers, requestRender, sceneResources: [], layerMeshes: new Map(), fitSignature: rememberCamera ? savedCamera?.fitSignature : undefined };
+    runtime = { renderer, camera, topCamera, topDown: false, controls, rig, content, resizeObserver, frame: 0, environmentTarget, texture, keyLight, detachContextHandlers, requestRender, sceneResources: [], layerMeshes: new Map(), airspaceBodies: new Map(), fitSignature: rememberCamera ? savedCamera?.fitSignature : undefined };
     requestRender();
     return () => {
       if (!runtime) return;
@@ -322,11 +323,16 @@
       // Decide what survives before tearing the scene down: a style edit leaves
       // every cut polygon alone, so its bodies are detached and re-added rather
       // than re-extruded.
+      const airspace = showAirspace ? activeGeometry.airspaceStack : undefined;
+      const airspaceKeys = new Map(airspace?.levels.flatMap((level) => level.pieces.map((piece) => [piece.id, airspaceBodyKey(piece, airspace.thicknessMm)] as const)) ?? []);
+      const reusedAirspace = new Set([...runtime.airspaceBodies].filter(([id, cached]) => cached.key === airspaceKeys.get(id)).map(([id]) => id));
       const keys = new Map(activeGeometry.layers.map((layer) => [layer.id, layerKey(layer)] as const));
       const reused = new Set([...runtime.layerMeshes].filter(([id, cached]) => cached.key === keys.get(id)).map(([id]) => id));
       const kept = new Set<THREE.Object3D>();
       for (const id of reused) for (const mesh of runtime.layerMeshes.get(id)!.meshes) kept.add(mesh);
+      for (const id of reusedAirspace) for (const mesh of runtime.airspaceBodies.get(id)!.meshes) kept.add(mesh);
       disposeContent(runtime.content, runtime.sceneResources, kept);
+      for (const id of runtime.airspaceBodies.keys()) if (!reusedAirspace.has(id)) runtime.airspaceBodies.delete(id);
       disposeLayerCache(runtime.layerMeshes, reused);
       const style = activeGeometry.lineStyle;
       // The 3D engraving ink is a lighter brown than the flat previews' so it reads on lit wood.
@@ -451,7 +457,6 @@
       // Airspace pieces float at their true height on their rods, tinted as the
       // sectional colours them; clear plates show their frost. Each level rides
       // above the top sheet when the stack is exploded.
-      const airspace = showAirspace ? activeGeometry.airspaceStack : undefined;
       if (airspace?.levels.length) {
         const tints = {
           clear: new THREE.MeshStandardMaterial({ color: 0xdcecf2, transparent: true, opacity: 0.24, roughness: 0.06, metalness: 0, side: THREE.DoubleSide, depthWrite: false }),
@@ -467,27 +472,26 @@
           const stackIndex = activeGeometry.layers.length + position;
           for (const piece of level.pieces) {
             levelLayer.set(piece.id, stackIndex);
-            for (const polygon of piece.polygons) {
-              const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thickness, bevelEnabled: false, curveSegments: 8 }), tints[piece.tint]);
-              mesh.castShadow = false;
-              mesh.renderOrder = 2;
-              addStacked(runtime!.content, mesh, stackIndex, level.zMm);
-            }
+            for (const mesh of airspaceBody(runtime!.airspaceBodies, piece, thickness, tints[piece.tint])) addStacked(runtime!.content, mesh, stackIndex, level.zMm);
             const top = level.zMm + thickness + markingLift(thickness);
-            for (const polygon of piece.frost ?? []) {
-              const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), frostMaterial);
-              mesh.renderOrder = 3;
-              addStacked(runtime!.content, mesh, stackIndex, top);
-            }
             if (omitMarkings) continue;
             const edgeBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
-            for (const edge of piece.edges ?? []) {
-              const material = lineMaterials[markingStyleKey({ kind: "aviation", operation: "engrave", aviationClass: edge.aviationClass })];
-              let batch = edgeBatches.get(material);
-              if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
-              appendPolyline(batch, edge.points);
+            const labelBatch: LineBatch = { positions: [] };
+            for (const marking of airspacePieceMarkings(piece)) {
+              if (marking.filled && marking.points.length > 2) {
+                const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon({ outer: marking.points, holes: marking.holes ?? [] }), 8), frostMaterial);
+                mesh.renderOrder = 3;
+                addStacked(runtime!.content, mesh, stackIndex, top);
+              } else if (marking.points.length > 1) {
+                const material = lineMaterials[markingStyleKey(marking)];
+                let batch = edgeBatches.get(material);
+                if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
+                appendPolyline(batch, marking.points);
+              }
+              if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
             }
             for (const [material, batch] of edgeBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), stackIndex, top);
+            if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), stackIndex, top + markingLift(thickness) * 0.5);
           }
         });
         // Rods stand from their seat to the piece they hold, and ride with that piece.

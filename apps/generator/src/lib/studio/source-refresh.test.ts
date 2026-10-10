@@ -140,6 +140,21 @@ describe("airspace volumes", () => {
     expect(markStaleSourceData(loaded(), { airspaceStack: stacked.airspaceStack }, DEFAULT_PROJECT, stacked).airspaceVolumes).toBeUndefined();
   });
 
+  it("reloads a partial list when classes are disabled so the remaining data can fit", () => {
+    const source = loaded({ airspaceVolumes: [sector], airspaceStatus: "partial", airspaceCycle: "old" });
+    const next = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { ...DEFAULT_AIRSPACE_STACK.classes, specialUse: false } } };
+    const stale = markStaleSourceData(source, { airspaceStack: next.airspaceStack }, stacked, next);
+    expect(stale.airspaceVolumes).toBeUndefined();
+    expect(stale.airspaceStatus).toBeUndefined();
+    expect(stale.airspaceCycle).toBeUndefined();
+  });
+
+  it("reloads when another controlled class is enabled", () => {
+    const source = loaded({ airspaceVolumes: [sector], airspaceStatus: "available" });
+    const next = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { ...DEFAULT_AIRSPACE_STACK.classes, D: true } } };
+    expect(markStaleSourceData(source, { airspaceStack: next.airspaceStack }, stacked, next).airspaceVolumes).toBeUndefined();
+  });
+
   it("scales the volumes with the model", () => {
     const resized = resizeSource(loaded({ airspaceVolumes: [sector] }), DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm * 2 });
     expect(resized.airspaceVolumes![0]!.polygons[0]!.outer[1]).toEqual({ x: 20, y: 0 });
