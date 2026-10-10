@@ -1,0 +1,23 @@
+{
+  "dataset": "faa-aviation-2026-10-01-v2",
+  "sha256": "de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793",
+  "bytes": 38297461,
+  "features": {
+    "airspace": 1643,
+    "airspace_labels": 13278,
+    "sua": 1179,
+    "runways": 8500,
+    "airports": 18832,
+    "navaids": 1523,
+    "obstacles": 184123,
+    "airspace_volumes": 1287,
+    "sua_volumes": 1439
+  },
+  "sources": {
+    "classAirspace": "7057b1a982d5dd5df4d92a5101d222854b415c5ad163d464de36d94100e20201",
+    "airports": "aba48ea877f249d9b8cd63988b14b3432a6a09ad1fbe9561a5e6443c99c03dd0",
+    "navaids": "c169cba36c91ff1f89e914c1ab7f3aa09a3149867b8dc53c2f307920a417682e",
+    "obstacles": "3eedb38beb5c10babf59455c3dfa06d0f7679a132b773afd6ef665b6ba5688d3",
+    "sua": "d856b831f2464c1323d688f3bc46f1827953f8d9658dab023a50de8a745829ab"
+  }
+}

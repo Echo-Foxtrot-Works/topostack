@@ -137,11 +137,32 @@
     </tbody>
   </table>
 
+  <h2 id="airspace-in-3d">Airspace in 3D</h2>
+  <p>Available with <strong>Layered</strong> output in <strong>Fabrication settings</strong>. Airspace is separate from the engraved aviation map details. Follow the <a href={`${base}/guides/airspace-in-3d`}>design guide</a> and <a href={`${base}/guides/airspace-assembly`}>assembly guide</a> for the full workflow.</p>
+  <table>
+    <thead><tr><th scope="col">Control</th><th scope="col">Range or options</th><th scope="col">Default</th><th scope="col">Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Airspace in 3D</td><td>On, off</td><td>Off</td><td>Builds FAA acrylic airspace above the terrain; requests its data when enabled.</td></tr>
+      <tr><td>Build as</td><td>Plates, Tiers, Solid volumes</td><td>Plates</td><td>Clear boundary plates, tinted boundary pieces, or sheets filling the volume.</td></tr>
+      <tr><td>Class B, Class C, Special use, Class D</td><td>On, off</td><td>B, C and special use on; D off</td><td>At least one stays selected. Class D builds flat lids. FAA coverage only.</td></tr>
+      <tr><td>Ceiling cap</td><td>1,000–60,000 ft MSL, or automatic</td><td>Highest selected B/C ceiling; otherwise 10,000 ft</td><td>Limits the representation, including unlimited sectors. It is an absolute altitude, not height above the airport.</td></tr>
+      <tr><td>Acrylic thickness</td><td>1–10 mm</td><td>Material thickness</td><td>Sets airspace stock thickness and available space between levels.</td></tr>
+      <tr><td>Acrylic kerf</td><td>0–1 mm</td><td>Laser kerf</td><td>Separate compensation for acrylic cuts.</td></tr>
+      <tr><td>Rod shape</td><td>Round, Square</td><td>Round</td><td>Choose the actual support stock.</td></tr>
+      <tr><td>Rods meet pieces</td><td>Glued segments, Through holes</td><td>Glued segments</td><td>Through rods carry pieces on holes; additional short segments may still be needed.</td></tr>
+      <tr><td>Rod diameter / Rod width</td><td>2–12 mm</td><td>4 mm</td><td>Changes socket geometry and support placement.</td></tr>
+      <tr><td>Socket clearance</td><td>0–0.5 mm</td><td>0.1 mm</td><td>Fit allowance for the rod. Test against your stock and laser kerf.</td></tr>
+      <tr><td>Socket depth</td><td>1–30 mm</td><td>6 mm</td><td>Terrain seat depth; a backing sheet may be required.</td></tr>
+    </tbody>
+  </table>
+  <p>Airspace uses <strong>Vertical exaggeration</strong> from the terrain settings. Changes rebuild the preview; changing the map area requires fresh terrain generation. The settings summary reports the generated pieces, levels, height and rods.</p>
+
   <h2>Preview</h2>
   <table>
     <thead><tr><th scope="col">Control</th><th scope="col">Range or options</th><th scope="col">Default</th><th scope="col">Notes</th></tr></thead>
     <tbody>
       <tr><td>Preview mode</td><td>Map, Cut layers, 3D stack (layered); Map, Engraving (flat)</td><td>3D stack</td><td>Does not affect exports.</td></tr>
+      <tr><td>Cut material</td><td>Terrain sheets, Airspace acrylic</td><td>Terrain sheets</td><td>Cut layers only, when airspace levels exist. Select acrylic, then use the level slider to inspect its pieces and altitude.</td></tr>
       <tr><td>Layer</td><td>Any generated layer</td><td></td><td><em>Layered</em>. Selects the sheet shown in Cut layers.</td></tr>
       <tr><td>Stack–Exploded</td><td>0–1</td><td>0.35</td><td><em>Layered</em>, 3D stack only.</td></tr>
     </tbody>

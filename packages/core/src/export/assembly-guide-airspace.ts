@@ -62,9 +62,9 @@ export function airspaceNeeds(airspace: GuideAirspace, length: (valueMm: number)
 function levelMap(entry: GuideAirspace["levels"][number], airspace: GuideAirspace, context: GuideAirspaceContext): string {
   const ids = new Set(entry.level.pieces.map((piece) => piece.id));
   const pieces = entry.level.pieces.map((piece) => `<path d="${piece.polygons.map(context.polygonPath).join("")}" fill="${TINT_FILL[piece.tint]}" fill-opacity="0.75" stroke="#20231d" stroke-width="${format(context.labelSizeMm * 0.08)}"/>`).join("");
-  const rods = airspace.columns.flatMap((column) => column.segments.filter((segment) => ids.has(segment.headPieceId)).map((segment) => {
+  const rods = airspace.columns.flatMap((column) => column.segments.filter((segment) => ids.has(segment.headPieceId) || segment.throughPieceIds?.some((id) => ids.has(id))).map((segment) => {
     const { x, y } = column.point;
-    return `<circle cx="${format(x)}" cy="${format(y)}" r="${format(context.labelSizeMm * 0.35)}" fill="#20231d"/><text x="${format(x + context.labelSizeMm * 0.5)}" y="${format(y - context.labelSizeMm * 0.3)}" font-size="${format(context.labelSizeMm)}" fill="#20231d">${escapeXml(segment.rodId)}</text>`;
+    return `<circle cx="${format(x)}" cy="${format(y)}" r="${format(context.labelSizeMm * 0.35)}" fill="#20231d"/><text x="${format(x + context.labelSizeMm * 0.5)}" y="${format(y - context.labelSizeMm * 0.3)}" font-size="${format(context.labelSizeMm)}" fill="#20231d">${escapeXml(airspace.rod.joint === "through" ? `${column.id} / ${segment.rodId}` : segment.rodId)}</text>`;
   })).join("");
   const names = entry.level.pieces.map((piece) => {
     const ring = piece.polygons[0]!.outer;

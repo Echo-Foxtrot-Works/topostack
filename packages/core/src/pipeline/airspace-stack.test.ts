@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, generateGeometry, parseProject, type AirspaceStackSettingsV1 } from "../index.js";
 import { clipPolygons } from "../primitives/offset.js";
+import { exportBlockReason } from "../export/export-policy.js";
 import { projectFingerprint } from "./fingerprint.js";
 import { gridSource, scaledForLayers } from "../test-support/sources.js";
 import { base, build, CEILING, core, FEET, inside, plain, project, SHELF, sheetsUp, shelf, square, stepM, t, tower, volume, zOf } from "../test-support/airspace.js";
@@ -90,7 +91,7 @@ describe("airspace tiers", () => {
   it("cuts only where a shelf starts or ends, in the chart's blue", () => {
     expect(stack.levels.map((level) => level.altitudeFt)).toEqual([SHELF, CEILING]);
     expect(stack.levels.every((level) => level.pieces.every((entry) => entry.tint === "blue"))).toBe(true);
-    expect(stack.levels.every((level) => level.pieces.every((entry) => entry.frost === undefined && entry.edges === undefined))).toBe(true);
+    expect(stack.levels.every((level) => level.pieces.every((entry) => entry.frost === undefined && entry.edges!.length > 0))).toBe(true);
   });
 
   it("gives a core that starts at the surface a floor above the ground under it", () => {
@@ -151,11 +152,54 @@ describe("airspace given above ground", () => {
     expect(build({ form: "tiers" }, [moa]).warnings.map((warning) => warning.code)).toContain("AIRSPACE_PIECES_DROPPED");
   });
 
+  it("never snaps a ground-relative ceiling up to another sector's higher level", () => {
+    const low = volume("low-ceiling", "special-use", square(20, -30, 80, 30), { ref: "sfc", ft: 0 }, { ref: "agl", ft: Math.round(2 * stepM / FEET) }, { specialUseKind: "moa" });
+    const stack = build({ form: "plates" }, [shelf, low]).airspaceStack!;
+    const own = stack.levels.filter((level) => level.pieces.some((piece) => piece.sectorIds.includes(low.id)));
+    expect(own.length).toBeGreaterThan(0);
+    for (const level of own) expect(level.zMm).toBeLessThanOrEqual(t * 3 + 0.05);
+  });
+
   it("caps an unlimited ceiling and drops sectors the class switches leave out", () => {
     const range = volume("range", "special-use", square(-140, 70, -90, 90), { ref: "msl", ft: SHELF }, { ref: "unlimited" }, { specialUseKind: "restricted" });
     const capped = build({ form: "plates", ceilingCapFt: sheetsUp(18) }, [range]).airspaceStack!;
     expect(capped.levels.map((level) => level.altitudeFt)).toEqual([SHELF, sheetsUp(18)]);
     expect(build({ form: "plates", classes: { specialUse: false } as AirspaceStackSettingsV1["classes"] }, [range]).airspaceStack!.levels).toHaveLength(0);
+  });
+});
+
+describe("airspace fabrication limits", () => {
+  it("warns about partial source data instead of presenting it as complete", () => {
+    const source = gridSource(project, 32, () => 1000);
+    const result = generateGeometry({ ...project, airspaceStack: DEFAULT_AIRSPACE_STACK }, { ...source, airspaceVolumes: [shelf], airspaceStatus: "partial" });
+    expect(result.airspaceStatus).toBe("partial");
+    expect(result.warnings.map((warning) => warning.code)).toContain("AIRSPACE_DATA_PARTIAL");
+  });
+
+  it("stops before generating an impractical number of solid sheets", () => {
+    const high = volume("high", "class-b", square(20, -30, 80, 30), { ref: "sfc", ft: 0 }, { ref: "msl", ft: 60_000 });
+    const result = build({ form: "volumes", thicknessMm: 1, ceilingCapFt: 60_000 }, [high]);
+    expect(result.airspaceStack).toBeUndefined();
+    expect(result.warnings.map((warning) => warning.code)).toContain("AIRSPACE_TOO_COMPLEX");
+  });
+
+  it("partitions coincident tints and preserves every represented sector", () => {
+    const overlapping = { ...shelf, id: "class-c", aviationClass: "class-c" as const };
+    const result = build({ form: "tiers" }, [shelf, overlapping]);
+    expect(result.warnings.map((warning) => warning.code)).not.toContain("AIRSPACE_PIECES_OVERLAP");
+    expect(exportBlockReason(result, { ...project, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, form: "tiers" } })).toBeUndefined();
+    for (const level of result.airspaceStack!.levels) {
+      expect(level.pieces).toHaveLength(1);
+      expect(level.pieces[0]!.tint).toBe("blue");
+      expect(level.pieces[0]!.sectorIds).toEqual(["class-c", "shelf"]);
+    }
+  });
+
+  it("records only the sectors that intersect each disconnected volume piece", () => {
+    const other = volume("other", "class-b", square(120, -60, 145, 60), { ref: "msl", ft: SHELF }, { ref: "msl", ft: CEILING });
+    const stack = build({ form: "volumes" }, [core, other]).airspaceStack!;
+    expect(stack.levels.some((level) => level.pieces.length === 2)).toBe(true);
+    for (const level of stack.levels) for (const piece of level.pieces) expect(piece.sectorIds).toHaveLength(1);
   });
 });
 

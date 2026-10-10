@@ -29,6 +29,7 @@ export { verifySheetPlan } from "./export/sheet-nest/verify.js";
 export { paintRegions, paintStencil } from "./pipeline/paint-regions.js";
 export type { FlatWaterArea, PaintLayerClip, PaintRegionSources } from "./pipeline/paint-regions.js";
 export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, waterInsertMaterial } from "./pipeline/water-inserts.js";
+export { airspacePieceMarkings } from "./export/airspace.js";
 export { airspacePanelGroups } from "./pipeline/airspace-panels.js";
 export { AIRSPACE_DEFAULT_CAP_FT, DEFAULT_AIRSPACE_STACK, airspaceMaterial, airspaceTint, registerAirspaceStage, type AirspaceStage } from "./pipeline/airspace-settings.js";
 export { acrylicPanelGroups } from "./pipeline/water-insert-panels.js";

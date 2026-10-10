@@ -25,8 +25,19 @@
     <div><dt>“…exceeds Atomm’s 100 MB export limit.”</dt><dd>The artwork is too detailed. Turn off dense details such as roads or water fills, or frame a smaller area.</dd></div>
   </dl>
 
+  <h2 id="airspace-is-missing-or-incomplete">Airspace is missing or incomplete</h2>
+  <dl class="issues">
+    <div><dt>The control is on, but no airspace appears</dt><dd>Use <strong>Layered</strong> output, enable <strong>Airspace in 3D</strong> in Fabrication settings, generate the crop and choose <strong>3D stack</strong>. Engraved aviation map details alone do not build acrylic. Check the piece count in the airspace settings.</dd></div>
+    <div><dt>Zero pieces</dt><dd>The crop may contain no selected B, C, D or special use sector. Class E and G are not modeled. Enable the relevant class, widen the crop, and check the ceiling cap: it is feet MSL, not feet above the airport. Terrain clearance, small fragments and support constraints may remove pieces; read the warnings.</dd></div>
+    <div><dt>Pieces are listed, but the sky looks empty</dt><dd>Make sure you are in <strong>3D stack</strong>, then zoom out. A tight airport crop or high vertical exaggeration can put shelves far above the terrain. In <strong>Cut layers</strong>, choose <strong>Airspace acrylic</strong> from <strong>Cut material</strong> to verify the levels independently.</dd></div>
+    <div><dt>Airspace data is unavailable or incomplete</dt><dd>Retry generation after the connection recovers, or narrow the crop and disable unneeded classes when a data limit is reached. After an archive update, a hard refresh or a private window can help identify a stale browser cache. Do not clear saved projects without exporting their settings first.</dd></div>
+    <div><dt>Levels merge, pieces are dropped, or supports cannot reach</dt><dd>Read the specific warning before cutting. More vertical exaggeration can separate close boundaries; a wider crop can reduce an overly tall model. Compare plates or tiers with solid volumes, and inspect both the acrylic and wood sockets. Raising exaggeration also makes rods longer.</dd></div>
+    <div><dt>Airspace export is blocked</dt><dd>Resolve missing or partial data, overlapping pieces, or the solid-sheet limit before exporting. Use plates or tiers, thicker acrylic, fewer classes or a lower ceiling cap where appropriate. Regenerate and check the revised result.</dd></div>
+  </dl>
+  <p>For a first working setup, follow the <a href={`${base}/guides/airspace-in-3d`}>airspace design guide</a>. To report a problem, include <strong>Copy share link</strong>, the piece count, warnings and your browser; the link lets the same crop and settings be reproduced.</p>
+
   <h2>Warnings after generating</h2>
-  <p>Warnings appear above the preview. They do not block export, but read them before you cut.</p>
+  <p>Warnings appear above the preview. Read them before you cut. Some source-quality and airspace fabrication warnings also block export; the Export dialog explains which issue needs to be resolved.</p>
   <dl class="issues">
     <div><dt>Pieces remain larger than the work area, or the work area was not applied</dt><dd>The model is too large for your work area to split cleanly: either some pieces still overflow the bed, or the split was skipped entirely. Use a larger work area, a smaller model, or thicker material for fewer layers.</dd></div>
     <div><dt>Very little elevation change</dt><dd>Flat areas produce layers that look nearly identical, or sparse contours. Raise the vertical exaggeration or contour density, or include more of the surrounding hills.</dd></div>

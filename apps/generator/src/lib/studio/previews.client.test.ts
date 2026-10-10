@@ -1,6 +1,6 @@
 import { flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, type GeometryIRV1 } from "@topostack/core";
+import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, generateGeometry, type GeometryIRV1 } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 
 const three = vi.hoisted(() => ({ renderers: [] as Array<{ dispose: ReturnType<typeof vi.fn>; forceContextLoss: ReturnType<typeof vi.fn>; render: ReturnType<typeof vi.fn>; setSize: ReturnType<typeof vi.fn> }> }));
@@ -114,6 +114,20 @@ describe("preview resource cleanup", () => {
     expect(path.getAttribute("d")?.match(/M/g)).toHaveLength(2);
     expect(path.getAttribute("fill-rule")).toBe("evenodd");
     expect(path.getAttribute("stroke")).toBe("none");
+  });
+
+  it("shows acrylic cuts, through holes, rod locators and engraved chart labels", () => {
+    const geometry = generateGeometry(DEFAULT_PROJECT, createSamplePreviewSource());
+    const square = (r: number) => [{ x: -r, y: -r }, { x: r, y: -r }, { x: r, y: r }, { x: -r, y: r }, { x: -r, y: -r }];
+    geometry.airspaceStack = { form: "tiers", thicknessMm: 3, kerfMm: 0.15, ceilingCapFt: 10000, mmPerMeter: 0.01, topMm: 23, rod: DEFAULT_AIRSPACE_STACK.rod, columns: [], cutList: [], backingSheet: false, levels: [{ index: 0, altitudeFt: 6000, mergedFt: [], zMm: 20, pieces: [{ id: "A1-1", tint: "blue", sectorIds: ["sector"], polygons: [{ outer: square(40), holes: [square(2)] }], locators: [square(3)], markings: [{ id: "A1-1-notice", kind: "label", operation: "engrave", points: [{ x: 10, y: 10 }], label: "NOT FOR NAVIGATION", textStyle: { font: "technical", sizeMm: 1.6 } }] }] }] };
+    const target = document.createElement("div");
+    component = mount(TwoDPreview, { target, props: { geometry, selectedLayer: 0, selectedAirspaceLevel: 0 } });
+    flushSync();
+    const piece = target.querySelector('[data-airspace-piece="A1-1"]')!;
+    expect(piece.querySelector("path")!.getAttribute("d")!.match(/M/g)).toHaveLength(2);
+    expect(piece.querySelector('[data-marking-id="A1-1-rod-1"]')).not.toBeNull();
+    expect(piece.querySelector('[data-marking-id="A1-1-notice"] path:last-child')!.getAttribute("d")).toContain("M");
+    expect(target.textContent).toContain("6,000 ft MSL");
   });
 
   it("overlays the paint stencil on a cut layer only when asked", async () => {

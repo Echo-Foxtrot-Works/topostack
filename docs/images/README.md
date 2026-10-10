@@ -1,5 +1,7 @@
 # Website and README visuals
 
+The [airspace website visuals](airspace-example/README.md) include the conceptual homepage SVG, a real Denver FAA preview and its importable capture project.
+
 The [Walden Pond announcement example](walden-example/README.md) includes reviewed chart screenshots, a generated terrain preview, source credits, and an importable project.
 
 - `workflows.svg` reuses the homepage's layered-relief and flat-engraving diagrams, with styles embedded for GitHub.

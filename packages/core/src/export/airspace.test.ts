@@ -6,6 +6,7 @@ import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import type { FabricationPackageV1, GeometryIRV1, ProjectConfigV1 } from "../types.js";
 import { buildFabricationPackage } from "./packages.js";
 import { exportBlockReason } from "./export-policy.js";
+import { airspaceSection, type GuideAirspace } from "./assembly-guide-airspace.js";
 import { airspaceGeometry, airspacePanels } from "./airspace.js";
 
 const named = { name: "Cake", laserKerfMm: 0.15 };
@@ -114,6 +115,23 @@ describe("airspace export", { timeout: 60_000 }, () => {
     const panel = await text(pkg, `-airspace-blue-${String(holed + 1).padStart(2, "0")}.svg`);
     const cut = panel.slice(panel.indexOf('<g id="CUT"'));
     expect((cut.match(/M/g) ?? []).length).toBeGreaterThan(1);
+  });
+
+  it("identifies each through column on every level it carries", () => {
+    const stack = build({ form: "tiers", rod: { ...DEFAULT_AIRSPACE_STACK.rod, joint: "through" } }, [core, shelf]).airspaceStack!;
+    const column = stack.columns.find((entry) => entry.segments[0]!.throughPieceIds?.length)!;
+    const passed = column.segments[0]!.throughPieceIds![0]!;
+    const guide: GuideAirspace = { ...stack, rodTotalMm: 0, backingFilenames: [], stock: {}, woodMm: 3, levels: stack.levels.map((level) => ({ level, files: [] })) };
+    const html = airspaceSection(guide, { length: String, diagram: (body) => body, polygonPath: () => "", outlineId: "outline", sectionNumber: 1, labelSizeMm: 2 });
+    const map = html.split("<figure>").find((figure) => figure.includes(`: ${passed}`))!;
+    expect(map.split("</figure>")[0]).toContain(`>${column.id} / ${column.segments[0]!.rodId}<`);
+  });
+
+  it("blocks an incomplete airspace source even when it generated pieces", () => {
+    const config = { ...project, ...named, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, form: "tiers" as const, kerfMm: 0.1 } };
+    expect(exportBlockReason({ ...tiers, airspaceStatus: "partial" }, config)).toMatch(/Airspace data.*limit/);
+    expect(() => buildFabricationPackage({ ...tiers, airspaceStatus: "partial" }, config)).toThrow(/Airspace data.*limit/);
+    expect(exportBlockReason({ ...tiers, airspaceStatus: "unavailable" }, config)).toMatch(/Airspace was not loaded/);
   });
 
   it("tells the maker to stand rods under a volume sheet that reaches past the one below", async () => {

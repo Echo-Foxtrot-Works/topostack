@@ -1,6 +1,6 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+import { labelLineSegments, type AirspacePieceIR, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -22,7 +22,7 @@ export interface CachedLayer {
  * linear and far cheaper than `ExtrudeGeometry`, so the body is rebuilt only
  * when its shape, thickness or stack position actually changed.
  */
-export function layerKey(layer: GeometryIRV1["layers"][number]): string {
+export function layerKey(layer: Pick<GeometryIRV1["layers"][number], "index" | "materialThicknessMm" | "polygons">): string {
   let hash = 0x811c9dc5;
   let vertices = 0;
   const mix = (value: number) => { hash = Math.imul(hash ^ (value | 0), 0x01000193) >>> 0; };
@@ -39,6 +39,32 @@ export function layerKey(layer: GeometryIRV1["layers"][number]): string {
     for (const hole of polygon.holes) mixRing(hole);
   }
   return `${layer.index}:${layer.materialThicknessMm}:${layer.polygons.length}:${vertices}:${hash}`;
+}
+
+/** Extrusions owned by the scene; the cache keeps meshes detached between rebuilds. */
+export interface CachedAirspaceBody { key: string; meshes: THREE.Mesh[] }
+
+export function airspaceBodyKey(piece: Pick<AirspacePieceIR, "polygons">, thicknessMm: number): string {
+  return layerKey({ index: 0, materialThicknessMm: thicknessMm, polygons: piece.polygons });
+}
+
+/** Retain expensive triangulation across worker clones and annotation or tint edits. */
+export function airspaceBody(cache: Map<string, CachedAirspaceBody>, piece: AirspacePieceIR, thicknessMm: number, material: THREE.Material): THREE.Mesh[] {
+  const key = airspaceBodyKey(piece, thicknessMm);
+  let cached = cache.get(piece.id);
+  if (!cached || cached.key !== key) {
+    const meshes = piece.polygons.map((polygon) => {
+      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thicknessMm, bevelEnabled: false, curveSegments: 8 }), material);
+      mesh.castShadow = false;
+      mesh.renderOrder = 2;
+      return mesh;
+    });
+    cached = { key, meshes };
+    cache.set(piece.id, cached);
+  }
+  // Shared scene materials are recreated and disposed on each rebuild.
+  for (const mesh of cached.meshes) mesh.material = material;
+  return cached.meshes;
 }
 
 interface StackedObject { layerIndex: number; baseZ: number }

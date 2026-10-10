@@ -36,7 +36,7 @@ export async function loadAirspace(bounds: GeoBounds, zoom: number, config: Proj
   try {
     const { loadAirspaceVolumes } = await import("$lib/domain/airspace-volumes");
     const { classes } = settings;
-    const { volumes, status, cycle } = await loadAirspaceVolumes(bounds, zoom, config, { classes: classes.B || classes.C || classes.D, specialUse: classes.specialUse }, signal);
+    const { volumes, status, cycle } = await loadAirspaceVolumes(bounds, zoom, config, { classes: classes.B || classes.C || classes.D, specialUse: classes.specialUse, classFilter: { B: classes.B, C: classes.C, D: classes.D } }, signal);
     return { airspaceVolumes: volumes, airspaceStatus: status, ...(cycle ? { airspaceCycle: cycle } : {}) };
   } catch (error) {
     if (signal?.aborted) throw error;

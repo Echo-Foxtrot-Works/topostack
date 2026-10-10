@@ -1,0 +1,7 @@
+# Airspace website visuals
+
+`apps/generator/static/images/airspace-relief.svg` is a hand-authored conceptual illustration for the homepage. It shows compact airspace shelves centered over the airport on layered terrain; its footprints and heights are illustrative, not FAA data. The 460 × 280 linework uses the same orange theme color and CSS-mask technique as the homepage water illustrations, without a canvas or rendering library.
+
+`apps/generator/static/images/guides/airspace-denver.webp` is a direct studio capture from `https://dev.topostack.app/studio` on 2026-10-10, used by the airspace design guide and both guides' sharing metadata. Import [project.json](project.json), generate real terrain, select **3D stack**, and capture `.three-stage` at a 1930 × 1400 browser viewport. The capture is resized with aspect ratio preserved and dark canvas padding to 1600 × 1100, then encoded as WebP at quality 85. Warning and attribution overlays remain visible; the terrain and airspace were not retouched.
+
+The crop is Denver Class B from `faa-aviation-2026-10-01-v2`, with real terrain, 300 × 300 mm output, 10× vertical exaggeration and tiers. The deployed studio rendered nine pieces on six levels. This is a software preview and does not claim a completed or mechanically validated physical build. See [the development activation receipt](../../reports/data/airspace-development-activation-20261010.json) for archive verification.

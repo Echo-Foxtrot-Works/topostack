@@ -4,6 +4,8 @@ import { AIRSPACE_VOLUME_MAX_ZOOM } from "@topostack/data-contracts/aviation-til
 import { MAX_AIRSPACE_VOLUMES, loadAirspaceVolumes } from "$lib/domain/airspace-volumes";
 import { AVIATION_SOURCES } from "$lib/domain/aviation-provider";
 import { clearArchiveCache } from "$lib/domain/archive";
+import polygonClipping from "polygon-clipping";
+import { MAX_SOURCE_RINGS } from "$lib/domain/feature-budget";
 import { fittingTileWindow } from "$lib/domain/tile-math";
 
 /** Tiles are JSON the mocked VectorTile decodes; ring geometry is in tile units, y down, as the archive stores it. */
@@ -57,7 +59,7 @@ const area = (points: Array<{ x: number; y: number }>) => Math.abs(points.reduce
 beforeEach(() => {
   clearArchiveCache();
   archive.header = { minZoom: 5, maxZoom: 12 };
-  archive.metadata = { topostack_dataset: AVIATION_SOURCES.dataset, faa_nasr_cycle: AVIATION_SOURCES.nasrCycle, faa_obstacle_date: AVIATION_SOURCES.obstacleDate, faa_sua_date: AVIATION_SOURCES.suaDate };
+  archive.metadata = { topostack_dataset: AVIATION_SOURCES.dataset, faa_nasr_cycle: AVIATION_SOURCES.nasrCycle, faa_obstacle_date: AVIATION_SOURCES.obstacleDate, faa_sua_date: AVIATION_SOURCES.suaDate, vector_layers: [{ id: "airspace_volumes" }, { id: "sua_volumes" }] };
   archive.tile = () => ({});
 });
 
@@ -68,6 +70,14 @@ describe("airspace volume loading", () => {
     expect(await loadAirspaceVolumes({ west: 7.4, east: 7.6, south: 46.5, north: 46.6 }, 11, config, BOTH)).toEqual({ volumes: [], status: "not-covered" });
     expect(await loadAirspaceVolumes(denver, 11, config, { classes: false, specialUse: false })).toEqual({ volumes: [], status: "not-covered" });
     expect(tile).not.toHaveBeenCalled();
+  });
+
+  it("rejects an archive that does not publish the requested volume layers", async () => {
+    delete archive.metadata.vector_layers;
+    await expect(loadAirspaceVolumes(denver, 11, config, BOTH)).rejects.toThrow(/volume layers/i);
+    archive.metadata.vector_layers = [{ id: "airspace_volumes" }];
+    await expect(loadAirspaceVolumes(denver, 11, config, BOTH)).rejects.toThrow(/volume layers/i);
+    expect((await loadAirspaceVolumes(denver, 11, config, { classes: true, specialUse: false })).status).toBe("available");
   });
 
   it("unions a sector's tile pieces into one area cut to the crop", async () => {
@@ -128,6 +138,41 @@ describe("airspace volume loading", () => {
     ] });
     const result = await loadAirspaceVolumes(denver, 11, config, BOTH);
     expect(result.volumes.map((volume) => volume.id)).toEqual(["class-3"]);
+  });
+
+  it("filters disabled classes before the sector limit", async () => {
+    archive.tile = () => ({ airspace_volumes: [
+      ...Array.from({ length: MAX_AIRSPACE_VOLUMES + 1 }, (_, sector) => ({ type: 3 as const, properties: { ...shelf, sector }, geometry: wholeTile })),
+      { type: 3, properties: { ...shelf, sector: 900, class: "C" }, geometry: wholeTile },
+    ] });
+    const result = await loadAirspaceVolumes(denver, 11, config, { classes: true, specialUse: false, classFilter: { B: false, C: true, D: false } });
+    expect(result.status).toBe("available");
+    expect(result.volumes.map((volume) => volume.id)).toEqual(["class-900"]);
+  });
+
+  it("enforces the ring budget before retaining geometry", async () => {
+    archive.tile = () => ({ airspace_volumes: [{ type: 3, properties: shelf, geometry: Array.from({ length: MAX_SOURCE_RINGS + 1 }, () => wholeTile[0]!) }] });
+    await expect(loadAirspaceVolumes(denver, 11, config, BOTH)).rejects.toThrow(/complexity limit/);
+  });
+
+  it("marks fallback clipping partial so an unreliable sector cannot export silently", async () => {
+    archive.tile = () => ({ airspace_volumes: [{ type: 3, properties: shelf, geometry: wholeTile }] });
+    const union = vi.spyOn(polygonClipping, "union").mockImplementationOnce(() => { throw new Error("Degenerate geometry"); });
+    try {
+      const result = await loadAirspaceVolumes(denver, 11, config, BOTH);
+      expect(result.status).toBe("partial");
+      expect(result.volumes).toHaveLength(1);
+    } finally { union.mockRestore(); }
+  });
+
+  it("does not return geometry when cancellation arrives during sector union", async () => {
+    const controller = new AbortController();
+    archive.tile = () => ({ airspace_volumes: [{ type: 3, properties: shelf, geometry: wholeTile }] });
+    const original = polygonClipping.union;
+    const union = vi.spyOn(polygonClipping, "union").mockImplementationOnce((...args) => { controller.abort(); return original(...args); });
+    try {
+      await expect(loadAirspaceVolumes(denver, 11, config, BOTH, controller.signal)).rejects.toThrow();
+    } finally { union.mockRestore(); }
   });
 
   it("keeps the largest sectors when a crop holds too many", async () => {

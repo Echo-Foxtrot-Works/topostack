@@ -46,7 +46,7 @@
       <tr><td>04 Terrain layers / Contour design</td><td>Vertical exaggeration and material thickness, or contour density and index contours.</td></tr>
       <tr><td>05 Map details</td><td>Roads, trails, water, boundaries, grid, water depth, assembly guides, labels, north arrow, scale bar and text. See <a href={`${base}/guides/map-details`}>map details and linework</a>.</td></tr>
       <tr><td>06 Linework</td><td>Line width presets and individual stroke widths.</td></tr>
-      <tr><td>07 Fabrication settings / Artwork settings</td><td>Nesting, glue margin, kerf, contour smoothing and minimum feature size.</td></tr>
+      <tr><td>07 Fabrication settings / Artwork settings</td><td>Nesting, acrylic water inserts, airspace in 3D, glue margin, kerf, contour smoothing and minimum feature size.</td></tr>
     </tbody>
   </table>
   <p>Every control, with its range and default, is listed in the <a href={`${base}/guides/settings-reference`}>settings reference</a>.</p>
@@ -72,4 +72,6 @@
 
   <h2>Next steps</h2>
   <p>Follow the <a href={`${base}/examples/crater-lake`}>Crater Lake example</a> for a first project, then the <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> or the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a>.</p>
+  <h2>Build airspace above your terrain</h2>
+  <p>Choose <strong>Layered</strong>, then turn on <strong>Airspace in 3D</strong> in <strong>Fabrication settings</strong>. Preview the result in <strong>3D stack</strong>; choose <strong>Airspace acrylic</strong> in <strong>Cut layers</strong> to inspect its levels. Follow the <a href={`${base}/guides/airspace-in-3d`}>airspace design guide</a> and <a href={`${base}/guides/airspace-assembly`}>assembly guide</a>.</p>
 </Article>

@@ -53,7 +53,7 @@ Raster and vector processing that needs rasterio, fiona, scipy, and shapely. One
 | --- | --- | --- |
 | `airspace-acrylic-spike.py` | Measure airspace built in acrylic on real FAA data: levels, heights and pieces per form for five crops, open air between levels, tile-seam gaps, and a 3D scene in millimetres; needs `tippecanoe` and `tippecanoe-decode` for `seams` | manual: [airspace-acrylic-spike-2026-10-09.md](../docs/reports/airspace-acrylic-spike-2026-10-09.md) |
 | `benchmark-terrain.py` | Time the terrain packaging pipeline for a set of regions | manual |
-| `build-faa-aviation.py` | Build the FAA aviation archive (airspace, special use airspace, runways, airports, navaids, obstacles) from the files pinned in `scripts/data/faa-aviation-sources.json`; needs `tippecanoe` and `pmtiles` | manual: [faa-aviation.md](../docs/faa-aviation.md) |
+| `build-faa-aviation.py` | Build the FAA aviation archive (airspace, special use airspace, runways, airports, navaids, obstacles) from pinned source files (`--sources` selects an isolated candidate registration); needs `tippecanoe` and `pmtiles` | manual: [faa-aviation.md](../docs/faa-aviation.md) |
 | `build-hrdem-terrain.py` | Package NRCan HRDEM rasters into terrain archives and register them in the catalog | manual: [hrdem-terrain.md](../docs/hrdem-terrain.md), [terrain-expansion-plan.md](../docs/terrain-expansion-plan.md) |
 | `build-lake-directory.py` | Build the lake directory the site and studio search read | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
 | `build-lake-outlines.py` | Build provider lake outlines for the outline archive | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
@@ -103,6 +103,8 @@ Check deployed services, SEO output, and data quality. CI and the production mon
 | Script | Purpose | Run by |
 | --- | --- | --- |
 | `stress-depth-charts.mjs` | Fetch pinned USGS charts; probe uploads, tracing, persistence, and screenshots | manual: [real-chart stress report](../docs/reports/real-depth-chart-stress-2026-09-23.md) |
+| `airspace-acceptance.mjs` | Decode a local volume-enabled FAA archive with the production loader, sample actual Terrarium terrain, benchmark all forms, and check fabrication invariants | manual: [airspace validation](../docs/airspace-validation.md) |
+| `airspace-fabrication-fixtures.mjs` | Prepare eighteen synthetic assembly test jobs across forms, rod joints and 1/3/10 mm acrylic | manual: [airspace validation](../docs/airspace-validation.md) |
 | `benchmark-generation.mjs` | Profile 3000 × 3000 mm Grand Teton geometry and cached edits, optionally with parallel helpers and synthetic roads | `npm run build -w @topostack/core` then `node scripts/verify/benchmark-generation.mjs --teton --workers 4` |
 | `generation-pool.mjs`, `generation-task-worker.mjs` | Adapt the production browser task pool to Node threads for the generation benchmark | Imported by `benchmark-generation.mjs`; not standalone commands |
 | `parallel-browser.mjs` | Check production parallel workers, custom fonts, cancellation, and fallback in Chromium/Firefox/WebKit | Build core and generator, then `node scripts/verify/parallel-browser.mjs` (optional browser names) |
