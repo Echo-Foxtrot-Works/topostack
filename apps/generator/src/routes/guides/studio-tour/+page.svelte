@@ -73,4 +73,6 @@
 
   <h2>Next steps</h2>
   <p>Follow the <a href={`${base}/examples/crater-lake`}>Crater Lake example</a> for a first project, then the <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> or the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a>.</p>
+  <h2>Build airspace above your terrain</h2>
+  <p>Choose <strong>Layered</strong>, then turn on <strong>Airspace in 3D</strong> in the <strong>Aviation</strong> panel. Preview the result in <strong>3D stack</strong>; choose <strong>Airspace acrylic</strong> in <strong>Cut layers</strong> to inspect its levels. Follow the <a href={`${base}/guides/airspace-in-3d`}>airspace design guide</a> and <a href={`${base}/guides/airspace-assembly`}>assembly guide</a>.</p>
 </Article>

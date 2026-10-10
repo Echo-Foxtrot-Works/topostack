@@ -58,13 +58,14 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   // Loaded aviation holds only the groups enabled then; turning another on
   // reloads, turning one off only filters. A truncated load may fit more now.
   if ("aviation" in patch && AVIATION_DATA_DETAILS.some((detail) => nextProject.aviation?.[detail] && (!sourceProject.aviation?.[detail] || source.aviationStatus === "partial"))) next = { ...next, aviationStatus: "not-requested" };
-  // Loaded airspace holds the Class B, C and D sectors, the special use ones, or both, as the
-  // switches were then; a switch that needs the other kind reloads, turning one off only filters.
+  // Enabled classes are filtered before the loader's feature limit. Enabling
+  // one needs a reload; disabling one can make a partial load complete.
   if ("airspaceStack" in patch && nextProject.airspaceStack) {
-    const kinds = (project: ProjectConfigV1) => project.airspaceStack ? { classes: project.airspaceStack.classes.B || project.airspaceStack.classes.C || project.airspaceStack.classes.D, specialUse: project.airspaceStack.classes.specialUse } : { classes: false, specialUse: false };
-    const had = source.airspaceVolumes ? kinds(sourceProject) : { classes: false, specialUse: false };
-    const needs = kinds(nextProject);
-    if ((needs.classes && !had.classes) || (needs.specialUse && !had.specialUse)) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined };
+    const had = source.airspaceVolumes ? sourceProject.airspaceStack?.classes : undefined;
+    const needs = nextProject.airspaceStack.classes;
+    const enablesClass = (Object.keys(needs) as Array<keyof typeof needs>).some((key) => needs[key] && !had?.[key]);
+    const changesPartial = source.airspaceStatus === "partial" && JSON.stringify(had) !== JSON.stringify(needs);
+    if (enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
   }
   // Using or dropping a depth chart changes which depths a lake carves, so the
   // lake depths are loaded again rather than reused from before the change.

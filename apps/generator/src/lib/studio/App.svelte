@@ -96,6 +96,7 @@
   let detailsUpdating = $state(false);
   // A refresh that fetches terrain for a moved map area, not just a restyle.
   let terrainRefreshing = $state(false);
+  let selectedAirspaceLevel = $state<number | undefined>();
   let selectedLayer = $state(featuredLayerIndex(defaultPreviewGeometry));
   // Live exploded-slider position. Committing every tick into `project`
   // replaced the whole config at 60 Hz, which re-ran the export fingerprint,
@@ -507,6 +508,7 @@
       addPreviewWarning(result, source);
       // A rename during generation is kept, like every other preview commit.
       geometry = { ...result, projectName: project.name };
+      selectedAirspaceLevel = undefined;
       selectedLayer = featuredLayerIndex(result);
       detailsUpdating = false;
     }, (error: unknown) => {
@@ -798,7 +800,7 @@
       const completedGeometry = { ...next, projectName: completedProject.name };
       dismissedWarnings = [];
       void sourcePreparation?.then((cache) => cache.clear(), () => undefined);
-      geometry = completedGeometry; project = completedProject; activeSource = loaded.source; sourceProject = completedProject; selectedLayer = featuredLayerIndex(completedGeometry);
+      selectedAirspaceLevel = undefined; geometry = completedGeometry; project = completedProject; activeSource = loaded.source; sourceProject = completedProject; selectedLayer = featuredLayerIndex(completedGeometry);
       // Show the result, unless the maker is at work in the custom data view.
       if (!automatic && mode !== "custom") mode = defaultModeFor(completedProject.outputMode);
       generationState = "ready";
@@ -969,7 +971,9 @@
     get previewNotice() { return previewNotice; },
     set previewNotice(value) { previewNotice = value; },
     get selectedLayer() { return selectedLayer; },
-    set selectedLayer(value) { selectedLayer = value; },
+    set selectedLayer(value) { selectedLayer = value; selectedAirspaceLevel = undefined; },
+    get selectedAirspaceLevel() { return geometry.airspaceStack?.levels.length && selectedAirspaceLevel !== undefined ? Math.max(0, Math.min(selectedAirspaceLevel, geometry.airspaceStack.levels.length - 1)) : undefined; },
+    set selectedAirspaceLevel(value) { selectedAirspaceLevel = value; },
     get explodedDrag() { return explodedDrag; },
     set explodedDrag(value) { explodedDrag = value; },
     get searchOpen() { return searchOpen; },

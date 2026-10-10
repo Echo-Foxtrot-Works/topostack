@@ -16,6 +16,18 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   // The settings report what was built: pieces on levels, held by rods.
   await expect(page.locator(".airspace-settings")).toContainText(/\d+ pieces? on \d+ levels?/, { timeout: 30_000 });
 
+  await page.getByRole("radio", { name: "Cut layers", exact: true }).click();
+  await page.getByRole("combobox", { name: "Cut material", exact: true }).selectOption("airspace");
+  await expect(page.getByRole("img", { name: "Airspace cut preview for level 1", exact: true })).toBeVisible();
+  await expect(page.locator("[data-airspace-piece]").first()).toBeVisible();
+  const picker = page.getByRole("slider", { name: "Selected airspace level", exact: true });
+  await picker.focus();
+  await picker.press("End");
+  await expect(picker).toHaveValue(await picker.getAttribute("max") ?? "0");
+  await expect(page.locator(".layer-heading")).toContainText("ft MSL");
+  await page.getByRole("combobox", { name: "Cut material", exact: true }).selectOption("terrain");
+  await expect(page.getByRole("slider", { name: "Selected layer", exact: true })).toBeVisible();
+
   await page.getByRole("button", { name: "Export", exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Complete project/ }).click();
@@ -32,6 +44,7 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   expect(guide).toContain("Build the airspace");
   const manifest = JSON.parse(Buffer.from(Object.entries(files).find(([name]) => name.endsWith("-project.json"))![1]).toString("utf8"));
   expect(manifest.project.airspaceStack.form).toBe("tiers");
+  expect(manifest.result.fabrication.airspaceStack.sectors.length).toBeGreaterThan(0);
   expect(manifest.result.fabrication.airspaceStack.levels.length).toBeGreaterThan(0);
 });
 

@@ -1,0 +1,30 @@
+{
+  "fixture": "720 vertices per sector, two overlapping Class B sectors, 74 acrylic sheets",
+  "beforeMedianMs": 259.3767909999997,
+  "afterMedianMs": 112.67429200000015,
+  "before": [
+    301.51525000000004,
+    254.36566700000003,
+    254.008875,
+    273.14900000000034,
+    251.11879099999987,
+    259.3767909999997,
+    301.2700840000002
+  ],
+  "after": [
+    112.75391599999989,
+    107.88462499999991,
+    119.5104580000002,
+    111.77362499999981,
+    108.98804100000007,
+    112.67429200000015,
+    123.4201250000001
+  ],
+  "date": "2026-10-09",
+  "baselineCommit": "7e7fd7a",
+  "comparison": "original slab builder and updated slab builder, both using the current support solver",
+  "warmupRunsPerImplementation": 1,
+  "measuredRunsPerImplementation": 7,
+  "geometryComparison": "all levels equal on every measured run",
+  "source": "synthetic"
+}

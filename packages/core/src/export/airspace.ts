@@ -25,10 +25,11 @@ const LOCATOR_WINDOW_MM = 1;
  * their chart style, and rod locators. Frost stops a millimetre short of every
  * locator, which would otherwise vanish into it.
  */
-function pieceMarkings(piece: AirspacePieceIR): OperationPath[] {
+export function airspacePieceMarkings(piece: AirspacePieceIR): OperationPath[] {
   const windows = piece.locators?.length ? offsetPolygons(piece.locators.map((ring) => ({ outer: ring, holes: [] })), LOCATOR_WINDOW_MM, "round") : [];
   const frost = piece.frost?.length && windows.length ? clipPolygons(piece.frost, windows, "difference") : piece.frost ?? [];
   return [
+    ...(piece.markings ?? []),
     ...frost.map((polygon, index): OperationPath => ({ id: `${piece.id}-frost-${index + 1}`, operation: "engrave", kind: "marker", points: polygon.outer, holes: polygon.holes, filled: true })),
     ...(piece.edges ?? []).map((edge, index): OperationPath => ({ id: `${piece.id}-edge-${index + 1}`, operation: "engrave", kind: "aviation", aviationClass: edge.aviationClass, points: edge.points })),
     ...(piece.locators ?? []).map((ring, index): OperationPath => ({ id: `${piece.id}-rod-${index + 1}`, operation: "engrave", kind: "marker", points: ring })),
@@ -59,7 +60,7 @@ export function airspaceLayers(stack: AirspaceStackIR, { markings = true }: { ma
           elevationM: level.altitudeFt * 0.3048,
           materialThicknessMm: stack.thicknessMm,
           polygons,
-          markings: markings ? pieces.flatMap(pieceMarkings) : [],
+          markings: markings ? pieces.flatMap(airspacePieceMarkings) : [],
           pieces: layerPieces,
         },
       });

@@ -76,7 +76,7 @@
       {:else if studio.exportPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Export preview could not load<button type="button" class="btn btn-secondary" onclick={() => studio.exportPreview.load()}>Retry</button></div>
       {:else}<div class="preview-loading">Loading export preview…</div>{/if}
     {:else if studio.mode === "2d" && studio.placementBackdrop !== "3d"}
-      {#if studio.TwoDPreview}<TwoDPreview geometry={studio.geometry} selectedLayer={studio.selectedLayer} />
+      {#if studio.TwoDPreview}<TwoDPreview geometry={studio.geometry} selectedLayer={studio.selectedLayer} selectedAirspaceLevel={studio.selectedAirspaceLevel} />
       {:else if studio.twoDPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Cut preview could not load<button type="button" class="btn btn-secondary" onclick={() => studio.twoDPreview.load()}>Retry</button></div>
       {:else}<div class="preview-loading">Loading cut preview…</div>{/if}
     {:else if studio.ThreePreview}

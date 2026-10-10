@@ -112,6 +112,8 @@ interface Context {
   inserts: PreparedPolygons;
   woodMm: number;
   rodRadius: number;
+  /** Radius enclosing the socket or through hole, including fit clearance. */
+  holeRadius: number;
   socketSheets: number;
   placed: Placed[];
   /** The `through` joint's rods by point; undefined with glued segments. */
@@ -170,7 +172,7 @@ function seatAt(context: Context, point: Point2D, zMm: number, terrainOnly = fal
   // A socket deeper than the sheets at the point goes through the bottom sheet onto the backing sheet.
   const depth = Math.min(top + 1, context.socketSheets);
   const cut = Array.from({ length: depth }, (_, offset) => top - offset);
-  if (!cut.every((index) => clearOfEdges(point, context.preparedLayers[index]!, rodRadius + SOCKET_WALL_MM))) return undefined;
+  if (!cut.every((index) => clearOfEdges(point, context.preparedLayers[index]!, context.holeRadius + SOCKET_WALL_MM))) return undefined;
   const next = context.preparedLayers[top + 1];
   if (next && !clearOfEdges(point, next, rodRadius + PASSING_CLEARANCE_MM)) return undefined;
   if (!outsideBy(point, context.inserts, rodRadius + PASSING_CLEARANCE_MM)) return undefined;
@@ -189,7 +191,7 @@ function throughAt(context: Context, point: Point2D, zMm: number): Candidate | u
   for (const entry of context.placed) {
     if (entry.topMm > zMm + 1e-6) continue;
     const inside = pointInPreparedPolygons(point, entry.prepared);
-    if (inside ? !clearOfEdges(point, entry.prepared, rodRadius + PIECE_EDGE_MM) : !clearOfEdges(point, entry.prepared, rodRadius + PASSING_CLEARANCE_MM)) return undefined;
+    if (inside ? !clearOfEdges(point, entry.prepared, context.holeRadius + PIECE_EDGE_MM) : !clearOfEdges(point, entry.prepared, rodRadius + PASSING_CLEARANCE_MM)) return undefined;
     if (inside) passes.push({ id: entry.piece.id, zMm: entry.zMm });
   }
   const ordered = passes.sort((a, b) => a.zMm - b.zMm).map((entry) => entry.id);
@@ -219,16 +221,20 @@ function candidatePoints(piece: AirspacePieceIR, prepared: PreparedPolygons, mar
   }
   // The outline itself must be within reach too, sampled about every half step along it.
   for (const polygon of piece.polygons) {
-    let last: Point2D | undefined;
-    for (const point of polygon.outer) {
-      if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= step / 2) { samples.push(point); last = point; }
+    for (let index = 0; index < polygon.outer.length - 1; index += 1) {
+      const start = polygon.outer[index]!, end = polygon.outer[index + 1]!;
+      const count = Math.max(1, Math.ceil(Math.hypot(end.x - start.x, end.y - start.y) / (step / 2)));
+      for (let sample = 0; sample < count; sample += 1) {
+        const fraction = sample / count;
+        samples.push({ x: start.x + (end.x - start.x) * fraction, y: start.y + (end.y - start.y) * fraction });
+      }
     }
   }
   return { valid, samples };
 }
 
 /** Columns for one piece by farthest-point choice, or undefined when it cannot be held. */
-function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples: Point2D[], rod: AirspaceRodSettingsV1): Candidate[] | undefined {
+function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples: Point2D[], rod: AirspaceRodSettingsV1, spacingMm: number): Candidate[] | undefined {
   if (!candidates.length) return undefined;
   const pieceArea = area(piece.polygons);
   const required = pieceArea < SMALL_PIECE_MM2 ? (rod.shape === "square" ? 1 : 2) : 3;
@@ -251,7 +257,7 @@ function chooseColumns(piece: AirspacePieceIR, candidates: Candidate[], samples:
     let bestDistance = 0;
     for (const candidate of candidates) {
       const nearest = Math.min(...chosen.map((entry) => distance(entry.point, candidate.point)));
-      if (nearest >= rod.sizeMm * 2 && nearest * weight(candidate) > bestDistance) { bestDistance = nearest * weight(candidate); best = candidate; }
+      if (nearest >= spacingMm - 1e-6 && nearest * weight(candidate) > bestDistance) { bestDistance = nearest * weight(candidate); best = candidate; }
     }
     if (!best) break;
     chosen.push(best);
@@ -317,7 +323,7 @@ function leans(stack: GluedStack, points = stack.points): boolean {
  * never stand on a piece of the same stack, which would not hold it up.
  * Undefined when they cannot do both, unless `partial`.
  */
-function holdOverhang(candidates: Candidate[], far: Point2D[], stack: GluedStack, glued: PreparedPolygons, rod: AirspaceRodSettingsV1, partial: boolean): Candidate[] | undefined {
+function holdOverhang(candidates: Candidate[], far: Point2D[], stack: GluedStack, glued: PreparedPolygons, spacingMm: number, partial: boolean): Candidate[] | undefined {
   const reach = MAX_SPAN_MM / 2;
   const distance = (a: Point2D, b: Point2D) => Math.hypot(a.x - b.x, a.y - b.y);
   const own = new Set(stack.ids);
@@ -330,7 +336,7 @@ function holdOverhang(candidates: Candidate[], far: Point2D[], stack: GluedStack
     let best: Candidate | undefined;
     let bestScore = 0;
     for (const candidate of usable) {
-      if (chosen.some((entry) => distance(entry.point, candidate.point) < rod.sizeMm * 2)) continue;
+      if (chosen.some((entry) => distance(entry.point, candidate.point) < spacingMm - 1e-6)) continue;
       // Cover the far parts first; then spread from the rods already under the stack, best of all
       // to a point that brings its centre of mass inside them.
       const spread = Math.min(...points().map((point) => distance(point, candidate.point)));
@@ -382,12 +388,14 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
     inserts: preparePolygons(inserts.flatMap((insert) => insert.polygons)),
     // A square rod's corners reach half its diagonal.
     rodRadius: rod.shape === "square" ? (rod.sizeMm / 2) * Math.SQRT2 : rod.sizeMm / 2,
+    holeRadius: (rod.sizeMm / 2 + rod.fitClearanceMm) * (rod.shape === "square" ? Math.SQRT2 : 1),
     socketSheets: Math.max(1, Math.round(rod.socketDepthMm / woodMm)),
     placed: [],
     ...(rod.joint === "through" ? { rods: new Map<string, ThroughRod>() } : {}),
     segmentPoints: new Map(),
     rodSpacingMm: Math.max(THROUGH_GRID_MM, rod.sizeMm * 2),
   };
+  const spacingMm = context.rods ? context.rodSpacingMm : rod.sizeMm * 2;
   const standing: Standing[] = [];
   const unsupported: string[] = [];
   const overhanging: string[] = [];
@@ -423,19 +431,20 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
         const gluedPrepared = preparePolygons(contact.glued);
         const far = samples.filter((sample) => !pointInPreparedPolygons(sample, gluedPrepared) && clearOfEdges(sample, gluedPrepared, MAX_SPAN_MM / 2));
         if (far.length || leans(glued)) {
-          const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, rod, false))
-            ?? holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, rod, true));
+          const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, spacingMm, false))
+            ?? holdPiece(context, piece, prepared, level.zMm, (candidates) => holdOverhang(candidates, far, glued, gluedPrepared, spacingMm, true));
           if (held) stand(piece, level.zMm, held, glued);
           if (far.some((sample) => !glued.points.some((point) => Math.hypot(point.x - sample.x, point.y - sample.y) <= MAX_SPAN_MM / 2)) || leans(glued)) overhanging.push(piece.id);
         }
         context.placed.push(placed);
         return true;
       }
-      const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => chooseColumns(piece, candidates, samples, rod));
+      const held = holdPiece(context, piece, prepared, level.zMm, (candidates) => chooseColumns(piece, candidates, samples, rod, spacingMm));
       if (!held) {
         unsupported.push(piece.id);
         return false;
       }
+      if (samples.some((sample) => !held.columns.some((column) => Math.hypot(column.point.x - sample.x, column.point.y - sample.y) <= MAX_SPAN_MM / 2))) overhanging.push(piece.id);
       stand(piece, level.zMm, held, joinStack(stacks, piece, contact));
       context.placed.push(placed);
       return true;
@@ -448,7 +457,7 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   });
   if (overhanging.length) warnings.push({
     code: "AIRSPACE_OVERHANG",
-    message: `${overhanging.length} glued airspace ${overhanging.length === 1 ? "sheet reaches" : "sheets reach"} past the rods that could stand under ${overhanging.length === 1 ? "it" : "them"}. Prop ${overhanging.length === 1 ? "it" : "them"} while the glue sets.`,
+    message: `${overhanging.length} airspace ${overhanging.length === 1 ? "sheet reaches" : "sheets reach"} past the rods that could stand under ${overhanging.length === 1 ? "it" : "them"}. Reduce the model size or add supports under ${overhanging.length === 1 ? "it" : "them"} before assembly.`,
   });
   if (context.rods) {
     for (const entry of context.rods.values()) standing.push({ point: entry.point, seat: entry.seat, bottomMm: entry.bottomMm, headPieceId: entry.headPieceId, topMm: entry.topMm, ...(entry.throughPieceIds.length ? { throughPieceIds: entry.throughPieceIds } : {}) });

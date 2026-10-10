@@ -44,6 +44,11 @@
   </table>
   <p class="note"><strong>Use one engraving copy per panel.</strong> Either process the complete panel SVG, or cut from the panel SVG and engrave from its <code>-engrave.svg</code> companion with the panel's engraving disabled. Processing both engraves the same paths twice.</p>
 
+  <h2 id="airspace-files">Airspace files</h2>
+  <p>With <strong>Airspace in 3D</strong> on, <strong>Airspace</strong> downloads the acrylic bundle; <strong>Complete project</strong> includes terrain and airspace. Files group pieces by altitude level and acrylic tint. A backing sheet is included when rod sockets need it. The assembly guide includes the rod cut list, level maps, piece IDs and through-rod placement heights.</p>
+  <p>Inspect <strong>Airspace acrylic</strong> in <strong>Cut layers</strong> before exporting. Engraved sector names and original altitude references are included where they fit; navigation notices and the source cycle record what the model represents. Read <a href={`${base}/guides/airspace-assembly`}>cut and assemble acrylic airspace</a> for material settings and the build order.</p>
+  <p>Acrylic tint names describe material choices. The red, blue and black SVG paths still describe processing operations. Do not apply wood processing settings to the acrylic job, and process the panel engraving or its companion only once.</p>
+
   <h2>Flat engraving files</h2>
   <table>
     <thead><tr><th scope="col">File</th><th scope="col">Contents</th></tr></thead>

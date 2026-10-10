@@ -1,10 +1,12 @@
 <script lang="ts">
+  import AirspaceCutPreview from "$lib/studio/AirspaceCutPreview.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
   import { displayElevation, elevationUnit, paintStencil, type GeometryIRV1 } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
   import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
-  let { geometry, selectedLayer }: { geometry: GeometryIRV1; selectedLayer: number } = $props();
+  let { geometry, selectedLayer, selectedAirspaceLevel }: { geometry: GeometryIRV1; selectedLayer: number; selectedAirspaceLevel?: number } = $props();
+  const airspaceLevel = $derived(selectedAirspaceLevel === undefined ? undefined : geometry.airspaceStack?.levels[selectedAirspaceLevel]);
   const layer = $derived(geometry.layers[selectedLayer] ?? geometry.layers[0]);
   // Every sheet at or below the waterline sits under water, so the tint marks
   // which part of this sheet the basin covers.
@@ -26,7 +28,9 @@
   }));
 </script>
 
-{#if layer}
+{#if airspaceLevel}
+  <AirspaceCutPreview {geometry} level={airspaceLevel} />
+{:else if layer}
   <div class="two-d-stage">
     <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="cut" svgLabel={`Cut preview for layer ${layer.index + 1}`} controlsLabel="Cut layers zoom controls" resetLabel="Reset cut view">
       <defs><filter id="paper-shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2" /></filter></defs>

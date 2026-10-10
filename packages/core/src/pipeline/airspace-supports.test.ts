@@ -173,6 +173,34 @@ describe("airspace supports on their own", () => {
     levels: [{ index: 0, altitudeFt: 5_000, mergedFt: [], zMm, pieces: [piece] }], rod: { ...DEFAULT_AIRSPACE_STACK.rod }, columns: [], cutList: [], backingSheet: false,
   });
 
+  it("preserves socket walls after adding the fit clearance", () => {
+    const layers = [sheet(0, square(-100, -4.75, 100, 4.75)), sheet(1, square(-100, -4.75, 100, 4.75))];
+    const result = stack(plate("A1-1", square(-40, -7, 40, 7)));
+    result.rod.fitClearanceMm = 0.5;
+    placeAirspaceSupports(result, layers, [], 3, 0.8, []);
+    expect(result.columns).toHaveLength(0);
+    expect(result.levels).toHaveLength(0);
+  });
+
+  it("keeps through rods spaced on a fine-grid fallback too", () => {
+    const layers = [sheet(0, square(-5, -5, 5, 5)), sheet(1, square(-5, -5, 5, 5))];
+    const result = stack(plate("A1-1", square(-35, -35, 35, 35)));
+    result.rod = { ...result.rod, joint: "through", sizeMm: 2, socketDepthMm: 3 };
+    placeAirspaceSupports(result, layers, [], 3, 0.8, []);
+    // Three rods would fit only 5.8 mm apart, below the through grid's 8 mm.
+    expect(result.columns).toHaveLength(0);
+    expect(result.levels).toHaveLength(0);
+  });
+
+  it("warns when the rod limit leaves a large plate outside the supported reach", () => {
+    const layers = [sheet(0, square(-350, -350, 350, 350)), sheet(1, square(-350, -350, 350, 350))];
+    const result = stack(plate("A1-1", square(-300, -300, 300, 300)));
+    const warnings: GeometryIRV1["warnings"] = [];
+    placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+    expect(result.columns).toHaveLength(16);
+    expect(warnings.map((warning) => warning.code)).toContain("AIRSPACE_OVERHANG");
+  });
+
   it("keeps rods out of acrylic water inserts", () => {
     const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, 100, 100)), sheet(2, square(-100, -100, 100, 100))];
     const lake = { id: "W1", lakeKey: "lake", surfaceId: "lake", layerIndex: 2, polygons: [{ outer: square(-60, -60, 60, 60), holes: [] }], markings: [] };

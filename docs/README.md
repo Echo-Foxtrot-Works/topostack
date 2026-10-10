@@ -11,6 +11,7 @@
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
 - [Studio settings panels](studio-panels.md) — the seven rail panels, which subject each one owns, and where a new control goes.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).
+- [3D airspace implementation review](reports/airspace-review-2026-10-09.md) — corrected source, altitude, support and export defects, performance measurements, validation and release prerequisites.
 - [Acrylic water inserts](water-inserts.md) — cutting each lake out of its waterline sheet, the fitted acrylic piece and its ledge, map detail on the acrylic, and its own files, nesting and guide steps.
 - [Engraving fonts](fonts.md) — the font kinds, the glyph build, adding a typeface, and why glyph data is immutable.
 - [Geometry generation performance](generation-performance.md) — stage timings, cache ownership, parallel layer workers, boundary indexes, and the Grand Teton stress benchmark.
@@ -79,3 +80,5 @@ Dated snapshots kept for history. Do not update them; write a new one.
 - [Atomm 0.5.1 compatibility review, 2026-09-24](reports/atomm-0.5.1-audit/README.md) and its [follow-up fixes](reports/atomm-0.5.1-audit/FIXES.md).
 - [Atomm alignment investigation, 2026-09-29](reports/atomm-alignment-20260929/README.md) — reproduced 0.7.0 sidebar offsets and candidate correction.
 - [Atomm 0.7.1 validation, 2026-09-29](reports/atomm-071-validation/README.md) — release checks and alignment measurements from the exact patch ZIP.
+
+Airspace data acceptance and physical assembly fixtures: [airspace-validation.md](airspace-validation.md).

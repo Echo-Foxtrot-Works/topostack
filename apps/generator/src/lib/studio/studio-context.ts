@@ -78,6 +78,7 @@ export interface StudioContext {
   threeUnavailable: boolean;
   previewNotice: string;
   selectedLayer: number;
+  selectedAirspaceLevel: number | undefined;
   explodedDrag: number | undefined;
   readonly explodedPreview: number;
   readonly previewModeOptions: ReadonlyArray<{ value: string; label: string }>;

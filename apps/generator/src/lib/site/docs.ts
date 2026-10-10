@@ -33,6 +33,12 @@ export const DOCS_SECTIONS: readonly { id: string; title: string; summary: strin
     paths: ["/guides/custom-lake-depth-map", "/guides/trace-a-depth-chart", "/guides/how-depth-chart-tracing-works", "/lakes", "/guides/lake-depth-data", "/guides/how-lake-depths-work"],
   },
   {
+    id: "airspace",
+    title: "Airspace in 3D",
+    summary: "Model FAA airspace above your terrain, choose acrylic shelves or solid volumes, and follow the rod and assembly guides.",
+    paths: ["/guides/airspace-in-3d", "/guides/airspace-assembly"],
+  },
+  {
     id: "agents",
     title: "AI agents and API",
     summary: "Drive the studio with a browser agent, and build on TopoStack's MCP server and HTTP API.",

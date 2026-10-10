@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { GeometryIRV1 } from "@topostack/core";
-import { addStacked, appendPolyline, applyExploded, batchSegments, boundsOverlap, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, polygonBounds, waterStainBands, waterStainMask, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
+import { airspaceBody, type CachedAirspaceBody, addStacked, appendPolyline, applyExploded, batchSegments, boundsOverlap, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, polygonBounds, waterStainBands, waterStainMask, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
 
 type Layer = GeometryIRV1["layers"][number];
 const square = (size: number) => [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }];
@@ -19,6 +19,28 @@ describe("layerKey", () => {
     const moved = layer();
     moved.polygons[0]!.holes[0]![1] = { x: 2.5, y: 0 };
     expect(layerKey(moved)).not.toBe(base);
+  });
+});
+
+describe("airspace body cache", () => {
+  it("reuses a cloned body, replaces scene materials, and disposes removed bodies", () => {
+    const cache = new Map<string, CachedAirspaceBody>();
+    const piece = { id: "A1-1", tint: "clear" as const, sectorIds: ["sector"], polygons: layer().polygons };
+    const material = new THREE.MeshStandardMaterial();
+    const meshes = airspaceBody(cache, piece, 3, material);
+    const geometry = meshes[0]!.geometry;
+    const dispose = vi.spyOn(geometry, "dispose");
+    const content = new THREE.Group();
+    content.add(...meshes);
+    disposeContent(content, [material], new Set(meshes));
+    expect(dispose).not.toHaveBeenCalled();
+    const nextMaterial = new THREE.MeshStandardMaterial();
+    expect(airspaceBody(cache, structuredClone(piece), 3, nextMaterial)).toBe(meshes);
+    expect(meshes[0]!.material).toBe(nextMaterial);
+    content.add(...meshes);
+    disposeContent(content, [nextMaterial]);
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(airspaceBody(cache, piece, 4, new THREE.MeshStandardMaterial())[0]!.geometry).not.toBe(geometry);
   });
 });
 

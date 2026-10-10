@@ -38,6 +38,13 @@ const PAINT_IMAGE: SocialImage = {
   alt: "Cut layers view of a Crater Lake layer with the paint template on: land is covered by a stencil and only the lake is open.",
 };
 
+const AIRSPACE_IMAGE: SocialImage = {
+  url: "/images/guides/airspace-denver.webp",
+  width: 1600,
+  height: 1100,
+  alt: "Denver Class B airspace preview as blue acrylic tiers on rods over a layered wooden terrain model, from FAA data.",
+};
+
 const CHANGELOG_PUBLISHED = "2026-09-21";
 
 export const PUBLIC_PAGES: Record<string, PageMeta> = {
@@ -46,14 +53,14 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Create layered terrain maps and flat topographic engravings from real elevation data. Customize your design and export SVG files free in your browser.",
     label: "Home",
     published: "2026-08-19",
-    updated: "2026-10-08",
+    updated: "2026-10-10",
   },
   "/guides": {
     title: "Topographic Map Guides and Documentation | TopoStack",
-    description: "Guides for making layered and engraved topographic maps, understanding terrain generation, lake-depth data and export files, troubleshooting, and TopoStack's sources, credits and privacy.",
+    description: "Guides for making layered and engraved topographic maps, building acrylic airspace, understanding terrain, lake-depth data and export files, troubleshooting, and TopoStack's sources, credits and privacy.",
     label: "Guides",
     published: "2026-09-17",
-    updated: "2026-09-17",
+    updated: "2026-10-10",
     image: socialCard("guides", "TopoStack guides card with an assembled Crater Lake relief rendered in the studio."),
   },
   "/guides/laser-cut-topographic-map": {
@@ -96,6 +103,22 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     updated: "2026-10-05",
     image: PAINT_IMAGE,
   },
+  "/guides/airspace-in-3d": {
+    title: "Make a 3D Airspace Model from FAA Data | TopoStack",
+    description: "Build FAA airspace in acrylic above a wooden terrain map. Choose plates, tinted tiers or solid volumes, preview floors and ceilings, and export cut files.",
+    label: "Airspace design guide",
+    published: "2026-10-10",
+    updated: "2026-10-10",
+    image: AIRSPACE_IMAGE,
+  },
+  "/guides/airspace-assembly": {
+    title: "Cut and Assemble an Acrylic Airspace Model | TopoStack",
+    description: "Choose acrylic and rod dimensions, export airspace cut files, and use piece maps, rod lengths and level heights to assemble airspace above your terrain.",
+    label: "Airspace assembly guide",
+    published: "2026-10-10",
+    updated: "2026-10-10",
+    image: AIRSPACE_IMAGE,
+  },
   "/guides/lake-depth-data": {
     title: "Search Lakes with Surveyed Depth Data | TopoStack",
     description: "Search TopoStack's lake-depth catalog by name, region or source. Find surveyed grids and depth contours, then open a lake in the studio.",
@@ -133,7 +156,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Find your way around the TopoStack studio: choose a place, frame the map, generate terrain, switch previews, and save or import projects.",
     label: "Studio tour",
     published: "2026-09-17",
-    updated: "2026-09-23",
+    updated: "2026-10-10",
     image: socialCard("guides-studio-tour", "Studio tour card with the TopoStack studio showing a Crater Lake relief in the 3D stack view."),
   },
   "/guides/map-details": {
@@ -197,7 +220,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every TopoStack studio control with its range, default and output type, from vertical exaggeration and kerf to linework widths.",
     label: "Settings reference",
     published: "2026-09-17",
-    updated: "2026-10-05",
+    updated: "2026-10-10",
     image: socialCard("guides-settings-reference", "Settings reference card with the studio's project controls beside a Crater Lake relief."),
   },
   "/guides/use-with-ai-assistants": {
@@ -237,7 +260,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "What each TopoStack download contains: SVG panels, colors and operation groups, kerf compensation, assembly guide, project file and attribution.",
     label: "Export files",
     published: "2026-09-17",
-    updated: "2026-10-05",
+    updated: "2026-10-10",
     image: socialCard("guides-export-files", "Export files card with the studio's export preview of SVG cut panels."),
   },
   "/guides/troubleshooting": {
@@ -245,7 +268,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Fix blocked exports, understand studio warnings, and get answers to common questions about layers, lake depth, SVG scale and kerf.",
     label: "Troubleshooting",
     published: "2026-09-17",
-    updated: "2026-09-23",
+    updated: "2026-10-10",
     image: socialCard("guides-troubleshooting", "Troubleshooting card with studio notices shown above a Crater Lake relief."),
   },
   "/examples": {

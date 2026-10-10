@@ -169,7 +169,7 @@ describe("airspace loading", () => {
   it("loads the volumes a layered project asks for, with their kinds and cycle", async () => {
     mocks.loadAirspaceVolumes.mockResolvedValue({ volumes: [], status: "available", cycle: "2026-10-01" });
     expect(await loadAirspace(bounds, 9, withAirspace)).toEqual({ airspaceVolumes: [], airspaceStatus: "available", airspaceCycle: "2026-10-01" });
-    expect(mocks.loadAirspaceVolumes.mock.calls[0]![3]).toEqual({ classes: false, specialUse: true });
+    expect(mocks.loadAirspaceVolumes.mock.calls[0]![3]).toEqual({ classes: false, specialUse: true, classFilter: { B: false, C: false, D: false } });
     const { source } = await loadTerrain(withAirspace);
     expect(source).toMatchObject({ airspaceVolumes: [], airspaceStatus: "available" });
     await loadTerrain(terrainOnly);
