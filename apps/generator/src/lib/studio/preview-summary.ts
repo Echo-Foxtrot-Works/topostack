@@ -3,8 +3,13 @@ import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
 
-export type ConfigSectionId = "setup" | "size" | "terrain" | "details" | "customData" | "linework" | "advanced";
-export const CONFIG_SECTION_IDS: ConfigSectionId[] = ["setup", "size", "terrain", "details", "customData", "linework", "advanced"];
+/** The studio's settings panels, in rail order. Each subject (water, aviation) has one home. */
+export type PanelId = "place" | "terrain" | "features" | "water" | "aviation" | "labels" | "make";
+export const PANEL_IDS: PanelId[] = ["place", "terrain", "features", "water", "aviation", "labels", "make"];
+/** Rail labels: short enough to sit under an icon. */
+export const PANEL_LABELS: Record<PanelId, string> = { place: "Place", terrain: "Terrain", features: "Features", water: "Water", aviation: "Aviation", labels: "Labels", make: "Fabricate" };
+/** Everything that can be a collapsible block: the panels, as the platform embed shows them, and the embed's lead rail. */
+export type DisclosureId = PanelId | "setup" | "customData";
 
 type Warning = GeometryIRV1["warnings"][number];
 
@@ -174,23 +179,42 @@ function shownLength(valueMm: number, units: ProjectConfigV1["units"]): number {
   return Number(displayLength(valueMm, units).toFixed(3));
 }
 
-/** One-line summary under each collapsible sidebar section title. */
-export function sectionSummary(section: ConfigSectionId, project: ProjectConfigV1, stackLayerCount: number): string {
+const plural = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`;
+
+/** One-line summary under each panel's title. */
+export function panelSummary(panel: DisclosureId, project: ProjectConfigV1, stackLayerCount: number): string {
   const unit = lengthUnit(project.units);
-  switch (section) {
-    case "setup": return `${project.outputMode === "engraving" ? "Flat engraving" : "Layered relief"} · ${project.location.label.split(",")[0]}`;
-    case "size": return `${project.cropShape === "circle" ? "Circle" : "Rectangle"} · ${shownLength(project.widthMm, project.units)} × ${shownLength(project.heightMm, project.units)} ${unit}`;
-    case "terrain": return project.outputMode === "engraving" ? `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}` : `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material`;
-    case "details": { const count = activeDetailCount(project); return `${count} ${count === 1 ? "detail" : "details"} enabled`; }
-    case "customData": return `${project.markers.length} ${project.markers.length === 1 ? "marker" : "markers"} · ${project.customLines.length} ${project.customLines.length === 1 ? "path" : "paths"}`;
-    case "linework": { const preset = activeLinePreset(project.lineStyle); return preset ? `${LINE_PRESETS.find((option) => option.value === preset)?.label ?? preset} preset` : "Custom stroke widths"; }
-    case "advanced": {
-      const seams = planSeamGrid(project);
-      const contours = project.smoothing === 1 ? "Smooth contours" : "Standard contours";
-      const paint = project.outputMode === "stack" && project.paintTemplates.length ? " · Paint templates" : "";
-      const acrylic = project.outputMode === "stack" && project.waterInserts ? " · Acrylic water" : "";
-      const airspace = project.outputMode === "stack" && project.airspaceStack ? " · Airspace in 3D" : "";
-      return `${seams ? `${seams.columns} × ${seams.rows} sheets per layer · ${contours}` : contours}${paint}${acrylic}${airspace}`;
+  const stack = project.outputMode === "stack";
+  switch (panel) {
+    case "setup": return `${stack ? "Layered relief" : "Flat engraving"} · ${project.location.label.split(",")[0]}`;
+    case "place": return `${project.cropShape === "circle" ? "Circle" : "Rectangle"} · ${shownLength(project.widthMm, project.units)} × ${shownLength(project.heightMm, project.units)} ${unit}`;
+    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}`;
+    case "features": {
+      const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder].filter(Boolean).length;
+      const preset = activeLinePreset(project.lineStyle);
+      return `${plural(count, "feature")} on · ${preset ? `${LINE_PRESETS.find((option) => option.value === preset)?.label ?? preset} lines` : "Custom lines"}`;
     }
+    case "water": {
+      const parts = [stack && project.showWaterDepth ? "Carved depth" : project.showWater ? "Outlines" : "Off"];
+      if (stack && project.waterInserts) parts.push("Acrylic inserts");
+      if (stack && project.paintTemplates.length) parts.push("Paint templates");
+      return parts.join(" · ");
+    }
+    case "aviation": {
+      const count = AVIATION_DATA_DETAILS.filter((detail) => project.aviation?.[detail] === true).length;
+      const parts = [count ? `${plural(count, "layer")} on` : "Off"];
+      if (stack && project.airspaceStack) parts.push("Airspace in 3D");
+      return parts.join(" · ");
+    }
+    case "labels": {
+      const count = [project.showElevationLabels, project.showNorthArrow, project.showScaleBar, project.plaque?.enabled === true].filter(Boolean).length;
+      return `${plural(count, "mark")} on · ${shownLength(project.textStyle.sizeMm, project.units)} ${unit} text`;
+    }
+    case "make": {
+      if (!stack) return `${shownLength(project.minimumFeatureMm, project.units)} ${unit} minimum feature`;
+      const seams = planSeamGrid(project);
+      return `${shownLength(project.laserKerfMm, project.units)} ${unit} kerf · ${seams ? `${seams.columns} × ${seams.rows} sheets per layer` : "One piece per layer"}`;
+    }
+    case "customData": return `${plural(project.markers.length, "marker")} · ${plural(project.customLines.length, "path")}`;
   }
 }

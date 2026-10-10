@@ -5,7 +5,7 @@
 
 <Article title="Cut and assemble acrylic airspace" intro="Turn the preview into separate wood, acrylic and rod jobs. Use the exported piece maps, rod lengths and level heights to build the airspace above your terrain.">
   <h2>Check the design before buying material</h2>
-  <p>First follow <a href={`${base}/guides/airspace-in-3d`}>the airspace design guide</a>. Read the piece, level, height and rod counts in <strong>Fabrication settings</strong>, and inspect every airspace level in <strong>Cut layers</strong>. Plates and tiers leave open space between shelves; solid volumes use many more sheets and can be much heavier.</p>
+  <p>First follow <a href={`${base}/guides/airspace-in-3d`}>the airspace design guide</a>. Read the piece, level, height and rod counts in the <strong>Aviation</strong> panel, and inspect every airspace level in <strong>Cut layers</strong>. Plates and tiers leave open space between shelves; solid volumes use many more sheets and can be much heavier.</p>
   <p>Review warnings about merged levels, omitted pieces, tall stacks, support reach and acrylic stock. The software checks geometry; it does not establish glue strength or a safe mechanical load. Test a representative piece and joint before cutting the full project.</p>
 
   <h2>Set acrylic and rod dimensions</h2>

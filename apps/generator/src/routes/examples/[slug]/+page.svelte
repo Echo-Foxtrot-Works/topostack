@@ -42,7 +42,7 @@
     <li>Check the cut layers and 3D preview, then open <strong>Export</strong> for the SVG cut panels and assembly guide.</li>
   </ol>
   <p>The downloadable project file holds the same settings. Keep it as a record, or open it later with <strong>Import project JSON</strong> next to the project name in the studio.</p>
-  <p>To change it, set your own sheet thickness in <strong>Terrain layers</strong> or a new size in <strong>Cut size</strong>; the studio recalculates the layers. The <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> covers kerf, nesting and assembly, and the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a> shows how to make the same place as a flat engraving.</p>
+  <p>To change it, set your own sheet thickness in the <strong>Terrain</strong> panel or a new size in the <strong>Place</strong> panel; the studio recalculates the layers. The <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> covers kerf, nesting and assembly, and the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a> shows how to make the same place as a flat engraving.</p>
 
   <h2>More examples</h2>
   <ul class="others">

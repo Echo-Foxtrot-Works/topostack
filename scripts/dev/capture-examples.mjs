@@ -98,13 +98,14 @@ try {
     await page.getByRole("button", { name: "Generate terrain", exact: true }).click();
     await page.getByRole("button", { name: "Regenerate terrain", exact: true }).waitFor();
     await page.locator('.preview-stage[aria-busy="false"]').waitFor();
-    await page.getByRole("button", { name: "Expand all", exact: true }).click();
+    await page.getByRole("tab", { name: "Terrain", exact: true }).click();
     const summary = await page.getByText(/relief → \d+ layers/).first().textContent();
     const match = summary?.match(/([\d,]+) m relief → (\d+) layers, ([\d.,]+) mm tall/);
     if (!match) throw new Error(`Unexpected layer summary for ${example.slug}: ${summary}`);
     // The studio reports surveyed lake-floor coverage in the water depth notes.
+    await page.getByRole("tab", { name: "Water", exact: true }).click();
     const surveyed = await page.getByText("Surveyed lake-floor data is used where available", { exact: false }).count() > 0;
-    await page.getByRole("button", { name: "Collapse all", exact: true }).click();
+    await page.getByRole("tab", { name: "Place", exact: true }).click();
     await page.evaluate(() => document.fonts.ready);
     // Studio notices float over the preview; they are UI, not part of the model.
     await page.addStyleTag({ content: ".warning-stack { display: none !important; }" });

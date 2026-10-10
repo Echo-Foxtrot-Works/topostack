@@ -99,10 +99,10 @@ try {
   await page.getByRole("button", { name: "Generate terrain", exact: true }).click();
   await page.getByRole("button", { name: "Regenerate terrain", exact: true }).waitFor({ timeout: 180_000 });
   await page.locator('.preview-stage[aria-busy="false"]').waitFor({ timeout: 180_000 });
-  await page.getByRole("button", { name: "Expand all", exact: true }).click();
+  await page.getByRole("tab", { name: "Water", exact: true }).click();
   await page.getByText("Surveyed lake-floor data is used where available. Gaps use existing terrain or modeled depths.", { exact: true }).waitFor({ timeout: 180_000 });
   if (!surveyResponses.length) throw new Error("No successful USGS Crater Lake survey response; refusing to capture modeled-only terrain.");
-  await page.getByRole("button", { name: "Collapse all", exact: true }).click();
+  await page.getByRole("tab", { name: "Place", exact: true }).click();
   await page.evaluate(() => document.fonts.ready);
   const stage = page.locator(".three-stage");
   for (let step = 0; step < 7; step += 1) await stage.press("ArrowUp");

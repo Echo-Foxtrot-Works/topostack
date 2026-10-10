@@ -22,7 +22,7 @@
 
   <h2 id="water-finishes-and-their-files">Water finishes and their files</h2>
   <WaterFinishComparison />
-  <p>For painted wood, download <strong>Paint templates</strong> and cut the paper stencils with kerf compensation off. For acrylic, download <strong>Acrylic inserts</strong> and use the separate acrylic thickness, kerf and fit clearance from Fabrication settings. <strong>Complete project</strong> includes both sets when enabled. See the <a href={`${base}/guides/water-paint-templates`}>water paint template guide</a> for painting the bed before assembly.</p>
+  <p>For painted wood, download <strong>Paint templates</strong> and cut the paper stencils with kerf compensation off. For acrylic, download <strong>Acrylic inserts</strong> and use the separate acrylic thickness, kerf and fit clearance from the <strong>Water</strong> panel. <strong>Complete project</strong> includes both sets when enabled. See the <a href={`${base}/guides/water-paint-templates`}>water paint template guide</a> for painting the bed before assembly.</p>
 
   <h2>Layered relief files</h2>
   <table>
@@ -78,9 +78,9 @@
   <p>Marker clearances are gaps in the exported line geometry, not white fabrication objects. Solid marker symbols retain their blue fill with no duplicate outline stroke; use Engrave for those filled shapes.</p>
 
   <h2 id="kerf-panel-size-and-alignment-marks">Kerf, panel size and alignment marks</h2>
-  <p>In layered output, <strong>Laser kerf</strong> in Fabrication settings is the full width your beam removes. Outer cuts move outward and holes move inward by half that width, so the finished pieces match the artwork. Each panel's canvas is enlarged by the kerf to make room. Set Laser kerf to 0 if your laser software applies its own compensation.</p>
+  <p>In layered output, <strong>Laser kerf</strong> in the <strong>Fabricate</strong> panel is the full width your beam removes. Outer cuts move outward and holes move inward by half that width, so the finished pieces match the artwork. Each panel's canvas is enlarged by the kerf to make room. Set Laser kerf to 0 if your laser software applies its own compensation.</p>
   <p>When <strong>Assembly guides</strong> is on, each lower layer has an engraved outline of the layer above it, inset by half the line width plus the kerf, labeled with that layer’s number (for example <code>L04</code> on layer 03). They are hidden once the next layer is glued in place.</p>
-  <p>When <strong>Work area width</strong> or <strong>Work area height</strong> splits a layer, each piece also engraves its id, such as <code>L03-B2</code> (layer 03, column B, row 2), in a separate green (<code>#00A651</code>) <code>ASSEMBLY</code> group where the next layer will cover it. Assign that color to Score or turn off <strong>Assembly labels</strong> if you don't want it. Seam edges get the same kerf compensation as every other cut, so pieces butt together at their intended size.</p>
+  <p>When <strong>Work area width</strong> or <strong>Work area height</strong> splits a layer, each piece also engraves its id, such as <code>L03-B2</code> (layer 03, column B, row 2), in a separate green (<code>#00A651</code>) <code>ASSEMBLY</code> group where the next layer will cover it. Assign that color to Score or turn off <strong>Assembly labels</strong>, under <strong>Panels and seams</strong> in the export dialog, if you don't want it. Seam edges get the same kerf compensation as every other cut, so pieces butt together at their intended size.</p>
 
   <h2>Project file</h2>
   <p><code>my-map-project.json</code> holds your full settings, so you can import it in the studio to continue. It also records the generation date, elevation range, map bounds, terrain resolution and sources, data versions, warnings, and for layered output each layer's elevation and file, panel and nesting details, and each lake's depth source and applied depth scaling. Imported projects need fresh terrain generation before export.</p>

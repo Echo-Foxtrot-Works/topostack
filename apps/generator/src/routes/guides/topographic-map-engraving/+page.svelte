@@ -7,13 +7,13 @@
   <h2>What you need</h2>
   <p>A browser with an internet connection, a surface to engrave, and laser software that can import SVG files. TopoStack is free to use and needs no account. It prepares artwork; you choose the machine settings for your material.</p>
   <h2>1. Choose flat engraving and set the size</h2>
-  <p><a href={`${base}/studio`}>Open the studio</a>, choose a location and select <strong>Flat</strong>. Open <strong>Artwork size</strong>, choose a rectangle or circle, and enter the finished width (and height, for a rectangle). Choose flat engraving when you want a contour drawing rather than a stack of cut sheets.</p>
+  <p><a href={`${base}/studio`}>Open the studio</a>, choose a location and select <strong>Flat</strong>. In the <strong>Place</strong> panel, choose a rectangle or circle, and enter the finished width (and height, for a rectangle). Choose flat engraving when you want a contour drawing rather than a stack of cut sheets.</p>
   <h2>2. Balance contour density and readability</h2>
-  <p>In <strong>Contour design</strong>, <strong>Contour density</strong> sets 4–40 lines across the elevation range. Start with a moderate count, then increase it if the terrain needs more detail. Tight slopes produce close lines, so inspect them at your finished size.</p>
+  <p>In the <strong>Terrain</strong> panel, <strong>Contour density</strong> sets 4–40 lines across the elevation range. Start with a moderate count, then increase it if the terrain needs more detail. Tight slopes produce close lines, so inspect them at your finished size.</p>
   <p>The density setting divides the selected elevation range; it is not a fixed elevation interval, so the same count gives different spacing in different places. <strong>Index contour</strong> draws every chosen line (every 2nd to 10th) with a stronger stroke to help readers follow the landscape.</p>
   <h2>3. Add context without crowding the contours</h2>
-  <p>In <strong>Map details</strong>, roads, trails, water outlines, state or province boundaries, a coordinate grid, elevation labels, a compass and a scale bar are optional. Water can be filled with lines, ripples or dots, or left as an outline. Turn off details that compete with the shape of the terrain.</p>
-  <p>In <strong>Linework</strong>, choose a Fine, Balanced or Bold preset, then adjust individual widths as needed. Widths are SVG stroke widths at physical size. Actual burn width also depends on your laser, material and how your software processes vector strokes.</p>
+  <p>Roads, trails, state or province boundaries and a coordinate grid in the <strong>Features</strong> panel, water outlines in the <strong>Water</strong> panel, and elevation labels, a compass and a scale bar in the <strong>Labels</strong> panel are all optional. Water can be filled with lines, ripples or dots, or left as an outline. Turn off details that compete with the shape of the terrain.</p>
+  <p>At the top of the <strong>Features</strong> panel, choose a Fine, Balanced or Bold line weight, then adjust individual widths under each feature's switch as needed. Contour widths are in the <strong>Terrain</strong> panel. Widths are SVG stroke widths at physical size. Actual burn width also depends on your laser, material and how your software processes vector strokes.</p>
   <h2>4. Generate, preview and export</h2>
   <ol>
     <li>Select <strong>Generate terrain</strong> (<strong>Regenerate terrain</strong> after the first generation) to fetch real elevation and the requested map details.</li>

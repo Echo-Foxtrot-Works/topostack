@@ -1,26 +1,27 @@
-/* Advanced section: fabrication fields and the seam summary. */
-
-.advanced-section {
-  border-bottom: 0;
-}
-
-.advanced-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  margin-top: 12px;
-}
-
-.advanced-fields > .field-row {
-  min-width: 0;
-}
+/* Fabrication panel, and the panels-and-seams block it shares with the export dialog. */
 
 /** What the work-area fields resolve to: sheet count and tile size. */
 .seam-summary {
-  margin: -4px 0 0;
+  margin: 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--loidolt-text-muted);
+}
+
+.nests-and-seams {
+  display: grid;
+  gap: 10px;
+}
+
+/* In the export dialog, outside the sidebar that defines the panel type scale. */
+.export-dialog .nests-and-seams {
+  --panel-font-body: 13px;
+  --panel-font-label: 11px;
+  --panel-font-caption: 11px;
+  --panel-font-micro: 10px;
+  --panel-space-1: 6px;
+  --panel-space-2: 10px;
+  --panel-space-3: 14px;
 }
 
 /* Airspace in 3D: the form and rod-shape choices and the ceiling cap, laid out like the length fields beside them. */

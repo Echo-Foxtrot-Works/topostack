@@ -6,7 +6,7 @@
 <Article title="Make an airspace model in 3D" intro="Show the sky above a place as acrylic over a wooden terrain relief. Choose airspace classes, compare three ways to build them, and inspect the pieces before you cut.">
   <h2>Start with an airport and its surroundings</h2>
   <p>Choose <strong>Layered</strong> in the <a href={`${base}/studio`}>studio</a>, find a US airport, and frame the surrounding area in <strong>Map</strong>. Denver is a useful first Class B project; Colorado Springs (COS) is a useful Class C project. A wider crop shows the changing shelf footprints; a tight crop around a runway may sit entirely inside one sector and produce a single plate.</p>
-  <p>Open <strong>Fabrication settings</strong> and turn on <strong>Airspace in 3D</strong>. This builds acrylic above the terrain. The aviation details in <strong>Map details</strong> draw airport and airspace linework instead; those switches do not turn on the acrylic model.</p>
+  <p>Open the <strong>Aviation</strong> panel and turn on <strong>Airspace in 3D</strong>. This builds acrylic above the terrain. The switches above it, under <strong>On the map</strong>, draw airport and airspace linework instead; they do not turn on the acrylic model.</p>
   <p class="note">FAA coverage includes the US and its territories. Only the selected Class B, C, D and special use sectors are modeled. The default Crater Lake crop may have no selected airspace. These are decorative models, not for navigation or flight planning.</p>
 
   <h2>Choose how to build the airspace</h2>

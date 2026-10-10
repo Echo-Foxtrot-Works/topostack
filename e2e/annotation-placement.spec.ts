@@ -15,7 +15,7 @@ test("annotation placement preserves live edits and previews title knockouts", a
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/v1/**", route => route.abort("internetdisconnected"));
   await page.goto("/studio");
-  await page.getByRole("button", { name: "Expand all", exact: true }).click();
+  await page.getByRole("tab", { name: "Labels", exact: true }).click();
   await page.getByRole("switch", { name: "Title", exact: true }).click();
   await page.locator(".plaque-settings .placement-start").click();
   const title = page.locator('[data-placeable="plaque"]');
@@ -92,7 +92,7 @@ test("annotation placement preserves live edits and previews title knockouts", a
 
 test("placement controls leave default annotations reachable at desktop and narrow widths", async ({ page }) => {
   await page.goto("/studio");
-  await page.getByRole("button", { name: "Expand all", exact: true }).click();
+  await page.getByRole("tab", { name: "Labels", exact: true }).click();
   await page.locator(".placement-start").first().click();
   const scale = page.locator('[data-placeable="scale"]');
   await expect(scale).toBeVisible();

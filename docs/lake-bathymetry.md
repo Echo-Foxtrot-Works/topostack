@@ -179,7 +179,7 @@ rasters. Coverage remains limited to valid samples and available lake outlines.
 
 ## Fit lake depth to available layers
 
-In **Map details → Water depth**, enable **Fit lake depth to available layers**, or choose **Fit depth** in the clipping warning. The setting defaults to off, including for older saved projects.
+In the **Water** panel, under **Water depth**, enable **Fit lake depth to available layers**, or choose **Fit depth** in the clipping warning. The setting defaults to off, including for older saved projects.
 
 When a lake exceeds the stack floor, fitting compresses all its depths by the same factor around its waterline. Each lake fits independently; shallower lakes keep their requested depth scale. Land, islands, and ocean depths keep their existing behavior. The material thickness and layer budget still limit the detail the model can resolve. If no depth fits below a lake's waterline, the clipping warning remains.
 
