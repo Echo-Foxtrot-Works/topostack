@@ -27,7 +27,7 @@
     detail: string;
     onDownload: (option: DownloadOption) => void;
     onClose: () => void;
-    /** The sheet-nesting controls, shown for layered projects. */
+    /** Panels, seams and sheet nesting, shown for layered projects. */
     sheetLayout?: Snippet;
     onSavePreview?: () => void;
     onCopyLink?: () => void;
@@ -52,9 +52,9 @@
     ...(layered ? [
       { id: "panels", label: "Cut panels", format: "ZIP", icon: Layers3, hint: "One SVG per sheet: cut and engrave together." },
       { id: "engravings", label: "Engraving panels", format: "ZIP", icon: PenTool, hint: "Engraving-only copies, to engrave as a separate job." },
-      { id: "paint", label: "Paint templates", format: "ZIP", icon: SprayCan, unavailable: !project.paintTemplates.length, hint: project.paintTemplates.length ? "Paper stencils for painting water." : "Turn on Water paint templates in Fabrication settings to add these." },
-      { id: "acrylic", label: "Acrylic inserts", format: "ZIP", icon: Droplets, unavailable: !project.waterInserts, hint: project.waterInserts ? "Water inserts to cut from acrylic, as their own job." : "Turn on Acrylic water inserts in Fabrication settings to add these." },
-      { id: "airspace", label: "Airspace", format: "ZIP", icon: Plane, unavailable: !airspaceCount, hint: airspaceCount ? "Airspace pieces to cut from acrylic, and the backing sheet the rods stand on." : project.airspaceStack ? "No airspace was built for this area." : "Turn on Airspace in 3D in Fabrication settings to add these." },
+      { id: "paint", label: "Paint templates", format: "ZIP", icon: SprayCan, unavailable: !project.paintTemplates.length, hint: project.paintTemplates.length ? "Paper stencils for painting water." : "Turn on Water paint templates in the Water panel to add these." },
+      { id: "acrylic", label: "Acrylic inserts", format: "ZIP", icon: Droplets, unavailable: !project.waterInserts, hint: project.waterInserts ? "Water inserts to cut from acrylic, as their own job." : "Turn on Acrylic water inserts in the Water panel to add these." },
+      { id: "airspace", label: "Airspace", format: "ZIP", icon: Plane, unavailable: !airspaceCount, hint: airspaceCount ? "Airspace pieces to cut from acrylic, and the backing sheet the rods stand on." : project.airspaceStack ? "No airspace was built for this area." : "Turn on Airspace in 3D in the Aviation panel to add these." },
       { id: "assembly", label: "Assembly guide", format: "HTML", icon: ListOrdered, hint: "Step-by-step booklet to print or follow on screen." },
     ] : []),
   ] as { id: DownloadOption; label: string; format: string; icon: typeof Archive; hint: string; unavailable?: boolean }[]);

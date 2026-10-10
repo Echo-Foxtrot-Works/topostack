@@ -16,9 +16,9 @@
   <h2>Recreate the pictured project</h2>
   <ol>
     <li><a href={`${base}${exampleStudioPath("crater-lake")}`}>Open Crater Lake in the studio</a>. It opens the Crater Lake starting project and generates its terrain. If you had another project open, <strong>Undo</strong> returns to it.</li>
-    <li>Select <strong>Layered</strong>. In <strong>Cut size</strong>, choose a rectangle 406.4 mm wide by 270.933 mm high (16 × 10.667 in). In <strong>Terrain layers</strong>, enter 3.175 mm sheet material.</li>
+    <li>Select <strong>Layered</strong>. In the <strong>Place</strong> panel, choose a rectangle 406.4 mm wide by 270.933 mm high (16 × 10.667 in). In the <strong>Terrain</strong> panel, enter 3.175 mm sheet material.</li>
     <li>Set <strong>Vertical exaggeration</strong> to 4×. The studio rounds the relief to whole material layers without an upper layer limit. The pictured project uses 24 layers; different framing, thickness or data can change the count.</li>
-    <li>In <strong>Map details</strong>, keep <strong>Water depth</strong> on, set <strong>Depth exaggeration</strong> to 1.75× and leave <strong>Limit depth layers</strong> off for automatic coverage. Choose roads, water and other details, then select <strong>Generate terrain</strong>.</li>
+    <li>In the <strong>Water</strong> panel, keep <strong>Water depth</strong> on, set <strong>Depth exaggeration</strong> to 1.75× and leave <strong>Limit depth layers</strong> off for automatic coverage. Choose roads and other details in the <strong>Features</strong> panel, then select <strong>Generate terrain</strong>.</li>
     <li>Inspect the layers and the exploded 3D view, then open <strong>Export</strong>, download the complete project and read its assembly guide.</li>
   </ol>
   <p>Your result can differ from the picture. The starting project is centered on the caldera but is not the exact pictured map area, so check the output type, size, material thickness and map details against the steps above. Different framing, fresh data or different settings change the layer and panel counts.</p>

@@ -9,7 +9,7 @@ import type { ExportPhase } from "$lib/studio/export-notice";
 import type { HistoryAvailability } from "$lib/studio/history";
 import type { LazyComponent } from "$lib/studio/lazy-component";
 import type { PlaceableId, PlacementSession } from "$lib/studio/placement/placeables";
-import type { ConfigSectionId, countDetailMarkings, modeledLakes, visibleWarnings } from "$lib/studio/preview-summary";
+import type { countDetailMarkings, DisclosureId, modeledLakes, PanelId, visibleWarnings } from "$lib/studio/preview-summary";
 
 /** Editing, waiting for Done's regeneration, or fading out. */
 export type PlacementPhase = "editing" | "settling" | "closing";
@@ -113,14 +113,16 @@ export interface StudioContext {
   cancelPlacement(): void;
 
   // Sidebar and dialogs
-  readonly openSections: Record<ConfigSectionId, boolean>;
+  /** The settings panel the rail shows. */
+  activePanel: PanelId;
+  /** Open blocks in the platform embed, which stacks the panels as disclosures. */
+  readonly openPanels: Record<DisclosureId, boolean>;
   searchOpen: boolean;
   resetOpen: boolean;
   mapAspectLocked: boolean;
   placingMarker: boolean;
   /** The path being drawn by clicking the map, before it joins the project. */
   readonly lineDraft: { points: GeoPoint[] } | undefined;
-  lineworkOpen: boolean;
   locationTrigger: HTMLButtonElement | undefined;
 
   // Display units
@@ -179,9 +181,9 @@ export interface StudioContext {
   cancelGeneration(): void;
 
   // Sidebar helpers
-  toggleSection(section: ConfigSectionId): void;
-  setAllSections(open: boolean): void;
-  sectionSummary(section: ConfigSectionId): string;
+  togglePanel(id: DisclosureId): void;
+  panelSummary(id: DisclosureId): string;
+  openExport(): void;
   navigateChoice(event: KeyboardEvent & { currentTarget: HTMLButtonElement }): void;
   dismissPreviewWarning(event: MouseEvent, warningKey?: string): void;
   previewMarkingPath(marking: OperationPath): string;

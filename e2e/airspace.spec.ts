@@ -7,7 +7,7 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
   await page.route("**/v1/events", (route) => route.fulfill({ status: 204 }));
   await page.goto("/studio");
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await page.getByRole("tab", { name: "Aviation", exact: true }).click();
   await page.getByRole("switch", { name: "Airspace in 3D", exact: true }).click();
   await expect(page.getByRole("switch", { name: "Airspace in 3D", exact: true })).toBeChecked();
   await page.getByRole("combobox", { name: "Airspace form" }).selectOption("tiers");
@@ -64,7 +64,7 @@ test("builds the airspace a browser agent asks for, on through rods", async ({ p
   expect(airspace!.rods).toBeGreaterThan(0);
   expect(generated.content[0]!.text).toMatch(/Airspace: \d+ acrylic pieces on \d+ levels \(tiers\)/);
   // The studio shows what the agent chose.
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await page.getByRole("tab", { name: "Aviation", exact: true }).click();
   await expect(page.getByRole("switch", { name: "Airspace in 3D", exact: true })).toBeChecked();
   await expect(page.getByRole("combobox", { name: "Rod joint" })).toHaveValue("through");
 });

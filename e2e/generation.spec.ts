@@ -14,8 +14,7 @@ test("generates deterministic real terrain and downloads the complete fabricatio
     await route.fulfill({ status: 204 });
   });
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Build the landscape." })).toBeVisible();
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await expect(page.getByRole("tab", { name: "Place", exact: true })).toBeVisible({ timeout: 30_000 });
   // The bundled real-data preview must never be exportable: fail closed until
   // the user generates fresh terrain.
   await expect(page.getByText("Generate before export")).toBeVisible();
@@ -29,26 +28,25 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   await page.getByRole("radio", { name: /3D stack/ }).click();
   const preview = page.locator(".preview-stage");
   const mapDetails = [
-    ["Roads", "data-road-markings"],
-    ["Trails", "data-trail-markings"],
-    ["Water outlines", "data-water-markings"],
-    ["Assembly guides", "data-alignment-markings"],
-    ["Elevation labels", "data-elevation-markings"],
-    ["North arrow", "data-north-markings"],
-    ["Scale bar", "data-scale-markings"],
+    ["Features", "Roads", "data-road-markings"],
+    ["Features", "Trails", "data-trail-markings"],
+    ["Water", "Water outlines", "data-water-markings"],
+    ["Fabricate", "Assembly guides", "data-alignment-markings"],
+    ["Labels", "Elevation labels", "data-elevation-markings"],
+    ["Labels", "North arrow", "data-north-markings"],
+    ["Labels", "Scale bar", "data-scale-markings"],
   ] as const;
   // Component tests cover every switch transition. Keep the browser test focused
   // on rendered output plus one representative live geometry refresh.
-  for (const [label, attribute] of mapDetails) {
+  for (const [panel, label, attribute] of mapDetails) {
+    await page.getByRole("tab", { name: panel, exact: true }).click();
     await expect(page.getByRole("switch", { name: label })).toBeChecked();
     await expect.poll(async () => Number(await preview.getAttribute(attribute)), { timeout: 15_000 }).toBeGreaterThan(0);
   }
+  await page.getByRole("tab", { name: "Place", exact: true }).click();
   await page.getByRole("spinbutton", { name: "Width", exact: true }).fill("1200");
   await expect(page.locator(".status-line")).toContainText("Fabrication geometry updated", { timeout: 30_000 });
   await expect(page.locator(".preview-readout")).toContainText("1200 × 200 mm");
-  await expect(page.getByRole("button", { name: /Fabrication settings/ })).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("switch", { name: "Material-saving nests" })).toBeChecked();
-  await expect(page.getByRole("spinbutton", { name: "Glue margin", exact: true })).toHaveValue("8");
   await page.getByRole("button", { name: /Regenerate terrain/ }).click();
 
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 30_000 });
@@ -56,6 +54,9 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   await page.getByRole("button", { name: "Export", exact: true }).click();
   const downloadButton = page.getByRole("button", { name: /Complete project/ });
   await expect(downloadButton).toBeEnabled();
+  // Nests and seams sit beside the sheet layout they feed.
+  await expect(page.getByRole("switch", { name: "Material-saving nests" })).toBeChecked();
+  await expect(page.getByRole("spinbutton", { name: "Glue margin", exact: true })).toHaveValue("8");
 
   const downloadPromise = page.waitForEvent("download");
   await downloadButton.click();
@@ -152,7 +153,7 @@ test("compact layouts keep the preview and controls reachable", async ({ page })
   await expect(page.locator(".preview-toolbar")).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole("radiogroup", { name: "Output type" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await page.getByRole("tab", { name: "Place", exact: true }).click();
   const widthField = page.getByRole("spinbutton", { name: "Width", exact: true });
   await widthField.scrollIntoViewIfNeeded();
 
@@ -171,8 +172,9 @@ test("compact layouts keep the preview and controls reachable", async ({ page })
   expect(unitBox).not.toBeNull();
   expect(numberFieldBox!.x + numberFieldBox!.width).toBeLessThanOrEqual(unitBox!.x + 0.5);
 
-  const roadsBox = await page.getByRole("switch", { name: "Roads" }).boundingBox();
   const presetBox = await page.getByRole("button", { name: "Grand Canyon", exact: true }).boundingBox();
+  await page.getByRole("tab", { name: "Features", exact: true }).click();
+  const roadsBox = await page.getByRole("switch", { name: "Roads" }).boundingBox();
   expect(roadsBox!.height).toBeGreaterThanOrEqual(44 - 0.01);
   expect(presetBox!.height).toBeGreaterThanOrEqual(44 - 0.01);
 

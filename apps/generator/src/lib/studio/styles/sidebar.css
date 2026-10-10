@@ -1,9 +1,9 @@
-/* Sidebar: workspace, config panel, panel intro, section disclosures, labels, badges, subgroup headings. */
+/* Sidebar: workspace, config panel, settings rail, settings search, panel headers, disclosures (embed), labels, badges, subgroup headings. */
 
 .workspace {
   height: 100%;
   min-height: 0;
-  --ldt-sidebar-width: 288px;
+  --ldt-sidebar-width: 348px;
   overflow: hidden;
 }
 
@@ -31,6 +31,24 @@
   --panel-space-1: 6px;
   --panel-space-2: 10px;
   --panel-space-3: 14px;
+}
+
+/* The theme's rail (`Tabs variant="rail"`) fills the sidebar above the generation dock;
+   its panels scroll beside it. Tabs and labels are tuned to the panel's type scale. */
+.settings-rail {
+  --ldt-rail-width: 3.25rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-rail .ldt-tabs__trigger {
+  font: var(--panel-font-caption) var(--loidolt-font-utility);
+  text-transform: none;
+}
+
+.settings-rail .ldt-tabs__panels {
+  padding-bottom: 20px;
+  scrollbar-color: var(--loidolt-border) transparent;
 }
 
 .panel-scroll {
@@ -63,45 +81,9 @@
   margin-bottom: 8px;
 }
 
-.section-tools {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  padding: 1px;
-  border: var(--loidolt-border-width) solid var(--loidolt-border-soft);
-  background: var(--loidolt-border-soft);
-}
-
-.section-tools button {
-  min-height: 30px;
-  border: 0;
-  background: var(--loidolt-surface);
-  color: var(--loidolt-text-muted);
-  cursor: pointer;
-  font: var(--panel-font-caption) var(--loidolt-font-utility);
-}
-
-.section-tools button:hover:not(:disabled) {
-  color: var(--loidolt-text);
-  background: var(--loidolt-surface-alt);
-}
-
-.section-tools button:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 2px solid var(--loidolt-accent);
-  outline-offset: 2px;
-}
-
 .section-disclosure:focus-visible {
   outline: 2px solid var(--loidolt-accent);
   outline-offset: -2px;
-}
-
-.section-tools button:disabled {
-  color: var(--loidolt-text-muted);
-  cursor: default;
-  opacity: 0.45;
 }
 
 .config-section {
@@ -295,4 +277,134 @@
   padding: 12px 20px;
   color: var(--loidolt-text-muted);
   font-size: var(--panel-font-caption);
+}
+
+/* Settings search: the rail's shared header, which the theme pins while the panels scroll. */
+.settings-search-slot {
+  padding: 10px 20px 6px;
+}
+
+.settings-search {
+  position: relative;
+}
+
+.settings-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: var(--loidolt-border-width) solid var(--loidolt-border);
+  color: var(--loidolt-text-muted);
+}
+
+.settings-search-field:focus-within {
+  border-color: var(--loidolt-accent);
+}
+
+.settings-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--loidolt-text);
+  font: var(--panel-font-body) var(--loidolt-font-body, inherit);
+}
+
+.settings-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: var(--loidolt-border-width) solid var(--loidolt-border);
+  background: var(--loidolt-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 18%, transparent);
+}
+
+.settings-search-results li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: var(--panel-font-body);
+}
+
+.settings-search-results li small {
+  flex: none;
+  color: var(--loidolt-text-muted);
+  font: var(--panel-font-caption) var(--loidolt-font-utility);
+}
+
+.settings-search-results li[aria-selected="true"],
+.settings-search-results li:hover {
+  background: var(--loidolt-surface-alt);
+}
+
+.settings-search-empty {
+  margin: 6px 0 0;
+  color: var(--loidolt-text-muted);
+  font-size: var(--panel-font-caption);
+}
+
+.search-hit {
+  animation: search-hit 1.6s ease-out;
+}
+
+@keyframes search-hit {
+  0%,
+  40% {
+    background: color-mix(in srgb, var(--loidolt-accent) 18%, transparent);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
+
+/* One panel at a time: its title, a one-line summary, then groups divided by rules. */
+.studio-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 20px 6px;
+}
+
+.studio-panel-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.studio-panel-header small {
+  color: var(--loidolt-text-muted);
+  font: var(--panel-font-caption) var(--loidolt-font-utility);
+}
+
+.studio-panel .detail-group + .detail-group {
+  padding-top: var(--panel-space-3);
+  border-top: var(--loidolt-border-width) solid var(--loidolt-border-soft);
+}
+
+.studio-panel .linework-note {
+  display: block;
+  margin-top: var(--panel-space-3);
+}
+
+.export-pointer .btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-hit {
+    animation: none;
+  }
 }

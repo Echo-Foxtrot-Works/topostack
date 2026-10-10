@@ -194,7 +194,7 @@ It reads every record in `scripts/data/depth-charts/`, refuses any whose attesta
 
 Tracing a chart is its own job, not a step inside making a relief, so it has its own view: "Custom data" sits beside Map, Cut layers and 3D stack, and is loaded only when opened. It holds everything a maker brings to a project: depth charts, markers, trails and boundaries, and imported files.
 
-**The sidebar becomes the view's own.** While it is open, the project's size, terrain, details and linework controls are put away: none of them shapes a chart or a marker. In their place are four disclosures drawn exactly like the project's — depth charts, markers, trails and boundaries, file import — each holding that kind's tools. Markers, trails and import moved here out of the project sidebar; the same components are what the platform embed still renders in its own rail.
+**The sidebar becomes the view's own.** While it is open, the project's settings rail and panels are put away: none of them shapes a chart or a marker. In their place are four disclosures — depth charts, markers, trails and boundaries, file import — each holding that kind's tools. Markers, trails and import moved here out of the project sidebar; the same components are what the platform embed still renders in its own rail.
 
 **At most one section is open; collapsing tools keeps the active workspace.** A second click closes the section without discarding the chart or map. The workspace heading offers Show tools to reopen it. Depth charts put the chart being clicked there; the other three put the map, which is the same `MapStage` map view uses, so a marker is placed and dragged exactly as before without leaving the view. It is shown with `framing` off: a marker or a path needs no map area, so the selection box, its handles and the crosshair are put away and panning commits nothing. The guide element stays in the layout, because the bounds a pan would report are measured from it.
 
@@ -222,7 +222,7 @@ Tracing a chart is its own job, not a step inside making a relief, so it has its
 
 **The work in progress outlives the view.** Switching to another view and back unmounts the chart canvas and its tools, so the half-traced chart lives in `customdata/chart-draft.svelte.ts` instead of in the component. It is deliberately not part of the project: nothing is saved until the maker keeps it.
 
-**A lake with a chart stops taking a maximum-depth override**, because that control only shapes a modeled basin; Map details shows the chart is in use and points at this view.
+**A lake with a chart stops taking a maximum-depth override**, because that control only shapes a modeled basin; the Water panel shows the chart is in use and points at this view.
 
 ## In the browser
 

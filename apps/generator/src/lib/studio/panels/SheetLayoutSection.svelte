@@ -74,7 +74,7 @@
       </label>
     </div>
     {#if settings.sheetWidthMm === 0 || settings.sheetHeightMm === 0}
-      <p class="sheet-layout-note">{workArea ? "A size of 0 uses the machine work area." : "Set a sheet size, or a machine work area in Fabrication settings."}</p>
+      <p class="sheet-layout-note">{workArea ? "A size of 0 uses the machine work area." : "Set a sheet size, or a machine work area in the Fabrication panel."}</p>
     {/if}
     <div class="sheet-layout-actions">
       {#if running}

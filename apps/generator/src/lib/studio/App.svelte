@@ -28,7 +28,7 @@
   import ResetProjectDialog from "$lib/studio/ResetProjectDialog.svelte";
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { ProjectHistory } from "$lib/studio/history";
-  import { MenuSections } from "$lib/studio/menu-sections.svelte";
+  import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
   import { autosaveProject } from "$lib/studio/autosave.svelte";
   import { historyShortcut } from "$lib/studio/history-keys";
@@ -40,7 +40,7 @@
   import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
-  import { acrylicPanelCount as findAcrylicPanelCount, airspacePanelCount as findAirspacePanelCount, activeLinePreset as findActiveLinePreset, CONFIG_SECTION_IDS, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, sectionSummary as summarizeSection, visibleWarnings as summarizeWarnings, type ConfigSectionId } from "$lib/studio/preview-summary";
+  import { acrylicPanelCount as findAcrylicPanelCount, airspacePanelCount as findAirspacePanelCount, activeLinePreset as findActiveLinePreset, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, panelSummary as summarizePanel, visibleWarnings as summarizeWarnings, type DisclosureId } from "$lib/studio/preview-summary";
   import { retryingLoader } from "$lib/studio/lazy-load";
   import { sameMapArea } from "$lib/studio/project-diff";
   import { pointsToPath } from "$lib/studio/svg-path";
@@ -54,7 +54,9 @@
   import OutputSwitch from "$lib/studio/panels/OutputSwitch.svelte";
   import SetupSection from "$lib/studio/panels/SetupSection.svelte";
   import CustomDataSection from "$lib/studio/panels/CustomDataSection.svelte";
-  import ParameterSections from "$lib/studio/panels/ParameterSections.svelte";
+  import SettingsPanels from "$lib/studio/panels/SettingsPanels.svelte";
+  import SettingsRail from "$lib/studio/panels/SettingsRail.svelte";
+  import NestsAndSeams from "$lib/studio/panels/NestsAndSeams.svelte";
   import UnitSwitch from "$lib/studio/panels/UnitSwitch.svelte";
   import GenerationDock from "$lib/studio/panels/GenerationDock.svelte";
   import LayerDock from "$lib/studio/panels/LayerDock.svelte";
@@ -112,8 +114,7 @@
   });
   $effect(() => { customData.disarmOutside(mode, nav.section); });
   let locationTrigger: HTMLButtonElement;
-  let lineworkOpen = $state(false);
-  const menuSections = new MenuSections();
+  const panels = new PanelState();
   let AtommWorkbench = $state.raw<typeof import("$lib/atomm/AtommWorkbench.svelte").default>();
   let atommLayoutFailed = $state(false);
   let atommReady = $state(false);
@@ -403,22 +404,15 @@
   }
 
 
-  /** Sidebar sections on screen: markers and paths live in the custom data view outside the Atomm embed. */
-  const shownSections = $derived(embeddedInPlatform ? CONFIG_SECTION_IDS : CONFIG_SECTION_IDS.filter((section) => section !== "customData"));
-
-  function setAllSections(open: boolean): void {
-    menuSections.setAll(shownSections, open);
-  }
-
-  function sectionSummary(section: ConfigSectionId): string {
-    return summarizeSection(section, project, stackLayerCount);
+  function panelSummary(id: DisclosureId): string {
+    return summarizePanel(id, project, stackLayerCount);
   }
 
   onMount(() => {
     let cancelled = false;
     const settleStartup = () => { if (!cancelled) startupSettled = true; };
     const startupWait = window.setTimeout(settleStartup, STARTUP_PREVIEW_WAIT_MS);
-    menuSections.restore();
+    panels.restore();
     embeddedInPlatform = window.parent !== window;
     if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
@@ -963,7 +957,9 @@
     get placementFade() { return placement.fade; },
     get placementMargin() { return placement.marginMm; },
     get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
-    get openSections() { return menuSections.open; },
+    get activePanel() { return panels.active; },
+    set activePanel(value) { panels.active = value; },
+    get openPanels() { return panels.open; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },
     get mode() { return mode; },
@@ -985,8 +981,6 @@
     get placingMarker() { return customData.placingMarker; },
     set placingMarker(value) { customData.setPlacingMarker(value); },
     get lineDraft() { return customData.lineDraft; },
-    get lineworkOpen() { return lineworkOpen; },
-    set lineworkOpen(value) { lineworkOpen = value; },
     get locationTrigger() { return locationTrigger; },
     set locationTrigger(value) { locationTrigger = value; },
     shownLength, shownDepth, shownLineWidth, shownTextSize, storedLength, workAreaLength, updateProject, updateFabrication, updateMapDetails, updateLocation, updateVerticalExaggeration, updateDepthLayerLimit, setLakeDepth, setLineWidth, applyCustomDataEdit,
@@ -998,7 +992,7 @@
     saveChartToLibrary: (record) => customData.saveChartToLibrary(record),
     useChartForLake: (key, reference) => customData.useChartForLake(key, reference),
     clearDepthChart: (key) => customData.clearDepthChart(key),
-    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, toggleSection: (section) => menuSections.toggle(section), setAllSections, sectionSummary, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
+    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, togglePanel: (id) => panels.toggle(id), panelSummary, openExport: () => { exportOpen = true; }, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
   });
 </script>
 
@@ -1025,7 +1019,7 @@
       <UnitSwitch />
       <button type="button" class="btn btn-secondary" onclick={() => void updateFabrication({ ...DEFAULT_PROJECT, id: project.id, name: project.name, location: project.location, outputMode: project.outputMode })}>Reset</button>
     {/snippet}
-    {#snippet parameters(openLakeDepthHelp)}<LayerDock /><ParameterSections {openLakeDepthHelp} />{/snippet}
+    {#snippet parameters(openLakeDepthHelp)}<LayerDock /><div class="settings-panels"><SettingsPanels {openLakeDepthHelp} /></div>{/snippet}
     {#snippet preview(openLakeDepthHelp)}<PreviewPanel {openLakeDepthHelp} />{/snippet}
     {#snippet dialogs()}{@render locationSearch()}{/snippet}
   </AtommWorkbench>{:else}<main role="status">{atommLayoutFailed ? "The platform layout could not load. Reload to try again." : "Preparing terrain studio…"}</main>{/if}
@@ -1055,8 +1049,8 @@
   <Workspace class="workspace">
     {#snippet sidebar()}
     <Sidebar class="config-panel">
-      <div class="panel-scroll">
-        {#if mode === "custom"}
+      {#if mode === "custom"}
+        <div class="panel-scroll">
           <!-- The custom data view is its own job. The project's size, terrain
                and linework controls have nothing to say about tracing a chart,
                so the sidebar becomes a menu over what that view shows. -->
@@ -1066,22 +1060,12 @@
             <p>Charts you trace, points you place, routes you import. Markers and paths join the project as you add them; a chart carves a lake only when you say so.</p>
           </div>
           {@render customDataTools()}
-        {:else}
-          <div class="panel-intro">
-            <span class="section-kicker panel-eyebrow">Project controls</span>
-            <h1>{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
-            <p>Work through the essentials, then open details only when you need them.</p>
-            <div class="section-tools" aria-label="Section display controls">
-              <button type="button" onclick={() => setAllSections(true)} disabled={shownSections.every((section) => menuSections.open[section])}>Expand all</button>
-              <button type="button" onclick={() => setAllSections(false)} disabled={shownSections.every((section) => !menuSections.open[section])}>Collapse all</button>
-            </div>
-          </div>
-          {#if starterId && project.id === `topostack-starter-${starterId}`}<StarterSteps id={starterId} ready={exportReady} busy={previewBusy} exported={exportedFingerprint === projectFingerprint(project)} onGenerate={() => void generate()} onExport={() => exportOpen = true} onDismiss={() => starterId = undefined} />{/if}
-          <SetupSection />
-
-          <ParameterSections />
-        {/if}
-      </div>
+        </div>
+      {:else}
+        <h1 class="ldt-visually-hidden">{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
+        {#if starterId && project.id === `topostack-starter-${starterId}`}<StarterSteps id={starterId} ready={exportReady} busy={previewBusy} exported={exportedFingerprint === projectFingerprint(project)} onGenerate={() => void generate()} onExport={() => exportOpen = true} onDismiss={() => starterId = undefined} />{/if}
+        <SettingsRail />
+      {/if}
       {#if mode !== "custom"}<GenerationDock />{/if}
     </Sidebar>
     {/snippet}
@@ -1089,7 +1073,7 @@
     <PreviewPanel />
   </Workspace>
   <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} airspaceCount={airspacePanelTotal} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false} onSavePreview={() => void savePreviewImage()} onCopyLink={() => void copyShareLink()} onShare={() => void shareDesign()} {previewImageBusy} {previewImageStatus}>
-    {#snippet sheetLayout()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
+    {#snippet sheetLayout()}<NestsAndSeams disabled={exportPhase === "preparing"} /><SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
   </ExportDialog>
   {@render locationSearch()}
 </AppShell>

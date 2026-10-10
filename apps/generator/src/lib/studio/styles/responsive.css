@@ -28,7 +28,7 @@
   }
 
   .workspace {
-    --ldt-sidebar-width: 260px;
+    --ldt-sidebar-width: 320px;
   }
 
   .preview-readout {
@@ -72,7 +72,12 @@
     overflow: visible;
   }
 
-  /* Keep accordion sections in one vertical sequence as their heights change. */
+  /* The rail turns horizontal here (SettingsRail.svelte), and the page scrolls instead of the panel. */
+  .settings-rail {
+    flex: none;
+    height: auto;
+  }
+
   .panel-scroll {
     flex: none;
     overflow: visible;
@@ -83,43 +88,28 @@
   }
 }
 
-/* Sections remain one accordion. Only related controls inside an open section
-   share columns when the panel itself has enough room. */
+/* A wide panel, as on a stacked tablet, sets its groups side by side. */
 @container project-controls (min-width: 640px) {
-  .panel-intro {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px;
-    column-gap: 24px;
-  }
-
-  .panel-intro > .section-tools {
-    grid-column: 2;
-    grid-row: 1 / 4;
-    align-self: center;
-  }
-
   .section-content > *,
-  .linework-group,
   .field-stack > * {
     min-width: 0;
   }
 
-  #section-setup:not([hidden]),
-  #section-size:not([hidden]),
-  #section-terrain:not([hidden]),
-  #section-details:not([hidden]),
-  #section-custom-data:not([hidden]),
-  .linework-controls {
+  .studio-panel > .section-content {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 20px 24px;
   }
 
-  #section-setup > .terrain-data-note {
+  .studio-panel .detail-group + .detail-group {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .studio-panel .linework-note {
+    grid-column: 1 / -1;
     margin: 0;
-    font-size: var(--panel-font-caption);
-    line-height: 1.6;
   }
 
   .preset-row {
@@ -131,39 +121,9 @@
     gap: 12px 20px;
   }
 
-  #section-size > .field-stack,
-  #section-terrain > .relief-summary,
   .custom-data-intro,
-  .custom-data-import,
-  .linework-group--fields,
-  .linework-note {
+  .custom-data-import {
     grid-column: 1 / -1;
-  }
-
-  #section-size > .field-stack {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #section-size > .unit-switch,
-  #section-size > .field-stack,
-  #section-terrain > .range-field,
-  #section-terrain > .field-stack,
-  #section-terrain > .relief-summary,
-  #section-details .detail-group,
-  #section-details > .detail-column,
-  .linework-group > .field-stack {
-    margin: 0;
-  }
-
-  #section-details > .detail-column {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  #section-details .detail-group {
-    padding: 14px;
-    border: 1px solid var(--loidolt-border-soft);
   }
 
   .field-stack--offsets {
@@ -173,17 +133,6 @@
 
   .marker-coordinate-fields {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
-  }
-
-  .line-presets,
-  .linework-customize {
-    max-width: 440px;
-  }
-
-  .advanced-fields > .toggle-stack {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 24px;
   }
 
   .generate-dock {
@@ -274,7 +223,6 @@
 /* Custom controls need the same touch targets as the shared theme controls,
    including on tablets whose width exceeds the phone breakpoint. */
 @media (pointer: coarse), (max-width: 760px) {
-  .section-tools button,
   .preset-row button,
   .subgroup-heading--action button,
   .marker-card__header button,
@@ -284,7 +232,6 @@
   .custom-point-add,
   .custom-point-expand,
   .custom-data-import__button,
-  .linework-customize,
   .toggle-stack .ldt-switch,
   .generate-button,
   .mode-switch .ldt-toggle-group__item {

@@ -23,7 +23,7 @@
   <p>Below it, choose the output type: <strong>Layered</strong> for a stack of cut sheets, or <strong>Flat</strong> for one engraved surface. Above the preview, a readout shows the finished size, the layer count, cut panels and stack height for layered output (or the contour count for flat output), and the elevation range.</p>
 
   <h2>2. Choose a place</h2>
-  <p>In <strong>Project setup</strong>, select the location card to open the place picker. You can:</p>
+  <p>In the <strong>Place</strong> panel, select the location card to open the place picker. You can:</p>
   <ul>
     <li>search for a mountain, lake, park, city or address;</li>
     <li>enter latitude and longitude in decimal degrees, then select <strong>Use coordinates</strong>;</li>
@@ -37,16 +37,17 @@
   <p>The <strong>Map</strong> preview shows the area that will become your artwork. Pan and zoom the map to position it. Drag the frame's corner or edge handles to resize it: the physical size changes with the frame, so the map scale stays the same. Hold Shift or turn on <strong>Lock aspect ratio</strong> to keep the proportions. Circles always keep theirs.</p>
 
   <h2>4. Work through the settings</h2>
-  <p>The numbered sections on the left follow the order you usually need them. Each heading summarizes its current values; select it to expand or collapse it.</p>
+  <p>The icon rail on the left of the sidebar picks which settings panel is shown, one at a time, in the order you usually need them. Hover an icon to see a summary of that panel's current values. To jump straight to a control, type its name in <strong>Find a setting</strong> at the top of the panel.</p>
   <table>
-    <thead><tr><th scope="col">Section</th><th scope="col">What it controls</th></tr></thead>
+    <thead><tr><th scope="col">Panel</th><th scope="col">What it controls</th></tr></thead>
     <tbody>
-      <tr><td>01–02 Project setup</td><td>Location and map area.</td></tr>
-      <tr><td>03 Cut size / Artwork size</td><td>Metric or imperial units, rectangle or circle, finished width and height.</td></tr>
-      <tr><td>04 Terrain layers / Contour design</td><td>Vertical exaggeration and material thickness, or contour density and index contours.</td></tr>
-      <tr><td>05 Map details</td><td>Roads, trails, water, boundaries, grid, water depth, assembly guides, labels, north arrow, scale bar and text. See <a href={`${base}/guides/map-details`}>map details and linework</a>.</td></tr>
-      <tr><td>06 Linework</td><td>Line width presets and individual stroke widths.</td></tr>
-      <tr><td>07 Fabrication settings / Artwork settings</td><td>Nesting, glue margin, kerf, contour smoothing and minimum feature size.</td></tr>
+      <tr><td>Place</td><td>Location, metric or imperial units, rectangle or circle, finished width and height.</td></tr>
+      <tr><td>Terrain</td><td>Vertical exaggeration and material thickness, or contour density, index contours and contour line widths. Contour smoothing.</td></tr>
+      <tr><td>Features</td><td>Line weight presets, then roads, trails, transportation labels, boundaries, grid and border, each with its line settings under its switch. See <a href={`${base}/guides/map-details`}>map details and linework</a>.</td></tr>
+      <tr><td>Water</td><td>Water outlines, water depth, acrylic water inserts and water paint templates.</td></tr>
+      <tr><td>Aviation</td><td>FAA airspace, airports and other aviation detail in the United States, and airspace built in acrylic over a layered model.</td></tr>
+      <tr><td>Labels</td><td>Engraving font and text size, elevation labels, north arrow, scale bar and title.</td></tr>
+      <tr><td>Fabricate</td><td>Kerf, minimum feature size, work area and assembly guides. Material-saving nests and seam options are under <strong>Panels and seams</strong> in the export dialog.</td></tr>
     </tbody>
   </table>
   <p>Every control, with its range and default, is listed in the <a href={`${base}/guides/settings-reference`}>settings reference</a>.</p>
@@ -65,7 +66,7 @@
 
   <h2>What needs fresh terrain</h2>
   <p>Changing the location or map area, including a cut aspect-ratio change that selects a new area, needs <strong>Regenerate terrain</strong> before export. Badges beside those controls say <strong>Regeneration pending</strong> until you do.</p>
-  <p>Terrain exaggeration and other settings, including size at the same proportions, map details, custom data, linework and fabrication settings, updates the preview on its own. Turning on a detail that was not loaded fetches its data in the background.</p>
+  <p>Terrain exaggeration and other settings, including size at the same proportions, map features, water, labels, line widths, custom data and fabrication settings, update the preview on their own. Turning on a detail that was not loaded fetches its data in the background.</p>
 
   <h2>Saving your work</h2>
   <p>Projects save automatically in this browser as you work, and reopen when you return. To keep a backup or move to another device, export <strong>Project settings</strong> and import it with <strong>Import project JSON</strong>. Imported projects need fresh terrain before export. Clearing site data or using a private window starts from scratch.</p>

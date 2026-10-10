@@ -121,7 +121,7 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   expect(tall.files[0]!.text).not.toBe(master.files[0]!.text);
   expect(tall.files[0]!.text).toContain("layer-25");
   const layerCount = Number(await studio.getByRole("slider", { name: "Selected layer", exact: true }).getAttribute("max")) + 1;
-  await expect(studio.locator("#section-terrain .relief-summary strong")).toContainText(`${layerCount} layers`);
+  await expect(studio.locator("#panel-terrain .relief-summary strong")).toContainText(`${layerCount} layers`);
   const previousLayers = await studio.locator(".layer-heading").textContent();
   await studio.getByRole("spinbutton", { name: "Vertical exaggeration", exact: true }).fill("1");
   await expect(studio.locator(".preview-stage")).toHaveAttribute("aria-busy", "false", { timeout: PREVIEW_TIMEOUT_MS });
@@ -134,8 +134,8 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   const resized = await invoke("openInStudio");
   expect(resized.error).toBe("");
   expect(resized.files[0]!.text).not.toBe(exaggerated.files[0]!.text);
-  await studio.getByRole("button", { name: "Map details", exact: true }).click();
-  const lakeHelp = studio.locator("#section-details").getByRole("button", { name: "How lake depths work", exact: true });
+  await studio.getByRole("button", { name: "Water", exact: true }).click();
+  const lakeHelp = studio.locator("#panel-water").getByRole("button", { name: "How lake depths work", exact: true });
   await lakeHelp.click();
   const helpDialog = studio.getByRole("dialog", { name: "Fabrication tips" });
   await expect(helpDialog.getByRole("heading", { name: "How lake depths work" })).toBeVisible();
@@ -146,11 +146,13 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   await expect(studio.locator(".feedback-trigger, .feedback-dialog")).toHaveCount(0);
   await expect(studio.locator('a[href*="/guides/how-lake-depths-work"]')).toHaveCount(0);
   const stage = studio.locator(".preview-stage");
+  await studio.getByRole("button", { name: "Map features", exact: true }).click();
   await studio.getByRole("checkbox", { name: "Latitude and longitude grid", exact: true }).check();
   await expect(stage).toHaveAttribute("aria-busy", "false");
   const gridded = await invoke("openInStudio");
   expect(gridded.error).toBe("");
   expect(gridded.files[0]!.text).not.toBe(resized.files[0]!.text);
+  await studio.getByRole("button", { name: "Labels and marks", exact: true }).click();
   await studio.getByRole("checkbox", { name: "North arrow", exact: true }).check();
   const arrows = studio.getByRole("radiogroup", { name: "North arrow design", exact: true });
   await arrows.scrollIntoViewIfNeeded();
@@ -258,7 +260,7 @@ test("Atomm map selection tools leave view, Tips, and zoom controls accessible",
     await expect(studio.getByRole("radio", { name: "2D", exact: true })).toHaveAttribute("tabindex", "0");
     await expect(studio.locator(".selection-tools")).toHaveCount(0);
     expect(await studio.locator(".map-wrap").evaluate(el => getComputedStyle(el).isolation)).toBe("isolate");
-    const lock = studio.locator(".gen-rail-lead #section-setup").getByRole("checkbox", { name: "Lock aspect ratio", exact: true });
+    const lock = studio.locator(".gen-rail-lead #panel-setup").getByRole("checkbox", { name: "Lock aspect ratio", exact: true });
     await expect(studio.locator(".gen-rail-params").getByRole("checkbox", { name: "Lock aspect ratio" })).toHaveCount(0);
     await lock.check();
     await studio.getByRole("radio", { name: "2D", exact: true }).click();
@@ -339,7 +341,7 @@ test("Atomm layer and exploded controls stay above expanded settings", async ({ 
   const dock = studio.locator(".gen-rail-params .layer-dock");
   await expect(dock).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
   await expect(studio.locator(".gen-params-content > :first-child")).toHaveClass(/\blayer-dock\b/);
-  for (const name of ["Cut size", "Terrain layers", "Map details", "Linework", "Fabrication settings"]) {
+  for (const name of ["Cut size", "Terrain layers", "Map features", "Water", "Aviation (US)", "Labels and marks", "Fabrication"]) {
     const section = studio.getByRole("button", { name, exact: true });
     if (await section.getAttribute("aria-expanded") === "false") await section.click();
   }
@@ -387,7 +389,7 @@ test("Atomm linework and location search stay readable under light and dark them
   await expect(suggestions.getByRole("button")).toHaveCount(4);
   await expect(suggestions.locator("button svg")).toHaveCount(4);
   expect(await suggestions.locator("button").evaluateAll(buttons => buttons.every(el => el.scrollWidth <= el.clientWidth))).toBe(true);
-  await studio.getByRole("button", { name: "Linework", exact: true }).click();
+  await studio.getByRole("button", { name: "Map features", exact: true }).click();
   for (const theme of ["light", "dark"]) {
     await studio.locator("html").evaluate((el, value) => el.setAttribute("data-theme", value), theme);
     expect(await chooseLocation.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, border: getComputedStyle(el).borderTopColor }))).toEqual({ background: "rgb(255, 255, 255)", border: "rgb(61, 62, 66)" });
@@ -397,16 +399,7 @@ test("Atomm linework and location search stay readable under light and dark them
       await expect(preset).toHaveAttribute("aria-checked", "true");
       expect(await preset.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }))).toEqual({ background: "rgb(255, 255, 255)", color: "rgb(23, 23, 25)" });
     }
-    const customize = studio.getByRole("button", { name: "Customize preset", exact: true });
-    expect(await customize.evaluate(el => {
-      const button = el.getBoundingClientRect();
-      const presets = el.parentElement!.querySelector(".line-presets")!.getBoundingClientRect();
-      return Math.abs(button.left - presets.left) < 1 && Math.abs(button.right - presets.right) < 1;
-    })).toBe(true);
-    await customize.click();
-    await expect(customize).toHaveAttribute("aria-expanded", "true");
     await page.screenshot({ path: testInfo.outputPath(`linework-${theme}.png`) });
-    await customize.click();
     await studio.locator(".location-card").click();
     const dialog = studio.getByRole("dialog", { name: "Choose anywhere", exact: true });
     const search = dialog.getByRole("textbox", { name: "Search places", exact: true });
@@ -474,7 +467,7 @@ test("Atomm depth allowance is explicit and fitting actions use readable theme b
   await expect(terrainField).toHaveValue("1.1");
   // Every edit below regenerates the whole stack, so it stays shallow: 8x made
   // about 170 layers and pushed the test past its timeout on CI runners.
-  await studio.getByRole("button", { name: "Map details", exact: true }).click();
+  await studio.getByRole("button", { name: "Water", exact: true }).click();
   const depthField = studio.getByRole("spinbutton", { name: "Water depth exaggeration", exact: true });
   await expect(depthField).toHaveAttribute("min", "0.25");
   await expect(depthField).toHaveAttribute("max", "4");
@@ -516,7 +509,7 @@ test("Atomm depth allowance is explicit and fitting actions use readable theme b
   await expect(fit).toHaveCount(0);
   await expect(depthLayers).toHaveCount(0);
   await expect.poll(async () => Number(await studio.getByRole("slider", { name: "Selected layer", exact: true }).getAttribute("max")) + 1).toBe(automaticCount);
-  await expect(studio.locator("#section-details")).toContainText("Automatic: adds all layers needed");
+  await expect(studio.locator("#panel-water")).toContainText("Automatic: adds all layers needed");
 });
 
 for (const embedded of [true, false]) {
@@ -701,10 +694,10 @@ test("Atomm nesting material aligns card borders, headings and fields with its n
       await page.setViewportSize({ width, height: 1000 });
       const alignment = await studio.locator(".gen-params-content").evaluate(el => {
         const rect = (selector: string) => el.querySelector(selector)!.getBoundingClientRect();
-        const material = rect(".atomm-material-size"), size = rect('[aria-labelledby="atomm-size-title"]');
-        const heading = rect(".atomm-material-size h3"), referenceHeading = rect("#atomm-size-title");
-        const field = rect('.atomm-material-size .number-input'), referenceField = rect('#section-size .number-input');
-        const label = rect('.atomm-material-size .ldt-field__label'), referenceLabel = rect('#section-size .ldt-field__label');
+        const material = rect(".atomm-material-size"), size = rect('[aria-labelledby="panel-place-title"]');
+        const heading = rect(".atomm-material-size h3"), referenceHeading = rect("#panel-place-title");
+        const field = rect('.atomm-material-size .number-input'), referenceField = rect('#panel-place .number-input');
+        const label = rect('.atomm-material-size .ldt-field__label'), referenceLabel = rect('#panel-place .ldt-field__label');
         return [material.left - size.left, material.right - size.right, heading.left - referenceHeading.left,
           heading.right - referenceHeading.right, field.left - referenceField.left, field.right - referenceField.right,
           label.left - referenceLabel.left, label.right - referenceLabel.right];
@@ -729,17 +722,16 @@ test("Atomm expanded parameter labels and control edges align in layered and fla
     await studio.locator(".gen-params-content").evaluate(el => {
       el.querySelectorAll<HTMLButtonElement>('.section-disclosure[aria-expanded="false"]').forEach(button => button.click());
     });
-    const customize = studio.locator(".linework-customize");
-    if (await customize.getAttribute("aria-expanded") === "false") await customize.click();
-    await expect(studio.locator(".linework-controls .field-row")).toHaveCount(mode === "Flat engraving" ? 10 : 7);
+    // Line widths sit under the switches they style; layered adds the work area width, flat the two contour widths and the border.
+    await expect(studio.locator(".gen-params-content .field-row:has(input[aria-label$=\" width\"])")).toHaveCount(mode === "Flat engraving" ? 8 : 6);
     for (const direction of ["ltr", "rtl"]) {
       await studio.locator("html").evaluate((el, value) => el.setAttribute("dir", value), direction);
       for (const width of [1600, 1280, 700, 390, 320]) {
         await page.setViewportSize({ width, height: 1000 });
         const offsets = await studio.locator(".gen-params-content").evaluate(el => {
           const rtl = getComputedStyle(el).direction === "rtl";
-          const referenceControl = el.querySelector("#section-size .number-input")!.getBoundingClientRect();
-          const referenceLabel = el.querySelector("#section-size .ldt-field__label")!.getBoundingClientRect();
+          const referenceControl = el.querySelector("#panel-place .number-input")!.getBoundingClientRect();
+          const referenceLabel = el.querySelector("#panel-place .ldt-field__label")!.getBoundingClientRect();
           return [...el.querySelectorAll(".field-row, .range-field, .atomm-switch-row")].flatMap(row => {
             if (!row.getBoundingClientRect().height) return [];
             const control = row.querySelector(".number-input, select, .switch");

@@ -8,7 +8,7 @@
   /**
    * Airspace in 3D (docs/plans/airspace-acrylic.md): how the airspace over the
    * model is built in acrylic, and the rods that hold it. Shown under the
-   * switch in Fabrication settings while the project builds airspace.
+   * switch in the Aviation panel while the project builds airspace.
    */
   let { settings }: { settings: AirspaceStackSettingsV1 } = $props();
   const studio = getStudio();

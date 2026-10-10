@@ -45,6 +45,6 @@ When inserts were written, the guide adds an acrylic sub-table (and sheet maps w
 
 ## Studio
 
-The switch and the acrylic thickness, kerf and fit clearance live in Fabrication settings (`AdvancedSection.svelte`), with one switch per lake (`insertLakes` in `preview-summary.ts`) to keep a lake wood. The export dialog's sheet layout shows a second "Acrylic sheet layout" block (`SheetLayoutSection` with `material="acrylic"`, backed by its own `SheetNesting` instance) when the model has inserts, and Individual files offers **Acrylic inserts**. The 3D preview extrudes each insert in translucent blue on its sheet; the cut preview outlines it on sheet L.
+The switch and the acrylic thickness, kerf and fit clearance live in the Water panel (`apps/generator/src/lib/studio/panels/WaterPanel.svelte`), with one switch per lake (`insertLakes` in `preview-summary.ts`) to keep a lake wood. The export dialog's sheet layout shows a second "Acrylic sheet layout" block (`SheetLayoutSection` with `material="acrylic"`, backed by its own `SheetNesting` instance) when the model has inserts, and Individual files offers **Acrylic inserts**. The 3D preview extrudes each insert in translucent blue on its sheet; the cut preview outlines it on sheet L.
 
 The agent request contract does not expose inserts yet; a project that has them keeps them through `parseProject`.

@@ -11,7 +11,7 @@
   <p>Select <strong>Import GPX, KML or GeoJSON</strong> under <strong>Import</strong> in the <strong>Custom data</strong> view and choose a file exported from your hiking app, GPS watch, Google Earth or a mapping tool (up to 20 MB). TopoStack adds everything it finds in one step, and <strong>Undo</strong> removes the whole import:</p>
   <ul>
     <li>GPX tracks and routes, KML line strings and Google Earth tracks, and GeoJSON lines become <strong>Trails</strong>. Each GPX track segment becomes its own path.</li>
-    <li>KML and GeoJSON polygon outlines become <strong>Boundaries</strong>. Holes inside a polygon are left out.</li>
+    <li>KML and GeoJSON polygon outlines become boundaries. Holes inside a polygon are left out.</li>
     <li>GPX waypoints and KML or GeoJSON points become <strong>Pin</strong> markers; change the symbol afterwards if you like.</li>
   </ul>
   <p>Long recordings are simplified to fit the point limits below, keeping the corners and bends that define the route's shape. The status line says when a file was simplified, when features did not fit, and when any lie outside the framed area. KMZ archives are not read directly; open them in Google Earth and save as KML first.</p>
@@ -43,7 +43,7 @@
     <li>Or select <strong>Add path</strong> and type the <strong>Latitude</strong> and <strong>Longitude</strong> of each point along the route, in order. Select <strong>Add point</strong> for each further point; a path needs at least two.</li>
     <li>Switch any path between <strong>Trail</strong> and <strong>Boundary</strong>, and name it the same way you name a marker.</li>
   </ol>
-  <p>Trails use the trail width and <strong>Trail pattern</strong> from <strong>Linework</strong>; boundaries use the boundary width and are dashed. Custom paths are engraved even when the built-in <strong>Trails</strong> or <strong>State / province boundaries</strong> are turned off, so you can show only your own route.</p>
+  <p>Trails use the trail width and <strong>Trail pattern</strong> set under <strong>Trails</strong> in the <strong>Features</strong> panel; boundaries use the boundary width and are dashed. Custom paths are engraved even when the built-in <strong>Trails</strong> or <strong>State / province boundaries</strong> are turned off, so you can show only your own route.</p>
 
   <h2>3. Check the result</h2>
   <p>Custom data updates the preview without regenerating terrain. Inspect it at your finished size:</p>

@@ -68,7 +68,7 @@ test('mobile feedback keeps long reports when sending fails and survives clipboa
 
 test('lake data reporting opens the right category', async ({ page }) => {
   await page.goto('/studio');
-  await page.getByRole('button', { name: 'Expand all', exact: true }).click();
+  await page.getByRole('tab', { name: 'Water', exact: true }).click();
   await page.getByRole('button', { name: 'Report lake data quality', exact: true }).click();
   await expect(page.getByRole('dialog').getByLabel('Feedback type')).toHaveValue('lake');
 });
