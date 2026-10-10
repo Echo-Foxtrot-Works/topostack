@@ -42,21 +42,6 @@
   color: var(--loidolt-text-muted);
 }
 
-.custom-data-workspace-heading button {
-  min-height: 32px;
-  padding: 6px 12px;
-  border: 1px solid var(--loidolt-border-control);
-  background: var(--loidolt-surface-alt);
-  color: var(--loidolt-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.custom-data-workspace-heading button:focus-visible {
-  outline: 2px solid var(--loidolt-accent);
-  outline-offset: 2px;
-}
-
 .custom-data-workspace-stage {
   position: relative;
   flex: 1;

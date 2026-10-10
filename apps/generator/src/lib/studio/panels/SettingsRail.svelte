@@ -1,7 +1,6 @@
 <script lang="ts">
   import { MapPin, Mountain, Plane, Route, Type, Waves, Wrench } from "@lucide/svelte";
   import { Tabs, type TabItem } from "@loidolt/theme-svelte";
-  import { MediaQuery } from "svelte/reactivity";
   import { PANEL_IDS, PANEL_LABELS, type PanelId } from "$lib/studio/preview-summary";
   import AviationPanel from "$lib/studio/panels/AviationPanel.svelte";
   import FeaturesPanel from "$lib/studio/panels/FeaturesPanel.svelte";
@@ -11,18 +10,17 @@
   import SettingsSearch from "$lib/studio/panels/SettingsSearch.svelte";
   import TerrainPanel from "$lib/studio/panels/TerrainPanel.svelte";
   import WaterPanel from "$lib/studio/panels/WaterPanel.svelte";
+  import { railOrientation } from "$lib/studio/rail-orientation.svelte";
   import { getStudio } from "$lib/studio/studio-context";
 
   /**
    * The standalone studio's settings: a rail of panels, one shown at a time,
    * with the settings search pinned above them. Every panel stays mounted, so
    * hidden controls keep their state and the search can find them. Where the
-   * workspace stacks (the breakpoint in responsive.css), the rail becomes a
-   * row of tabs above the panel.
+   * workspace stacks, the rail becomes a row of tabs above the panel.
    */
   const studio = getStudio();
-  // Without matchMedia (a test DOM) the rail stays vertical.
-  const stacked = typeof matchMedia === "function" ? new MediaQuery("(max-width: 1000px), (max-width: 1100px) and (orientation: portrait)", false) : undefined;
+  const orientation = railOrientation();
   let panels = $state<HTMLElement | null>(null);
 </script>
 
@@ -37,7 +35,7 @@
 <Tabs
   class="settings-rail"
   variant="rail"
-  orientation={stacked?.current ? "horizontal" : "vertical"}
+  orientation={orientation.current}
   label="Settings panels"
   panelsClass="settings-panels"
   bind:value={studio.activePanel}

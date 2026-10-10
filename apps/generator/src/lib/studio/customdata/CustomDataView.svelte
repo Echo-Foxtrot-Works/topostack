@@ -37,7 +37,6 @@
   <div class="custom-data-workspace-heading">
     <strong>{section?.label}</strong>
     <span>{nav.section === "charts" ? "Trace a chart to shape a lake bed" : nav.section === "markers" ? "Mark places that matter" : nav.section === "paths" ? "Draw trails and boundaries" : nav.section === "graphics" ? "Place logos and artwork on your piece" : "Bring tracks and places onto your map"}</span>
-    {#if !nav.expanded}<button type="button" onclick={() => { nav.expanded = true; }}>Show tools</button>{/if}
   </div>
   <div class="custom-data-workspace-stage">
   {#if nav.section === "charts" && studio.project.outputMode !== "engraving"}

@@ -36,7 +36,7 @@
 /* The theme's rail (`Tabs variant="rail"`) fills the sidebar above the generation dock;
    its panels scroll beside it. Tabs and labels are tuned to the panel's type scale. */
 .settings-rail {
-  --ldt-rail-width: 3.25rem;
+  --ldt-rail-width: 4.25rem;
   flex: 1;
   min-height: 0;
 }
@@ -49,36 +49,6 @@
 .settings-rail .ldt-tabs__panels {
   padding-bottom: 20px;
   scrollbar-color: var(--loidolt-border) transparent;
-}
-
-.panel-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 0 20px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--loidolt-border) transparent;
-}
-
-.panel-intro {
-  padding: 12px 20px 10px;
-}
-
-.panel-intro h1 {
-  font-size: var(--panel-font-title);
-  font-weight: 500;
-  margin: 0 0 6px;
-}
-
-.panel-intro > p {
-  margin: 0 0 14px;
-  color: var(--loidolt-text-muted);
-  font-size: var(--panel-font-caption);
-  line-height: 1.5;
-}
-
-.panel-eyebrow {
-  margin-bottom: 8px;
 }
 
 .section-disclosure:focus-visible {
@@ -197,19 +167,6 @@
   gap: 10px;
 }
 
-.section-kicker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--loidolt-text-muted);
-  margin-bottom: 13px;
-}
-
-.section-kicker span {
-  color: var(--loidolt-accent);
-  font-size: var(--panel-font-micro);
-}
-
 .kicker-chevron {
   margin-left: auto;
   transition: transform 120ms ease;
@@ -260,15 +217,6 @@
 .detail-column + .detail-column,
 .detail-group + .detail-group {
   margin-top: var(--panel-space-3);
-}
-
-/* The custom data sections carry an icon beside the disclosure's number,
-   because their names ("Markers", "Import") are shorter than the project's
-   and the view they open is a different kind of work. */
-.section-icon {
-  display: flex;
-  flex: 0 0 auto;
-  color: var(--loidolt-text-muted);
 }
 
 /* While the custom data tools are still being fetched. */

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { ChevronDown, FileUp, MapPin, Route, Shapes, Waves } from "@lucide/svelte";
-  import { Section } from "@loidolt/theme-svelte";
-  import { nav, openCustomDataSection, sectionsFor, toggleCustomDataSection, type CustomDataSectionId } from "$lib/studio/customdata/custom-data-nav.svelte";
+  import { FileUp, MapPin, Route, Shapes, Waves } from "@lucide/svelte";
+  import { Tabs, type TabItem } from "@loidolt/theme-svelte";
+  import { nav, openCustomDataSection, sectionsFor, type CustomDataSectionId } from "$lib/studio/customdata/custom-data-nav.svelte";
+  import { railOrientation } from "$lib/studio/rail-orientation.svelte";
   import { getStudio } from "$lib/studio/studio-context";
   import ChartTools from "$lib/studio/customdata/ChartTools.svelte";
   import GraphicTools from "$lib/studio/customdata/GraphicTools.svelte";
@@ -10,15 +11,14 @@
   import PathTools from "$lib/studio/customdata/PathTools.svelte";
 
   /**
-   * The sidebar while the custom data view is open: one disclosure per kind of
-   * data the maker brings, holding that kind's tools, drawn like every other
-   * sidebar section.
-   *
-   * At most one is open. Collapsing tools keeps the active workspace and
-   * work in progress; choosing another section changes the workspace.
+   * The sidebar while the custom data view is open: a rail with one tab per
+   * kind of data the maker brings, laid out like the settings rail. The tab
+   * chooses the workspace the viewport shows, and its panel holds that kind's
+   * tools. Every panel stays mounted, so work in progress survives a switch.
    */
 
   const studio = getStudio();
+  const orientation = railOrientation();
   const sections = $derived(sectionsFor(studio.project.outputMode));
   // A section the project cannot use is never left open.
   $effect(() => {
@@ -53,29 +53,41 @@
   }
 </script>
 
-{#each sections as section, index (section.id)}
-  {@const open = nav.section === section.id && nav.expanded}
-  <Section class="config-section custom-data-section" aria-labelledby={`custom-data-${section.id}-title`}>
-    <button type="button" class="section-disclosure" id={`custom-data-${section.id}-title`} aria-expanded={open} aria-controls={`custom-data-${section.id}`} onclick={() => toggleCustomDataSection(section.id)}>
-      <span class="section-number">0{index + 1}</span>
-      <span class="section-title">{section.label}<small>{summaries[section.id]}</small></span>
-      <span class="section-icon" aria-hidden="true">
-        {#if section.id === "charts"}<Waves size={14} />{:else if section.id === "markers"}<MapPin size={14} />{:else if section.id === "paths"}<Route size={14} />{:else if section.id === "graphics"}<Shapes size={14} />{:else}<FileUp size={14} />{/if}
-      </span>
-      <ChevronDown size={16} class={open ? "kicker-chevron kicker-chevron--open" : "kicker-chevron"} />
-    </button>
-    <div id={`custom-data-${section.id}`} class="section-content" hidden={!open}>
-      {#if section.id === "charts"}
-        <ChartTools />
-      {:else if section.id === "markers"}
-        <MarkerTools />
-      {:else if section.id === "paths"}
-        <PathTools />
-      {:else if section.id === "graphics"}
-        <GraphicTools />
-      {:else}
-        <ImportTools />
-      {/if}
+{#snippet charts()}<Waves strokeWidth={1.8} />{/snippet}
+{#snippet markers()}<MapPin strokeWidth={1.8} />{/snippet}
+{#snippet paths()}<Route strokeWidth={1.8} />{/snippet}
+{#snippet graphics()}<Shapes strokeWidth={1.8} />{/snippet}
+{#snippet importing()}<FileUp strokeWidth={1.8} />{/snippet}
+
+<Tabs
+  class="settings-rail custom-data-rail"
+  variant="rail"
+  orientation={orientation.current}
+  label="Custom data"
+  value={nav.section}
+  onValueChange={(section) => openCustomDataSection(section)}
+  tabs={sections.map((section): TabItem<CustomDataSectionId> => ({ value: section.id, label: section.tab, icon: { charts, markers, paths, graphics, import: importing }[section.id], description: summaries[section.id] }))}
+>
+  {#snippet children({ value })}
+    {@const section = sections.find((item) => item.id === value)!}
+    <div id={`custom-data-${value}`} class="studio-panel custom-data-section" data-section={value}>
+      <header class="studio-panel-header">
+        <h2>{section.label}</h2>
+        <small>{summaries[value]}</small>
+      </header>
+      <div class="section-content">
+        {#if value === "charts"}
+          <ChartTools />
+        {:else if value === "markers"}
+          <MarkerTools />
+        {:else if value === "paths"}
+          <PathTools />
+        {:else if value === "graphics"}
+          <GraphicTools />
+        {:else}
+          <ImportTools />
+        {/if}
+      </div>
     </div>
-  </Section>
-{/each}
+  {/snippet}
+</Tabs>
