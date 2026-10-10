@@ -28,6 +28,7 @@ A new control goes in the panel for the subject it changes. A width for a new ki
 - Where the workspace stacks (the breakpoint in `styles/responsive.css`), `SettingsRail` switches the rail to horizontal, a row of tabs above the panel, so arrow keys follow the layout.
 - **Find a setting** (`SettingsSearch.svelte`) is the rail's `panelHeader`, pinned while the panels scroll. It reads labelled controls from the mounted panels each time it searches, so it lists only what the project currently shows. A control behind a switch that is off is found through its switch.
 - One-line summaries under each title come from `panelSummary` in `preview-summary.ts`.
+- The custom data view's sidebar (`CustomDataNav.svelte`) is the same kind of rail, one tab per kind of data. Both rails take their orientation from `railOrientation` (`rail-orientation.svelte.ts`).
 
 ## Platform embed
 

@@ -53,14 +53,15 @@ async function showPanel(target: HTMLElement, name: string) {
 /**
  * Opens the custom data view, where markers, paths, file import and depth
  * charts are edited. Every section's tools mount with the sidebar; `expand`
- * names the one whose disclosure should also be opened.
+ * names the one whose rail tab should also be chosen, by its panel title.
  */
 async function openCustomData(target: HTMLElement, expand?: string) {
   [...target.querySelectorAll<HTMLButtonElement>('.mode-switch [role="radio"]')].find((button) => button.textContent?.includes("Custom data"))!.click();
   await vi.waitFor(() => expect(target.querySelector(".custom-data-section")).not.toBeNull());
   if (!expand) return;
-  const header = [...target.querySelectorAll<HTMLButtonElement>(".custom-data-section .section-disclosure")].find((button) => button.textContent?.includes(expand))!;
-  header.click();
+  const panel = [...target.querySelectorAll<HTMLElement>(".custom-data-section")].find((section) => section.querySelector("h2")?.textContent?.includes(expand))!;
+  const tabpanel = panel.closest<HTMLElement>('[role="tabpanel"]')!;
+  target.querySelector<HTMLButtonElement>(`.custom-data-rail [role="tab"][aria-controls="${tabpanel.id}"]`)!.click();
   await tick();
 }
 
@@ -94,7 +95,7 @@ describe("TopoStack Svelte shell", () => {
     } });
     await import("$lib/studio/ThreePreview.svelte");
   });
-  afterEach(async () => { if (component) await unmount(component); component = undefined; loadTerrainMock.mockReset(); loadVectorMarkingsMock.mockReset(); loadLakeAreasMock.mockReset(); Object.values(noaaArchive).forEach((mock) => mock.mockReset()); theme.preference = "system"; localStorage.removeItem("topostack-theme"); localStorage.removeItem("topostack-studio-panels-v1"); delete window.atomm; nav.section = "charts"; nav.expanded = true; resetDraft(); });
+  afterEach(async () => { if (component) await unmount(component); component = undefined; loadTerrainMock.mockReset(); loadVectorMarkingsMock.mockReset(); loadLakeAreasMock.mockReset(); Object.values(noaaArchive).forEach((mock) => mock.mockReset()); theme.preference = "system"; localStorage.removeItem("topostack-theme"); localStorage.removeItem("topostack-studio-panels-v1"); delete window.atomm; nav.section = "charts"; resetDraft(); });
 
   it("title edits survive committing an open placement draft", async () => {
     const { saveProject } = await import("$lib/storage/storage");
@@ -1544,7 +1545,7 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector('.mode-switch [aria-checked="true"]')?.textContent).toContain("Custom data");
   });
 
-  it("swaps the sidebar for the custom data sections and opens one at a time", async () => {
+  it("swaps the sidebar for the custom data rail, one section at a time", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
@@ -1552,48 +1553,29 @@ describe("TopoStack Svelte shell", () => {
     // The project's size, terrain and linework controls say nothing about a
     // chart or a marker, so they give way entirely while this view is open.
     expect(target.querySelector("#panel-place")).toBeNull();
-    const headers = () => [...target.querySelectorAll<HTMLButtonElement>(".custom-data-section .section-disclosure")];
-    expect(headers().map((header) => header.querySelector(".section-title")!.textContent)).toEqual([
-      "Depth chartsTrace a printed chart",
-      "MarkersNone yet",
-      "Trails & boundariesNone yet",
-      "GraphicsLogos and artwork",
-      "ImportGPX, KML or GeoJSON",
-    ]);
+    expect(target.querySelector(".generate-dock")).toBeNull();
+    const tabs = () => [...target.querySelectorAll<HTMLButtonElement>('.custom-data-rail [role="tab"]')];
+    expect(tabs().map((tab) => tab.textContent?.trim())).toEqual(["Charts", "Markers", "Paths", "Graphics", "Import"]);
+    // Each tab says what its section holds now.
+    expect(tabs().map((tab) => tab.getAttribute("title"))).toEqual(["Trace a printed chart", "None yet", "None yet", "Logos and artwork", "GPX, KML or GeoJSON"]);
+    const shown = () => [...target.querySelectorAll<HTMLElement>('.custom-data-rail [role="tabpanel"]')].filter((panel) => !panel.hidden).map((panel) => panel.querySelector("h2")?.textContent);
     // Depth charts opens first, and its tools are in the sidebar beside the
     // chart the viewport shows.
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("true");
-    expect(target.querySelector<HTMLElement>("#custom-data-charts")?.hidden).toBe(false);
+    expect(shown()).toEqual(["Depth charts"]);
     expect(target.querySelector("#custom-data-charts")?.textContent).toContain("Search a lake or nearby town");
     expect(target.querySelector(".chart-lake-map")?.textContent).toContain("Choose the lake your chart shows");
-    expect(target.querySelector(".generate-dock")).toBeNull();
+    // Every section's tools stay mounted, so work in progress survives a switch.
+    expect(target.querySelector("#custom-data-import")).not.toBeNull();
 
-    // The active section can close without switching or unmounting the workspace.
-    const chartStage = target.querySelector(".chart-lake-map");
-    headers()[0]!.click();
-    await tick();
-    expect(headers().every((header) => header.getAttribute("aria-expanded") === "false")).toBe(true);
-    expect(target.querySelector<HTMLElement>("#custom-data-charts")?.hidden).toBe(true);
-    expect(target.querySelector(".chart-lake-map")).toBe(chartStage);
-    headers()[0]!.click();
-    await tick();
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("true");
-
-    // Every data type supports open → close → reopen, including switching from closed.
-    for (const header of headers().slice(1)) {
-      header.click();
+    for (const [index, title] of ["Markers", "Trails & boundaries", "Graphics", "Import"].entries()) {
+      tabs()[index + 1]!.click();
       await tick();
-      expect(header.getAttribute("aria-expanded")).toBe("true");
-      header.click();
-      await tick();
-      expect(headers().every((item) => item.getAttribute("aria-expanded") === "false")).toBe(true);
-      expect(target.querySelector<HTMLElement>(`#${header.getAttribute("aria-controls")}`)?.hidden).toBe(true);
+      expect(shown()).toEqual([title]);
     }
-    headers()[4]!.click();
-    await tick();
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("false");
-    expect(target.querySelector<HTMLElement>("#custom-data-import")?.hidden).toBe(false);
     expect(target.querySelector(".chart-lake-map"), "the map takes the viewport for anything placed on it").toBeNull();
+    tabs()[0]!.click();
+    await tick();
+    expect(shown()).toEqual(["Depth charts"]);
   });
 
   it("adds, edits, symbolizes, and removes an arbitrary marker list", async () => {

@@ -30,7 +30,7 @@ async function openStudio(page: Page): Promise<void> {
 
 async function openMarkers(page: Page): Promise<void> {
   await page.getByRole("radio", { name: "Custom data", exact: true }).click();
-  await page.locator("#custom-data-markers-title").click();
+  await page.getByRole("tab", { name: "Markers", exact: true }).click();
 }
 
 test("an edit made just before a reload survives it", async ({ page }) => {

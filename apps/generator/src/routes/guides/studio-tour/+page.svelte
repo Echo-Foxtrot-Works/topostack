@@ -60,7 +60,7 @@
     <li><strong>Cut layers</strong> (layered): one sheet at a time. Use the layer slider below the preview to step through elevations.</li>
     <li><strong>3D stack</strong> (layered): the assembled model. Drag the Stack–Exploded slider to separate the layers.</li>
     <li><strong>Engraving</strong> (flat): the finished engraving.</li>
-    <li><strong>Custom data</strong>: depth charts, markers, trails and boundaries, graphics and file import, each with its own sidebar section. See <a href={`${base}/guides/custom-data`}>bring your own data</a>.</li>
+    <li><strong>Custom data</strong>: depth charts, markers, trails and boundaries, graphics and file import, each with its own tab in the sidebar rail. See <a href={`${base}/guides/custom-data`}>bring your own data</a>.</li>
   </ul>
   <p>Warnings appear over the preview. Dismiss each once you have read it; see <a href={`${base}/guides/troubleshooting`}>troubleshooting</a> for what they mean.</p>
 

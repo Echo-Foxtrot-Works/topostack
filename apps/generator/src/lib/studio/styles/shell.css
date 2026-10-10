@@ -27,7 +27,6 @@ body:has(.app-shell) {
   min-width: 0;
 }
 
-.section-kicker,
 .project-name > span {
   font: var(--loidolt-font-size-xs) var(--loidolt-font-utility);
   text-transform: uppercase;

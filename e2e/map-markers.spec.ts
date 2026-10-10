@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/studio");
   // Markers are placed in the custom data view, on its own map.
   await page.getByRole("radio", { name: "Custom data", exact: true }).click();
-  await page.locator("#custom-data-markers-title").click();
+  await page.getByRole("tab", { name: "Markers", exact: true }).click();
 });
 
 test("markers are placed by clicking the map and moved by dragging", async ({ page }) => {
@@ -30,8 +30,8 @@ test("markers are placed by clicking the map and moved by dragging", async ({ pa
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Place on map" })).toHaveAttribute("aria-pressed", "false");
-  await page.locator("#custom-data-paths-title").click();
-  await page.locator("#custom-data-markers-title").click();
+  await page.getByRole("tab", { name: "Paths", exact: true }).click();
+  await page.getByRole("tab", { name: "Markers", exact: true }).click();
   // With placement off, a click pans nothing and adds nothing.
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(page.locator(".marker-card")).toHaveCount(2);

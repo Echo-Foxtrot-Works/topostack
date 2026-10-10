@@ -1054,17 +1054,11 @@
     {#snippet sidebar()}
     <Sidebar class="config-panel">
       {#if mode === "custom"}
-        <div class="panel-scroll">
-          <!-- The custom data view is its own job. The project's size, terrain
-               and linework controls have nothing to say about tracing a chart,
-               so the sidebar becomes a menu over what that view shows. -->
-          <div class="panel-intro">
-            <span class="section-kicker panel-eyebrow">Custom data</span>
-            <h1>Bring your own data.</h1>
-            <p>Charts you trace, points you place, routes you import. Markers and paths join the project as you add them; a chart carves a lake only when you say so.</p>
-          </div>
-          {@render customDataTools()}
-        </div>
+        <!-- The custom data view is its own job. The project's size, terrain
+             and linework controls have nothing to say about tracing a chart,
+             so the sidebar becomes a rail over what that view shows. -->
+        <h1 class="ldt-visually-hidden">Bring your own data.</h1>
+        {@render customDataTools()}
       {:else}
         <h1 class="ldt-visually-hidden">{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
         {#if starterId && project.id === `topostack-starter-${starterId}`}<StarterSteps id={starterId} ready={exportReady} busy={previewBusy} exported={exportedFingerprint === projectFingerprint(project)} onGenerate={() => void generate()} onExport={() => exportOpen = true} onDismiss={() => starterId = undefined} />{/if}

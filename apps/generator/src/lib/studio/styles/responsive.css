@@ -72,15 +72,10 @@
     overflow: visible;
   }
 
-  /* The rail turns horizontal here (SettingsRail.svelte), and the page scrolls instead of the panel. */
+  /* The rails turn horizontal here (rail-orientation.svelte.ts), and the page scrolls instead of the panel. */
   .settings-rail {
     flex: none;
     height: auto;
-  }
-
-  .panel-scroll {
-    flex: none;
-    overflow: visible;
   }
 
   .generate-dock {
