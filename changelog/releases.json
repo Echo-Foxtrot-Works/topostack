@@ -2,6 +2,18 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.10.1",
+      "date": "2026-10-11",
+      "entries": [
+        {
+          "type": "fix",
+          "title": "Explain when the map cannot load",
+          "body": "The Map view now shows when it is loading and reports a connection problem if its map data never arrives. A failed map returns to the cut preview so you can keep working and choose a location using search or coordinates.",
+          "pr": 238
+        }
+      ]
+    },
+    {
       "version": "0.10.0",
       "date": "2026-10-11",
       "entries": [

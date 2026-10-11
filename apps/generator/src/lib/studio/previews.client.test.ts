@@ -34,6 +34,10 @@ vi.mock("maplibre-gl", () => {
     addControl() { return this; }
     getZoom() { return 11; }
     getCenter() { return { lng: 0, lat: 0 }; }
+    getStyle() { return { sources: { openmaptiles: { type: "vector" } } }; }
+    getSource() { return undefined; }
+    addSource() { return this; }
+    addLayer() { return this; }
     isStyleLoaded() { return false; }
     resize() { return this; }
     fitBounds() { return this; }
@@ -458,5 +462,65 @@ describe("preview resource cleanup", () => {
     second.emit("error", { error: new Error("Glyphs unavailable") });
     expect(onUnavailable).toHaveBeenCalledOnce();
     await unmount(loaded);
+  });
+
+  it("reports stalled startup even when the style and load events have fired", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const onUnavailable = vi.fn();
+    const target = document.createElement("div");
+    try {
+      component = mount(MapCanvas, { target, props: { project: DEFAULT_PROJECT, onUnavailable, onSelectionResize: vi.fn(), onLocationChange: vi.fn() } });
+      flushSync();
+      const map = maplibre.maps[0]!;
+      map.emit("style.load");
+      map.emit("sourcedata", { source: { type: "vector" }, sourceDataType: "metadata", isSourceLoaded: true });
+      map.emit("error", { sourceId: "openmaptiles", error: new Error("TileJSON blocked") });
+      map.emit("load");
+      map.emit("sourcedata", { source: { type: "geojson" }, tile: { state: "loaded" } });
+      map.emit("sourcedata", { source: { type: "vector" }, tile: { state: "errored" }, isSourceLoaded: true });
+      flushSync();
+      expect(target.querySelector(".map-caption")?.textContent).toContain("Loading map");
+      vi.advanceTimersByTime(19_999);
+      expect(onUnavailable).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(onUnavailable).toHaveBeenCalledExactlyOnceWith("load-failed");
+    } finally {
+      if (component) await unmount(component);
+      component = undefined;
+      vi.useRealTimers();
+      warn.mockRestore();
+    }
+  });
+
+  it("allows an initial tile failure to recover and cancels the deadline on unmount", async () => {
+    vi.useFakeTimers();
+    const onUnavailable = vi.fn();
+    const target = document.createElement("div");
+    try {
+      component = mount(MapCanvas, { target, props: { project: DEFAULT_PROJECT, onUnavailable, onSelectionResize: vi.fn(), onLocationChange: vi.fn() } });
+      flushSync();
+      const map = maplibre.maps[0]!;
+      map.emit("style.load");
+      map.emit("error", { sourceId: "openmaptiles", tile: {}, error: new Error("Tile 503") });
+      vi.advanceTimersByTime(10_000);
+      map.emit("sourcedata", { source: { type: "vector" }, tile: { state: "loaded" } });
+      flushSync();
+      expect(target.querySelector(".map-caption")?.textContent).toContain("Drag the map");
+      map.emit("error", { sourceId: "openmaptiles", tile: {}, error: new Error("Later tile 503") });
+      vi.advanceTimersByTime(20_000);
+      expect(onUnavailable).not.toHaveBeenCalled();
+      await unmount(component);
+      component = mount(MapCanvas, { target, props: { project: DEFAULT_PROJECT, onUnavailable, onSelectionResize: vi.fn(), onLocationChange: vi.fn() } });
+      flushSync();
+      await unmount(component);
+      component = undefined;
+      vi.advanceTimersByTime(20_000);
+      expect(onUnavailable).not.toHaveBeenCalled();
+    } finally {
+      if (component) await unmount(component);
+      component = undefined;
+      vi.useRealTimers();
+    }
   });
 });
