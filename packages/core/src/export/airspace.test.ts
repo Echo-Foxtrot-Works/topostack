@@ -28,6 +28,15 @@ describe("airspace export", { timeout: 60_000 }, () => {
   const tiers = build({ form: "tiers", kerfMm: 0.1 }, [core, shelf], named);
   const plates = build({ form: "plates", kerfMm: 0.1 }, [core, shelf], named);
 
+  it("exports separate supported acrylic stock with terrain thicker than 10 mm", async () => {
+    const settings = { form: "tiers" as const, thicknessMm: 3 };
+    const extra = { ...named, materialThicknessMm: 12 };
+    const geometry = build(settings, [core, shelf], extra);
+    const manifest = await manifestOf(packaged(geometry, settings, extra));
+    expect(manifest.project.materialThicknessMm).toBe(12);
+    expect(manifest.result.fabrication.airspaceStack.thicknessMm).toBe(3);
+  });
+
   it("writes a panel per level and tint, engraving companions, a master per tint and the backing sheet", async () => {
     const pkg = packaged(tiers, { form: "tiers", kerfMm: 0.1 });
     const names = pkg.files.map((file) => file.filename);

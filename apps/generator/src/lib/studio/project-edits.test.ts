@@ -1,9 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, projectFingerprint, MAX_CUSTOM_LINE_POINTS, MAX_MAP_MARKERS, NORTH_ARROW_MAX_SIZE_MM, NORTH_ARROW_MIN_SIZE_MM, type CustomLineFeatureV1, type ProjectConfigV1 } from "@topostack/core";
-import { addCustomGraphic, addPlacedGraphic, graphicMaximumMm, removeCustomGraphic, removePlacedGraphic, renameCustomGraphic, updatePlacedGraphic, addMarkerIcon, removeMarkerIcon, renameMarkerIcon, setMarkerIconAnchor, addCustomLine, addCustomLinePoint, addDrawnCustomLine, canExtendDrawnLine, renameCustomLine, renameMarker, addMarker, addMarkerAt, appendCustomData, canAddCustomLine, clampPlaqueSize, customDataCapacity, plaqueSettings, plaqueText, plaqueWithFont, northArrowMaximumMm, removeCustomLine, removeCustomLinePoint, removeMarker, updateCustomLine, updateCustomLinePoint, updateMarker, withLiveNames } from "$lib/studio/project-edits";
+import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, parseProject, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, projectFingerprint, MAX_CUSTOM_LINE_POINTS, MAX_MAP_MARKERS, NORTH_ARROW_MAX_SIZE_MM, NORTH_ARROW_MIN_SIZE_MM, type CustomLineFeatureV1, type ProjectConfigV1 } from "@topostack/core";
+import { retainAirspaceThickness, addCustomGraphic, addPlacedGraphic, graphicMaximumMm, removeCustomGraphic, removePlacedGraphic, renameCustomGraphic, updatePlacedGraphic, addMarkerIcon, removeMarkerIcon, renameMarkerIcon, setMarkerIconAnchor, addCustomLine, addCustomLinePoint, addDrawnCustomLine, canExtendDrawnLine, renameCustomLine, renameMarker, addMarker, addMarkerAt, appendCustomData, canAddCustomLine, clampPlaqueSize, customDataCapacity, plaqueSettings, plaqueText, plaqueWithFont, northArrowMaximumMm, removeCustomLine, removeCustomLinePoint, removeMarker, updateCustomLine, updateCustomLinePoint, updateMarker, withLiveNames } from "$lib/studio/project-edits";
 
 const line = (id: string, count = 2): CustomLineFeatureV1 => ({ id, kind: "trail", points: Array.from({ length: count }, (_, index) => ({ lat: 40, lon: -105 + index * 0.01 })) });
 const withData = (patch: Partial<ProjectConfigV1>): ProjectConfigV1 => ({ ...DEFAULT_PROJECT, ...patch });
+
+describe("terrain and acrylic stock edits", () => {
+  const project = withData({ materialThicknessMm: 4, airspaceStack: DEFAULT_AIRSPACE_STACK });
+
+  it.each([0.5, 12, 25])("keeps 4 mm acrylic when wood changes to %s mm", (materialThicknessMm) => {
+    const patch = retainAirspaceThickness(project, { materialThicknessMm });
+    const next = parseProject({ ...project, ...patch });
+    expect(next.materialThicknessMm).toBe(materialThicknessMm);
+    expect(next.airspaceStack?.thicknessMm).toBe(4);
+    expect(project.airspaceStack?.thicknessMm).toBeUndefined();
+  });
+
+  it("keeps supported inheritance, explicit acrylic choices, and turning airspace off", () => {
+    for (const materialThicknessMm of [1, 3, 10]) {
+      const patch = { materialThicknessMm };
+      expect(retainAirspaceThickness(project, patch)).toBe(patch);
+    }
+    const explicit = { materialThicknessMm: 12, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, thicknessMm: 2 } };
+    expect(retainAirspaceThickness(project, explicit)).toBe(explicit);
+    const off = { materialThicknessMm: 12, airspaceStack: undefined };
+    expect(retainAirspaceThickness(project, off)).toBe(off);
+    const patch = { materialThicknessMm: 12 };
+    expect(retainAirspaceThickness({ ...project, airspaceStack: explicit.airspaceStack }, patch)).toBe(patch);
+    expect(retainAirspaceThickness(DEFAULT_PROJECT, patch)).toBe(patch);
+  });
+});
 
 describe("north arrow size limit", () => {
   it("scales with the shorter side within the absolute bounds", () => {

@@ -21,6 +21,22 @@ source.airspaceVolumes = [
   { id: "cap", name: "TEST WIDENING CAP", aviationClass: "class-b", floor: { ref: "msl", ft: feetAt(14) }, ceiling: { ref: "msl", ft: feetAt(22) }, polygons: [{ outer: square(0, -45, 80, 50), holes: [] }] },
 ];
 const fixtures = [];
+const acceptance = [
+  "# Airspace fabrication acceptance record",
+  "",
+  "Copy this template to acceptance-record.md before recording observations. Regeneration replaces templates, not your record.",
+  "",
+  "Status: pending. Generated jobs and software tests do not establish physical acceptance.",
+  "",
+  "Candidate commit: ____  Release version: ____  Operator: ____  Date: ____",
+  "",
+  "Laser/machine and software version: ____  Rod stock: ____  Adhesive and cure time: ____",
+  "",
+  "For each job, copy its observations-template.md to observations.md and record measurements, photos, pass/fail and any repeat needed.",
+  "",
+  "| Job | Guide | Observations | Result |",
+  "| --- | --- | --- | --- |",
+];
 for (const thicknessMm of [1, 3, 10]) for (const form of ["plates", "tiers", "volumes"]) for (const joint of ["segments", "through"]) {
   const name = `${form}-${joint}-${thicknessMm}mm`;
   const project = { ...config, name: `Assembly test ${name}`, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, form, thicknessMm, rod: { ...DEFAULT_AIRSPACE_STACK.rod, joint } } };
@@ -40,8 +56,20 @@ for (const thicknessMm of [1, 3, 10]) for (const form of ["plates", "tiers", "vo
     } else await writeFile(join(directory, file.filename), Buffer.from(await file.blob.arrayBuffer()));
   }
   await writeFile(join(directory, "TEST-FIXTURE.txt"), "SYNTHETIC ASSEMBLY TEST ONLY. These invented sectors are not FAA data. Measure your actual stock and set laser power/speed for it. Record fit, socket depth, hole clearance, glue stability and unsupported reach. Do not treat software geometry checks as physical validation.\n");
+  await writeFile(join(directory, "observations-template.md"), [
+    `# ${name} physical observations`, "", "Status: pending", "",
+    "Candidate commit: ____  Operator: ____  Date: ____", "",
+    `Requested acrylic: ${thicknessMm} mm; form: ${form}; rods: ${joint}.`, "",
+    "| Observation | Measurement and evidence | Result |", "| --- | --- | --- |",
+    ...["Actual acrylic/wood thickness and rod dimensions/material", "Laser settings, kerf, hole/socket dimensions and fit clearance", "Socket depth, seated rod length, backing adhesion and breakout", "Piece underside heights against the assembly guide", "Widening support: sag/rocking before and after curing", "Engraving, frost windows, rod locators and navigation notice", "Adhesive, cure duration, haze, bond separation and cracking"].map((label) => `| ${label} | ____ | pending |`),
+    "", "Photos/evidence paths: ____", "", "Overall pass/fail and changes before repeating: ____", "",
+  ].join("\n"));
+  const guide = job.files.find((file) => file.filename.endsWith("-assembly-guide.html"));
+  assert(guide, `Missing assembly guide: ${name}`);
+  acceptance.push(`| ${name} | [Guide](${name}/${guide.filename}) | [Template](${name}/observations-template.md) | pending |`);
   fixtures.push({ name, form, joint, thicknessMm, directory, levels: stack.levels.length, pieces: stack.levels.flatMap((level) => level.pieces).length, backingSheet: stack.backingSheet, warnings: geometry.warnings });
   console.log(`Prepared ${name}`);
 }
 await writeFile(join(output, "fixtures.json"), JSON.stringify({ synthetic: true, physicalValidation: "pending", fixtures }, null, 2) + "\n");
+await writeFile(join(output, "acceptance-template.md"), acceptance.join("\n") + "\n");
 console.log(`Saved assembly fixtures to ${output}`);

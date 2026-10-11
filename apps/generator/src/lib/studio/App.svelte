@@ -703,6 +703,7 @@
   }
 
   function updateFabrication(patch: Partial<ProjectConfigV1>, delayMs = PREVIEW_REFRESH_DELAY_MS): Promise<void> {
+    patch = edits.retainAirspaceThickness(project, patch);
     const updatesCustomData = patch.markers !== undefined || patch.customLines !== undefined || "customGraphics" in patch || "placedGraphics" in patch;
     const nextWidth = patch.widthMm ?? project.widthMm;
     const nextHeight = patch.heightMm ?? project.heightMm;

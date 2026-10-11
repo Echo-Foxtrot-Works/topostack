@@ -44,7 +44,7 @@ Skip the fragment only when users will not notice the change (tests, tooling, re
 | --- | --- |
 | `npm run changelog:new -- <type> "<title>"` | Scaffold a fragment named after the branch |
 | `npm run changelog:check -- --base origin/dev [--skip]` | Fail unless the branch adds a valid fragment (the Changelog workflow runs this) |
-| `npm run changelog:pending` | Fail while fragments are waiting (guards promotion pull requests) |
+| `npm run changelog:pending` | Fail while fragments are waiting (guards promotion pull requests and production CI) |
 | `npm run changelog:prepare -- [--dry-run] [--date YYYY-MM-DD]` | Fold fragments into a release and bump every workspace version |
 | `npm run changelog:render` | Rewrite `changelog/latest.json` and `CHANGELOG.md` after editing `releases.json` |
 | `npm run changelog:verify` | Check that the release files agree with each other and with the package version (CI lint job) |
@@ -64,6 +64,8 @@ Versions change only through `changelog:prepare`. `changelog:verify` fails when 
 No secret is needed. `release-prepare.yml` pushes the release commit to `dev` with the built-in `GITHUB_TOKEN` (`contents: write`). GitHub does not start workflows for pushes made with that token, so the job then dispatches `ci.yml` and `changelog.yml` on `dev` (`actions: write`). Their check runs attach to the release commit, which is the promotion pull request's new head, and the dispatched CI run redeploys development because `deploy-worker` accepts `workflow_dispatch` on `dev`. The pull request's own `pull_request` runs belong to the previous head and are not repeated.
 
 This relies on the `dev` ruleset allowing ordinary pushes from GitHub Actions (it blocks only deletion and force-pushes) and on `main` requiring a pull request but no named status checks. If `main` later requires status checks, the dispatched runs carry the same job names on the head commit. Create the `no-changelog` label once.
+
+CI also requires `changelog:pending` to pass on `main`, including manual runs. Its lint/typecheck job gates production deployment, so an early merge before release preparation cannot deploy code under the previous version. Keep the production environment restricted to the `main` branch; development CI must still allow pending fragments.
 
 ## Recovery
 

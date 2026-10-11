@@ -39,6 +39,11 @@ jobs:
       - name: Check the changelog agrees with the release version
         run: npm run changelog:verify
 
+      # This job gates deployment for pushes and manual runs on main too.
+      - name: Require a prepared production release
+        if: github.ref == 'refs/heads/main'
+        run: npm run changelog:pending
+
       # Deploys are gated only on high-severity advisories in runtime
       # dependencies; the full audit runs non-blocking in dependency-audit.
       - name: Audit production dependencies

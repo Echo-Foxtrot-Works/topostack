@@ -5,7 +5,7 @@ import { signedArea } from "../primitives/geometry2d.js";
 import { exportBlockReason } from "../export/export-policy.js";
 import { projectFingerprint } from "./fingerprint.js";
 import { circleRing, gridSource, scaledForLayers } from "../test-support/sources.js";
-import { base, build, CEILING, core, FEET, inside, plain, project, SHELF, sheetsUp, shelf, square, stepM, t, tower, volume, zOf } from "../test-support/airspace.js";
+import { base, build, CEILING, core, FEET, inside, plain, project, SHELF, sheetsUp, shelf, square, stepM, t, tower, volume, withAirspace, zOf } from "../test-support/airspace.js";
 
 describe("airspace stack settings", () => {
   it("round-trips through parseProject and rejects what cannot be built", () => {
@@ -19,6 +19,8 @@ describe("airspace stack settings", () => {
     expect(parseProject(JSON.parse(JSON.stringify({ ...DEFAULT_PROJECT, airspaceStack: clearTiers }))).airspaceStack).toEqual(clearTiers);
     expect(invalid({ classes: { B: false, C: false, D: false, specialUse: false } })).toThrow("at least one");
     expect(invalid({ ceilingCapFt: 500 })).toThrow("ceiling cap");
+    expect(invalid({ thicknessMm: 0.5 })).toThrow("acrylic thickness");
+    expect(invalid({ thicknessMm: 12 })).toThrow("acrylic thickness");
     expect(invalid({ rod: { ...DEFAULT_AIRSPACE_STACK.rod, sizeMm: 20 } })).toThrow("rod size");
     expect(invalid({ rod: { ...DEFAULT_AIRSPACE_STACK.rod, joint: "welded" } })).toThrow("segments");
     expect(invalid({ rod: undefined })).toThrow("rod settings");
@@ -27,6 +29,20 @@ describe("airspace stack settings", () => {
   it("leaves existing fingerprints alone", () => {
     expect(projectFingerprint(DEFAULT_PROJECT)).toBe(projectFingerprint({ ...DEFAULT_PROJECT, airspaceStack: undefined }));
     expect(projectFingerprint({ ...DEFAULT_PROJECT, airspaceStack: DEFAULT_AIRSPACE_STACK })).not.toBe(projectFingerprint(DEFAULT_PROJECT));
+  });
+
+  it.each([0.5, 0.99, 10.01, 12, 25])("rejects inherited %s mm acrylic in imports and generation", (materialThicknessMm) => {
+    const config = { ...project, materialThicknessMm, airspaceStack: DEFAULT_AIRSPACE_STACK };
+    expect(() => parseProject(config)).toThrow("Airspace acrylic thickness");
+    expect(() => generateGeometry(config, withAirspace([core, shelf]))).toThrow("Airspace acrylic thickness");
+    // These wood thicknesses remain valid without airspace, or with separate acrylic stock.
+    expect(parseProject({ ...config, airspaceStack: undefined }).materialThicknessMm).toBe(materialThicknessMm);
+    expect(parseProject({ ...config, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, thicknessMm: 3 } }).airspaceStack?.thicknessMm).toBe(3);
+  });
+
+  it.each([1, 10])("builds inherited %s mm acrylic at the supported boundary", (materialThicknessMm) => {
+    const config = parseProject({ ...project, materialThicknessMm, airspaceStack: DEFAULT_AIRSPACE_STACK });
+    expect(generateGeometry(config, withAirspace([core, shelf])).airspaceStack?.thicknessMm).toBe(materialThicknessMm);
   });
 });
 
