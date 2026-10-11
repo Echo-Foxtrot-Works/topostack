@@ -108,8 +108,7 @@
             <path class="airspace-choice-piece" d="M30 17H48M30 8H48" stroke={MAGENTA} />
           {:else}
             <path class="airspace-choice-glass" d="M4 20H22M4 13H22M4 6H22M30 17H48M30 8H48" />
-            <path class="airspace-choice-engraving" d="M4 20H22M4 13H22M4 6H22" stroke={BLUE} />
-            <path class="airspace-choice-engraving" d="M30 17H48M30 8H48" stroke={MAGENTA} />
+            <path class="airspace-choice-engraving" d="M4 20H22M4 13H22M4 6H22M30 17H48M30 8H48" />
           {/if}
         </svg>
         <span><b>{option.label}</b><small>{option.note}</small></span>
