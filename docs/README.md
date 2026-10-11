@@ -47,6 +47,7 @@
 - [Airspace in acrylic](plans/airspace-acrylic.md) — plan: Class B, C and special use airspace as translucent acrylic at true height over the stack (plates, tier pieces or solid volumes) styled after the FAA sectional, optional Class D lids, held on cut-to-length rods (glued segments or through-rods) with terrain sockets and a cut list. The feasibility spike is [reports/airspace-acrylic-spike-2026-10-09.md](reports/airspace-acrylic-spike-2026-10-09.md).
 - [Curated terrain coverage](terrain-coverage.md)
 - [Release acceptance and rollback](release-acceptance.md)
+- [Platform acceptance record template](release-acceptance-record.md) — evidence from real Atomm, xTool Studio and a fabricated test piece.
 - [Changelog and releases](changelog.md) — writing fragments, the automated release commit, tags, and the /changelog page.
 - [Search and discovery operations](seo-operations.md)
 - [Feedback workflow and triage](feedback.md)

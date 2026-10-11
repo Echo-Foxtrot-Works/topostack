@@ -1,6 +1,34 @@
 import { expect, test } from "@playwright/test";
 import { unzipSync } from "fflate";
 
+test("keeps supported acrylic stock while changing thin and thick terrain material", async ({ page }) => {
+  await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  await page.goto("/studio");
+  const aviation = page.getByRole("tab", { name: "Aviation", exact: true });
+  const terrain = page.getByRole("tab", { name: "Terrain", exact: true });
+  const toggle = page.getByRole("switch", { name: "Airspace in 3D", exact: true });
+  const wood = page.getByRole("spinbutton", { name: "Material", exact: true });
+  const acrylic = page.getByRole("spinbutton", { name: "Airspace acrylic thickness", exact: true });
+  await aviation.click();
+  await toggle.click();
+  await expect(acrylic).toHaveValue("3");
+  for (const thickness of ["12", "0.5"]) {
+    await terrain.click();
+    await wood.fill(thickness);
+    await wood.press("Tab");
+    await expect(wood).toHaveValue(thickness);
+    await aviation.click();
+    await expect(acrylic).toHaveValue("3");
+    await toggle.click();
+    await expect(toggle).not.toBeChecked();
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+    await expect(acrylic).toHaveValue("3");
+  }
+  await expect(page.locator(".status-line")).not.toContainText("Airspace acrylic thickness must");
+});
+
 test("builds airspace in acrylic over the model and exports its panels, rods and guide", async ({ page }) => {
   test.setTimeout(180_000);
   await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));

@@ -105,7 +105,7 @@ Check deployed services, SEO output, and data quality. CI and the production mon
 | --- | --- | --- |
 | `stress-depth-charts.mjs` | Fetch pinned USGS charts; probe uploads, tracing, persistence, and screenshots | manual: [real-chart stress report](../docs/reports/real-depth-chart-stress-2026-09-23.md) |
 | `airspace-acceptance.mjs` | Decode a local volume-enabled FAA archive with the production loader, sample actual Terrarium terrain, benchmark all forms, and check fabrication invariants | manual: [airspace validation](../docs/airspace-validation.md) |
-| `airspace-fabrication-fixtures.mjs` | Prepare eighteen synthetic assembly test jobs across forms, rod joints and 1/3/10 mm acrylic | manual: [airspace validation](../docs/airspace-validation.md) |
+| `airspace-fabrication-fixtures.mjs` | Prepare eighteen synthetic assembly test jobs across forms, rod joints and 1/3/10 mm acrylic, with guides and physical observation templates | manual: [airspace validation](../docs/airspace-validation.md) |
 | `benchmark-generation.mjs` | Profile 3000 × 3000 mm Grand Teton geometry and cached edits, optionally with parallel helpers and synthetic roads | `npm run build -w @topostack/core` then `node scripts/verify/benchmark-generation.mjs --teton --workers 4` |
 | `generation-pool.mjs`, `generation-task-worker.mjs` | Adapt the production browser task pool to Node threads for the generation benchmark | Imported by `benchmark-generation.mjs`; not standalone commands |
 | `parallel-browser.mjs` | Check production parallel workers, custom fonts, cancellation, and fallback in Chromium/Firefox/WebKit | Build core and generator, then `node scripts/verify/parallel-browser.mjs` (optional browser names) |

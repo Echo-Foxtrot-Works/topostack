@@ -38,6 +38,8 @@ node scripts/verify/airspace-fabrication-fixtures.mjs
 
 The output directory defaults to `.topostack/airspace-fabrication-fixtures/`; supply another directory as the first argument. Eighteen explicitly synthetic jobs exercise all three forms, both rod joints, backing sockets, a widening stack and the 1/3/10 mm stock choices. The endpoints cover the allowed thickness range; they do not certify every stock, glue or rod combination.
 
+Copy the generated `acceptance-template.md` to `acceptance-record.md`, and each job's `observations-template.md` to `observations.md`. The index links every assembly guide and observation template. Record the candidate commit, operator, date, actual stock, machine/software and measurements in these copies; regeneration replaces only the templates. Keep the record and photos with the release evidence. Use [the platform acceptance record](release-acceptance-record.md) for real Atomm and xTool Studio checks.
+
 For each thickness and joint combination, record:
 
 | Observation | Record |
