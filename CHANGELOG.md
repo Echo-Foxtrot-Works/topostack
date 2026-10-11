@@ -4,6 +4,12 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.10.1 (2026-10-11)
+
+### Fixed
+
+- **Explain when the map cannot load**: The Map view now shows when it is loading and reports a connection problem if its map data never arrives. A failed map returns to the cut preview so you can keep working and choose a location using search or coordinates. ([#238](https://github.com/Echo-Foxtrot-Works/topostack/pull/238))
+
 ## 0.10.0 (2026-10-11)
 
 ### New
