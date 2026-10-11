@@ -61,3 +61,33 @@ for (const output of ["Layered relief", "Flat engraving"]) {
     expect(errors).toEqual([]);
   });
 }
+
+for (const failure of ["source metadata", "tiles", "worker", "stalled style"]) {
+  test(`reports a blank basemap caused by unavailable ${failure}`, async ({ page }) => {
+    await page.route("https://static-res.makextool.com/**", route => route.abort());
+    await page.route("https://tiles.openfreemap.org/styles/**", async route => {
+      if (failure === "stalled style") return;
+      await route.fulfill({ json: {
+        version: 8,
+        sources: { openmaptiles: failure === "source metadata"
+          ? { type: "vector", url: "https://tiles.openfreemap.org/test-source" }
+          : { type: "vector", tiles: ["https://tiles.openfreemap.org/test-tiles/{z}/{x}/{y}.pbf"] } },
+        layers: [
+          { id: "background", type: "background", paint: { "background-color": "#ffffff" } },
+          { id: "land", type: "fill", source: "openmaptiles", "source-layer": "landcover" },
+        ],
+      } });
+    });
+    await page.route("https://tiles.openfreemap.org/test*", route => route.fulfill({ status: 503, body: "Unavailable" }));
+    await page.route("https://tiles.openfreemap.org/test-tiles/**", route => route.fulfill({ status: 503, body: "Unavailable" }));
+    if (failure === "worker") await page.route("**/maplibre-gl-worker-*.js", route => route.abort());
+    await page.goto("/studio");
+    await page.getByRole("radio", { name: "Map", exact: true }).click();
+    // A worker fetch can reject immediately, before the loading state is observed.
+    if (failure !== "worker") await expect(page.locator(".map-caption")).toContainText("Loading map");
+    await expect(page.locator(".preview-notice")).toContainText("Map could not load", { timeout: 25_000 });
+    await expect(page.getByRole("radio", { name: "Cut layers", exact: true })).toHaveAttribute("aria-checked", "true");
+    await page.locator(".location-card").click();
+    await expect(page.getByRole("dialog", { name: "Choose anywhere" })).toBeVisible();
+  });
+}
