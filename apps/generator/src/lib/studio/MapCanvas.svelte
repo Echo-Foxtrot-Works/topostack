@@ -86,6 +86,7 @@
    * without the repaint that shows them, so the map stayed blank until moved.
    */
   let styleReady = $state(false);
+  let basemapReady = $state(false);
   let resizing = $state(false);
   let skipSelectionFit = false;
   const handles = [
@@ -280,6 +281,24 @@
     try {
       map = new maplibregl.Map({ container, style: "https://tiles.openfreemap.org/styles/liberty", center: [project.location.lon, project.location.lat], zoom: project.location.zoom, attributionControl: false, cooperativeGestures: true, dragRotate: false, touchPitch: false, trackResize: false });
     } catch { onUnavailable?.("unsupported"); return; }
+    let reportedFailure = false;
+    const reportFailure = (error: unknown) => {
+      if (reportedFailure) return;
+      reportedFailure = true;
+      clearTimeout(loadTimer);
+      console.warn("TopoStack map could not load.", error);
+      onUnavailable?.("load-failed");
+    };
+    // A style and its attribution can load while its tiles or worker never do.
+    // Bound startup so blocked requests cannot leave an apparently usable blank map.
+    const loadTimer = setTimeout(() => reportFailure(new Error("Map loading timed out")), 20_000);
+    const markBasemapReady = () => { basemapReady = true; clearTimeout(loadTimer); };
+    const tiledSource = (type: string) => type === "vector" || type === "raster" || type === "raster-dem";
+    map.on("sourcedata", (event) => {
+      // Metadata and idle events also fire for failed sources. Require actual
+      // tile content, and exclude the studio's own GeoJSON overlays.
+      if (tiledSource(event.source.type) && event.tile?.state === "loaded") markBasemapReady();
+    });
     map.touchZoomRotate.disableRotation();
     if (!isEmbedded()) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     initialZoom = map.getZoom(); initialCenter = [project.location.lon, project.location.lat];
@@ -298,7 +317,11 @@
         onLakeViewportChange?.({ west: bounds.getWest() + shift, east: bounds.getEast() + shift, south: Math.max(-85, bounds.getSouth()), north: Math.min(85, bounds.getNorth()) });
       }, 180);
     };
-    map.on("load", () => { styleReady = true; reportLakeViewport(); });
+    map.on("load", () => {
+      styleReady = true;
+      if (!Object.values(map?.getStyle().sources ?? {}).some(source => tiledSource(source.type))) markBasemapReady();
+      reportLakeViewport();
+    });
     map.on("moveend", reportLakeViewport);
     // Mouse moves arrive faster than frames; handle only the latest one per frame.
     let latestMove: MapMouseEvent | undefined;
@@ -349,17 +372,14 @@
       event.preventDefault();
       onFinishDraw?.(false);
     });
-    let reportedFailure = false;
     // Only a style that never loaded is a failure; this is earlier than `load`.
     let styleLoaded = false;
     map.once("style.load", () => { styleLoaded = true; });
     map.on("error", (event: MapErrorEvent) => {
-      // Individual tiles fail routinely (offline pans, rate limits) and MapLibre
-      // retries them; only a style that never loaded leaves a blank canvas.
+      // Allow individual tile failures and recovery. The startup deadline
+      // catches a basemap that never supplies any tiles, even after style.load.
       if (reportedFailure || styleLoaded || styleReady || event.sourceId !== undefined || event.tile !== undefined) return;
-      reportedFailure = true;
-      console.warn("TopoStack map style could not load.", event.error);
-      onUnavailable?.("load-failed");
+      reportFailure(event.error);
     });
     const emitSelection = () => {
       if (!map) return;
@@ -387,7 +407,7 @@
     const resizeObserver = new ResizeObserver(() => fitSelection());
     resizeObserver.observe(container);
     fitSelection();
-    return () => { clearTimeout(viewportTimer); cancelAnimationFrame(moveFrame); resizeObserver.disconnect(); mapMarkers.forEach((marker) => marker.remove()); mapMarkers.clear(); map?.remove(); map = undefined; };
+    return () => { clearTimeout(loadTimer); clearTimeout(viewportTimer); cancelAnimationFrame(moveFrame); resizeObserver.disconnect(); mapMarkers.forEach((marker) => marker.remove()); mapMarkers.clear(); map?.remove(); map = undefined; };
   });
 
   $effect(() => {
@@ -517,7 +537,7 @@
   {:else if placingMarker}
     <div class="map-caption map-caption--placing" role="status"><MapPin size={14} /> Click to place · drag to move · Esc when done</div>
   {:else}
-    <div class="map-caption"><LocateFixed size={14} /> {hint}</div>
+    <div class="map-caption" role="status"><LocateFixed size={14} /> {basemapReady ? hint : "Loading map…"}</div>
   {/if}
 </div>
 
