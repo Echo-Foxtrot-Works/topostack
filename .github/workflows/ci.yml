@@ -39,6 +39,11 @@ jobs:
       - name: Check the changelog agrees with the release version
         run: npm run changelog:verify
 
+      # This job gates deployment for pushes and manual runs on main too.
+      - name: Require a prepared production release
+        if: github.ref == 'refs/heads/main'
+        run: npm run changelog:pending
+
       # Deploys are gated only on high-severity advisories in runtime
       # dependencies; the full audit runs non-blocking in dependency-audit.
       - name: Audit production dependencies
@@ -375,6 +380,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Verify staged production FAA archive before deploy
+        if: github.ref_name == 'main'
+        run: node scripts/provision/activate-aviation-release.mjs --prod --verify-only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # Deploy with the wrangler the lockfile pins, the one every build and
       # dry run in CI used, rather than a second hand-maintained version.
       - name: Resolve wrangler version
@@ -397,6 +409,22 @@ jobs:
         env:
           GEOCODER_API_KEY: ${{ secrets.GEOCODER_API_KEY }}
           FEEDBACK_EMAIL_TO: ${{ secrets.FEEDBACK_EMAIL_TO }}
+
+      - name: Activate the FAA archive matching the deployed registration
+        if: github.ref_name == 'main'
+        run: node scripts/provision/activate-aviation-release.mjs --prod --promote --receipt="$RUNNER_TEMP/aviation-activation.json"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Retain FAA activation and rollback receipt
+        if: always() && github.ref_name == 'main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: aviation-activation-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/aviation-activation.json
+          if-no-files-found: ignore
+          retention-days: 90
 
       - name: Smoke test deployed Worker
         run: node scripts/verify/verify-worker-deployment.mjs

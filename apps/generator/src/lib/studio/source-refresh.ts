@@ -16,6 +16,8 @@ export interface SourceRefreshDependencies {
   assembleWater: (source: SourceBundleV1, lakes: WaterAreaV1[], ocean: Polygon2D[], config: ProjectConfigV1) => SourceBundleV1;
   /** Never throws: a failed load comes back as status "unavailable". */
   loadAviation: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "aviationMarkings" | "aviationStatus" | "aviationCycle" | "aviationAttribution">>;
+  /** Never throws: a failed load comes back without volumes, as status "unavailable". */
+  loadAirspace: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "airspaceVolumes" | "airspaceStatus" | "airspaceCycle">>;
   /** The whole zoom `loadTerrain` gives the same loaders. */
   dataZoom: (zoom: number) => number;
 }
@@ -29,6 +31,7 @@ export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: 
     ...source,
     markings: source.markings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })),
     ...(source.aviationMarkings ? { aviationMarkings: source.aviationMarkings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })) } : {}),
+    ...(source.airspaceVolumes ? { airspaceVolumes: source.airspaceVolumes.map((volume) => ({ ...volume, polygons: volume.polygons.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) })) } : {}),
     ...(source.waterAreas ? { waterAreas: source.waterAreas.map((area) => ({ ...area, polygon: { outer: scalePoints(area.polygon.outer), holes: area.polygon.holes.map(scalePoints) } })) } : {}),
     ...(source.inlandWaterAreas ? { inlandWaterAreas: source.inlandWaterAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
     ...(source.waterPatternAreas ? { waterPatternAreas: source.waterPatternAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
@@ -55,6 +58,15 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   // Loaded aviation holds only the groups enabled then; turning another on
   // reloads, turning one off only filters. A truncated load may fit more now.
   if ("aviation" in patch && AVIATION_DATA_DETAILS.some((detail) => nextProject.aviation?.[detail] && (!sourceProject.aviation?.[detail] || source.aviationStatus === "partial"))) next = { ...next, aviationStatus: "not-requested" };
+  // Enabled classes are filtered before the loader's feature limit. Enabling
+  // one needs a reload; disabling one can make a partial load complete.
+  if ("airspaceStack" in patch && nextProject.airspaceStack) {
+    const had = source.airspaceVolumes ? sourceProject.airspaceStack?.classes : undefined;
+    const needs = nextProject.airspaceStack.classes;
+    const enablesClass = (Object.keys(needs) as Array<keyof typeof needs>).some((key) => needs[key] && !had?.[key]);
+    const changesPartial = source.airspaceStatus === "partial" && JSON.stringify(had) !== JSON.stringify(needs);
+    if (enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
+  }
   // Using or dropping a depth chart changes which depths a lake carves, so the
   // lake depths are loaded again rather than reused from before the change.
   if ("userDepthCharts" in patch) next = { ...next, bathymetryStatus: undefined };
@@ -65,7 +77,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   if (source.sourceKind !== "real") return source;
   const { loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater } = deps;
   const zoom = deps.dataZoom(config.location.zoom);
-  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas, aviation: needsAviation } = sourceRequirements(config);
+  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas, aviation: needsAviation, airspace: needsAirspace } = sourceRequirements(config);
   let next = source;
   let inland = source.inlandWaterAreas ?? [];
   let ocean = (source.waterAreas ?? []).filter((area) => area.kind === "ocean").map((area) => area.polygon);
@@ -103,6 +115,13 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     next = { ...next, ...aviation };
   }
 
+  // Outside FAA coverage the volumes are an empty list; only a missing list loads again.
+  if (needsAirspace && !source.airspaceVolumes) {
+    const airspace = await deps.loadAirspace(source.bounds, zoom, config, signal);
+    signal.throwIfAborted();
+    next = { ...next, ...airspace };
+  }
+
   if (usesWaterAreas && source.lakeDataStatus !== "available") {
     try {
       lakes = await loadLakeAreas(source.bounds, zoom, config, signal);
@@ -118,7 +137,13 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     // Re-resolve from the provider and HydroLAKES outlines against the current
     // inland water; OSM-derived outlines from the last pass are rebuilt, not kept.
     const resolved = resolveLakeOutlines([], lakes.filter((lake) => lake.outlineSource !== "osm"), inland);
-    if (resolved.length !== lakes.length || resolved.some((area) => !lakes.some((lake) => lake.id === area.id))) next = { ...next, bathymetryStatus: undefined };
+    // A lake keeps its id when it takes a more detailed shore, but survey
+    // depths were masked to the old one.
+    const reshaped = (area: WaterAreaV1) => {
+      const before = lakes.find((lake) => lake.id === area.id)?.polygon;
+      return !before || (before !== area.polygon && JSON.stringify(before) !== JSON.stringify(area.polygon));
+    };
+    if (resolved.length !== lakes.length || resolved.some(reshaped)) next = { ...next, bathymetryStatus: undefined };
     if (resolved.length && next.lakeDataStatus !== "available") next = { ...next, lakeDataStatus: "available" };
     lakes = resolved.map((area) => ({ ...area, bathymetry: lakes.find((lake) => lake.id === area.id)?.bathymetry }));
   }
@@ -135,7 +160,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
 /** Only the settings that change what `refreshRequiredMapData` loads or assembles. */
 function preparationKey(config: ProjectConfigV1): string {
-  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showBoundaries, config.aviation ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
+  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showBoundaries, config.aviation ?? null, config.airspaceStack?.classes ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
 }
 
 /**
@@ -152,7 +177,7 @@ export class SourcePreparationCache {
     const patch = projectPatch(sourceProject, previewProject);
     const key = preparationKey(nextProject);
     // Everything besides `key` that shapes the output for a given input object.
-    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null]);
+    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation" || name === "airspaceStack").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null, sourceProject.airspaceStack?.classes ?? null]);
     const entry = this.entry;
     if (entry && entry.key === key) {
       if (entry.input === active && entry.inputSignature === inputSignature) return entry.output;

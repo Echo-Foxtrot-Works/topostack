@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "logicalKey": "aviation/current.pmtiles",
+  "objectKey": "archives/de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793/7218ec16-bb08-4de2-9e35-3d5b45ca0afd.pmtiles",
+  "dataset": "faa-aviation-2026-10-01-v2",
+  "sha256": "de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793",
+  "bytes": 38297461,
+  "etag": "\"3797ccb3ccb04208e2cbf0c7cde6be1d-8\"",
+  "verifiedAt": "2026-10-10T23:50:28.734Z",
+  "previousObjectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/a03327f1-979a-402c-b3c0-65689a17f244.pmtiles"
+}

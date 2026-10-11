@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AirspaceFeature from "$lib/site/AirspaceFeature.svelte";
   import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import SiteHeader from "$lib/site/SiteHeader.svelte";
   import SiteFooter from "$lib/site/SiteFooter.svelte";
@@ -74,6 +75,10 @@
     <section id="water-finishes" class="section" aria-labelledby="water-finishes-title">
       <div class="section-heading"><p class="eyebrow">Water, made your way</p><h2 id="water-finishes-title">Two ways to finish your lake.</h2><p>Color the wooden lake bed, or add a fitted acrylic surface. Both finishes start with the same layered terrain.</p></div>
       <WaterFinishComparison links linework />
+    </section>
+
+    <section id="airspace" class="section" aria-labelledby="airspace-title">
+      <AirspaceFeature />
     </section>
 
     <section id="how-it-works" class="section process" aria-labelledby="process-title">
@@ -178,7 +183,7 @@
   .secondary-link, .primary-link, .support-link { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
   .star-link :global(svg:first-child) { transition: fill 160ms ease, color 160ms ease; }
   .star-link:hover :global(svg:first-child), .star-link:focus-visible :global(svg:first-child) { color: var(--loidolt-text-accent); fill: currentColor; }
-  #first-project, #how-it-works, #assembly-guide, #water-finishes, #open-source { scroll-margin-top: 100px; }
+  #first-project, #how-it-works, #assembly-guide, #water-finishes, #airspace, #open-source { scroll-margin-top: 100px; }
   .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px 24px; }
   .secondary-link { min-height: 48px; color: var(--loidolt-text); font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
   .cta-note { margin: 16px 0 0; font-size: 12px; }

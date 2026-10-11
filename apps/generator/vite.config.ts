@@ -27,7 +27,9 @@ export default defineConfig({
             { name: "theme-styles", test: /node_modules\/@loidolt\/.*\.css(?:\?|$)/, priority: 50 },
             { name: "three", test: /node_modules\/three/, priority: 40 },
             { name: "maplibre", test: /node_modules\/maplibre-gl/, priority: 40 },
-            { name: "ui", test: /node_modules\/(?:@lucide\/svelte|svelte|bits-ui)/, priority: 30 },
+            // Split by consumer, so the homepage does not load UI code only the
+            // studio uses (the settings rail's tabs and their roving focus).
+            { name: "ui", test: /node_modules\/(?:@lucide\/svelte|svelte|bits-ui)/, priority: 30, entriesAware: true },
             // The geometry engine is many small modules that the studio, its worker,
             // and the packaging code import in different subsets. Left to itself
             // the bundler splits them per consumer, which costs more in chunk
@@ -36,7 +38,8 @@ export default defineConfig({
             // The project parser serves saved, imported and shared projects, and
             // the agent request contract only the lazily loaded WebMCP tools, so
             // they stay with their importers rather than in this startup chunk.
-            { name: "core", test: /\/packages\/core\/src\/(?!export\/|project\/(?:parse|request|schema|plan)\.ts)|node_modules\/(?:polygon-clipping|d3-contour|clipper-lib)/, priority: 25 },
+            // The airspace stage is loaded only by projects that build airspace.
+            { name: "core", test: /\/packages\/core\/src\/(?!export\/|project\/(?:parse|request|schema|plan)\.ts|airspace\.ts|pipeline\/airspace-(?:stack|supports|partition|annotations)\.ts)|node_modules\/(?:polygon-clipping|d3-contour|clipper-lib)/, priority: 25 },
             // Capture shared site dependencies before guides so the homepage
             // never needs the guide content chunk. Split shared JS by actual
             // consumers to avoid loading guide-only navigation on the homepage.

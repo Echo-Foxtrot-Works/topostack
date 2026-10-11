@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
   await page.goto("/studio");
   await page.getByRole("radio", { name: "Custom data", exact: true }).click();
-  await page.locator("#custom-data-graphics-title").click();
+  await page.getByRole("tab", { name: "Graphics", exact: true }).click();
 });
 
 test("an uploaded graphic is placed, turned and cut out on the preview as one edit", async ({ page }) => {

@@ -10,7 +10,7 @@ test("marker size persists and fabrication artwork spans visible stack layers", 
   await page.goto("/studio");
   const openMarkers = async () => {
     await page.getByRole("radio", { name: "Custom data", exact: true }).click();
-    await page.locator("#custom-data-markers-title").click();
+    await page.getByRole("tab", { name: "Markers", exact: true }).click();
   };
   await openMarkers();
   await page.getByRole("button", { name: "Add marker", exact: true }).click();

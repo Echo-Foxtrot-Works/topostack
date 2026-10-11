@@ -11,8 +11,11 @@ const dist = new URL("../../apps/generator/dist/", import.meta.url);
 // request that needs it and put the measured number in the description.
 // Measured 2026-09-21 with Node 22.22.2, production build, VITE_MAP_API_URL=https://ci.invalid.
 const budgets = {
-  // JavaScript the homepage preloads. 58,053 when set.
-  landingJavaScriptGzip: 64_000,
+  // JavaScript the homepage preloads. 58,053 when set; 64,516 after adding
+  // the airspace feature section and guide registration (2026-10-10). The
+  // illustration is a static SVG mask; this restores roughly 10% headroom
+  // for actual content growth without adding a rendering dependency.
+  landingJavaScriptGzip: 71_000,
   // Prerendered homepage HTML. 9,579 when set; 11,142 after adding the
   // accessible water-finish comparison with responsive images (2026-10-08).
   landingHtmlGzip: 12_300,

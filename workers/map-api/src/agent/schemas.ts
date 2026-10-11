@@ -50,6 +50,17 @@ export const PLAN_SCHEMA: Schema = {
         heightOfModelMm: { type: "number" }, materialThicknessMm: { type: "number" }, requestedVerticalExaggeration: { type: "number" }, fittedVerticalExaggeration: { type: "number" },
         metersPerStep: { type: "number", description: "Elevation per sheet, or between engraved contours." }, scaleDenominator: { type: "integer", description: "The model is 1:scaleDenominator across its width." },
         groundWidthKm: { type: "number" }, groundHeightKm: { type: "number" }, minElevationM: { type: "number" }, maxElevationM: { type: "number" }, reliefM: { type: "number" }, estimate: { const: true },
+        airspace: {
+          type: "object",
+          required: ["form", "ceilingCapFt", "capIsDefault"],
+          description: "Airspace in acrylic, when a layered design builds it. Its rods are placed when the studio generates the model.",
+          properties: {
+            form: { enum: ["plates", "tiers", "volumes"] },
+            ceilingCapFt: { type: "number", description: "The cap the height is estimated at." },
+            capIsDefault: { type: "boolean", description: "True when the design sets no cap: the studio then takes it from the highest Class B or C ceiling in the area." },
+            topMm: { type: "number", description: "Top of the highest acrylic piece above the base of the model, at the cap. An estimate." },
+          },
+        },
       },
     },
     relief: { type: "object", properties: { sampleZoom: { type: "integer" }, tiles: { type: "integer" }, coastal: { type: "boolean" } } },

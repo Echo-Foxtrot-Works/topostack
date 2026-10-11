@@ -33,6 +33,8 @@ Load the candidate ZIP inside the real Atomm host. Exercise download and Open in
 
 Import representative files in the intended xTool Studio version. Verify dimensions and units, cut/score/engrave operations, marker clearance gaps and filled symbols, shared nested cuts, material connectivity, kerf, and assembly order. Fabricate and measure a small representative test piece before approving larger work.
 
+Copy [the platform acceptance record](release-acceptance-record.md) outside the checkout and complete it with evidence from the real applications. For airspace, generate [the assembly fixtures and observation templates](airspace-validation.md#prepare-and-record-a-physical-test) from the same candidate. Keep both records pending until the corresponding hands-on checks have been performed.
+
 ## Operational acceptance
 
 Confirm configured secrets, provider quotas, GitHub environment protections, notification recipients, and the `geocode/` R2 cleanup rule. Use response-status/cache-outcome logs to alert on uncached provider failures, as well as the scheduled serving-path canaries. Confirm how client-side failure reports reach an operator; the browser monitor captures console errors/traces, but it is not comprehensive production client telemetry.

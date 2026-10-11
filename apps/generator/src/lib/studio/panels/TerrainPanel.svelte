@@ -1,22 +1,21 @@
 <script lang="ts">
-  import { ChevronDown, Mountain, PenTool } from "@lucide/svelte";
-  import { Field, Section } from "@loidolt/theme-svelte";
+  import { Mountain, PenTool, Waves } from "@lucide/svelte";
+  import { Field } from "@loidolt/theme-svelte";
   import { displayElevation, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION } from "@topostack/core";
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
+  import Switch from "$lib/studio/StudioSwitch.svelte";
+  import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
+  import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
   import { getStudio } from "$lib/studio/studio-context";
 
   const studio = getStudio();
-  const { sectionSummary, shownLength, storedLength, toggleSection, updateFabrication, updateVerticalExaggeration } = studio;
+  const { shownLength, storedLength, updateFabrication, updateVerticalExaggeration } = studio;
 </script>
 
-<Section class="config-section" aria-labelledby="atomm-terrain-title">
-  <button type="button" class="section-disclosure" id="atomm-terrain-title" aria-expanded={studio.openSections.terrain} aria-controls="section-terrain" onclick={() => toggleSection("terrain")}>
-    <span class="section-number">04</span>
-    <span class="section-title">{studio.project.outputMode === "engraving" ? "Contour design" : "Terrain layers"}<small>{sectionSummary("terrain")}</small></span>
-    <ChevronDown size={16} class={studio.openSections.terrain ? "kicker-chevron kicker-chevron--open" : "kicker-chevron"} />
-  </button>
-  <div id="section-terrain" class="section-content" hidden={!studio.openSections.terrain}>
+<!-- The relief itself: how many layers or contour lines, and how they are shaped. -->
+<PanelFrame id="terrain" title={studio.project.outputMode === "engraving" ? "Contour design" : "Terrain layers"}>
+<div class="detail-group terrain-group">
   {#if studio.project.outputMode === "engraving"}
     <div class="range-field">
       <span class="range-field__label"><b>Contour density</b></span>
@@ -59,5 +58,17 @@
     </span>
   </div>
   {/if}
+</div>
+<div class="detail-group">
+  <p class="subgroup-heading">Contour shape</p>
+  <div class="toggle-stack">
+    <Switch checked={studio.project.smoothing === 1} onCheckedChange={(smooth) => void updateFabrication({ smoothing: smooth ? 1 : 0 })} aria-label="Smooth contours"><span class="toggle-label"><Waves size={16} />Smooth contours</span></Switch>
   </div>
-</Section>
+  {#if studio.project.outputMode === "engraving"}
+    <div class="field-stack">
+      <LineWidthField label="Minor contours" fieldLabel="Minor contour width" key="contourMm" />
+      <LineWidthField label="Index contours" fieldLabel="Index contour width" key="indexContourMm" />
+    </div>
+  {/if}
+</div>
+</PanelFrame>

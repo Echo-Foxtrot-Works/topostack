@@ -1,8 +1,8 @@
 /**
  * Which kind of brought-in data the custom data view is working on.
  *
- * The active section chooses the workspace; tools can collapse independently, and
- * the viewport shows what those tools work on — the chart being clicked, or
+ * The active section chooses the workspace and its tools in the sidebar rail,
+ * and the viewport shows what those tools work on — the chart being clicked, or
  * the map that markers and paths sit on. It lives outside the components for
  * the same reason the chart draft does: switching to another view unmounts
  * both, and coming back somewhere else would lose the maker's place.
@@ -15,28 +15,22 @@ export type CustomDataSectionId = "charts" | "markers" | "paths" | "graphics" | 
 export interface CustomDataSectionInfo {
   id: CustomDataSectionId;
   label: string;
+  /** The rail tab's label, short enough to sit under an icon. */
+  tab: string;
 }
 
 const CUSTOM_DATA_SECTIONS: readonly CustomDataSectionInfo[] = [
-  { id: "charts", label: "Depth charts" },
-  { id: "markers", label: "Markers" },
-  { id: "paths", label: "Trails & boundaries" },
-  { id: "graphics", label: "Graphics" },
-  { id: "import", label: "Import" },
+  { id: "charts", label: "Depth charts", tab: "Charts" },
+  { id: "markers", label: "Markers", tab: "Markers" },
+  { id: "paths", label: "Trails & boundaries", tab: "Paths" },
+  { id: "graphics", label: "Graphics", tab: "Graphics" },
+  { id: "import", label: "Import", tab: "Import" },
 ];
 
-// Disclosure state is independent: collapsing tools keeps the workspace and draft.
-export const nav = $state<{ section: CustomDataSectionId; expanded: boolean }>({ section: "charts", expanded: true });
+export const nav = $state<{ section: CustomDataSectionId }>({ section: "charts" });
 
 export function openCustomDataSection(section: CustomDataSectionId): void {
   nav.section = section;
-  nav.expanded = true;
-}
-
-/** @public CustomDataNav.svelte calls this only from its markup, which knip does not read. */
-export function toggleCustomDataSection(section: CustomDataSectionId): void {
-  if (nav.section === section) nav.expanded = !nav.expanded;
-  else openCustomDataSection(section);
 }
 
 /**

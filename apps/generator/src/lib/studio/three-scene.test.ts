@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { GeometryIRV1 } from "@topostack/core";
-import { addStacked, appendPolyline, applyExploded, batchSegments, boundsOverlap, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, polygonBounds, waterStainBands, waterStainMask, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
+import { airspaceBody, airspaceRods, type CachedAirspaceBody, addStacked, appendPolyline, applyExploded, batchSegments, boundsOverlap, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, polygonBounds, waterStainBands, waterStainMask, type CachedLayer, type LineBatch } from "$lib/studio/three-scene";
 
 type Layer = GeometryIRV1["layers"][number];
 const square = (size: number) => [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }];
@@ -19,6 +19,57 @@ describe("layerKey", () => {
     const moved = layer();
     moved.polygons[0]!.holes[0]![1] = { x: 2.5, y: 0 };
     expect(layerKey(moved)).not.toBe(base);
+  });
+});
+
+describe("airspace body cache", () => {
+  it("reuses a cloned body, replaces scene materials, and disposes removed bodies", () => {
+    const cache = new Map<string, CachedAirspaceBody>();
+    const piece = { id: "A1-1", tint: "clear" as const, sectorIds: ["sector"], polygons: layer().polygons };
+    const material = new THREE.MeshStandardMaterial();
+    const meshes = airspaceBody(cache, piece, 3, material);
+    const geometry = meshes[0]!.geometry;
+    const dispose = vi.spyOn(geometry, "dispose");
+    const content = new THREE.Group();
+    content.add(...meshes);
+    disposeContent(content, [material], new Set(meshes));
+    expect(dispose).not.toHaveBeenCalled();
+    const nextMaterial = new THREE.MeshStandardMaterial();
+    expect(airspaceBody(cache, structuredClone(piece), 3, nextMaterial)).toBe(meshes);
+    expect(meshes[0]!.material).toBe(nextMaterial);
+    content.add(...meshes);
+    disposeContent(content, [nextMaterial]);
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(airspaceBody(cache, piece, 4, new THREE.MeshStandardMaterial())[0]!.geometry).not.toBe(geometry);
+  });
+});
+
+describe("airspace draw calls", () => {
+  it("extrudes every outline of a piece into one body", () => {
+    const piece = { id: "A1-1", tint: "blue" as const, sectorIds: ["sector"], polygons: [{ outer: square(4), holes: [] }, { outer: square(4).map(({ x, y }) => ({ x: x + 10, y })), holes: [] }] };
+    const meshes = airspaceBody(new Map(), piece, 3, new THREE.MeshStandardMaterial());
+    expect(meshes).toHaveLength(1);
+    meshes[0]!.geometry.computeBoundingBox();
+    expect(meshes[0]!.geometry.boundingBox!.max.x).toBeCloseTo(14);
+  });
+
+  it("instances rods per stack position, each at its foot and length", () => {
+    const segment = (headPieceId: string, bottomMm: number, topMm: number) => ({ headPieceId, bottomMm, topMm });
+    const stack = {
+      rod: { shape: "round", sizeMm: 4 },
+      columns: [
+        { point: { x: 10, y: 20 }, segments: [segment("A1-1", 3, 30), segment("A2-1", 33, 60), segment("A2-1", 60, 60)] },
+        { point: { x: -5, y: 0 }, segments: [segment("A1-1", 6, 30)] },
+      ],
+    } as unknown as Parameters<typeof airspaceRods>[0];
+    const rods = airspaceRods(stack, (id) => (id === "A1-1" ? 12 : 13), new THREE.MeshStandardMaterial());
+    expect(rods.map(({ stackIndex, mesh }) => [stackIndex, mesh.count])).toEqual([[12, 2], [13, 1]]);
+    const matrix = new THREE.Matrix4();
+    rods[0]!.mesh.getMatrixAt(0, matrix);
+    const bounds = new THREE.Box3().setFromBufferAttribute(rods[0]!.mesh.geometry.getAttribute("position") as THREE.BufferAttribute).applyMatrix4(matrix);
+    expect(bounds.min.toArray().map((value) => Math.round(value * 1000) / 1000)).toEqual([8, 18, 3]);
+    expect(bounds.max.toArray().map((value) => Math.round(value * 1000) / 1000)).toEqual([12, 22, 30]);
+    expect(rods.every(({ mesh }) => mesh.castShadow)).toBe(true);
   });
 });
 

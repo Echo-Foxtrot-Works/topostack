@@ -7,8 +7,12 @@
   import ThreePreview from "$lib/studio/ThreePreview.svelte";
 
   let { initial }: { initial: GeometryIRV1 } = $props();
+  let preview: { fitView: () => void };
+  export const fitView = (): void => preview.fitView();
+  let exploded = $state(0);
+  export const setExploded = (next: number): void => { exploded = next; };
   let geometry = $state.raw(untrack(() => initial));
   export const setGeometry = (next: GeometryIRV1): void => { geometry = next; };
 </script>
 
-<ThreePreview {geometry} exploded={0} />
+<ThreePreview bind:this={preview} {geometry} {exploded} />

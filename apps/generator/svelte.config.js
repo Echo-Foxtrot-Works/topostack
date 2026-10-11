@@ -13,6 +13,8 @@ const config = {
   kit: {
     adapter: adapter({ pages: "dist", assets: "dist", strict: true }),
     alias: {
+      // The airspace stage is its own entry, loaded only by projects that build airspace.
+      "@topostack/core/airspace": fileURLToPath(new URL("../../packages/core/src/airspace.ts", import.meta.url)),
       "@topostack/core": fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)),
     },
     paths: { relative: true },

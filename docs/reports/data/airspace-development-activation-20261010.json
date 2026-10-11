@@ -1,0 +1,80 @@
+{
+  "bucket": "topostack-vector-data-development",
+  "origin": "https://dev.topostack.app",
+  "previousRelease": {
+    "schemaVersion": 1,
+    "logicalKey": "aviation/current.pmtiles",
+    "objectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/40ab9dca-b27c-4832-a7fa-0ebb8cf306bf.pmtiles",
+    "dataset": "faa-aviation-2026-10-01-v1",
+    "sha256": "677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34",
+    "bytes": 35196578,
+    "etag": "\"8f08071dd723649582aa355fc7b81393-7\"",
+    "verifiedAt": "2026-10-05T18:14:14.046Z",
+    "previousObjectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/801ff40e-be20-402e-b128-daeb847c7387.pmtiles"
+  },
+  "previousEtag": "\"7f894e11b1b88a385668c9f1a60db8b7\"",
+  "release": {
+    "schemaVersion": 1,
+    "logicalKey": "aviation/current.pmtiles",
+    "objectKey": "archives/de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793/d7fa069d-2c15-45cb-9b43-004986528481.pmtiles",
+    "dataset": "faa-aviation-2026-10-01-v2",
+    "sha256": "de3c118977ab56157675ab15a97a7803a23971d4a7ff20113124c480a6c8f793",
+    "bytes": 38297461,
+    "etag": "\"3797ccb3ccb04208e2cbf0c7cde6be1d-8\"",
+    "verifiedAt": "2026-10-10T15:32:54.013Z",
+    "previousObjectKey": "archives/677e8c2ce04630d666709a456fc586b4f4341c7e39a9bed2918ce564b2684f34/40ab9dca-b27c-4832-a7fa-0ebb8cf306bf.pmtiles"
+  },
+  "promoted": true,
+  "archiveUploaded": false,
+  "browserVerification": {
+    "checkedAt": "2026-10-10T15:36:06.129Z",
+    "origin": "https://dev.topostack.app",
+    "status": "Real terrain ready \u00b7 15 layers \u00b7 15 cut panels",
+    "form": "tiers",
+    "pieces": 9,
+    "levels": 6,
+    "rods": 34,
+    "rendered3D": true,
+    "pageErrors": [],
+    "unrelatedRequestFailures": [
+      "net::ERR_CONNECTION_REFUSED: https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920"
+    ]
+  },
+  "cosFollowUp": {
+    "origin": "https://dev.topostack.app",
+    "freshSession": true,
+    "location": {
+      "lat": 38.8058,
+      "lon": -104.7008
+    },
+    "cases": [
+      {
+        "zoom": 11,
+        "status": "Real terrain ready \u00b7 4 layers \u00b7 4 cut panels",
+        "summary": "A short rod between each level, glued on the outline engraved on the piece below. The guide lists every length.",
+        "warnings": [
+          "! Elevation labels were omitted from layer 4 because no collision-free position fit the exposed face. "
+        ]
+      },
+      {
+        "zoom": 13,
+        "status": "Real terrain ready \u00b7 4 layers \u00b7 4 cut panels",
+        "summary": "A short rod between each level, glued on the outline engraved on the piece below. The guide lists every length.",
+        "warnings": [
+          "! Elevation labels were omitted from layer 1 because no collision-free position fit the exposed face. "
+        ]
+      }
+    ],
+    "enableAfterTerrainGeneration": {
+      "zoom": 13,
+      "pieces": 1,
+      "levels": 1,
+      "status": "Fabrication geometry updated"
+    },
+    "userProjectReproduced": false,
+    "suspectedCacheIssue": {
+      "confirmedBehavior": "Archive HTTP responses use max-age=3600, and archive readers reuse metadata across operations.",
+      "userSessionConfirmed": false
+    }
+  }
+}

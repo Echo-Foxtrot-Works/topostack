@@ -27,9 +27,8 @@ try {
  await page.locator('.preview-stage[aria-busy="false"]').waitFor();
  console.log('Generated', await page.locator('.status-line').innerText(), 'survey responses', surveyResponses.length);
  if (!surveyResponses.length) throw new Error('No survey data received');
- await page.getByRole('button',{name:'Collapse all',exact:true}).click();
- await page.getByRole('button',{name:/08 Fabrication settings/}).click();
- await page.locator('.panel-scroll').evaluate(el => el.scrollTop=el.scrollHeight);
+ await page.getByRole('tab',{name:'Fabricate',exact:true}).click();
+ await page.locator('.settings-rail .ldt-tabs__panels').evaluate(el => el.scrollTop=el.scrollHeight);
  await page.evaluate(()=>document.fonts.ready);
  const stage=page.locator('.three-stage');
  for(let i=0;i<11;i++) await stage.press('ArrowUp');

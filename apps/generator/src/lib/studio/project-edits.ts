@@ -1,4 +1,4 @@
-import { DEFAULT_PLAQUE_SIZE_MM, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, type PlaqueV1, type TextFont, MAP_MARKER_SIZE_MM, MAP_MARKER_MIN_SIZE_MM, MAP_MARKER_MAX_SIZE_MM, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, type CustomLineFeatureV1, type GeoPoint, type MapMarkerV1, type MarkerIconV1, MAX_MARKER_ICONS, type ProjectConfigV1, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, type CustomGraphicV1, type PlacedGraphicV1 } from "@topostack/core";
+import { AIRSPACE_STACK_LIMITS, DEFAULT_PLAQUE_SIZE_MM, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, type PlaqueV1, type TextFont, MAP_MARKER_SIZE_MM, MAP_MARKER_MIN_SIZE_MM, MAP_MARKER_MAX_SIZE_MM, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, type CustomLineFeatureV1, type GeoPoint, type MapMarkerV1, type MarkerIconV1, MAX_MARKER_ICONS, type ProjectConfigV1, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, type CustomGraphicV1, type PlacedGraphicV1 } from "@topostack/core";
 import { clampLongitude, isSupportedCoordinate } from "$lib/domain/coordinates";
 
 /**
@@ -9,6 +9,14 @@ type Project = Pick<ProjectConfigV1, "location" | "markers" | "customLines" | "m
 type MarkersPatch = Pick<ProjectConfigV1, "markers">;
 type MarkerIconsPatch = Pick<ProjectConfigV1, "markers" | "markerIcons">;
 type CustomLinesPatch = Pick<ProjectConfigV1, "customLines">;
+
+/** Preserve the current acrylic stock when a wood edit moves outside its supported range. */
+export function retainAirspaceThickness(project: ProjectConfigV1, patch: Partial<ProjectConfigV1>): Partial<ProjectConfigV1> {
+  const { min, max } = AIRSPACE_STACK_LIMITS.thicknessMm;
+  const thickness = patch.materialThicknessMm;
+  if (thickness === undefined || (thickness >= min && thickness <= max) || "airspaceStack" in patch || !project.airspaceStack || project.airspaceStack.thicknessMm !== undefined) return patch;
+  return { ...patch, airspaceStack: { ...project.airspaceStack, thicknessMm: project.materialThicknessMm } };
+}
 
 /** The largest north arrow that fits a map of this size; agent requests clamp with the same rule. */
 export { northArrowMaximumMm } from "@topostack/core";

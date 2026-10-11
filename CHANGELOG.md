@@ -4,6 +4,30 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.10.0 (2026-10-11)
+
+### New
+
+- **Build airspace over your model in acrylic**: Turn on Airspace in 3D in the Aviation panel to build the Class B, Class C and special use airspace over a US model in acrylic, at true height on the model's own vertical scale: layered, as whole slices or wedding-cake shelves, or solid, in clear or chart-colored acrylic, with optional Class D lids. Rods you cut to length stand in sockets cut into the terrain, as short segments glued between levels or one rod rising through holes in the pieces; the export adds the acrylic panels, a backing sheet, a rod cut list and a map of every level. Airspace comes from FAA data and is not for navigation. ([#221](https://github.com/Echo-Foxtrot-Works/topostack/pull/221))
+
+### Improved
+
+- **Ask an AI assistant for airspace in acrylic**: AI assistants connected to TopoStack, and browser agents in the studio, can now turn on airspace in acrylic and choose its form, kinds, ceiling cap and rods. A plan estimates how tall the acrylic will stand and says when more exaggeration would separate the levels; the studio places the rods when it generates the model. ([#224](https://github.com/Echo-Foxtrot-Works/topostack/pull/224))
+- **Design and build airspace above your terrain**: New airspace guides explain airport crops, layered and solid acrylic, clear or chart-colored, altitude caps, cut previews and rod assembly. Settings, export and troubleshooting guides now cover airspace, and a homepage illustration introduces the feature. ([#226](https://github.com/Echo-Foxtrot-Works/topostack/pull/226))
+- **A settings rail that shows one panel at a time**: The studio sidebar is now a rail of seven panels (**Place**, **Terrain**, **Features**, **Water**, **Aviation**, **Labels** and **Fabricate**), so each subject has one home: line widths sit under the feature they draw, and water depth, acrylic inserts and paint templates share the Water panel. **Find a setting** jumps to any control by name. Material-saving nests and seam options moved into the export dialog beside sheet layout. ([#227](https://github.com/Echo-Foxtrot-Works/topostack/pull/227))
+- **The custom data view uses the settings rail**: **Custom data** now has the same rail as the studio's settings, with tabs for **Charts**, **Markers**, **Paths**, **Graphics** and **Import**. Rail tabs also meet edge to edge, so the whole rail responds to hover, and the selected tab is marked on its left edge. ([#228](https://github.com/Echo-Foxtrot-Works/topostack/pull/228))
+- **Line up airspace rods between levels**: With glued rod segments, a rod that would stand just beside one on the level below now continues that column, so supports rise in straight lines instead of jogging by a few millimetres at each level. Each spot gets one engraved rod mark rather than two nearly overlapping ones. ([#231](https://github.com/Echo-Foxtrot-Works/topostack/pull/231))
+
+### Fixed
+
+- **Lakes use their most detailed shoreline**: Where several lake datasets outline the same lake, the studio now carves the most detailed shoreline, so small ponds no longer have bays and curves replaced by long straight edges. Depths still come from the same lake data. ([#216](https://github.com/Echo-Foxtrot-Works/topostack/pull/216))
+- **Build and inspect reliable engraved airspace**: Airspace keeps charted ceilings, partitions overlapping acrylic without shifting heights, and engraves sector names, original altitude references and navigation notices. Cut layers now includes an airspace level picker, and through-rod maps identify every column. Incomplete data and impractical stacks block export; solid generation and preview reuse are faster. ([#226](https://github.com/Echo-Foxtrot-Works/topostack/pull/226))
+- **Keep the studio quick with Airspace in 3D on**: With Airspace in 3D on, changing map detail, labels or line style no longer rebuilds the airspace pieces and rods, so the preview updates in a fraction of a second instead of several. Building the airspace in the first place is two to five times faster, and the 3D stack orbits smoothly again over busy special use airspace. ([#229](https://github.com/Echo-Foxtrot-Works/topostack/pull/229))
+- **Fit Class D lids around overlapping airspace**: A Class D lid now stops where a Class C shelf or a special use area carries on through its height, as around Fort Carson and the Air Force Academy near Colorado Springs, instead of sitting inside that airspace. In the solid Volumes form the lid fills only the gap beside the sheets, so the sheets keep clean, whole outlines. ([#230](https://github.com/Echo-Foxtrot-Works/topostack/pull/230))
+- **Zoom the 3D stack in as close as you like**: The 3D stack preview no longer stops zooming at a fixed distance from the model, which was easy to hit once tall airspace raised the orbit centre. Scroll now zooms toward the point under your cursor, so you can close in on a single contour step, engraved label or island without clipping through it. ([#232](https://github.com/Echo-Foxtrot-Works/topostack/pull/232))
+- **Keep tall airspace models in view**: The 3D stack now fits the first real terrain result, including tall airspace. Use **Fit view** to frame the whole model again after zooming, resizing, or exploding the stack; later design edits keep your viewing angle. ([#233](https://github.com/Echo-Foxtrot-Works/topostack/pull/233))
+- **Keep airspace acrylic within the supported stock range**: Airspace acrylic now stays within its supported 1–10 mm range, including when its thickness follows the terrain material. Turning on **Airspace in 3D** with thinner or thicker terrain stock starts with 3 mm acrylic, which you can change in the Aviation panel. Changing terrain stock outside that range keeps the current acrylic thickness. ([#236](https://github.com/Echo-Foxtrot-Works/topostack/pull/236))
+
 ## 0.9.0 (2026-10-08)
 
 ### New

@@ -9,7 +9,7 @@
   <WaterFinishComparison />
 
   <h2>Turn on paint templates</h2>
-  <p>Choose <strong>Layered</strong> and turn on <strong>Water paint templates</strong> in <strong>Fabrication settings</strong>, then regenerate terrain. For every panel with water that stays visible once the stack is glued, TopoStack writes a paper stencil registered to that panel. Mask the land with it and spray the water, and the paint lands exactly where the lake will show. Water outlines are fetched for the templates even when <strong>Water outlines</strong> and <strong>Water depth</strong> are off.</p>
+  <p>Choose <strong>Layered</strong> and turn on <strong>Water paint templates</strong> in the <strong>Water</strong> panel, then regenerate terrain. For every panel with water that stays visible once the stack is glued, TopoStack writes a paper stencil registered to that panel. Mask the land with it and spray the water, and the paint lands exactly where the lake will show. Water outlines are fetched for the templates even when <strong>Water outlines</strong> and <strong>Water depth</strong> are off.</p>
   <figure>
     <img src={`${base}/images/guides/paint-template-on.webp`} width="1600" height="1100" loading="lazy" decoding="async" alt="Cut layers view of a Crater Lake layer with the Paint template switch on: the land is covered by a pale stencil and only the lake is left open, outlined in red." />
     <figcaption>Layer 22 of a Crater Lake relief with <strong>Paint template</strong> on. The pale stencil covers the land; the lake is cut away. Survey data where available; depth exaggerated.</figcaption>

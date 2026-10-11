@@ -3,6 +3,17 @@
 TopoStack supplements its HydroLAKES/GLOBathy basin models with public lake
 surveys. This is a curated collection of usable datasets, not a claim of complete
 worldwide survey coverage. Lake outlines come from pinned provider water masks, HydroLAKES, and an OSM fallback.
+When two sources outline the same lake (each covers at least 80% of the other),
+the lake keeps the identity and depth metadata it already had but is carved and
+drawn along the more detailed shore, measured as vertices per length of shoreline.
+Replacing a provider mask needs 1.5 times its detail, because survey depths are
+masked to it. In a sample of 70 lakes (2026-10-09), HydroLAKES was the coarsest
+outline wherever another existed: OSM had more detail in 63 of 63 lakes (median
+2.7 times) and provider masks in 36 of 36. Provider masks and OSM were within about
+5 m of each other; OSM cleared the 1.5 times margin in 5 of 39. Peters Pond in
+Sandwich, Massachusetts, shows the difference: HydroLAKES draws it with edges up
+to about 690 m. OSM water that also holds a river or a neighbouring lake is a
+different shape and replaces nothing.
 
 ## Sources
 
@@ -168,7 +179,7 @@ rasters. Coverage remains limited to valid samples and available lake outlines.
 
 ## Fit lake depth to available layers
 
-In **Map details → Water depth**, enable **Fit lake depth to available layers**, or choose **Fit depth** in the clipping warning. The setting defaults to off, including for older saved projects.
+In the **Water** panel, under **Water depth**, enable **Fit lake depth to available layers**, or choose **Fit depth** in the clipping warning. The setting defaults to off, including for older saved projects.
 
 When a lake exceeds the stack floor, fitting compresses all its depths by the same factor around its waterline. Each lake fits independently; shallower lakes keep their requested depth scale. Land, islands, and ocean depths keep their existing behavior. The material thickness and layer budget still limit the detail the model can resolve. If no depth fits below a lake's waterline, the clipping warning remains.
 

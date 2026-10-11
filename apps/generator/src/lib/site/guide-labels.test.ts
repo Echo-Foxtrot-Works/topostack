@@ -21,7 +21,7 @@ const decode = (text: string): string => text.replaceAll("&amp;", "&").replace(/
  */
 function studioStrings(): Set<string> {
   const components = (directory: string): string[] => readdirSync(join(src, directory)).filter((file) => file.endsWith(".svelte")).map((file) => `${directory}/${file}`);
-  const files = ["lib/studio/App.svelte", ...components("lib/studio/panels"), ...components("lib/studio/customdata"), "lib/studio/customdata/custom-data-nav.svelte.ts", "lib/studio/customdata/chart-tracing.svelte.ts", "lib/studio/ExportDialog.svelte", "lib/studio/LocationDialog.svelte", "lib/studio/MapCanvas.svelte", "lib/studio/MapStage.svelte", "lib/studio/TwoDPreview.svelte", "lib/studio/placement/PlacementLayer.svelte", "lib/studio/options.ts", "lib/site/FeedbackButton.svelte"];
+  const files = ["lib/studio/App.svelte", ...components("lib/studio/panels"), ...components("lib/studio/customdata"), "lib/studio/customdata/custom-data-nav.svelte.ts", "lib/studio/preview-summary.ts", "lib/studio/customdata/chart-tracing.svelte.ts", "lib/studio/ExportDialog.svelte", "lib/studio/LocationDialog.svelte", "lib/studio/MapCanvas.svelte", "lib/studio/MapStage.svelte", "lib/studio/TwoDPreview.svelte", "lib/studio/placement/PlacementLayer.svelte", "lib/studio/options.ts", "lib/site/FeedbackButton.svelte"];
   const strings = new Set<string>();
   for (const file of files) {
     const source = readFileSync(join(src, file), "utf8");

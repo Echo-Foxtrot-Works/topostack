@@ -3,8 +3,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import polygonClipping from "polygon-clipping";
 import { DEFAULT_PROJECT, type Polygon2D, type WaterAreaV1 } from "@topostack/core";
 import { loadProviderOutlines, resolveLakeOutlines } from "$lib/domain/lake-outlines";
+import petersPond from "$lib/domain/fixtures/peters-pond-z12.json";
 
 const box = (lo: number, hi: number): Polygon2D => ({ outer: [{ x: lo, y: lo }, { x: hi, y: lo }, { x: hi, y: hi }, { x: lo, y: hi }, { x: lo, y: lo }], holes: [] });
+/** A square shore with `perSide` vertices along each side, so more of them traces it in more detail. */
+const detailed = (lo: number, hi: number, perSide: number): Polygon2D => {
+  const corners = box(lo, hi).outer, outer: Polygon2D["outer"] = [];
+  for (let side = 0; side < 4; side += 1) for (let step = 0; step < perSide; step += 1) {
+    const a = corners[side]!, b = corners[side + 1]!, t = step / perSide;
+    outer.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  }
+  return { outer: [...outer, outer[0]!], holes: [] };
+};
 const lake = (id: string, polygon = box(-10, 10)): WaterAreaV1 => ({ id, kind: "lake", polygon });
 const provider = (polygon = box(-10, 10)): WaterAreaV1 => ({ ...lake("survey", polygon), outlineSource: "provider", outlineSourceId: "mn-dnr-lakes-v1", surveyId: "123" });
 afterEach(() => vi.unstubAllGlobals());
@@ -58,6 +68,55 @@ describe("shoreline priority", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.maxDepthM).toBeUndefined();
     expect(result[0]?.hylakId).toBeUndefined();
+  });
+  it("carves the map's more detailed shore of a HydroLAKES lake and keeps its depth metadata", () => {
+    const hydro = { ...lake("hydro"), hylakId: 7, maxDepthM: 9, meanDepthM: 4, lmaxM: 200, surfaceElevationM: 22, name: "Pond", clipped: false };
+    const shore = detailed(-10.5, 9.5, 3);
+    const result = resolveLakeOutlines([], [hydro], [shore]);
+    expect(result).toEqual([{ ...hydro, polygon: shore }]);
+    // Rebuilding shorelines resolves the result again with the same map water,
+    // or with a copy of it, as a stored source holds.
+    expect(resolveLakeOutlines([], result, [shore])).toEqual(result);
+    expect(resolveLakeOutlines([], result, [structuredClone(shore)])).toEqual(result);
+    // A map shore no more detailed than HydroLAKES' changes nothing.
+    expect(resolveLakeOutlines([], [hydro], [box(-10.5, 9.5)])).toEqual([hydro]);
+  });
+  it("replaces a survey mask only with a clearly more detailed shore", () => {
+    const survey = provider(detailed(-10, 10, 4));
+    // 1.25x the mask's vertices along the same shore: not worth uncovering survey cells.
+    expect(resolveLakeOutlines([], [survey], [detailed(-10.2, 9.8, 5)])).toEqual([survey]);
+    const fine = detailed(-10.2, 9.8, 8);
+    expect(resolveLakeOutlines([], [survey], [fine])).toEqual([{ ...survey, polygon: fine }]);
+    // The same rule holds between a mask and HydroLAKES, whose depth metadata still joins the survey.
+    const hydro = { ...lake("hydro", detailed(-10.2, 9.8, 8)), hylakId: 5, maxDepthM: 12 };
+    expect(resolveLakeOutlines([survey], [hydro], [])).toEqual([{ ...survey, hylakId: 5, maxDepthM: 12, polygon: hydro.polygon }]);
+    expect(resolveLakeOutlines([survey], [{ ...hydro, polygon: box(-10.2, 9.8) }], [])[0]?.polygon).toBe(survey.polygon);
+  });
+  it("keeps the HydroLAKES shore when map water is not the same waterbody", () => {
+    const hydro = { ...lake("hydro"), hylakId: 7, maxDepthM: 9 };
+    // A lake joined to its river in the map: the HydroLAKES lake is only part of it.
+    const withRiver = { outer: [{ x: -10, y: -10 }, { x: 30, y: -10 }, { x: 30, y: 10 }, { x: -10, y: 10 }, { x: -10, y: -10 }], holes: [] };
+    expect(resolveLakeOutlines([], [hydro], [withRiver])).toEqual([hydro]);
+    // Two HydroLAKES lakes the map draws as one water.
+    const west = { ...hydro, id: "west", polygon: box(-10, -1) }, east = { ...hydro, id: "east", hylakId: 8, polygon: box(1, 10) };
+    expect(resolveLakeOutlines([], [west, east], [box(-10, 10)])).toEqual([west, east]);
+  });
+  it("traces Peters Pond (Sandwich, MA) from the map instead of HydroLAKES' straight edges", () => {
+    // Production z12 tiles: HydroLAKES draws this 0.5 km² pond with edges up to
+    // ~690 m, which a maker reported as the shore's curves turning straight.
+    const [lat, lon] = petersPond.location as [number, number];
+    const metres = (rings: number[][][]): Polygon2D => {
+      const [outer, ...holes] = rings.map((ring) => ring.map(([x, y]) => ({ x: (x! - lon) * 111_320 * Math.cos(lat * Math.PI / 180), y: (lat - y!) * 110_574 })));
+      return { outer: outer!, holes };
+    };
+    const hydro: WaterAreaV1 = { ...lake("lake-1053303-0", metres(petersPond.hydrolakes)), hylakId: 1053303, maxDepthM: 8.4, meanDepthM: 5.2, lmaxM: 234.2, surfaceElevationM: 22 };
+    const osm = metres(petersPond.osm);
+    const [pond, ...rest] = resolveLakeOutlines([], [hydro], [osm]);
+    expect(rest).toEqual([]);
+    expect(pond).toEqual({ ...hydro, polygon: osm });
+    const longestEdge = (ring: { x: number; y: number }[]) => Math.max(...ring.slice(1).map((p, i) => Math.hypot(p.x - ring[i]!.x, p.y - ring[i]!.y)));
+    expect(longestEdge(hydro.polygon.outer)).toBeGreaterThan(600);
+    expect(longestEdge(pond!.polygon.outer)).toBeLessThan(300);
   });
   it("does not give each survey basin the whole lake's estimated depth", () => {
     const left = { ...provider(), polygon: { outer: [{ x: -10, y: -10 }, { x: 0, y: -10 }, { x: 0, y: 10 }, { x: -10, y: 10 }, { x: -10, y: -10 }], holes: [] } };

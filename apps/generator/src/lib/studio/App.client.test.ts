@@ -42,17 +42,26 @@ async function menuItem(target: HTMLElement, menu: string, name: string) {
   return [...target.querySelectorAll<HTMLElement>('[role="menu"] [role^="menuitem"]')].find((item) => item.textContent?.trim().startsWith(name))! as HTMLButtonElement;
 }
 
+/** Shows one settings panel by clicking its tab in the rail. */
+async function showPanel(target: HTMLElement, name: string) {
+  const tab = [...target.querySelectorAll<HTMLButtonElement>('.settings-rail [role="tab"]')].find((button) => button.textContent?.trim() === name)!;
+  tab.click();
+  await tick();
+  return target.querySelector<HTMLElement>(`[id="${tab.getAttribute("aria-controls")}"]`)!;
+}
+
 /**
  * Opens the custom data view, where markers, paths, file import and depth
  * charts are edited. Every section's tools mount with the sidebar; `expand`
- * names the one whose disclosure should also be opened.
+ * names the one whose rail tab should also be chosen, by its panel title.
  */
 async function openCustomData(target: HTMLElement, expand?: string) {
   [...target.querySelectorAll<HTMLButtonElement>('.mode-switch [role="radio"]')].find((button) => button.textContent?.includes("Custom data"))!.click();
   await vi.waitFor(() => expect(target.querySelector(".custom-data-section")).not.toBeNull());
   if (!expand) return;
-  const header = [...target.querySelectorAll<HTMLButtonElement>(".custom-data-section .section-disclosure")].find((button) => button.textContent?.includes(expand))!;
-  header.click();
+  const panel = [...target.querySelectorAll<HTMLElement>(".custom-data-section")].find((section) => section.querySelector("h2")?.textContent?.includes(expand))!;
+  const tabpanel = panel.closest<HTMLElement>('[role="tabpanel"]')!;
+  target.querySelector<HTMLButtonElement>(`.custom-data-rail [role="tab"][aria-controls="${tabpanel.id}"]`)!.click();
   await tick();
 }
 
@@ -86,7 +95,20 @@ describe("TopoStack Svelte shell", () => {
     } });
     await import("$lib/studio/ThreePreview.svelte");
   });
-  afterEach(async () => { if (component) await unmount(component); component = undefined; loadTerrainMock.mockReset(); loadVectorMarkingsMock.mockReset(); loadLakeAreasMock.mockReset(); Object.values(noaaArchive).forEach((mock) => mock.mockReset()); theme.preference = "system"; localStorage.removeItem("topostack-theme"); localStorage.removeItem("topostack-menu-sections-v1"); delete window.atomm; nav.section = "charts"; nav.expanded = true; resetDraft(); });
+  afterEach(async () => { if (component) await unmount(component); component = undefined; loadTerrainMock.mockReset(); loadVectorMarkingsMock.mockReset(); loadLakeAreasMock.mockReset(); Object.values(noaaArchive).forEach((mock) => mock.mockReset()); theme.preference = "system"; localStorage.removeItem("topostack-theme"); localStorage.removeItem("topostack-studio-panels-v1"); delete window.atomm; nav.section = "charts"; resetDraft(); });
+
+  it("offers Fit view for the standalone 3D preview and calls the mounted preview", async () => {
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    await vi.waitFor(() => expect(target.querySelector('[data-testid="three-preview"]')).not.toBeNull());
+    const fit = [...target.querySelectorAll<HTMLButtonElement>(".preview-toolbar button")].find(button => button.textContent?.trim() === "Fit view")!;
+    expect(fit.disabled).toBe(false);
+    fit.click(); await tick();
+    expect(target.querySelector('[data-testid="three-preview"]')?.getAttribute("data-fit-count")).toBe("1");
+    const cut = [...target.querySelectorAll<HTMLButtonElement>('.mode-switch [role="radio"]')].find(button => button.textContent?.includes("Cut layers"))!;
+    cut.click(); await tick();
+    expect([...target.querySelectorAll(".preview-toolbar button")].some(button => button.textContent?.trim() === "Fit view")).toBe(false);
+  });
 
   it("title edits survive committing an open placement draft", async () => {
     const { saveProject } = await import("$lib/storage/storage");
@@ -777,8 +799,6 @@ describe("TopoStack Svelte shell", () => {
     target.querySelector<HTMLButtonElement>('button[role="radio"][aria-label="Flat engraving"]')!.click();
     await vi.waitFor(() => expect(target.querySelector('svg[aria-label="Flat engraving preview"]')).not.toBeNull());
     await vi.waitFor(() => expect(target.querySelector('.engraving-contours path:not(.index-contour)')?.getAttribute("stroke-width")).toBe("0.24"));
-    target.querySelector<HTMLButtonElement>(".linework-customize")!.click();
-    await tick();
     const dotted = [...target.querySelectorAll<HTMLButtonElement>('.trail-pattern-options button[role="radio"]')].find((button) => button.textContent?.includes("Dotted"))!;
     dotted.click();
     await vi.waitFor(() => expect(dotted.getAttribute("aria-checked")).toBe("true"));
@@ -792,44 +812,74 @@ describe("TopoStack Svelte shell", () => {
     await vi.waitFor(() => expect(target.querySelector('[data-transportation-class="major-road"] path')?.getAttribute("stroke-linecap")).toBe("square"));
   });
 
-  it("lays out fabrication controls in full-width rows with a compact position pair", async () => {
+  it("gives each subject one panel: machine settings, airspace, and text each in their own place", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
-    [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Fabrication settings"))!.click();
+    const make = await showPanel(target, "Fabricate");
+    expect(make.hidden).toBe(false);
+    // Laser kerf, minimum feature, and the two work-area fields; nests and seams moved to the export dialog.
+    expect(make.querySelectorAll(".field-stack > .field-row")).toHaveLength(4);
+    expect([...make.querySelectorAll('button[role="switch"]')].map((button) => button.getAttribute("aria-label"))).toEqual(["Assembly guides"]);
+    expect(make.querySelector('[aria-label="Material-saving nests"]')).toBeNull();
+    expect(target.querySelector('.export-dialog button[role="switch"][aria-label="Material-saving nests"]')).not.toBeNull();
+    expect(target.querySelector('.export-dialog input[aria-label="Glue margin"]')).not.toBeNull();
+
+    const aviation = await showPanel(target, "Aviation");
+    expect(make.hidden).toBe(true);
+    expect(aviation.querySelector(".airspace-settings")).toBeNull();
+    aviation.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Airspace in 3D"]')!.click();
     await tick();
-    const fields = target.querySelector<HTMLElement>(".advanced-fields")!;
-    // Material-saving nests, water paint templates, acrylic water inserts, and smooth contours.
-    expect(fields.querySelectorAll('.toggle-stack button[role="switch"]')).toHaveLength(4);
-    // Glue margin, laser kerf, minimum feature, and the two work-area fields.
-    expect(fields.querySelectorAll(".field-stack > .field-row")).toHaveLength(5);
-    // Text engraving and the elevation label position now sit beside what they
-    // affect in Map details rather than in the fabrication panel.
-    expect(fields.querySelector(".swatch-options")).toBeNull();
-    // One compact picker row; its list holds three built-in styles, four
-    // single-line fonts and four filled typefaces.
-    const fontPicker = target.querySelector<HTMLButtonElement>('button[role="combobox"][aria-label="Engraving font"]')!;
+    // Turning it on opens its own settings: the form, the kinds of airspace, the acrylic and the rods.
+    const airspace = aviation.querySelector<HTMLElement>(".airspace-settings")!;
+    const group = (label: string) => airspace.querySelector<HTMLElement>(`[role="radiogroup"][aria-label="${label}"]`);
+    const checked = (label: string) => group(label)?.querySelector('[role="radio"][aria-checked="true"] b')?.textContent;
+    const pick = async (label: string, choice: string) => {
+      [...group(label)!.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find((button) => button.querySelector("b")?.textContent === choice)!.click();
+      await tick();
+    };
+    expect([checked("Airspace form"), checked("Airspace levels"), checked("Airspace acrylic")]).toEqual(["Layered", "Whole slice", "Clear"]);
+    // The acrylic is its own choice: changing the form keeps it.
+    await pick("Airspace levels", "Shelves only");
+    await vi.waitFor(() => expect(checked("Airspace levels")).toBe("Shelves only"));
+    expect(checked("Airspace acrylic")).toBe("Clear");
+    await pick("Airspace acrylic", "Chart colors");
+    await vi.waitFor(() => expect(checked("Airspace acrylic")).toBe("Chart colors"));
+    await pick("Airspace form", "Solid");
+    await vi.waitFor(() => expect(group("Airspace levels")).toBeNull());
+    expect(checked("Airspace acrylic")).toBe("Chart colors");
+    // Back to layered returns to the layered form last used.
+    await pick("Airspace form", "Layered");
+    await vi.waitFor(() => expect(checked("Airspace levels")).toBe("Shelves only"));
+    expect([...airspace.querySelectorAll('button[role="switch"]')].map((button) => button.getAttribute("aria-label"))).toEqual(["Class B airspace", "Class C airspace", "Special use airspace", "Class D lids"]);
+    expect(airspace.querySelector('select[aria-label="Rod shape"]')).not.toBeNull();
+    expect(airspace.querySelector<HTMLSelectElement>('select[aria-label="Rod joint"]')!.value).toBe("segments");
+    aviation.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Airspace in 3D"]')!.click();
+    await tick();
+
+    // The font, text size, and the elevation label position sit with the marks they style.
+    const labels = await showPanel(target, "Labels");
+    const fontPicker = labels.querySelector<HTMLButtonElement>('button[role="combobox"][aria-label="Engraving font"]')!;
     expect(fontPicker.textContent).toContain("Technical");
     expect(target.querySelector('[role="listbox"][aria-label="Engraving font"]')).toBeNull();
     fontPicker.click();
     await vi.waitFor(() => expect(target.querySelectorAll('[role="listbox"][aria-label="Engraving font"] [role="option"]')).toHaveLength(11));
     expect(target.querySelectorAll('[role="listbox"][aria-label="Engraving font"] [role="group"]')).toHaveLength(3);
-    expect(target.querySelectorAll('input[aria-label="Label X"]')).toHaveLength(1);
+    expect(labels.querySelectorAll('input[aria-label="Label X"]')).toHaveLength(1);
+    expect(labels.querySelector('input[aria-label="Annotation width"]')).not.toBeNull();
   });
 
   it("reports the sheet grid a machine work area implies", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
-    [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Fabrication settings"))!.click();
-    await tick();
-    const fields = target.querySelector<HTMLElement>(".advanced-fields")!;
+    const make = await showPanel(target, "Fabricate");
     // No work area: the model is cut whole and there is nothing to label.
-    expect(fields.querySelector(".seam-summary")?.textContent).toMatch(/one piece/i);
-    expect([...fields.querySelectorAll('button[role="switch"]')].some((button) => button.getAttribute("aria-label") === "Assembly labels")).toBe(false);
+    expect(make.querySelector(".seam-summary")?.textContent).toMatch(/one piece/i);
+    expect(target.querySelector('[role="switch"][aria-label="Assembly labels"]')).toBeNull();
 
-    const width = target.querySelector<HTMLInputElement>('input[aria-label="Work area width"]')!;
-    const height = target.querySelector<HTMLInputElement>('input[aria-label="Work area height"]')!;
+    const width = make.querySelector<HTMLInputElement>('input[aria-label="Work area width"]')!;
+    const height = make.querySelector<HTMLInputElement>('input[aria-label="Work area height"]')!;
     for (const [input, value] of [[width, "160"], [height, "120"]] as const) {
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -837,173 +887,82 @@ describe("TopoStack Svelte shell", () => {
       input.blur();
       await tick();
     }
-    await vi.waitFor(() => expect(target.querySelector(".seam-summary")?.textContent).toContain("2 × 2 sheets per layer"));
-    expect([...target.querySelectorAll('button[role="switch"]')].some((button) => button.getAttribute("aria-label") === "Assembly labels")).toBe(true);
+    await vi.waitFor(() => expect(make.querySelector(".seam-summary")?.textContent).toContain("2 × 2 sheets per layer"));
+    // Seam options appear with the seams, beside the sheet layout in the export dialog.
+    expect(target.querySelector('.export-dialog [role="switch"][aria-label="Assembly labels"]')).not.toBeNull();
+    expect(target.querySelector('.export-dialog [role="switch"][aria-label="Puzzle seam tabs"]')).not.toBeNull();
   });
 
   it("offers water paint templates for a layered model and stores the kind list", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
-    const heading = [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Fabrication settings"))!;
-    heading.click();
-    await tick();
-    const paintSwitch = () => target.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Water paint templates"]');
+    const water = await showPanel(target, "Water");
+    const summary = water.querySelector<HTMLElement>(".studio-panel-header small")!;
+    const paintSwitch = () => water.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Water paint templates"]');
     expect(paintSwitch()?.getAttribute("aria-checked")).toBe("false");
-    expect(heading.textContent).not.toContain("Paint templates");
+    expect(summary.textContent).not.toContain("Paint templates");
     paintSwitch()!.click();
     await vi.waitFor(() => expect(paintSwitch()?.getAttribute("aria-checked")).toBe("true"));
-    // The section summary reads the stored kind list, so it proves the project took ["water"].
-    await vi.waitFor(() => expect(heading.textContent).toContain("Paint templates"));
+    // The panel summary reads the stored kind list, so it proves the project took ["water"].
+    await vi.waitFor(() => expect(summary.textContent).toContain("Paint templates"));
     paintSwitch()!.click();
-    await vi.waitFor(() => expect(heading.textContent).not.toContain("Paint templates"));
-
-    // A flat engraving has no layers to stencil.
-    target.querySelector<HTMLButtonElement>('button[role="radio"][aria-label="Flat engraving"]')!.click();
-    await vi.waitFor(() => expect(paintSwitch()).toBeNull());
+    await vi.waitFor(() => expect(summary.textContent).not.toContain("Paint templates"));
   });
 
-  it("changes engraving font and exact physical text size without refetching terrain", async () => {
+  it("shows one settings panel at a time from the rail and remembers it", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
-    const picker = target.querySelector<HTMLButtonElement>('button[role="combobox"][aria-label="Engraving font"]')!;
-    picker.click();
-    await tick();
-    // Keyboard: typeahead lands on Stencil and Enter picks it and closes the list.
-    const list = target.querySelector<HTMLElement>('[role="listbox"][aria-label="Engraving font"]')!;
-    list.dispatchEvent(new KeyboardEvent("keydown", { key: "s", bubbles: true }));
-    list.dispatchEvent(new KeyboardEvent("keydown", { key: "t", bubbles: true }));
-    await tick();
-    expect(list.querySelector(`#${CSS.escape(list.getAttribute("aria-activedescendant")!)}`)?.textContent).toContain("Stencil");
-    list.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    await vi.waitFor(() => expect(picker.textContent).toContain("Stencil"));
-    expect(target.querySelector('[role="listbox"][aria-label="Engraving font"]')).toBeNull();
-    const size = target.querySelector<HTMLInputElement>('input[aria-label="Text size"]')!;
-    size.value = "5";
-    size.dispatchEvent(new Event("input", { bubbles: true }));
-    await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input[aria-label="Text size slider"]')?.value).toBe("5"));
-    expect(loadTerrainMock).not.toHaveBeenCalled();
+
+    const tabs = [...target.querySelectorAll<HTMLButtonElement>('.settings-rail [role="tab"]')];
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["Place", "Terrain", "Features", "Water", "Aviation", "Labels", "Fabricate"]);
+    expect(tabs[0]?.getAttribute("aria-selected")).toBe("true");
+    // Each tab says what its panel holds now.
+    expect(tabs[0]?.getAttribute("title")).toBe("Rectangle · 300 × 200 mm");
+    const panels = [...target.querySelectorAll<HTMLElement>('.settings-rail [role="tabpanel"]')];
+    const shown = () => panels.filter((panel) => !panel.hidden).map((panel) => panel.querySelector<HTMLElement>("[data-panel]")?.dataset.panel);
+    expect(panels).toHaveLength(7);
+    expect(shown()).toEqual(["place"]);
+    // Every panel stays mounted, so its controls keep their state while hidden.
+    expect(target.querySelector('[data-panel="water"] button[role="switch"][aria-label="Water depth"]')).not.toBeNull();
+    // The embed's accordion is gone from the standalone studio.
+    expect(target.querySelector(".section-disclosure")).toBeNull();
+
+    await showPanel(target, "Water");
+    expect(shown()).toEqual(["water"]);
+    expect(tabs[3]?.getAttribute("aria-selected")).toBe("true");
+
+    // Arrow-key movement along the rail is the theme's Tabs, tested there.
+
+    await showPanel(target, "Labels");
+    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem("topostack-studio-panels-v1") ?? "{}").active).toBe("labels"));
   });
 
-  it("customizes north-arrow design and physical size without refetching terrain", async () => {
+  it("finds a setting by name and opens the panel that holds it", async () => {
     const target = document.createElement("div");
-    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
-    await tick();
-    const designs = target.querySelectorAll<HTMLButtonElement>('.swatch-options[aria-label="North arrow design"] button[role="radio"]');
-    expect(designs).toHaveLength(3);
-    const mariner = [...designs].find((button) => button.textContent?.includes("Mariner"))!;
-    mariner.click();
-    await vi.waitFor(() => expect(mariner.getAttribute("aria-checked")).toBe("true"));
-    const size = target.querySelector<HTMLInputElement>('input[aria-label="North arrow size"]')!;
-    size.value = "30";
-    size.dispatchEvent(new Event("input", { bubbles: true }));
-    await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input[aria-label="North arrow size slider"]')?.value).toBe("30"));
-    // Preview refreshes trail rapid edits, so wait for the coalesced rebuild.
-    await vi.waitFor(() => expect(Number(target.querySelector<HTMLElement>(".preview-stage")?.dataset.northMarkings)).toBeGreaterThan(10));
-    expect(loadTerrainMock).not.toHaveBeenCalled();
-  });
-
-  it("places the compass and title in placement mode and bakes them only on Done", async () => {
-    const { saveProject } = await import("$lib/storage/storage");
-    const target = document.createElement("div");
-    // Attached, so focus moves to the placement handles.
     document.body.append(target);
-    onTestFinished(() => target.remove());
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
-    const moveButtons = () => [...target.querySelectorAll<HTMLButtonElement>("button.placement-start")];
-    const pointer = (type: string, clientX: number, clientY: number): MouseEvent => {
-      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX, clientY });
-      Object.defineProperty(event, "pointerId", { value: 7 });
-      return event;
-    };
-    const layer = () => target.querySelector<SVGSVGElement>("[data-placement-layer]");
-    const handle = (id: string) => target.querySelector<SVGPathElement>(`[data-placeable="${id}"]`)!;
-    const northCenter = () => { const project = vi.mocked(saveProject).mock.lastCall![0]; return project.northArrowPlacement; };
-
-    // Layered output keeps the 3D preview mounted under the placement layer.
-    moveButtons()[0]!.click();
-    await vi.waitFor(() => expect(layer()).not.toBeNull());
-    expect(target.querySelector('[data-placement-backdrop="3d"]')).not.toBeNull();
-    expect(target.querySelector('[data-testid="three-preview"]')).not.toBeNull();
-    await vi.waitFor(() => expect(document.activeElement).toBe(handle("north")));
-    // jsdom lays nothing out: fit the viewBox to 500 px so one pixel is a known length.
-    const [, , viewWidth, viewHeight] = layer()!.getAttribute("viewBox")!.split(" ").map(Number);
-    layer()!.getBoundingClientRect = () => ({ width: 500, height: 500, left: 0, top: 0, right: 500, bottom: 500, x: 0, y: 0, toJSON: () => ({}) });
-    const millimetersPerPixel = Math.max(viewWidth! / 500, viewHeight! / 500);
-    const moved = (id: string) => target.querySelector(`[data-placement-item="${id}"]`)!;
-    handle("north").setPointerCapture = vi.fn();
-    window.dispatchEvent(new Event("pagehide"));
-    const before = northCenter();
-    const circleX = () => Number(moved("north").querySelector<SVGPathElement>(".placement-handle")!.getAttribute("d")!.match(/^M\s*([-\d.]+)/)![1]);
-    const startX = circleX();
-    handle("north").dispatchEvent(pointer("pointerdown", 400, 400));
-    handle("north").dispatchEvent(pointer("pointermove", 300, 350));
-    handle("north").dispatchEvent(pointer("pointerup", 300, 350));
-    await vi.waitFor(() => expect(target.querySelector(".placement-item--selected")?.getAttribute("data-placement-item")).toBe("north"));
-    // The draft follows the pointer: 100 px left.
-    expect(circleX()).toBeCloseTo(startX - 100 * millimetersPerPixel, 3);
-    // Nothing is saved or regenerated while the draft is open.
-    window.dispatchEvent(new Event("pagehide"));
-    expect(northCenter()).toEqual(before);
-    [...target.querySelectorAll<HTMLButtonElement>(".placement-toolbar button")].find((button) => button.textContent?.trim() === "Done")!.click();
-    // Coverage instrumentation can make generation exceed waitFor's default second.
-    await vi.waitFor(() => expect(layer()).toBeNull(), { timeout: 6_000 });
-    window.dispatchEvent(new Event("pagehide"));
-    expect(northCenter()).not.toEqual(before);
-    expect(Number(target.querySelector<HTMLElement>(".preview-stage")?.dataset.northMarkings)).toBeGreaterThan(0);
-
-    // Flat engravings place over the top-down composite, with the baked markings hidden.
-    target.querySelector<HTMLButtonElement>('button[role="radio"][aria-label="Flat engraving"]')!.click();
-    target.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Title"]')!.click();
-    await vi.waitFor(() => expect(moveButtons()).toHaveLength(3));
-    await vi.waitFor(() => expect(Number(target.querySelector<HTMLElement>(".preview-stage")?.dataset.plaqueMarkings)).toBeGreaterThan(0));
-    target.querySelector<HTMLButtonElement>(".plaque-settings button.placement-start")!.click();
-    await vi.waitFor(() => expect(target.querySelector('[data-placement-backdrop="flat"]')).not.toBeNull());
-    // The scale bar is placed in the same session.
-    expect(handle("scale")).not.toBeNull();
-    const topView = target.querySelector<SVGSVGElement>(".stack-top-view")!;
-    expect(topView.querySelector("rect, circle")).not.toBeNull();
-    expect(target.querySelectorAll("[data-placement-artwork] path").length).toBeGreaterThan(10);
-    await vi.waitFor(() => expect(document.activeElement).toBe(handle("plaque")));
-    const titleLeft = () => Number(handle("plaque").getAttribute("d")!.match(/^M\s*([-\d.]+)/)![1]);
-    const startLeft = titleLeft();
-    handle("plaque").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(titleLeft()).toBeCloseTo(startLeft + 10, 3));
-    // Plus grows the title about its center; the toolbar reads the new size.
-    handle("plaque").dispatchEvent(new KeyboardEvent("keydown", { key: "+", bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(target.querySelector(".placement-toolbar__size")?.textContent).toContain("Letter height 6.5 mm"));
-    expect(target.querySelector('[data-placement-grip="plaque"]')).not.toBeNull();
-    // Escape discards the draft.
-    handle("plaque").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(layer()).toBeNull());
-    window.dispatchEvent(new Event("pagehide"));
-    expect(vi.mocked(saveProject).mock.lastCall![0].plaque?.placement).toEqual({ anchor: "bottom-left", offset: { x: 0, y: 0 } });
-    expect(loadTerrainMock).not.toHaveBeenCalled();
-  });
-
-  it("collapses, expands, and remembers configuration sections", async () => {
-    const target = document.createElement("div");
-    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    const search = target.querySelector<HTMLInputElement>('input[aria-label="Find a setting"]')!;
+    search.value = "kerf";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
     await tick();
+    const options = () => [...target.querySelectorAll<HTMLElement>('#settings-search-results [role="option"]')];
+    expect(options().map((option) => option.textContent)).toContain("Laser kerfFabricate");
+    expect(search.getAttribute("aria-expanded")).toBe("true");
+    // Enter picks the highlighted match: its panel opens and the control takes focus.
+    search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await vi.waitFor(() => expect(target.querySelector<HTMLElement>("#panel-make")?.closest<HTMLElement>('[role="tabpanel"]')?.hidden).toBe(false));
+    expect(document.activeElement).toBe(target.querySelector('#panel-make input[aria-label="Laser kerf"]'));
+    expect(options()).toHaveLength(0);
+    expect(search.value).toBe("");
 
-    const sections = [...target.querySelectorAll<HTMLButtonElement>(".section-disclosure")];
-    expect(sections).toHaveLength(6);
-    expect(sections[0]?.getAttribute("aria-expanded")).toBe("true");
-    expect(sections.slice(1).every((section) => section.getAttribute("aria-expanded") === "false")).toBe(true);
-    expect(target.querySelector<HTMLElement>("#section-size")?.hidden).toBe(true);
-
-    [...target.querySelectorAll<HTMLButtonElement>(".section-tools button")].find((button) => button.textContent === "Expand all")!.click();
+    search.value = "no such setting";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
     await tick();
-    expect(sections.every((section) => section.getAttribute("aria-expanded") === "true")).toBe(true);
-    expect(target.querySelector<HTMLElement>("#section-size")?.hidden).toBe(false);
-
-    sections.find((section) => section.textContent?.includes("Map details"))!.click();
-    await tick();
-    const saved = JSON.parse(localStorage.getItem("topostack-menu-sections-v1") ?? "{}") as Record<string, boolean>;
-    expect(saved.details).toBe(false);
-    expect(saved.size).toBe(true);
+    expect(target.querySelector(".settings-search-empty")?.textContent).toContain("No setting matches");
+    target.remove();
   });
 
   it("updates vertical exaggeration immediately from retained terrain, including undo and redo", async () => {
@@ -1259,8 +1218,6 @@ describe("TopoStack Svelte shell", () => {
     await tick();
     const current = vi.mocked(connectAtomm).mock.lastCall![0] as () => { geometry: GeometryIRV1 };
     const generate = target.querySelector<HTMLButtonElement>(".generate-button")!;
-    target.querySelector<HTMLButtonElement>(".linework-customize")!.click();
-    await tick();
     const chooseTrailPattern = async (label: string) => {
       [...target.querySelectorAll<HTMLButtonElement>('.trail-pattern-options button[role="radio"]')].find((button) => button.textContent?.includes(label))!.click();
       await tick();
@@ -1619,56 +1576,37 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector('.mode-switch [aria-checked="true"]')?.textContent).toContain("Custom data");
   });
 
-  it("swaps the sidebar for the custom data sections and opens one at a time", async () => {
+  it("swaps the sidebar for the custom data rail, one section at a time", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
     await openCustomData(target);
     // The project's size, terrain and linework controls say nothing about a
     // chart or a marker, so they give way entirely while this view is open.
-    expect(target.querySelector("#section-size")).toBeNull();
-    const headers = () => [...target.querySelectorAll<HTMLButtonElement>(".custom-data-section .section-disclosure")];
-    expect(headers().map((header) => header.querySelector(".section-title")!.textContent)).toEqual([
-      "Depth chartsTrace a printed chart",
-      "MarkersNone yet",
-      "Trails & boundariesNone yet",
-      "GraphicsLogos and artwork",
-      "ImportGPX, KML or GeoJSON",
-    ]);
+    expect(target.querySelector("#panel-place")).toBeNull();
+    expect(target.querySelector(".generate-dock")).toBeNull();
+    const tabs = () => [...target.querySelectorAll<HTMLButtonElement>('.custom-data-rail [role="tab"]')];
+    expect(tabs().map((tab) => tab.textContent?.trim())).toEqual(["Charts", "Markers", "Paths", "Graphics", "Import"]);
+    // Each tab says what its section holds now.
+    expect(tabs().map((tab) => tab.getAttribute("title"))).toEqual(["Trace a printed chart", "None yet", "None yet", "Logos and artwork", "GPX, KML or GeoJSON"]);
+    const shown = () => [...target.querySelectorAll<HTMLElement>('.custom-data-rail [role="tabpanel"]')].filter((panel) => !panel.hidden).map((panel) => panel.querySelector("h2")?.textContent);
     // Depth charts opens first, and its tools are in the sidebar beside the
     // chart the viewport shows.
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("true");
-    expect(target.querySelector<HTMLElement>("#custom-data-charts")?.hidden).toBe(false);
+    expect(shown()).toEqual(["Depth charts"]);
     expect(target.querySelector("#custom-data-charts")?.textContent).toContain("Search a lake or nearby town");
     expect(target.querySelector(".chart-lake-map")?.textContent).toContain("Choose the lake your chart shows");
-    expect(target.querySelector(".generate-dock")).toBeNull();
+    // Every section's tools stay mounted, so work in progress survives a switch.
+    expect(target.querySelector("#custom-data-import")).not.toBeNull();
 
-    // The active section can close without switching or unmounting the workspace.
-    const chartStage = target.querySelector(".chart-lake-map");
-    headers()[0]!.click();
-    await tick();
-    expect(headers().every((header) => header.getAttribute("aria-expanded") === "false")).toBe(true);
-    expect(target.querySelector<HTMLElement>("#custom-data-charts")?.hidden).toBe(true);
-    expect(target.querySelector(".chart-lake-map")).toBe(chartStage);
-    headers()[0]!.click();
-    await tick();
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("true");
-
-    // Every data type supports open → close → reopen, including switching from closed.
-    for (const header of headers().slice(1)) {
-      header.click();
+    for (const [index, title] of ["Markers", "Trails & boundaries", "Graphics", "Import"].entries()) {
+      tabs()[index + 1]!.click();
       await tick();
-      expect(header.getAttribute("aria-expanded")).toBe("true");
-      header.click();
-      await tick();
-      expect(headers().every((item) => item.getAttribute("aria-expanded") === "false")).toBe(true);
-      expect(target.querySelector<HTMLElement>(`#${header.getAttribute("aria-controls")}`)?.hidden).toBe(true);
+      expect(shown()).toEqual([title]);
     }
-    headers()[4]!.click();
-    await tick();
-    expect(headers()[0]!.getAttribute("aria-expanded")).toBe("false");
-    expect(target.querySelector<HTMLElement>("#custom-data-import")?.hidden).toBe(false);
     expect(target.querySelector(".chart-lake-map"), "the map takes the viewport for anything placed on it").toBeNull();
+    tabs()[0]!.click();
+    await tick();
+    expect(shown()).toEqual(["Depth charts"]);
   });
 
   it("adds, edits, symbolizes, and removes an arbitrary marker list", async () => {

@@ -13,14 +13,14 @@
   <p>If your lake is not listed, search for it in the studio instead. TopoStack still cuts the shoreline and models a plausible floor; <a href={`${base}/guides/how-lake-depths-work`}>how lake depths work</a> explains what to expect.</p>
 
   <h2>2. Frame the whole lake</h2>
-  <p>Include the whole lake and a margin of surrounding land. The land around the shore gives the map its edge and helps TopoStack estimate any unsurveyed parts. In <strong>Cut size</strong>, choose a rectangle or a circle and enter the finished width. A long, narrow lake usually fits a rectangle; a round lake often looks best in a circle.</p>
+  <p>Include the whole lake and a margin of surrounding land. The land around the shore gives the map its edge and helps TopoStack estimate any unsurveyed parts. In the <strong>Place</strong> panel, choose a rectangle or a circle and enter the finished width. A long, narrow lake usually fits a rectangle; a round lake often looks best in a circle.</p>
 
   <h2>3. Choose the material and depth</h2>
-  <p>Open <strong>Terrain layers</strong> and enter your measured sheet thickness. The studio works out how many sheets the land and the lake floor need. Thin sheets such as 3 mm plywood or basswood give more steps and a smoother lake floor; thicker sheets mean fewer, bolder steps.</p>
-  <p>Lakes are shallow compared with their width, so depth is exaggerated to make it visible. If the lake needs more depth sheets than you want to cut, turn on <strong>Limit depth layers</strong>, set <strong>Maximum depth layers</strong>, and turn on <strong>Fit lake depth to available layers</strong>. TopoStack then compresses the depths into that many sheets while the shoreline stays where it is. The <a href={`${base}/guides/settings-reference`}>settings reference</a> lists each control.</p>
+  <p>In the <strong>Terrain</strong> panel, enter your measured sheet thickness. The studio works out how many sheets the land and the lake floor need. Thin sheets such as 3 mm plywood or basswood give more steps and a smoother lake floor; thicker sheets mean fewer, bolder steps.</p>
+  <p>Lakes are shallow compared with their width, so depth is exaggerated to make it visible. If the lake needs more depth sheets than you want to cut, open the <strong>Water</strong> panel, turn on <strong>Limit depth layers</strong>, set <strong>Maximum depth layers</strong>, and turn on <strong>Fit lake depth to available layers</strong>. TopoStack then compresses the depths into that many sheets while the shoreline stays where it is. The <a href={`${base}/guides/settings-reference`}>settings reference</a> lists each control.</p>
 
   <h2>4. Add the details that make it personal</h2>
-  <p>In <strong>Map details</strong>, choose roads, trails and labels for context, and keep <strong>Water depth</strong> on. To mark a cabin, a dock or a favorite fishing spot, add a marker in the <strong>Custom data</strong> view by clicking the map or entering its coordinates, or import a GPX track of a paddling route. See <a href={`${base}/guides/custom-markers-and-paths`}>custom markers and paths</a>.</p>
+  <p>Choose roads and trails in the <strong>Features</strong> panel and labels in the <strong>Labels</strong> panel for context, and keep <strong>Water depth</strong> on in the <strong>Water</strong> panel. To mark a cabin, a dock or a favorite fishing spot, add a marker in the <strong>Custom data</strong> view by clicking the map or entering its coordinates, or import a GPX track of a paddling route. See <a href={`${base}/guides/custom-markers-and-paths`}>custom markers and paths</a>.</p>
 
   <h2>5. Choose your water finish</h2>
   <WaterFinishComparison links />

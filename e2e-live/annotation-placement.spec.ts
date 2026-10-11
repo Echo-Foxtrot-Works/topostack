@@ -12,7 +12,7 @@ for (const output of ["Layered relief", "Flat engraving"]) {
     await page.getByRole("radio", { name: output, exact: true }).click();
     await page.getByRole("button", { name: /Generate terrain/ }).click();
     await expect(page.locator(".status-line")).toContainText(readyStatus, { timeout: 120_000 });
-    await page.getByRole("button", { name: "Expand all", exact: true }).click();
+    await page.getByRole("tab", { name: "Labels", exact: true }).click();
     await page.getByRole("switch", { name: "Title", exact: true }).click();
     await page.locator(".plaque-settings textarea").fill("Release placement check");
     await page.locator(".plaque-settings .placement-start").click();
@@ -55,6 +55,7 @@ for (const output of ["Layered relief", "Flat engraving"]) {
     await page.reload();
     await page.getByRole("button", { name: /Generate terrain/ }).click();
     await expect(page.locator(".status-line")).toContainText(readyStatus, { timeout: 120_000 });
+    await page.getByRole("tab", { name: "Labels", exact: true }).click();
     await page.locator(".plaque-settings .placement-start").click();
     for (const [index, item] of [title, compass, scale].entries()) {
       await expect(item).toHaveAttribute("d", positions[index]!);

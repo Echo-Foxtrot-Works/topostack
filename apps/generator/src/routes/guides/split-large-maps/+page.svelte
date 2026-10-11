@@ -5,12 +5,12 @@
 
 <Article title="Split a large map to fit your laser bed" intro="Build a layered relief bigger than your machine. TopoStack splits every layer into pieces that fit your work area, staggers the seams between layers and keys hidden joints with puzzle tabs.">
   <figure>
-    <img src={`${base}/images/guides/split-relief.webp`} width="1600" height="1100" loading="lazy" decoding="async" alt="TopoStack studio showing a 406 by 271 mm Crater Lake relief in the 3D stack view, with a 220 by 160 mm work area set in Fabrication settings." />
+    <img src={`${base}/images/guides/split-relief.webp`} width="1600" height="1100" loading="lazy" decoding="async" alt="TopoStack studio showing a 406 by 271 mm Crater Lake relief in the 3D stack view, with a 220 by 160 mm work area set." />
     <figcaption>A 406.4 × 270.9 mm Crater Lake relief with a 220 × 160 mm work area: two by two sheets per layer. Survey data where available; depth exaggerated.</figcaption>
   </figure>
 
   <h2>Set your work area</h2>
-  <p>Open <strong>Fabrication settings</strong> and enter your machine's <strong>Work area width</strong> and <strong>Work area height</strong>. Both are 0 (off) by default; 0 on one axis leaves that axis unlimited. Below the fields, the studio reports the result, such as <em>2 × 2 sheets per layer · 203.2 × 135.466 mm tiles</em>. Regenerate terrain to apply it.</p>
+  <p>In the <strong>Fabricate</strong> panel, enter your machine's <strong>Work area width</strong> and <strong>Work area height</strong>. Both are 0 (off) by default; 0 on one axis leaves that axis unlimited. Below the fields, the studio reports the result, such as <em>2 × 2 sheets per layer · 203.2 × 135.466 mm tiles</em>. Regenerate terrain to apply it. Once a layer is split, the seam options below appear under <strong>Panels and seams</strong> in the export dialog.</p>
   <p>TopoStack divides each layer along a grid of seams into equal tiles that fit the bed, and exports one panel SVG per tile. Every layer gets the same number of tiles. A flat engraving is never split.</p>
   <figure>
     <img src={`${base}/images/guides/split-cut-layer.webp`} width="1600" height="1100" loading="lazy" decoding="async" alt="Cut layers view of layer 22 split into four pieces, with red seam lines, small round puzzle tabs along the seams and engraved assembly ids such as L22-A1." />

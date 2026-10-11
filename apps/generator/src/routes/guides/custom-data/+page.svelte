@@ -5,21 +5,21 @@
 
 <Article title="Bring your own data into TopoStack" intro="The Custom data view holds everything you add to a map yourself: depth charts for lakes, markers for places that matter, trails and boundaries, logos and artwork, and files from your GPS or mapping app.">
   <h2>Open the Custom data view</h2>
-  <p>Select <strong>Custom data</strong> above the preview, beside <strong>Map</strong>, <strong>Cut layers</strong> and <strong>3D stack</strong> (or <strong>Engraving</strong> for flat output). While it is open, the sidebar swaps the project's size, terrain and linework settings for one section per kind of data. The rest of your project is unchanged; switch back to any other view to return to it.</p>
-  <p>Only one section is open at a time, and each section shows what its tools work on beside it: the chart you are tracing, the map you place markers and paths on, or the piece you place graphics on. Collapse a section to give the workspace more room without losing your place, and select <strong>Show tools</strong> to bring it back. Work in progress, such as a half-traced chart, survives switching to another view and back.</p>
+  <p>Select <strong>Custom data</strong> above the preview, beside <strong>Map</strong>, <strong>Cut layers</strong> and <strong>3D stack</strong> (or <strong>Engraving</strong> for flat output). While it is open, the sidebar swaps the project's settings for a rail with one tab per kind of data. The rest of your project is unchanged; switch back to any other view to return to it.</p>
+  <p>Choose a tab to open its section. Each section shows what its tools work on beside it: the chart you are tracing, the map you place markers and paths on, or the piece you place graphics on. Work in progress, such as a half-traced chart, survives switching tabs, and switching to another view and back.</p>
 
   <h2>The sections</h2>
   <table>
-    <thead><tr><th scope="col">Section</th><th scope="col">What it adds</th><th scope="col">Guide</th></tr></thead>
+    <thead><tr><th scope="col">Section</th><th scope="col">Rail tab</th><th scope="col">What it adds</th><th scope="col">Guide</th></tr></thead>
     <tbody>
-      <tr><td><strong>Depth charts</strong></td><td>A lake floor from reviewed chart contours and explicit geographic alignment. Layered output only.</td><td><a href={`${base}/guides/trace-a-depth-chart`}>Carve a lake from a depth chart</a></td></tr>
-      <tr><td><strong>Markers</strong></td><td>Engraved symbols at map coordinates: built-in pins, stars and crosses, or your own SVG icons.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
-      <tr><td><strong>Trails &amp; boundaries</strong></td><td>Routes and outlines drawn on the map or typed as coordinates, engraved in your trail and boundary styles.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
-      <tr><td><strong>Graphics</strong></td><td>SVG logos and artwork placed on the piece itself, then engraved, scored or cut out.</td><td><a href={`${base}/guides/custom-graphics`}>Custom graphics</a></td></tr>
-      <tr><td><strong>Import</strong></td><td>Markers, trails and boundaries read from a GPX, KML or GeoJSON file in one step.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
+      <tr><td><strong>Depth charts</strong></td><td><strong>Charts</strong></td><td>A lake floor from reviewed chart contours and explicit geographic alignment. Layered output only.</td><td><a href={`${base}/guides/trace-a-depth-chart`}>Carve a lake from a depth chart</a></td></tr>
+      <tr><td><strong>Markers</strong></td><td><strong>Markers</strong></td><td>Engraved symbols at map coordinates: built-in pins, stars and crosses, or your own SVG icons.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
+      <tr><td><strong>Trails &amp; boundaries</strong></td><td><strong>Paths</strong></td><td>Routes and outlines drawn on the map or typed as coordinates, engraved in your trail and boundary styles.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
+      <tr><td><strong>Graphics</strong></td><td><strong>Graphics</strong></td><td>SVG logos and artwork placed on the piece itself, then engraved, scored or cut out.</td><td><a href={`${base}/guides/custom-graphics`}>Custom graphics</a></td></tr>
+      <tr><td><strong>Import</strong></td><td><strong>Import</strong></td><td>Markers, trails and boundaries read from a GPX, KML or GeoJSON file in one step.</td><td><a href={`${base}/guides/custom-markers-and-paths`}>Custom markers and paths</a></td></tr>
     </tbody>
   </table>
-  <p>Each section's heading sums up what it holds, such as how many markers are placed or how many lakes a chart carves, so you can see the state of the project with every section closed.</p>
+  <p>Each section's heading sums up what it holds, such as how many markers are placed or how many lakes a chart carves. Hover over a tab in the rail to see the same summary without leaving the section you are in.</p>
 
   <h2>Placed on the map, or on the piece</h2>
   <p>Markers, trails, boundaries and imported files belong to a place on the ground. They are stored as latitude and longitude, so they stay put when you move the frame or change the output size, and anything outside the framed area stays saved but is not engraved.</p>

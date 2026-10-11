@@ -211,7 +211,7 @@ for (const [widthMm, heightMm] of [[100, 200], [400, 100]] as const) {
       await expect(svg).toHaveAttribute("viewBox", beforeLayer!);
     }
     await page.getByRole("radio", { name: "Map", exact: true }).click();
-    await page.getByRole("button", { name: "Expand all" }).click();
+    await page.getByRole("tab", { name: "Place", exact: true }).click();
     await page.getByRole("spinbutton", { name: "Width", exact: true }).fill(String(widthMm * 2));
     await expect.poll(async () => {
       const rect = await guide.boundingBox();

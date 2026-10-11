@@ -64,7 +64,7 @@ export async function loadProviderOutlines(base: string, bounds: GeoBounds, conf
 }
 
 interface EdgeBlock { box: Bounds; ring: Pair[]; start: number; end: number }
-interface Measured { shape: MultiPolygon; size: number; box: Bounds; blocks?: EdgeBlock[] }
+interface Measured { shape: MultiPolygon; size: number; box: Bounds; blocks?: EdgeBlock[]; detail?: number }
 const measure = (p: Polygon2D): Measured => {
   const shape = input(p);
   const box: Bounds = [Infinity, Infinity, -Infinity, -Infinity];
@@ -74,6 +74,33 @@ const measure = (p: Polygon2D): Measured => {
   }
   return { shape, size: area(shape), box };
 };
+/**
+ * Shore vertices per unit of perimeter. Two outlines of one lake share a shore,
+ * so the denser one was simplified less. Across sampled lakes HydroLAKES was
+ * the coarsest wherever another outline existed (median 2.7x fewer vertices
+ * than the map); provider masks and the map were close to each other.
+ */
+function detail(measured: Measured): number {
+  if (measured.detail !== undefined) return measured.detail;
+  let vertices = 0, length = 0;
+  for (const ring of measured.shape.flat()) {
+    for (let i = 0; i < ring.length; i += 1) {
+      const [ax, ay] = ring[i]!, [bx, by] = ring[(i + 1) % ring.length]!;
+      const edge = Math.hypot(bx - ax, by - ay);
+      if (edge > 0) { vertices += 1; length += edge; }
+    }
+  }
+  return measured.detail = length > 0 ? vertices / length : 0;
+}
+/**
+ * How much denser another shore must be to replace a provider mask. Survey
+ * depths are masked to that mask, so a marginally finer shore is not worth
+ * the uncovered rim it leaves; a HydroLAKES shore carries no survey.
+ */
+const PROVIDER_SHORE_MARGIN = 1.5;
+const finerShore = (candidate: Measured, current: Measured, currentSource: WaterAreaV1["outlineSource"]) =>
+  detail(candidate) > detail(current) * (currentSource === "provider" ? PROVIDER_SHORE_MARGIN : 1);
+
 const boxOverlap = (a: Bounds, b: Bounds) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
 // Closed comparison: an edge touching the box counts as entering it.
 const boxesTouch = (a: Bounds, b: Bounds) => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
@@ -136,6 +163,8 @@ function containment(a: Measured, b: Measured): { shared: MultiPolygon | undefin
 /** Prefer provider shores, but retain a complete lake over a partial survey mask.
  * Lower-priority copies of the same waterbody are suppressed, not cut into
  * strips that would create artificial shorelines and duplicate modeled basins.
+ * Where two sources outline the same lake, the lake keeps its identity and
+ * depth metadata but takes the more detailed shore (see `finerShore`).
  */
 export function resolveLakeOutlines(providers: WaterAreaV1[], hydro: WaterAreaV1[], inland: Polygon2D[]): WaterAreaV1[] {
   // Lake-country crops compare hundreds of outlines pairwise, and a polygon
@@ -175,6 +204,7 @@ export function resolveLakeOutlines(providers: WaterAreaV1[], hydro: WaterAreaV1
       // Whole-lake estimates must not be assigned to individual survey basins.
       if (matches.length === 1 && covered >= measureOnce(matches[0]!.polygon).size * 0.8) resolved = resolved.map((p) => p === matches[0] ? {
         ...lake, ...p, hylakId: lake.hylakId, surfaceElevationM: lake.surfaceElevationM,
+        polygon: finerShore(candidate, measureOnce(p.polygon), p.outlineSource) ? lake.polygon : p.polygon,
       } : p);
     }
   }
@@ -194,6 +224,15 @@ export function resolveLakeOutlines(providers: WaterAreaV1[], hydro: WaterAreaV1
       if (shared) { matches.push(lake); overlaps.push(shared); }
     }
     if (matches.length) {
+      // The same waterbody: carve whichever shore is more detailed, keeping
+      // the lake's identity and depths. Map water that also holds a river or
+      // a neighbouring lake is a different shape and replaces nothing.
+      const [lake] = matches, current = measureOnce(lake!.polygon);
+      const shared = matches.length === 1 && lake!.outlineSource !== "osm" ? area(overlaps[0]!) : 0;
+      if (shared >= size * 0.8 && shared >= current.size * 0.8) {
+        if (finerShore(candidate, current, lake!.outlineSource)) resolved = resolved.map((item) => item === lake ? { ...lake, polygon: p } : item);
+        return;
+      }
       // A provider depth-area mask may cover only one bay of the OSM lake.
       // Keep the complete shore and let the raster mask limit surveyed depths.
       if (matches.every((lake) => lake.outlineSource === "provider")) {

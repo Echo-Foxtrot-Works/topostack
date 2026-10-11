@@ -57,8 +57,22 @@ function designState(host: WebMcpHost) {
     generation: host.generationState(),
     status: host.status(),
     ...(current && project.outputMode === "stack" ? { sheets: geometry.layers.length } : {}),
+    ...(current && geometry.airspaceStack ? { airspace: airspaceState(geometry.airspaceStack) } : {}),
     exportReady: !host.exportBlockedBy(),
     ...(host.exportBlockedBy() ? { exportBlockedBy: host.exportBlockedBy() } : {}),
+  };
+}
+
+/** The airspace generated over the model: what to cut and the rods to cut for it. */
+function airspaceState(stack: NonNullable<GeometryIRV1["airspaceStack"]>) {
+  const segments = stack.columns.flatMap((column) => column.segments);
+  return {
+    form: stack.form,
+    levels: stack.levels.length,
+    pieces: stack.levels.reduce((sum, level) => sum + level.pieces.length, 0),
+    heightMm: Math.round(stack.topMm),
+    rods: segments.length,
+    rodLengthMm: Math.round(segments.reduce((sum, segment) => sum + segment.lengthMm, 0)),
   };
 }
 
@@ -68,6 +82,7 @@ function summary(host: WebMcpHost): string {
   return [
     `${design.name} (${design.placeLabel}): ${design.output}, ${design.widthMm} × ${design.heightMm} mm${design.output === "layered" ? `, ${design.materialThicknessMm} mm sheets, ${design.verticalExaggeration}× exaggeration` : `, ${design.contourCount} contours`}.`,
     state.sheets ? `${state.sheets} sheets generated.` : "",
+    state.airspace ? `Airspace: ${state.airspace.pieces} acrylic pieces on ${state.airspace.levels} levels (${state.airspace.form}), ${state.airspace.heightMm} mm tall, on ${state.airspace.rods} rods totalling ${state.airspace.rodLengthMm} mm.` : "",
     `Studio: ${state.status}.`,
     state.exportReady ? "Ready to export." : `Export: ${state.exportBlockedBy}.`,
   ].filter(Boolean).join(" ");
@@ -82,7 +97,7 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
     {
       name: "topostack_get_design",
       title: "Read the TopoStack design",
-      description: "Read the design open in the TopoStack studio: place, size, layered or flat output, material, details, generation state, sheet count and whether it can be exported.",
+      description: "Read the design open in the TopoStack studio: place, size, layered or flat output, material, details, generation state, sheet count, the airspace in acrylic and its rods when the design builds it, and whether it can be exported.",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: true },
       execute: async () => reply(summary(host), designState(host) as unknown as Record<string, unknown>),
@@ -123,7 +138,7 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
     {
       name: "topostack_update_design",
       title: "Change design settings",
-      description: "Change settings of the open design: size, shape, layered or flat output, material thickness, vertical exaggeration, contour count, map details, title and laser settings. Anything left out stays as it is. Each change is one undo step.",
+      description: "Change settings of the open design: size, shape, layered or flat output, material thickness, vertical exaggeration, contour count, map details, aviation detail, airspace in acrylic, title and laser settings. Anything left out stays as it is. Each change is one undo step.",
       inputSchema: { type: "object", additionalProperties: false, properties: editableProperties },
       annotations: { readOnlyHint: false, destructiveHint: false },
       execute: async (input) => {

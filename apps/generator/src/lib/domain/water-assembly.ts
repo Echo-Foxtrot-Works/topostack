@@ -34,12 +34,18 @@ export function combineWaterAreas(lakes: WaterAreaV1[], ocean: Polygon2D[], mini
 export function applyLakeShorelines(source: SourceBundleV1, config: ProjectConfigV1): SourceBundleV1 {
   if (!source.waterAreas?.length) return source;
   const lakes = resolveLakeOutlines([], source.waterAreas.filter((area) => area.kind === "lake"), source.inlandWaterAreas ?? []);
+  // A lake that takes a more detailed shore here must be carved to that shore.
+  const shores = new Map(lakes.map((lake) => [lake.id, lake.polygon]));
+  const waterAreas = source.waterAreas.map((area) => {
+    const shore = area.kind === "lake" ? shores.get(area.id) : undefined;
+    return shore && shore !== area.polygon ? { ...area, polygon: shore } : area;
+  });
   const polygons = [...source.waterAreas.filter((area) => area.kind === "ocean").map((area) => area.polygon), ...lakes.map((area) => area.polygon)];
   const limited = limitVectorMarkingGroups([
     source.markings.filter((marking) => !marking.id.startsWith("water-area-")),
     config.showWater ? shorelineMarkings(polygons) : [],
   ]);
-  return { ...source, markings: limited.markings, waterPatternAreas: polygons,
+  return { ...source, waterAreas, markings: limited.markings, waterPatternAreas: polygons,
     vectorStatus: limited.truncated && source.vectorStatus === "available" ? "partial" : source.vectorStatus };
 }
 

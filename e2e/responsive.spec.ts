@@ -44,8 +44,10 @@ for (const device of devices) {
     // and scroll containment left behind when crossing layout breakpoints.
     for (const [width, height] of [[device.width, device.height], [device.height, device.width], [device.width, device.height]] as const) {
       await page.setViewportSize({ width, height });
-      await page.getByRole("button", { name: "Expand all", exact: true }).click();
-      await expectWithinWidth(page);
+      for (const panel of ["Features", "Water", "Labels", "Place"]) {
+        await page.getByRole("tab", { name: panel, exact: true }).click();
+        await expectWithinWidth(page);
+      }
       const preview = (await page.locator(".preview-panel").boundingBox())!;
       const settings = (await page.locator(".config-panel").boundingBox())!;
       const stacked = width <= 1000 || (width <= 1100 && height >= width);
@@ -58,13 +60,11 @@ for (const device of devices) {
       expect((await page.locator(".preview-stage").boundingBox())!.height).toBeGreaterThan(180);
       await page.getByRole("button", { name: /Generate terrain/ }).scrollIntoViewIfNeeded();
       await expect(page.getByRole("button", { name: /Generate terrain/ })).toBeInViewport({ ratio: 1 });
-      await page.getByRole("button", { name: "Collapse all", exact: true }).click();
       await page.getByRole("textbox", { name: "Project name", exact: true }).scrollIntoViewIfNeeded();
       await expect(page.getByRole("textbox", { name: "Project name", exact: true })).toHaveValue("Responsive landscape");
       await expect(page.getByRole("button", { name: "Project actions", exact: true })).toBeInViewport();
     }
 
-    await page.getByRole("button", { name: /Project setup/ }).click();
     await page.locator(".location-card").click();
     await expectDialogFits(page, "Choose anywhere");
     await page.getByRole("button", { name: "Export", exact: true }).click();

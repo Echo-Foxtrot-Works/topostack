@@ -11,6 +11,7 @@ export const USAGE_LANDINGS = [
   "/guides/custom-data", "/guides/trace-a-depth-chart",
   "/guides/how-depth-chart-tracing-works", "/guides/how-terrain-generation-works", "/guides/use-with-ai-assistants",
   "/guides/browser-agents", "/guides/mcp-server", "/guides/agent-api", "/guides/lightburn",
+  "/guides/airspace-in-3d", "/guides/airspace-assembly",
 ] as const;
 // "ai" covers assistant and answer-engine referrers, which send a visitor who
 // already read a description of the tool rather than a search result snippet.

@@ -1,6 +1,6 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+import { labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -22,7 +22,7 @@ export interface CachedLayer {
  * linear and far cheaper than `ExtrudeGeometry`, so the body is rebuilt only
  * when its shape, thickness or stack position actually changed.
  */
-export function layerKey(layer: GeometryIRV1["layers"][number]): string {
+export function layerKey(layer: Pick<GeometryIRV1["layers"][number], "index" | "materialThicknessMm" | "polygons">): string {
   let hash = 0x811c9dc5;
   let vertices = 0;
   const mix = (value: number) => { hash = Math.imul(hash ^ (value | 0), 0x01000193) >>> 0; };
@@ -39,6 +39,59 @@ export function layerKey(layer: GeometryIRV1["layers"][number]): string {
     for (const hole of polygon.holes) mixRing(hole);
   }
   return `${layer.index}:${layer.materialThicknessMm}:${layer.polygons.length}:${vertices}:${hash}`;
+}
+
+/** Extrusions owned by the scene; the cache keeps meshes detached between rebuilds. */
+export interface CachedAirspaceBody { key: string; meshes: THREE.Mesh[] }
+
+export function airspaceBodyKey(piece: Pick<AirspacePieceIR, "polygons">, thicknessMm: number): string {
+  return layerKey({ index: 0, materialThicknessMm: thicknessMm, polygons: piece.polygons });
+}
+
+/** Retain expensive triangulation across worker clones and annotation or tint edits. */
+export function airspaceBody(cache: Map<string, CachedAirspaceBody>, piece: AirspacePieceIR, thicknessMm: number, material: THREE.Material): THREE.Mesh[] {
+  const key = airspaceBodyKey(piece, thicknessMm);
+  let cached = cache.get(piece.id);
+  if (!cached || cached.key !== key) {
+    // One body per piece, however many outlines it has: each transparent mesh is its own draw call.
+    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(piece.polygons.map(shapeFromPolygon), { depth: thicknessMm, bevelEnabled: false, curveSegments: 8 }), material);
+    mesh.castShadow = false;
+    mesh.renderOrder = 2;
+    const meshes = [mesh];
+    cached = { key, meshes };
+    cache.set(piece.id, cached);
+  }
+  // Shared scene materials are recreated and disposed on each rebuild.
+  for (const mesh of cached.meshes) mesh.material = material;
+  return cached.meshes;
+}
+
+/**
+ * Rods as one instanced mesh per stack position they ride with, so a model
+ * held by a hundred rods costs a handful of draw calls rather than a hundred.
+ * Each instance is a unit rod scaled to its segment and placed at its foot.
+ */
+export function airspaceRods(stack: Pick<AirspaceStackIR, "columns" | "rod">, stackIndexOf: (pieceId: string) => number, material: THREE.Material): Array<{ mesh: THREE.InstancedMesh; stackIndex: number }> {
+  const groups = new Map<number, THREE.Matrix4[]>();
+  const { sizeMm, shape } = stack.rod;
+  for (const column of stack.columns) {
+    for (const segment of column.segments) {
+      const length = segment.topMm - segment.bottomMm;
+      if (length <= 0) continue;
+      const stackIndex = stackIndexOf(segment.headPieceId);
+      const matrix = new THREE.Matrix4().makeScale(sizeMm, sizeMm, length).setPosition(column.point.x, column.point.y, segment.bottomMm);
+      groups.set(stackIndex, [...(groups.get(stackIndex) ?? []), matrix]);
+    }
+  }
+  return [...groups].map(([stackIndex, matrices]) => {
+    // A unit rod standing on z = 0: one millimetre across and tall.
+    const unit = shape === "square" ? new THREE.BoxGeometry(1, 1, 1) : new THREE.CylinderGeometry(0.5, 0.5, 1, 16).rotateX(Math.PI / 2);
+    const mesh = new THREE.InstancedMesh(unit.translate(0, 0, 0.5), material, matrices.length);
+    matrices.forEach((matrix, index) => mesh.setMatrixAt(index, matrix));
+    mesh.computeBoundingSphere();
+    mesh.castShadow = true;
+    return { mesh, stackIndex };
+  });
 }
 
 interface StackedObject { layerIndex: number; baseZ: number }
@@ -161,7 +214,10 @@ export function disposeContent(content: THREE.Group, resources: Array<{ dispose:
   for (const child of [...content.children]) {
     content.remove(child);
     if (kept?.has(child)) continue;
-    child.traverse((object) => { if (object instanceof THREE.Mesh || object instanceof THREE.Line) object.geometry.dispose(); });
+    child.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Line) object.geometry.dispose();
+      if (object instanceof THREE.InstancedMesh) object.dispose();
+    });
   }
   // Every material and texture a rebuild creates is registered here — including
   // ones no object ended up using (no trails, markers, or water in this

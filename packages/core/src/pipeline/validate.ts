@@ -1,5 +1,6 @@
 import { isTextFont } from "../annotate/font-data.js";
 import { MERCATOR_MAX_LATITUDE } from "../primitives/units.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS } from "../types.js";
 import {
   CUSTOM_LINE_KINDS,
   PAINT_REGION_KINDS,
@@ -142,6 +143,7 @@ export function validateProject(config: ProjectConfigV1): void {
   if (config.glueMarginMm < 2 || config.glueMarginMm > 25) throw new Error("Glue margin must be between 2 and 25 mm.");
   if (config.laserKerfMm < 0 || config.laserKerfMm > 1) throw new Error("Laser kerf must be between 0 and 1 mm.");
   if (config.waterInserts !== undefined) validateWaterInserts(config.waterInserts);
+  if (config.airspaceStack !== undefined) validateAirspaceStack(config.airspaceStack, config.materialThicknessMm);
   for (const [label, value] of [["Work area width", config.workAreaWidthMm], ["Work area height", config.workAreaHeightMm]] as const) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`${label} must be zero or a positive number of millimeters.`);
     if (value > 0 && (value < MIN_WORK_AREA_MM || value > MAX_PROJECT_DIMENSION_MM)) throw new Error(`${label} must be 0 (unlimited) or between ${MIN_WORK_AREA_MM} and ${MAX_PROJECT_DIMENSION_MM} mm.`);
@@ -273,6 +275,25 @@ function validatePlaque(plaque: PlaqueV1): void {
  */
 const WATER_INSERT_LAKE_KEY = /^[\x21-\x7e]{1,128}$/;
 const MAX_WATER_INSERT_EXCLUSIONS = 500;
+
+const between = (value: number | undefined, { min, max }: { min: number; max: number }) => value !== undefined && Number.isFinite(value) && value >= min && value <= max;
+
+function validateAirspaceStack(settings: NonNullable<ProjectConfigV1["airspaceStack"]>, materialThicknessMm: number): void {
+  if (!settings || typeof settings !== "object") throw new Error("Airspace stack settings are invalid.");
+  const { form, classes, tint, ceilingCapFt, thicknessMm, kerfMm, rod } = settings;
+  if (!AIRSPACE_STACK_FORMS.includes(form)) throw new Error("Airspace form must be plates, tiers or volumes.");
+  if (tint !== undefined && !AIRSPACE_STACK_TINTS.includes(tint)) throw new Error("Airspace acrylic must be chart tints or clear.");
+  if (!classes || !(classes.B || classes.C || classes.D || classes.specialUse)) throw new Error("Choose at least one kind of airspace to build.");
+  const limits = AIRSPACE_STACK_LIMITS;
+  if (ceilingCapFt !== undefined && !between(ceilingCapFt, limits.ceilingCapFt)) throw new Error("Airspace ceiling cap must be between 1,000 and 60,000 ft.");
+  if (!between(thicknessMm ?? materialThicknessMm, limits.thicknessMm)) throw new Error("Airspace acrylic thickness must be between 1 and 10 mm. Set an acrylic thickness when the terrain material is outside this range.");
+  if (kerfMm !== undefined && !between(kerfMm, limits.kerfMm)) throw new Error("Airspace acrylic kerf must be between 0 and 1 mm.");
+  if (!rod || (rod.shape !== "round" && rod.shape !== "square")) throw new Error("Airspace rods must be round or square.");
+  if (rod.joint !== "segments" && rod.joint !== "through") throw new Error("Airspace rods must be glued segments or run through the pieces.");
+  if (!between(rod.sizeMm, limits.rodSizeMm)) throw new Error("Airspace rod size must be between 2 and 12 mm.");
+  if (!between(rod.fitClearanceMm, limits.fitClearanceMm)) throw new Error("Airspace rod fit clearance must be between 0 and 0.5 mm.");
+  if (!between(rod.socketDepthMm, limits.socketDepthMm)) throw new Error("Airspace rod socket depth must be between 1 and 30 mm.");
+}
 
 function validateWaterInserts(settings: NonNullable<ProjectConfigV1["waterInserts"]>): void {
   if (!settings || typeof settings !== "object") throw new Error("Acrylic water insert settings are invalid.");

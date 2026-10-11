@@ -20,6 +20,8 @@ export function relatedContent(path: string): readonly RelatedContent[] {
     case "/guides/how-lake-depths-work":
     case "/guides/lake-depth-data":
     case "/lakes": return [TAHOE, CRATER, LIGHTBURN];
+    case "/guides/airspace-in-3d": return [{ path: "/guides/airspace-assembly", title: "Build the acrylic airspace", description: "Cut the material, match the rods and assemble the levels." }, EXPORT, LIGHTBURN];
+    case "/guides/airspace-assembly": return [{ path: "/guides/airspace-in-3d", title: "Design your airspace model", description: "Choose the airport crop, classes, forms and scale." }, EXPORT, LIGHTBURN];
     case "/guides/export-files": return [LIGHTBURN, { path: "/guides/troubleshooting", title: "Resolve an export problem", description: "Understand stale terrain, missing data and export-blocking warnings." }, FUJI];
     case "/guides/studio-tour":
     case "/guides/troubleshooting": return [RELIEF, ENGRAVING, LIGHTBURN];

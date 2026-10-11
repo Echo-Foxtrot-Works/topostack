@@ -88,10 +88,19 @@ describe("applyLakeShorelines", () => {
     expect(result.markings.filter((marking) => marking.id.startsWith("water-area-"))).toHaveLength(2);
   });
 
-  it("does not trace inland water that a depth lake already describes", () => {
+  it("traces a depth lake once, along the map's more detailed shore of the same water, and carves that shore", () => {
+    // The map traces the same lake with a vertex midway along each side.
+    const shore: Polygon2D = { outer: [p(0.5, 0.5), p(10, 0.5), p(20, 0.5), p(20, 10), p(20, 20), p(10, 20), p(0.5, 20), p(0.5, 10), p(0.5, 0.5)], holes: [] };
+    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", polygon(0, 0, 20, 20))], inlandWaterAreas: [shore] }), DEFAULT_PROJECT);
+    expect(result.waterPatternAreas).toEqual([shore]);
+    expect(result.waterAreas).toEqual([lake("hydro-1", shore)]);
+  });
+
+  it("does not trace map water that only contains a depth lake", () => {
     const outline = polygon(0, 0, 20, 20);
-    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", outline)], inlandWaterAreas: [polygon(0.5, 0.5, 20, 20)] }), DEFAULT_PROJECT);
+    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", outline)], inlandWaterAreas: [polygon(0, 0, 40, 20)] }), DEFAULT_PROJECT);
     expect(result.waterPatternAreas).toEqual([outline]);
+    expect(result.waterAreas?.[0]?.polygon).toBe(outline);
   });
 
   it("removes shorelines when water is hidden but still records the pattern areas", () => {

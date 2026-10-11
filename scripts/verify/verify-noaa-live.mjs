@@ -46,7 +46,7 @@ await run(async () => {
   }, coreUrl);
   await page.locator('input[type="file"]').setInputFiles({ name: "noaa.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(project)) });
   await page.locator(".status-line").filter({ hasText: "Project imported" }).waitFor();
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await page.getByRole("tab", { name: "Water", exact: true }).click();
   await page.getByRole("button", { name: /generate terrain/i }).click();
   await page.locator(".status-line").filter({ hasText: "Real terrain ready" }).waitFor();
   assert.equal(await page.getByRole("switch", { name: "Water depth", exact: true }).getAttribute("aria-checked"), "false");

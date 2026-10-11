@@ -14,14 +14,16 @@ import { AVIATION_LAYERS, parseAviationArchiveMetadata, validateAviationSources 
 
 const OBJECT_KEY = "aviation/current.pmtiles";
 const EXPECTED_MIN_ZOOM = 5;
-const sources = validateAviationSources(JSON.parse(await readFile(new URL("../data/faa-aviation-sources.json", import.meta.url), "utf8")));
 
 const options = parseArchiveFlags(process.argv.slice(2));
 const { flags, archivePath, buckets } = options;
 const verifyOnly = flags.includes("--verify-only");
+const candidateSources = flags.find((flag) => flag.startsWith("--sources="))?.slice("--sources=".length);
+if (candidateSources && !verifyOnly) throw new Error("--sources is only allowed for local candidate verification; publication requires the committed registration.");
+const sources = validateAviationSources(JSON.parse(await readFile(candidateSources ?? new URL("../data/faa-aviation-sources.json", import.meta.url), "utf8")));
 if (verifyOnly && (flags.includes("--provision") || flags.includes("--promote") || flags.includes("--prod"))) throw new Error("--verify-only cannot be combined with publication flags.");
 if (!archivePath || (!verifyOnly && !flags.includes("--provision"))) {
-  throw new Error("Usage: node scripts/provision/provision-aviation-data.mjs <archive.pmtiles> (--provision | --verify-only) [--prod] [--promote] [--expected-sha256=<hex> | EXPECTED_ARCHIVE_SHA256=<hex>] [--skip-digest-check]");
+  throw new Error("Usage: node scripts/provision/provision-aviation-data.mjs <archive.pmtiles> (--provision | --verify-only) [--sources=<candidate.json> (verify-only)] [--prod] [--promote] [--expected-sha256=<hex> | EXPECTED_ARCHIVE_SHA256=<hex>] [--skip-digest-check]");
 }
 assertDigestPinPolicy(options);
 

@@ -10,7 +10,7 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   await page.route("**/v1/events", (route) => route.fulfill({ status: 204 }));
 
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Build the landscape." })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Place", exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: /generate terrain/i }).first().click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
 

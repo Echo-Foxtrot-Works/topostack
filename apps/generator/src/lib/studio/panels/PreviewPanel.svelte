@@ -1,7 +1,7 @@
 <script lang="ts">
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import { base } from "$app/paths";
-  import { Box, FileOutput, Layers3, Map as MapIcon, PenTool, Waves, X } from "@lucide/svelte";
+  import { Box, FileOutput, Layers3, Map as MapIcon, PenTool, Scan, Waves, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { displayElevation } from "@topostack/core";
   import FeedbackButton from "$lib/site/FeedbackButton.svelte";
@@ -20,6 +20,7 @@
   const TwoDPreview = $derived(studio.TwoDPreview);
   const PlacementStage = $derived(studio.PlacementStage);
   const ThreePreview = $derived(studio.ThreePreview);
+  let threePreview: { fitView: () => void } | undefined = $state();
   const CustomDataView = $derived(studio.CustomDataView);
   const ExportPreview = $derived(studio.ExportPreview);
   const { cancelGeneration, cancelPlacement, commitPlacement, dismissPreviewWarning, getFeedbackContext, navigateChoice, shownLength, updateFabrication } = studio;
@@ -51,6 +52,9 @@
         <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={studio.mode === option.value} data-state={studio.mode === option.value ? "on" : "off"} tabindex={keyboardView === option.value ? 0 : -1} onclick={() => choosePreviewMode(option.value)} onkeydown={navigateChoice}>{#if option.value === "map"}<MapIcon size={15} />{:else if option.value === "engraving"}<PenTool size={15} />{:else if option.value === "2d"}<Layers3 size={15} />{:else if option.value === "custom"}<Waves size={15} />{:else if option.value === "export"}<FileOutput size={15} />{:else}<Box size={15} />{/if}{option.label}</button>
       {/each}
     </div>
+    {#if studio.mode === "3d" && !studio.embeddedInPlatform && !studio.placementBackdrop}
+      <Button variant="ghost" size="sm" disabled={studio.previewBusy || !threePreview} onclick={() => threePreview?.fitView()}><Scan size={15} />Fit view</Button>
+    {/if}
     <div class="preview-readout">
       <span>{shownLength(studio.project.widthMm)} × {shownLength(studio.project.heightMm)} {studio.shownLengthUnit}</span>
       {#if !studio.embeddedInPlatform}<span class="output-summary">{#each studio.outputSummary as item}<span>{item}</span>{/each}</span>{/if}
@@ -76,11 +80,11 @@
       {:else if studio.exportPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Export preview could not load<button type="button" class="btn btn-secondary" onclick={() => studio.exportPreview.load()}>Retry</button></div>
       {:else}<div class="preview-loading">Loading export preview…</div>{/if}
     {:else if studio.mode === "2d" && studio.placementBackdrop !== "3d"}
-      {#if studio.TwoDPreview}<TwoDPreview geometry={studio.geometry} selectedLayer={studio.selectedLayer} />
+      {#if studio.TwoDPreview}<TwoDPreview geometry={studio.geometry} selectedLayer={studio.selectedLayer} selectedAirspaceLevel={studio.selectedAirspaceLevel} />
       {:else if studio.twoDPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Cut preview could not load<button type="button" class="btn btn-secondary" onclick={() => studio.twoDPreview.load()}>Retry</button></div>
       {:else}<div class="preview-loading">Loading cut preview…</div>{/if}
     {:else if studio.ThreePreview}
-      <ThreePreview geometry={studio.geometry} exploded={studio.explodedPreview} placement={threePlacement} onUnavailable={threeUnavailable} />
+      <ThreePreview bind:this={threePreview} geometry={studio.geometry} exploded={studio.explodedPreview} placement={threePlacement} onUnavailable={threeUnavailable} />
     {:else}
       <div class="preview-loading">Loading 3D preview…</div>
     {/if}

@@ -9,7 +9,9 @@
 - [Atomm performance integration verification](reports/atomm-performance-integration-20260924.md) — regression results after integrating terrain performance and sheet nesting for the next Atomm review.
 - [The Atomm embed](atomm-embed.md) — what the platform build shows differently (automatic terrain, Export view, no depth charts) and why.
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
+- [Studio settings panels](studio-panels.md) — the seven rail panels, which subject each one owns, and where a new control goes.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).
+- [3D airspace implementation review](reports/airspace-review-2026-10-09.md) — corrected source, altitude, support and export defects, performance measurements, validation and release prerequisites.
 - [Acrylic water inserts](water-inserts.md) — cutting each lake out of its waterline sheet, the fitted acrylic piece and its ledge, map detail on the acrylic, and its own files, nesting and guide steps.
 - [Engraving fonts](fonts.md) — the font kinds, the glyph build, adding a typeface, and why glyph data is immutable.
 - [Geometry generation performance](generation-performance.md) — stage timings, cache ownership, parallel layer workers, boundary indexes, and the Grand Teton stress benchmark.
@@ -42,8 +44,10 @@
 - [Depth charts traced into bathymetry](depth-chart-tracing.md) — chart record contract, how traced charts carve, and the staged rollout. The first-release plan (shipped in 0.5.0) is [plans/depth-chart-first-release.md](plans/depth-chart-first-release.md).
 - [NRCan HRDEM terrain](hrdem-terrain.md)
 - [FAA aviation data](faa-aviation.md) — airspace, airports, runways, navaids, special use airspace and obstacles: sources, archive, and the per-cycle refresh. The phased plan is [plans/aviation-layer.md](plans/aviation-layer.md).
+- [Airspace in acrylic](plans/airspace-acrylic.md) — plan: Class B, C and special use airspace as translucent acrylic at true height over the stack (plates, tier pieces or solid volumes) styled after the FAA sectional, optional Class D lids, held on cut-to-length rods (glued segments or through-rods) with terrain sockets and a cut list. The feasibility spike is [reports/airspace-acrylic-spike-2026-10-09.md](reports/airspace-acrylic-spike-2026-10-09.md).
 - [Curated terrain coverage](terrain-coverage.md)
 - [Release acceptance and rollback](release-acceptance.md)
+- [Platform acceptance record template](release-acceptance-record.md) — evidence from real Atomm, xTool Studio and a fabricated test piece.
 - [Changelog and releases](changelog.md) — writing fragments, the automated release commit, tags, and the /changelog page.
 - [Search and discovery operations](seo-operations.md)
 - [Feedback workflow and triage](feedback.md)
@@ -77,3 +81,5 @@ Dated snapshots kept for history. Do not update them; write a new one.
 - [Atomm 0.5.1 compatibility review, 2026-09-24](reports/atomm-0.5.1-audit/README.md) and its [follow-up fixes](reports/atomm-0.5.1-audit/FIXES.md).
 - [Atomm alignment investigation, 2026-09-29](reports/atomm-alignment-20260929/README.md) — reproduced 0.7.0 sidebar offsets and candidate correction.
 - [Atomm 0.7.1 validation, 2026-09-29](reports/atomm-071-validation/README.md) — release checks and alignment measurements from the exact patch ZIP.
+
+Airspace data acceptance and physical assembly fixtures: [airspace-validation.md](airspace-validation.md).

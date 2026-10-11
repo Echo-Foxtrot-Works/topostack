@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "topostack-demo",
+  "name": "Denver airspace guide",
+  "location": {
+    "label": "Denver",
+    "lat": 39.8578785,
+    "lon": -104.67,
+    "zoom": 9,
+    "bounds": {
+      "west": -105.372948,
+      "south": 39.318289,
+      "east": -103.967052,
+      "north": 40.397468
+    }
+  },
+  "cropShape": "rectangle",
+  "units": "metric",
+  "outputMode": "stack",
+  "widthMm": 300,
+  "heightMm": 300,
+  "engravingContourCount": 12,
+  "engravingIndexInterval": 5,
+  "showEngravingBorder": true,
+  "lineStyle": {
+    "contourMm": 0.16,
+    "indexContourMm": 0.32,
+    "majorRoadMm": 0.38,
+    "localRoadMm": 0.26,
+    "trailMm": 0.22,
+    "waterMm": 0.3,
+    "boundaryMm": 0.24,
+    "coordinateGridMm": 0.16,
+    "annotationMm": 0.2,
+    "borderMm": 0.34,
+    "trailPattern": "dashed",
+    "roadStyle": "centerline",
+    "majorRoadSpacingMm": 0.8,
+    "roadCap": "round"
+  },
+  "materialThicknessMm": 3,
+  "verticalExaggeration": 10,
+  "minimumFeatureMm": 0.8,
+  "smoothing": 1,
+  "showRoads": false,
+  "showTrails": false,
+  "showTransportationLabels": false,
+  "showWater": false,
+  "waterFillPattern": "none",
+  "showBoundaries": false,
+  "showCoordinateGrid": false,
+  "showWaterDepth": false,
+  "waterDepthExaggeration": 1,
+  "fitLakeDepth": false,
+  "waterDepthOverrides": {},
+  "showAlignmentGuides": false,
+  "optimizeMaterialUse": false,
+  "glueMarginMm": 8,
+  "laserKerfMm": 0.15,
+  "workAreaWidthMm": 0,
+  "workAreaHeightMm": 0,
+  "seamOffsetMm": 10,
+  "seamTabs": true,
+  "showAssemblyLabels": false,
+  "paintTemplates": [],
+  "showElevationLabels": false,
+  "elevationLabelPosition": {
+    "x": -0.55,
+    "y": 0.55
+  },
+  "textStyle": {
+    "font": "technical",
+    "sizeMm": 3.1
+  },
+  "showNorthArrow": false,
+  "northArrowStyle": "classic",
+  "northArrowSizeMm": 24,
+  "northArrowPlacement": {
+    "anchor": "bottom-right",
+    "offset": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "showScaleBar": false,
+  "markers": [],
+  "customLines": [],
+  "explodedPreview": 0.35,
+  "airspaceStack": {
+    "form": "tiers",
+    "classes": {
+      "B": true,
+      "C": true,
+      "D": false,
+      "specialUse": false
+    },
+    "rod": {
+      "shape": "round",
+      "sizeMm": 4,
+      "fitClearanceMm": 0.1,
+      "socketDepthMm": 6,
+      "joint": "segments"
+    }
+  }
+}

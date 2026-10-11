@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { createSyntheticSource, DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type AirspaceVolumeV1, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { dataZoom } from "$lib/domain/tile-math";
 import { markStaleSourceData, refreshRequiredMapData, resizeSource, SourcePreparationCache, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
 
@@ -59,6 +59,7 @@ describe("refreshing map data", () => {
       resolveLakeOutlines: (_providers, hydro) => hydro,
       assembleWater: (source) => source,
       loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
+      loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
       dataZoom,
     };
     const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: true, showWaterDepth: true, location: { ...DEFAULT_PROJECT.location, zoom: 11.6 } };
@@ -79,6 +80,7 @@ describe("refreshing map data", () => {
       resolveLakeOutlines: (_providers, hydro) => hydro,
       assembleWater: (source) => source,
       loadAviation: vi.fn(async () => ({ aviationMarkings: [airport], aviationStatus: "available" as const, aviationCycle: "2026-09-03" })),
+      loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
       dataZoom,
     };
     const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, aviation: { airspace: false, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false } };
@@ -110,6 +112,55 @@ describe("stale aviation data", () => {
   });
 });
 
+describe("airspace volumes", () => {
+  const sector: AirspaceVolumeV1 = { id: "class-1", aviationClass: "class-b", name: "TEST CLASS B", floor: { ref: "msl", ft: 8_000 }, ceiling: { ref: "msl", ft: 12_000 }, polygons: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 0 }], holes: [] }] };
+  const stacked: ProjectConfigV1 = { ...DEFAULT_PROJECT, airspaceStack: DEFAULT_AIRSPACE_STACK };
+
+  it("loads only when the project builds airspace, and keeps a loaded list, empty or not", async () => {
+    const deps = dependencies({ loadAirspace: vi.fn(async () => ({ airspaceVolumes: [sector], airspaceStatus: "available" as const, airspaceCycle: "2026-10-01" })) });
+    await refreshRequiredMapData(loaded(), DEFAULT_PROJECT, new AbortController().signal, deps);
+    expect(deps.loadAirspace).not.toHaveBeenCalled();
+    const refreshed = await refreshRequiredMapData(loaded(), stacked, new AbortController().signal, deps);
+    expect(refreshed).toMatchObject({ airspaceVolumes: [sector], airspaceStatus: "available", airspaceCycle: "2026-10-01" });
+    await refreshRequiredMapData(refreshed, stacked, new AbortController().signal, deps);
+    await refreshRequiredMapData(loaded({ airspaceVolumes: [], airspaceStatus: "not-covered" }), stacked, new AbortController().signal, deps);
+    expect(deps.loadAirspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads when a switch needs sectors the source was loaded without", () => {
+    const source = loaded({ airspaceVolumes: [sector], airspaceStatus: "available" });
+    const onlyClasses = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { B: true, C: true, D: false, specialUse: false } } };
+    const plusSpecialUse = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { B: true, C: true, D: false, specialUse: true } } };
+    expect(markStaleSourceData(source, { airspaceStack: plusSpecialUse.airspaceStack }, onlyClasses, plusSpecialUse).airspaceVolumes).toBeUndefined();
+    // Turning a kind off, or changing the form, only filters what is loaded.
+    expect(markStaleSourceData(source, { airspaceStack: onlyClasses.airspaceStack }, plusSpecialUse, onlyClasses)).toBe(source);
+    const tiers = { ...plusSpecialUse, airspaceStack: { ...plusSpecialUse.airspaceStack!, form: "tiers" as const } };
+    expect(markStaleSourceData(source, { airspaceStack: tiers.airspaceStack }, plusSpecialUse, tiers)).toBe(source);
+    // Turning airspace on for a source that never loaded it.
+    expect(markStaleSourceData(loaded(), { airspaceStack: stacked.airspaceStack }, DEFAULT_PROJECT, stacked).airspaceVolumes).toBeUndefined();
+  });
+
+  it("reloads a partial list when classes are disabled so the remaining data can fit", () => {
+    const source = loaded({ airspaceVolumes: [sector], airspaceStatus: "partial", airspaceCycle: "old" });
+    const next = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { ...DEFAULT_AIRSPACE_STACK.classes, specialUse: false } } };
+    const stale = markStaleSourceData(source, { airspaceStack: next.airspaceStack }, stacked, next);
+    expect(stale.airspaceVolumes).toBeUndefined();
+    expect(stale.airspaceStatus).toBeUndefined();
+    expect(stale.airspaceCycle).toBeUndefined();
+  });
+
+  it("reloads when another controlled class is enabled", () => {
+    const source = loaded({ airspaceVolumes: [sector], airspaceStatus: "available" });
+    const next = { ...stacked, airspaceStack: { ...DEFAULT_AIRSPACE_STACK, classes: { ...DEFAULT_AIRSPACE_STACK.classes, D: true } } };
+    expect(markStaleSourceData(source, { airspaceStack: next.airspaceStack }, stacked, next).airspaceVolumes).toBeUndefined();
+  });
+
+  it("scales the volumes with the model", () => {
+    const resized = resizeSource(loaded({ airspaceVolumes: [sector] }), DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm * 2 });
+    expect(resized.airspaceVolumes![0]!.polygons[0]!.outer[1]).toEqual({ x: 20, y: 0 });
+  });
+});
+
 const square = (x: number, y: number, size = 10): Polygon2D => ({ outer: [{ x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y }], holes: [] });
 const line = (id: string, kind: MarkingFeature["kind"]): MarkingFeature => ({ id, kind, operation: "engrave", points: [{ x: 0, y: 0 }, { x: 10, y: 5 }] });
 const lake = (id: string, overrides: Partial<WaterAreaV1> = {}): WaterAreaV1 => ({ id, kind: "lake", polygon: square(0, 0), ...overrides });
@@ -124,6 +175,7 @@ function dependencies(overrides: Partial<SourceRefreshDependencies> = {}): Sourc
     resolveLakeOutlines: vi.fn((_providers, hydro) => hydro),
     assembleWater: vi.fn((source, lakes) => ({ ...source, waterAreas: lakes })),
     loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
+    loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
     dataZoom,
     ...overrides,
   };
@@ -272,6 +324,17 @@ describe("refreshing map data after a failed or partial load", () => {
     expect(deps.loadSurveyedLakeDepths).not.toHaveBeenCalled();
     await refreshRequiredMapData({ ...source, bathymetryStatus: "partial" }, DEFAULT_PROJECT, signal(), deps);
     expect(deps.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads depths again when a lake takes the map's shore under the same id", async () => {
+    const source = loaded({ bathymetryStatus: "available", waterAreas: [lake("hylak-1")] });
+    // A stored source loses identity between its lakes and its map water; equal shores are unchanged.
+    const copied = dependencies({ resolveLakeOutlines: vi.fn((_providers, hydro) => hydro.map((area: WaterAreaV1) => ({ ...area, polygon: structuredClone(area.polygon) }))) });
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), copied);
+    expect(copied.loadSurveyedLakeDepths).not.toHaveBeenCalled();
+    const reshaped = dependencies({ resolveLakeOutlines: vi.fn((_providers, hydro) => hydro.map((area: WaterAreaV1) => ({ ...area, polygon: square(0, 0, 11) }))) });
+    await refreshRequiredMapData(source, DEFAULT_PROJECT, signal(), reshaped);
+    expect(reshaped.loadSurveyedLakeDepths).toHaveBeenCalledTimes(1);
   });
 
   it("counts resolved outlines as lake data even when the archive was unavailable", async () => {

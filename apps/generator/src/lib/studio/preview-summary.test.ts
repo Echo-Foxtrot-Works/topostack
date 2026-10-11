@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, type GeometryIRV1, type LayerIR, type WaterSurfaceIR } from "@topostack/core";
-import { acrylicPanelCount, activeDetailCount, activeLinePreset, countDetailMarkings, featuredLayerIndex, insertLakes, layerForEnabledDetail, modeledLakes, sectionSummary, visibleWarnings } from "$lib/studio/preview-summary";
+import { acrylicPanelCount, activeDetailCount, activeLinePreset, countDetailMarkings, featuredLayerIndex, insertLakes, layerForEnabledDetail, modeledLakes, panelSummary, visibleWarnings } from "$lib/studio/preview-summary";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 const marking = (id: string, kind: string) => ({ id, kind, points: [] });
@@ -95,7 +95,7 @@ describe("preview summaries", () => {
     expect(acrylicPanelCount(inserts, { workAreaWidthMm: 0, workAreaHeightMm: 0 })).toBe(2);
     expect(acrylicPanelCount(inserts, { workAreaWidthMm: 100, workAreaHeightMm: 100 })).toBe(3);
     expect(acrylicPanelCount({}, DEFAULT_PROJECT)).toBe(0);
-    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: [] } }, 8)).toContain("Acrylic water");
+    expect(panelSummary("water", { ...DEFAULT_PROJECT, waterInserts: { fitClearanceMm: 0.1, excludedLakeIds: [] } }, 8)).toContain("Acrylic inserts");
   });
 
   it("deduplicates, filters dismissed, prioritizes depth actions, and limits warnings", () => {
@@ -110,36 +110,47 @@ describe("preview summaries", () => {
     expect(visibleWarnings(warnings, ["WATER_DEPTH_CLAMPED-Too deep", "LAKE_DEPTH_PREDICTED-Predicted"]).map((warning) => warning.message)).toEqual(["Labels", "Gap"]);
   });
 
-  it("names the output, place, shape and size in the section summaries", () => {
-    expect(sectionSummary("setup", DEFAULT_PROJECT, 0)).toBe("Layered relief · Crater Lake");
-    expect(sectionSummary("setup", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("Flat engraving · Crater Lake");
-    expect(sectionSummary("size", DEFAULT_PROJECT, 0)).toBe("Rectangle · 300 × 200 mm");
-    expect(sectionSummary("size", { ...DEFAULT_PROJECT, cropShape: "circle", units: "imperial", widthMm: 254, heightMm: 254 }, 0)).toBe("Circle · 10 × 10 in");
-    expect(sectionSummary("terrain", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("12 contours · index every 5");
-    expect(sectionSummary("details", { ...DEFAULT_PROJECT, showRoads: false, showTrails: false, showWater: false, showElevationLabels: false, showNorthArrow: false, showScaleBar: false, showWaterDepth: false }, 0)).toBe("1 detail enabled");
-    expect(sectionSummary("customData", { ...DEFAULT_PROJECT, markers: [{ lat: 1, lon: 2 }] as never, customLines: [{}] as never }, 0)).toBe("1 marker · 1 path");
+  it("names the output, place, shape and size in the panel summaries", () => {
+    expect(panelSummary("setup", DEFAULT_PROJECT, 0)).toBe("Layered relief · Crater Lake");
+    expect(panelSummary("setup", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("Flat engraving · Crater Lake");
+    expect(panelSummary("place", DEFAULT_PROJECT, 0)).toBe("Rectangle · 300 × 200 mm");
+    expect(panelSummary("place", { ...DEFAULT_PROJECT, cropShape: "circle", units: "imperial", widthMm: 254, heightMm: 254 }, 0)).toBe("Circle · 10 × 10 in");
+    expect(panelSummary("terrain", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe("12 contours · index every 5");
+    expect(panelSummary("terrain", DEFAULT_PROJECT, 12)).toBe(`12 layers · ${DEFAULT_PROJECT.materialThicknessMm} mm material`);
+    expect(panelSummary("customData", { ...DEFAULT_PROJECT, markers: [{ lat: 1, lon: 2 }] as never, customLines: [{}] as never }, 0)).toBe("1 marker · 1 path");
+    expect(panelSummary("customData", { ...DEFAULT_PROJECT, markers: [], customLines: [] }, 0)).toBe("0 markers · 0 paths");
   });
 
-  it("summarizes seams and contour smoothing in the advanced section", () => {
-    expect(sectionSummary("advanced", DEFAULT_PROJECT, 0)).toBe("Smooth contours");
-    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, smoothing: 0 }, 0)).toBe("Standard contours");
-    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, workAreaWidthMm: 200, workAreaHeightMm: 400 }, 0)).toBe("2 × 1 sheets per layer · Smooth contours");
-    // Plaques and aviation groups count as details too.
-    const aviation = { airspace: true, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false };
-    expect(activeDetailCount({ ...DEFAULT_PROJECT, aviation, plaque: { enabled: true } as never })).toBe(activeDetailCount(DEFAULT_PROJECT) + 3);
-  });
-
-  it("summarizes sidebar sections for the output mode", () => {
-    const engraving = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, showWaterDepth: true, showEngravingBorder: true };
-    expect(activeDetailCount(engraving)).toBe(activeDetailCount({ ...engraving, showWaterDepth: false }));
-    expect(sectionSummary("details", engraving, 0)).toMatch(/^\d+ details? enabled$/);
-    expect(sectionSummary("terrain", DEFAULT_PROJECT, 12)).toBe(`12 layers · ${DEFAULT_PROJECT.materialThicknessMm} mm material`);
-    expect(sectionSummary("customData", { ...DEFAULT_PROJECT, markers: [], customLines: [] }, 0)).toBe("0 markers · 0 paths");
-    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, paintTemplates: ["water"] }, 0)).toMatch(/· Paint templates$/);
-    expect(sectionSummary("advanced", { ...DEFAULT_PROJECT, paintTemplates: ["water"], outputMode: "engraving" }, 0)).not.toMatch(/Paint templates/);
+  it("counts features and names the line weight", () => {
+    const none = { ...DEFAULT_PROJECT, showRoads: false, showTrails: false, showTransportationLabels: false, showBoundaries: false, showCoordinateGrid: false };
+    expect(panelSummary("features", { ...none, showRoads: true }, 0)).toBe("1 feature on · Balanced lines");
     const bold = LINE_PRESETS.find((preset) => preset.value === "bold")!;
     expect(activeLinePreset(bold.style)).toBe("bold");
-    expect(sectionSummary("linework", { ...DEFAULT_PROJECT, lineStyle: bold.style }, 0)).toBe("Bold preset");
-    expect(sectionSummary("linework", { ...DEFAULT_PROJECT, lineStyle: { ...bold.style, contourMm: 0.99 } }, 0)).toBe("Custom stroke widths");
+    expect(panelSummary("features", { ...none, lineStyle: bold.style }, 0)).toBe("0 features on · Bold lines");
+    expect(panelSummary("features", { ...none, lineStyle: { ...bold.style, contourMm: 0.99 } }, 0)).toBe("0 features on · Custom lines");
+    // An engraved border is a feature only where it is drawn.
+    expect(panelSummary("features", { ...none, showEngravingBorder: true, outputMode: "engraving" }, 0)).toMatch(/^1 feature on/);
+    expect(panelSummary("features", { ...none, showEngravingBorder: true }, 0)).toMatch(/^0 features on/);
+  });
+
+  it("summarizes water, aviation and labels for the output mode", () => {
+    expect(panelSummary("water", { ...DEFAULT_PROJECT, showWaterDepth: true }, 0)).toBe("Carved depth");
+    expect(panelSummary("water", { ...DEFAULT_PROJECT, showWaterDepth: false, showWater: true, paintTemplates: ["water"] }, 0)).toBe("Outlines · Paint templates");
+    expect(panelSummary("water", { ...DEFAULT_PROJECT, showWaterDepth: true, showWater: false, outputMode: "engraving", paintTemplates: ["water"] }, 0)).toBe("Off");
+    expect(panelSummary("aviation", DEFAULT_PROJECT, 0)).toBe("Off");
+    const aviation = { airspace: true, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false };
+    expect(panelSummary("aviation", { ...DEFAULT_PROJECT, aviation, airspaceStack: {} as never }, 0)).toBe("2 layers on · Airspace in 3D");
+    expect(panelSummary("aviation", { ...DEFAULT_PROJECT, aviation, airspaceStack: {} as never, outputMode: "engraving" }, 0)).toBe("2 layers on");
+    expect(panelSummary("labels", { ...DEFAULT_PROJECT, showElevationLabels: true, showNorthArrow: false, showScaleBar: false, plaque: { enabled: true } as never }, 0)).toMatch(/^2 marks on · [\d.]+ mm text$/);
+    // Plaques and aviation groups count as map details too.
+    expect(activeDetailCount({ ...DEFAULT_PROJECT, aviation, plaque: { enabled: true } as never })).toBe(activeDetailCount(DEFAULT_PROJECT) + 3);
+    const engraving = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, showWaterDepth: true, showEngravingBorder: true };
+    expect(activeDetailCount(engraving)).toBe(activeDetailCount({ ...engraving, showWaterDepth: false }));
+  });
+
+  it("summarizes kerf and seams in the fabrication panel", () => {
+    expect(panelSummary("make", DEFAULT_PROJECT, 0)).toBe(`${DEFAULT_PROJECT.laserKerfMm} mm kerf · One piece per layer`);
+    expect(panelSummary("make", { ...DEFAULT_PROJECT, workAreaWidthMm: 200, workAreaHeightMm: 400 }, 0)).toMatch(/· 2 × 1 sheets per layer$/);
+    expect(panelSummary("make", { ...DEFAULT_PROJECT, outputMode: "engraving" }, 0)).toBe(`${DEFAULT_PROJECT.minimumFeatureMm} mm minimum feature`);
   });
 });

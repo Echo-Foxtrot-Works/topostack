@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getEmbedded } from "$lib/studio/embed-context";
   // A select-only combobox for the engraving fonts. Eleven fonts with samples
-  // made a swatch grid taller than the rest of Map details, so the picker is
+  // made a swatch grid taller than the rest of the Labels panel, so the picker is
   // one row that opens a grouped list over the sidebar. Built like HeaderMenu:
   // the theme's Select is a native <select> that cannot draw samples, and its
   // bits-ui popover is kept out of the studio's startup bundle.

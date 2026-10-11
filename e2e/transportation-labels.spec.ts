@@ -4,10 +4,11 @@ test("transportation names appear in the 3D stack and cut preview on narrow terr
   await page.route("https://static-res.makextool.com/**", route => route.abort());
   await page.route("**/v1/events", route => route.fulfill({ status: 204 }));
   await page.goto("/studio");
-  await page.getByRole("button", { name: "Expand all", exact: true }).click();
+  await page.getByRole("tab", { name: "Terrain", exact: true }).click();
   await page.getByRole("spinbutton", { name: "Vertical exaggeration", exact: true }).fill("4");
   const stage = page.locator(".preview-stage");
   await expect(stage).toHaveAttribute("aria-busy", "false");
+  await page.getByRole("tab", { name: "Features", exact: true }).click();
   await page.getByRole("switch", { name: "Latitude and longitude grid", exact: true }).click();
   await expect(stage).toHaveAttribute("aria-busy", "false");
   const canvas = page.locator(".three-stage canvas");

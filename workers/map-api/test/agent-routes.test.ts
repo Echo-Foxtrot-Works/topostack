@@ -104,6 +104,24 @@ describe("POST /v1/projects/plan", () => {
     expect(plain.attribution.sources.some(({ name }) => name.includes("NASR"))).toBe(false);
   });
 
+  it("estimates airspace in acrylic, credits the FAA and leaves the rods to the studio", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng((column) => 1600 + column), { headers: { "content-type": "image/png" } })));
+    const request = { ...rainier, area: { center: { lat: 39.86, lon: -104.67 }, widthKm: 120 }, verticalExaggeration: 4, airspaceStack: { form: "tiers", rod: { joint: "through" } } };
+    const body = await (await worker.fetch(post("/v1/projects/plan", request), env, context)).json<{ plan: { airspace: { form: string; ceilingCapFt: number; capIsDefault: boolean; topMm: number } }; notes: string[]; attribution: { sources: Array<{ name: string }> } }>();
+    expect(body.plan.airspace).toMatchObject({ form: "tiers", ceilingCapFt: 10_000, capIsDefault: true });
+    expect(body.plan.airspace.topMm).toBeGreaterThan(0);
+    const notes = body.notes.join("\n");
+    expect(notes).toMatch(/Airspace in acrylic \(tiers\) rises to about [\d,]+ mm above the base at 10,000 ft; the studio caps it/);
+    expect(notes).toMatch(/At [\d.]+× some airspace levels .* near 10×/);
+    expect(notes).toMatch(/one per column, through holes in the pieces/);
+    expect(notes).toMatch(/never for navigation/);
+    expect(body.attribution.sources.some(({ name }) => name.includes("NASR cycle"))).toBe(true);
+    // Flat output has no airspace to build, and says so.
+    const flat = await (await worker.fetch(post("/v1/projects/plan", { ...request, output: "flat" }), env, context)).json<{ plan: object; notes: string[] }>();
+    expect(flat.plan).not.toHaveProperty("airspace");
+    expect(flat.notes).toContain("Airspace in acrylic is built over layered models only, so flat output leaves it out.");
+  });
+
   it("reports nearly flat ground and plans flat output as one sheet", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => 12), { headers: { "content-type": "image/png" } })));
     const response = await worker.fetch(post("/v1/projects/plan", { ...rainier, area: { center: { lat: 41.9, lon: -93.6 }, widthKm: 5 }, output: "flat" }), env, context);

@@ -3,7 +3,7 @@
   // destroyed when leaving 3D mode, so the camera pose lives at module level.
   // The fit signature and fitted view travel with the pose, so a remounted
   // preview of the same model keeps the orbit instead of refitting it.
-  let savedCamera: { position: [number, number, number]; target: [number, number, number]; fitSignature?: string; fitDistance: number; fitTarget: [number, number, number] } | undefined;
+  let savedCamera: { position: [number, number, number]; target: [number, number, number]; fitSignature?: string; sourceKind?: string; fitDistance: number; fitTarget: [number, number, number] } | undefined;
 </script>
 
 <script lang="ts">
@@ -14,7 +14,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { aviationStroke, type GeometryIRV1 } from "@topostack/core";
+  import { airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -23,7 +23,7 @@
    * matching `hiddenPrefixes` are left out while their drafts are drawn above.
    */
   let { geometry, exploded, placement, onUnavailable, rememberCamera = true }: {
-    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial">;
+    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial" | "airspaceStack"> & Partial<Pick<GeometryIRV1, "sourceKind">>;
     /** Isolated representative previews must not replace the project camera. */
     rememberCamera?: boolean;
     exploded: number;
@@ -35,9 +35,15 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  import { addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
+  import { airspaceBody, airspaceBodyKey, airspaceRods, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
   const isEmbedded = getEmbedded();
   let zoom = $state(1);
+  /**
+   * The orbit may close to within a hair of its target: makers inspect single
+   * contour steps and engraved marks up close. The near plane follows the
+   * camera in (`fitNearPlane`) so close geometry is not clipped away.
+   */
+  const CLOSEST_ORBIT_MM = 0.25;
   let fitDistance = 320;
   let fitTarget = new THREE.Vector3();
   function setZoom(value: number) {
@@ -46,10 +52,39 @@
     runtime.camera.position.copy(runtime.controls.target).addScaledVector(direction, fitDistance / value);
     runtime.controls.update(); runtime.requestRender();
   }
-  export function fitView() {
+  /**
+   * Keep the near plane a fixed fraction of the orbit distance, capped at the
+   * fitted value. A fixed near plane clipped everything closer than it, and
+   * scaling it keeps depth precision proportional at every distance.
+   */
+  function fitNearPlane(force = false) {
     if (!runtime) return;
+    const near = Math.min(runtime.farthestNear, Math.max(runtime.controls.getDistance() * 0.05, CLOSEST_ORBIT_MM * 0.05));
+    if (!force && near === runtime.camera.near) return;
+    runtime.camera.near = near; runtime.camera.updateProjectionMatrix();
+  }
+  /** Frame the current meshes, including the slider's exploded height. */
+  function updateFit(): void {
+    if (!runtime) return;
+    const bounds = new THREE.Box3().setFromObject(runtime.content);
+    if (bounds.isEmpty()) return;
+    bounds.getCenter(fitTarget);
+    const verticalFov = THREE.MathUtils.degToRad(runtime.camera.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(runtime.camera.aspect, 0.1));
+    const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
+    fitDistance = radius / Math.sin(Math.min(verticalFov, horizontalFov) / 2) * 1.15;
+    runtime.controls.maxDistance = Math.max(runtime.controls.maxDistance, fitDistance);
+    runtime.camera.far = Math.max(runtime.camera.far, fitDistance + radius * 1.15);
+    runtime.camera.updateProjectionMatrix();
+  }
+  export function fitView() {
+    if (!runtime || placement) return;
+    updateFit();
+    const direction = runtime.camera.position.clone().sub(runtime.controls.target);
+    if (direction.lengthSq() < 1e-6) direction.set(0.15, -1.65, 2.7);
     runtime.controls.target.copy(fitTarget);
-    setZoom(1);
+    runtime.camera.position.copy(fitTarget).addScaledVector(direction.normalize(), fitDistance);
+    runtime.controls.update(); runtime.requestRender();
   }
   let container: HTMLButtonElement;
   let runtime: Runtime | undefined;
@@ -59,12 +94,15 @@
     /** Top-down camera for placement mode; used once the ease to overhead finishes. */
     topCamera: THREE.OrthographicCamera; topDown: boolean;
     rig: THREE.Group; content: THREE.Group; resizeObserver: ResizeObserver; frame: number;
-    environmentTarget: THREE.WebGLRenderTarget; texture: THREE.CanvasTexture; fitSignature?: string;
+    environmentTarget: THREE.WebGLRenderTarget; texture: THREE.CanvasTexture; fitSignature?: string; sourceKind?: string;
+    /** The near plane at fitted distances; `fitNearPlane` lowers it as the camera closes in. */
+    farthestNear: number;
     keyLight: THREE.DirectionalLight; detachContextHandlers: () => void; requestRender: () => void;
     /** Materials and textures created by the last rebuild, including ones no object ended up using. */
     sceneResources: Array<{ dispose: () => void }>;
     /** Extruded layer bodies surviving across rebuilds, by layer id. */
     layerMeshes: Map<string, CachedLayer>;
+    airspaceBodies: Map<string, CachedAirspaceBody>;
   }
 
 
@@ -100,7 +138,7 @@
   }
 
   const TOP_DOWN_EASE_MS = 200;
-  let orbitBeforePlacement: { position: THREE.Vector3; target: THREE.Vector3; minDistance: number } | undefined;
+  let orbitBeforePlacement: { position: THREE.Vector3; target: THREE.Vector3 } | undefined;
   let easeFrame = 0;
   const easeDuration = () => (matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : TOP_DOWN_EASE_MS);
 
@@ -133,9 +171,8 @@
   function enterTopDown(): void {
     if (!runtime || orbitBeforePlacement) return;
     const { camera, controls, content } = runtime;
-    orbitBeforePlacement = { position: camera.position.clone(), target: controls.target.clone(), minDistance: controls.minDistance };
+    orbitBeforePlacement = { position: camera.position.clone(), target: controls.target.clone() };
     controls.enabled = false;
-    controls.minDistance = 0;
     toolbarSpace = readToolbarSpace();
     fitTopCamera();
     const fromPosition = camera.position.clone(); const fromTarget = controls.target.clone();
@@ -162,7 +199,7 @@
       controls.target.lerpVectors(fromTarget, back.target, fraction);
       applyExploded(content, toExploded * fraction);
       applyViewOffset(1 - fraction);
-    }, () => { controls.minDistance = back.minDistance; controls.enabled = true; });
+    }, () => { controls.enabled = true; });
   }
 
   onMount(() => {
@@ -181,8 +218,14 @@
     scene.add(new THREE.HemisphereLight(0x9fb8ad, 0x2d2118, 0.9));
     const rig = new THREE.Group(); const content = new THREE.Group(); content.scale.y = -1; rig.add(content); scene.add(rig);
     const topCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 20_000); topCamera.position.set(0, 0, 5_000); topCamera.lookAt(0, 0, 0);
-    const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.065; controls.maxPolarAngle = Math.PI * 0.95; controls.minDistance = 120; controls.maxDistance = 1800; controls.target.set(0, 0, 10); camera.position.set(15, -165, 270); controls.update();
-    if (rememberCamera && savedCamera) { camera.position.set(...savedCamera.position); controls.target.set(...savedCamera.target); controls.update(); fitDistance = savedCamera.fitDistance; fitTarget = new THREE.Vector3(...savedCamera.fitTarget); }
+    const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.065; controls.maxPolarAngle = Math.PI * 0.95; controls.minDistance = CLOSEST_ORBIT_MM; controls.maxDistance = 1800; controls.zoomToCursor = true; controls.target.set(0, 0, 10); camera.position.set(15, -165, 270); controls.update();
+    if (rememberCamera && savedCamera) {
+      camera.position.set(...savedCamera.position); controls.target.set(...savedCamera.target);
+      const savedDistance = controls.getDistance();
+      controls.minDistance = Math.min(controls.minDistance, savedDistance);
+      controls.maxDistance = Math.max(controls.maxDistance, savedDistance);
+      controls.update(); fitDistance = savedCamera.fitDistance; fitTarget = new THREE.Vector3(...savedCamera.fitTarget);
+    }
     const texture = makeWoodTexture();
     let contextLost = false;
     const motionQuery = isEmbedded() ? window.matchMedia("(prefers-reduced-motion: reduce)") : undefined;
@@ -247,7 +290,7 @@
       if (ambient) scheduleRender();
     };
     controls.addEventListener("change", requestRender);
-    const updateZoom = () => { zoom = fitDistance / controls.getDistance(); };
+    const updateZoom = () => { zoom = fitDistance / controls.getDistance(); fitNearPlane(); };
     controls.addEventListener("change", updateZoom);
     const resizeObserver = new ResizeObserver(([entry]) => { const width = entry?.contentRect.width ?? 0; const height = entry?.contentRect.height ?? 0; if (width <= 0 || height <= 0) return; if (placement) toolbarSpace = readToolbarSpace(); applyViewOffset(viewOffset); renderer.setSize(width, height, false); fitTopCamera(); stopFrame(); render(); }); resizeObserver.observe(container);
     const stopFrame = () => { if (runtime) { cancelAnimationFrame(runtime.frame); runtime.frame = 0; } };
@@ -286,13 +329,13 @@
       controls.removeEventListener("change", requestRender);
       controls.removeEventListener("change", updateZoom);
     };
-    runtime = { renderer, camera, topCamera, topDown: false, controls, rig, content, resizeObserver, frame: 0, environmentTarget, texture, keyLight, detachContextHandlers, requestRender, sceneResources: [], layerMeshes: new Map(), fitSignature: rememberCamera ? savedCamera?.fitSignature : undefined };
+    runtime = { renderer, camera, topCamera, topDown: false, controls, rig, content, resizeObserver, frame: 0, environmentTarget, texture, keyLight, farthestNear: camera.near, detachContextHandlers, requestRender, sceneResources: [], layerMeshes: new Map(), airspaceBodies: new Map(), fitSignature: rememberCamera ? savedCamera?.fitSignature : undefined, sourceKind: rememberCamera ? savedCamera?.sourceKind : undefined };
     requestRender();
     return () => {
       if (!runtime) return;
       const { position, target } = orbitBeforePlacement ?? { position: runtime.camera.position, target: runtime.controls.target };
       cancelAnimationFrame(easeFrame);
-      if (rememberCamera) savedCamera = { position: [position.x, position.y, position.z], target: [target.x, target.y, target.z], fitSignature: runtime.fitSignature, fitDistance, fitTarget: [fitTarget.x, fitTarget.y, fitTarget.z] };
+      if (rememberCamera) savedCamera = { position: [position.x, position.y, position.z], target: [target.x, target.y, target.z], fitSignature: runtime.fitSignature, sourceKind: runtime.sourceKind, fitDistance, fitTarget: [fitTarget.x, fitTarget.y, fitTarget.z] };
       cancelAnimationFrame(runtime.frame); runtime.detachContextHandlers(); runtime.resizeObserver.disconnect(); disposeContent(runtime.content, runtime.sceneResources); disposeLayerCache(runtime.layerMeshes); runtime.texture.dispose(); runtime.environmentTarget.dispose(); scene.environment = null; runtime.keyLight.shadow.dispose(); runtime.controls.dispose(); runtime.renderer.dispose();
       // Browsers cap live WebGL contexts; release this one now instead of at GC.
       runtime.renderer.forceContextLoss(); runtime.renderer.domElement.remove(); runtime = undefined;
@@ -305,26 +348,34 @@
   const waterSurfaces = $derived(geometry.waterSurfaces);
   const waterInserts = $derived(geometry.waterInserts);
   const waterInsertMaterial = $derived(geometry.waterInsertMaterial);
+  const airspaceStack = $derived(geometry.airspaceStack);
   const lineStyle = $derived(geometry.lineStyle);
   const widthMm = $derived(geometry.widthMm);
   const heightMm = $derived(geometry.heightMm);
+  const sourceKind = $derived(geometry.sourceKind);
   // A string, so an equal prefix list from a new array does not rebuild the scene.
   const hiddenKey = $derived(placement?.hiddenPrefixes.join("|") ?? "");
   const hideMarkings = $derived(placement?.hideMarkings ?? false);
   $effect(() => {
     const omitMarkings = hideMarkings;
-    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, lineStyle, widthMm, heightMm };
+    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, airspaceStack, lineStyle, widthMm, heightMm, sourceKind };
+    const showAirspace = !placement;
     const hiddenPrefixes = hiddenKey ? hiddenKey.split("|") : [];
     const timeout = window.setTimeout(() => {
       if (!runtime) return;
       // Decide what survives before tearing the scene down: a style edit leaves
       // every cut polygon alone, so its bodies are detached and re-added rather
       // than re-extruded.
+      const airspace = showAirspace ? activeGeometry.airspaceStack : undefined;
+      const airspaceKeys = new Map(airspace?.levels.flatMap((level) => level.pieces.map((piece) => [piece.id, airspaceBodyKey(piece, airspace.thicknessMm)] as const)) ?? []);
+      const reusedAirspace = new Set([...runtime.airspaceBodies].filter(([id, cached]) => cached.key === airspaceKeys.get(id)).map(([id]) => id));
       const keys = new Map(activeGeometry.layers.map((layer) => [layer.id, layerKey(layer)] as const));
       const reused = new Set([...runtime.layerMeshes].filter(([id, cached]) => cached.key === keys.get(id)).map(([id]) => id));
       const kept = new Set<THREE.Object3D>();
       for (const id of reused) for (const mesh of runtime.layerMeshes.get(id)!.meshes) kept.add(mesh);
+      for (const id of reusedAirspace) for (const mesh of runtime.airspaceBodies.get(id)!.meshes) kept.add(mesh);
       disposeContent(runtime.content, runtime.sceneResources, kept);
+      for (const id of runtime.airspaceBodies.keys()) if (!reusedAirspace.has(id)) runtime.airspaceBodies.delete(id);
       disposeLayerCache(runtime.layerMeshes, reused);
       const style = activeGeometry.lineStyle;
       // The 3D engraving ink is a lighter brown than the flat previews' so it reads on lit wood.
@@ -362,7 +413,7 @@
       // (below), so the two finishes read apart at a glance.
       const acrylicMaterial = new THREE.MeshStandardMaterial({
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
-        side: THREE.DoubleSide, depthWrite: false,
+        side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
       runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
@@ -446,6 +497,59 @@
         for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
       });
+      // Airspace pieces float at their true height on their rods, tinted as the
+      // sectional colours them; clear plates show their frost. Each level rides
+      // above the top sheet when the stack is exploded.
+      if (airspace?.levels.length) {
+        // Transparent double-sided materials are drawn in two passes that
+        // flip the side and recompile-check the program for every mesh, every
+        // frame. All faces of a piece share one colour and opacity, so one
+        // pass blends to nearly the same result.
+        const glass = { transparent: true, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true } as const;
+        const tints = {
+          clear: new THREE.MeshStandardMaterial({ color: 0xdcecf2, opacity: 0.24, roughness: 0.06, metalness: 0, ...glass }),
+          blue: new THREE.MeshStandardMaterial({ color: 0x3f7fd4, opacity: 0.4, roughness: 0.08, metalness: 0, ...glass }),
+          magenta: new THREE.MeshStandardMaterial({ color: 0xb44a91, opacity: 0.4, roughness: 0.08, metalness: 0, ...glass }),
+        };
+        const frostMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.45, ...glass });
+        const rodMaterial = new THREE.MeshStandardMaterial({ color: 0xa8aeb2, roughness: 0.4, metalness: 0.3 });
+        runtime.sceneResources.push(tints.clear, tints.blue, tints.magenta, frostMaterial, rodMaterial);
+        const thickness = airspace.thicknessMm;
+        const levelLayer = new Map<string, number>();
+        airspace.levels.forEach((level, position) => {
+          const stackIndex = activeGeometry.layers.length + position;
+          const top = level.zMm + thickness + markingLift(thickness);
+          // A level's frost, edges and labels are each one draw call, not one per piece.
+          const frost: THREE.Shape[] = [];
+          const edgeBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+          const labelBatch: LineBatch = { positions: [] };
+          for (const piece of level.pieces) {
+            levelLayer.set(piece.id, stackIndex);
+            for (const mesh of airspaceBody(runtime!.airspaceBodies, piece, thickness, tints[piece.tint])) addStacked(runtime!.content, mesh, stackIndex, level.zMm);
+            if (omitMarkings) continue;
+            for (const marking of airspacePieceMarkings(piece)) {
+              if (marking.filled && marking.points.length > 2) frost.push(shapeFromPolygon({ outer: marking.points, holes: marking.holes ?? [] }));
+              else if (marking.points.length > 1) {
+                const material = lineMaterials[markingStyleKey(marking)];
+                let batch = edgeBatches.get(material);
+                if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
+                appendPolyline(batch, marking.points);
+              }
+              if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
+            }
+          }
+          if (frost.length) {
+            const mesh = new THREE.Mesh(new THREE.ShapeGeometry(frost, 8), frostMaterial);
+            mesh.renderOrder = 3;
+            addStacked(runtime!.content, mesh, stackIndex, top);
+          }
+          for (const [material, batch] of edgeBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), stackIndex, top);
+          if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), stackIndex, top + markingLift(thickness) * 0.5);
+        });
+        // Rods stand from their seat to the piece they hold, and ride with that piece.
+        for (const { mesh, stackIndex } of airspaceRods(airspace, (id) => levelLayer.get(id) ?? activeGeometry.layers.length, rodMaterial)) addStacked(runtime!.content, mesh, stackIndex, 0);
+      }
+
       // Open water is stain on the wood rather than a pane over it: the top
       // face of every sheet under a waterline takes a multiply tint wherever
       // the lake covers it, riding its sheet when the stack is exploded. The
@@ -475,7 +579,9 @@
       const radius = Math.hypot(activeGeometry.widthMm / 2, activeGeometry.heightMm / 2);
       // Fit the key light and its shadow frustum to the model, including the
       // fully exploded stack height, so shadows stay crisp at every size.
-      const stackHeight = activeGeometry.layers.length * ((activeGeometry.layers[0]?.materialThicknessMm ?? 1) + 13);
+      const airspaceLevels = showAirspace ? activeGeometry.airspaceStack?.levels.length ?? 0 : 0;
+      const airspaceTop = airspaceLevels ? activeGeometry.airspaceStack!.topMm : 0;
+      const stackHeight = Math.max(activeGeometry.layers.length * ((activeGeometry.layers[0]?.materialThicknessMm ?? 1) + 13), airspaceTop + (activeGeometry.layers.length + airspaceLevels) * 13);
       const shadowHalfSize = Math.max(radius * 1.4, stackHeight);
       runtime.keyLight.position.set(-0.5, -0.33, 0.78).normalize().multiplyScalar(radius * 2.6);
       runtime.keyLight.shadow.camera.left = -shadowHalfSize; runtime.keyLight.shadow.camera.right = shadowHalfSize;
@@ -483,31 +589,18 @@
       runtime.keyLight.shadow.camera.near = radius * 0.4; runtime.keyLight.shadow.camera.far = radius * 6;
       runtime.keyLight.shadow.normalBias = Math.max(radius * 0.003, 0.05);
       runtime.keyLight.shadow.camera.updateProjectionMatrix();
-      // The overhead placement camera sits inside the orbit limit until it leaves.
-      const currentDistance = runtime.controls.getDistance();
-      const minimumDistance = Math.min(radius * 1.2, currentDistance);
-      if (orbitBeforePlacement) orbitBeforePlacement.minDistance = minimumDistance; else runtime.controls.minDistance = minimumDistance;
-      runtime.controls.maxDistance = Math.max(radius * 8, currentDistance);
-      runtime.camera.near = Math.max(radius * 0.15, 0.5); runtime.camera.far = radius * 24; runtime.camera.updateProjectionMatrix();
-      const fitSignature = [activeGeometry.widthMm, activeGeometry.heightMm, activeGeometry.layers.length, activeGeometry.layers[0]?.materialThicknessMm ?? 1].join(":");
-      if (runtime.fitSignature !== fitSignature) {
-        const target = new THREE.Vector3(0, 0, (activeGeometry.layers.length * (activeGeometry.layers[0]?.materialThicknessMm ?? 1)) / 2);
-        const direction = runtime.camera.position.clone().sub(runtime.controls.target);
-        if (direction.lengthSq() < 1e-6) direction.set(0.15, -1.65, 2.7);
-        direction.normalize();
-        const verticalFov = THREE.MathUtils.degToRad(runtime.camera.fov);
-        const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(runtime.camera.aspect, 0.1));
-        const modelRadius = Math.hypot(activeGeometry.widthMm / 2, activeGeometry.heightMm / 2, stackHeight / 2);
-        const distance = modelRadius / Math.sin(Math.min(verticalFov, horizontalFov) / 2) * 1.15;
-        fitDistance = Math.min(runtime.controls.maxDistance, Math.max(runtime.controls.minDistance, distance));
-        fitTarget = target.clone();
-        if (!runtime.fitSignature) {
-          runtime.controls.target.copy(target);
-          runtime.camera.position.copy(target).addScaledVector(direction, fitDistance);
-        }
+      runtime.controls.maxDistance = Math.max(radius * 8, runtime.controls.getDistance());
+      runtime.farthestNear = Math.max(radius * 0.15, 0.5); runtime.camera.far = radius * 24; fitNearPlane(true);
+      const fitSignature = [activeGeometry.widthMm, activeGeometry.heightMm, activeGeometry.layers.length, activeGeometry.layers[0]?.materialThicknessMm ?? 1, Math.round(airspaceTop)].join(":");
+      const firstRealResult = activeGeometry.sourceKind === "real" && runtime.sourceKind !== "real";
+      if (runtime.fitSignature !== fitSignature || firstRealResult) {
+        // Replace the bundled sample's framing once real terrain arrives.
+        // Later edits keep the maker's orbit; Fit view remains available.
+        if (!runtime.fitSignature || firstRealResult) fitView(); else updateFit();
         runtime.fitSignature = fitSignature;
         zoom = fitDistance / runtime.controls.getDistance();
       }
+      runtime.sourceKind = activeGeometry.sourceKind;
       runtime.controls.update();
       runtime.renderer.shadowMap.needsUpdate = true;
       runtime.requestRender();
@@ -555,4 +648,4 @@
 
 <button type="button" class="three-stage" bind:this={container} onkeydown={handleKeyDown} aria-label="Interactive 3D preview. Drag or use left and right arrows to orbit; scroll or use up and down arrows to zoom."></button>
 
-{#if isEmbedded()}<AtommZoom value={zoom} min={0.25} max={4} onZoom={setZoom} onFit={fitView} />{/if}
+{#if isEmbedded()}<AtommZoom value={zoom} min={0.25} max={Infinity} onZoom={setZoom} onFit={fitView} />{/if}

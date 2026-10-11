@@ -1,6 +1,6 @@
 import { mount, tick, unmount } from "svelte";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PROJECT, type ProjectConfigV1 } from "@topostack/core";
+import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type ProjectConfigV1 } from "@topostack/core";
 import ExportDialog from "$lib/studio/ExportDialog.svelte";
 
 describe("ExportDialog", () => {
@@ -11,13 +11,13 @@ describe("ExportDialog", () => {
   });
   afterEach(async () => { if (component) await unmount(component); component = undefined; });
 
-  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean; sharing?: boolean; previewImageStatus?: string } = {}) {
+  async function render(project: Partial<ProjectConfigV1> = {}, props: { blockedReason?: string; panelCount?: number; nested?: boolean; acrylicCount?: number; acrylicNested?: boolean; airspaceCount?: number; sharing?: boolean; previewImageStatus?: string } = {}) {
     const onDownload = vi.fn();
     const onSavePreview = vi.fn();
     const onCopyLink = vi.fn();
     const target = document.createElement("div");
     component = mount(ExportDialog, { target, props: {
-      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested, acrylicCount: props.acrylicCount, acrylicNested: props.acrylicNested,
+      open: true, project: { ...DEFAULT_PROJECT, ...project }, summary: "12 layers · 9 cut panels", panelCount: props.panelCount ?? 9, nested: props.nested, acrylicCount: props.acrylicCount, acrylicNested: props.acrylicNested, airspaceCount: props.airspaceCount,
       blockedReason: props.blockedReason, preparing: false, phase: "idle", title: "", detail: "",
       onDownload, onClose: () => undefined,
       onSavePreview: props.sharing ? onSavePreview : undefined,
@@ -35,6 +35,18 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("2 nested sheets");
   });
 
+  it("adds the airspace panels to the count and offers them as their own download", async () => {
+    const { target, button, onDownload } = await render({ outputMode: "stack", airspaceStack: DEFAULT_AIRSPACE_STACK }, { airspaceCount: 6 });
+    expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels + 6 airspace panels,");
+    expect(button("Airspace")?.disabled).toBe(false);
+    button("Airspace")!.click();
+    expect(onDownload).toHaveBeenCalledWith("airspace");
+    // Turned on, but nothing built here.
+    const empty = await render({ outputMode: "stack", airspaceStack: DEFAULT_AIRSPACE_STACK }, { airspaceCount: 0 });
+    expect(empty.button("Airspace")?.disabled).toBe(true);
+    expect(empty.target.textContent).toContain("No airspace was built for this area.");
+  });
+
   it("adds the acrylic insert panels or sheets to the complete project's count", async () => {
     const panels = await render({ outputMode: "stack" }, { acrylicCount: 1 });
     expect(panels.target.querySelector(".export-hero")?.textContent).toContain("9 panels + 1 acrylic panel,");
@@ -48,9 +60,10 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels");
     expect(target.textContent).toContain("Crater Lake · 12 layers · 9 cut panels");
     expect(target.querySelector<HTMLDetailsElement>(".export-more")?.open).toBe(false);
-    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Assembly guide"]);
+    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Airspace", "Assembly guide"]);
     expect(button("Paint templates")?.disabled).toBe(true);
     expect(button("Acrylic inserts")?.disabled).toBe(true);
+    expect(button("Airspace")?.disabled).toBe(true);
     button("Complete project")!.click();
     button("Cut panels")!.click();
     expect(onDownload.mock.calls).toEqual([["all"], ["panels"]]);

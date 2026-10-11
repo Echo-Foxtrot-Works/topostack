@@ -7,12 +7,11 @@ test("engraves FAA aviation detail and exports it with its cycle and a not-for-n
   await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
   await page.route("**/v1/events", (route) => route.fulfill({ status: 204 }));
   await page.goto("/studio");
-  await page.getByRole("button", { name: "Expand all" }).click();
+  await page.getByRole("tab", { name: "Aviation", exact: true }).click();
   for (const name of ["Class B, C and D airspace", "Runways", "Airports", "Identifiers and airspace altitudes"]) {
     await page.getByRole("switch", { name, exact: true }).click();
     await expect(page.getByRole("switch", { name, exact: true })).toBeChecked();
   }
-  await page.getByRole("button", { name: "Customize preset" }).click();
   await expect(page.getByRole("spinbutton", { name: "Aviation line width", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
