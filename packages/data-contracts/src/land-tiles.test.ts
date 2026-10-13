@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import registration from "../../../scripts/data/public-lands-sources.json";
-import { LAND_CLASSES, isLandClass, landTileProperties, landsArchiveMetadata, landsCovers, parseLandProperties, parseLandsArchiveMetadata, validateLandsSources } from "./land-tiles";
+import { LAND_CLASSES, isLandClass, landSourcesCovering, landTileProperties, landsArchiveMetadata, landsCovers, parseLandProperties, parseLandsArchiveMetadata, validateLandsSources } from "./land-tiles";
 
 describe("land tile properties", () => {
   it("round-trips a named unit and an unnamed one", () => {
@@ -9,6 +9,13 @@ describe("land tile properties", () => {
     const blm = { class: "blm", unit: "blm:UT", manager: "BLM", acres: 22_768_662 } as const;
     expect(landTileProperties(blm)).toEqual(blm);
     expect(parseLandProperties(landTileProperties(blm))).toEqual(blm);
+  });
+
+  it("carries a Canadian unit's source, and reads a unit without one as PAD-US", () => {
+    const park = { class: "national-park", unit: "ca:national-park:Banff National Park:7", name: "Banff National Park", acres: 1_640_000, source: "cpcad" } as const;
+    expect(parseLandProperties(landTileProperties(park))).toEqual(park);
+    expect(parseLandProperties({ ...park, source: "padus" })).not.toHaveProperty("source");
+    expect(parseLandProperties({ ...park, source: "osm" })).not.toHaveProperty("source");
   });
 
   it("keeps a feature but drops a malformed optional detail", () => {
@@ -40,8 +47,11 @@ describe("land tile properties", () => {
 describe("lands archive metadata", () => {
   const metadata = { dataset: "public-lands-2025-03-31-v1", padusVersion: "4.1", padusDate: "2025-03-31" };
 
-  it("round-trips the builder's metadata", () => {
+  it("round-trips the builder's metadata, with and without Canada", () => {
     expect(parseLandsArchiveMetadata(landsArchiveMetadata(metadata))).toEqual(metadata);
+    const withCanada = { ...metadata, dataset: "public-lands-2025-03-31-v2", cpcadDate: "2025-12-31" };
+    expect(parseLandsArchiveMetadata(landsArchiveMetadata(withCanada))).toEqual(withCanada);
+    expect(() => parseLandsArchiveMetadata({ ...landsArchiveMetadata(metadata), cpcad_date: "2025-13-45" })).toThrow(/cpcad_date/);
   });
 
   it.each([
@@ -79,6 +89,25 @@ describe("lands source registration", () => {
     expect(() => validateLandsSources({ ...registration, ...patch })).toThrow();
   });
 
+  it("registers Canada as a second source with its own coverage", () => {
+    const sources = validateLandsSources(registration);
+    expect(sources.canada).toMatchObject({ date: "2025-12-31" });
+    expect(sources.coverage.find((region) => region.id === "canada")?.source).toBe("cpcad");
+    // A Canadian box needs the Canadian registration; an unknown source is refused.
+    const { canada: _canada, ...usOnly } = registration;
+    expect(() => validateLandsSources(usOnly)).toThrow(/coverage region: canada/);
+    expect(() => validateLandsSources({ ...registration, coverage: [{ id: "x", bounds: [0, 0, 1, 1], source: "wdpa" }] })).toThrow(/coverage region/);
+    expect(() => validateLandsSources({ ...registration, canada: { ...registration.canada, url: "http://x" } })).toThrow(/https/);
+    expect(() => validateLandsSources({ ...registration, canada: { ...registration.canada, name: "" } })).toThrow(/canada.name/);
+  });
+
+  it.each([
+    ["Banff", -115.57, 51.18, ["cpcad"]], ["Rocky Mountain National Park", -105.68, 40.34, ["padus"]],
+    ["Glacier National Park, on the border", -114.0, 48.99, ["padus", "cpcad"]], ["the Alps", 7.8, 46.6, []],
+  ] as const)("names the sources covering %s", (_name, lon, lat, expected) => {
+    expect(landSourcesCovering(validateLandsSources(registration), { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toEqual(expected);
+  });
+
   it("rejects a registration that is not an object", () => {
     expect(() => validateLandsSources("public-lands")).toThrow();
   });
@@ -92,7 +121,7 @@ describe("lands source registration", () => {
   });
 
   it.each([
-    ["Algonquin Park, Ontario", -78.94, 46.46], ["Banff", -115.57, 51.18], ["the Alps", 7.8, 46.6],
+    ["the Alps", 7.8, 46.6], ["Greenland", -40.0, 72.0],
   ])("does not cover %s", (_name, lon, lat) => {
     expect(landsCovers(validateLandsSources(registration), { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toBe(false);
   });

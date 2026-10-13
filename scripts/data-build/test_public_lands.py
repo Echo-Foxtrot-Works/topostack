@@ -61,6 +61,36 @@ class Classes(unittest.TestCase):
         self.assertEqual(lands.unit_key('wilderness', record(Unit_Nm='Indian Peaks Wilderness', State_Nm='CO')), 'wilderness:Indian Peaks Wilderness')
 
 
+class Canada(unittest.TestCase):
+    def test_classifies_cpcad_land_areas_by_type(self):
+        self.assertEqual(lands.cpcad_class({'TYPE_E': 'National Park', 'BIOME': 'T'}), 'national-park')
+        self.assertEqual(lands.cpcad_class({'TYPE_E': 'Provincial Park', 'BIOME': 'T'}), 'state-park')
+        self.assertEqual(lands.cpcad_class({'TYPE_E': 'National Wildlife Area', 'BIOME': 'T'}), 'wildlife-refuge')
+        self.assertEqual(lands.cpcad_class({'TYPE_E': 'Indigenous owned protected area', 'BIOME': 'T'}), 'preserve')
+        self.assertIsNone(lands.cpcad_class({'TYPE_E': 'National Park', 'BIOME': 'M'}))  # marine
+        self.assertIsNone(lands.cpcad_class({'TYPE_E': 'Proposed biodiversity reserve', 'BIOME': 'T'}))
+        self.assertTrue(set(lands.CPCAD_TYPES.values()) <= {'national-park', 'wilderness', 'wildlife-refuge', 'state-park', 'preserve'})
+
+    def test_names_canadian_units_as_they_are_known(self):
+        self.assertEqual(lands.display_name('national-park', 'Banff National Park Of Canada', 'cpcad'), 'Banff National Park')
+        self.assertEqual(lands.display_name('state-park', 'AKAMINA-KISHINENA PARK', 'cpcad'), 'Akamina-Kishinena Park')
+        self.assertEqual(lands.display_name('state-park', "O'HARA LAKE PARK", 'cpcad'), "O'Hara Lake Park")
+        self.assertEqual(lands.display_name('state-park', 'Algonquin Provincial Park (Natural Environment Class)', 'cpcad'), 'Algonquin Provincial Park (Natural Environment Class)')
+        # US names are left as published.
+        self.assertEqual(lands.display_name('national-park', 'Bank of Canada Park'), 'Bank of Canada Park')
+
+    def test_keys_canadian_units_by_province_and_marks_their_source(self):
+        props = {'Unit_Nm': 'DUC Fee Simple Lands', 'State_Nm': 'CA-7', 'source': 'cpcad'}
+        self.assertEqual(lands.unit_key('preserve', props), 'ca:preserve:DUC Fee Simple Lands:CA-7')
+        self.assertEqual(lands.unit_key('national-park', {**props, 'Unit_Nm': 'Banff National Park'}), 'ca:national-park:Banff National Park:CA-7')
+        square = box(-1_400_000, 1_400_000, -1_399_000, 1_401_000)
+        feature = lands.unit_feature('ca:preserve:X:CA-7', 'preserve', {**props, 'Unit_Nm': 'X'}, square, 'EPSG:5070')
+        self.assertEqual(feature['properties']['source'], 'cpcad')
+        self.assertNotIn('manager', feature['properties'])
+        us = lands.unit_feature('blm:CO', 'blm', record(Mang_Name='BLM'), square, 'EPSG:5070')
+        self.assertNotIn('source', us['properties'])
+
+
 class Units(unittest.TestCase):
     def test_dissolves_the_pieces_of_one_unit(self):
         props = record(Mang_Name='USFS', Unit_Nm='Indian Peaks Wilderness')
@@ -104,6 +134,8 @@ class Registration(unittest.TestCase):
         pins = json.loads((ROOT / 'scripts/data/public-lands-sources.json').read_text())
         self.assertRegex(pins['files']['padus']['sha256'], r'^[0-9a-f]{64}$')
         self.assertTrue(pins['dataset'].startswith(f"public-lands-{pins['padusDate']}-v"))
+        self.assertRegex(pins['files']['cpcad']['sha256'], r'^[0-9a-f]{64}$')
+        self.assertEqual(pins['canada']['date'], '2025-12-31')
 
 
 if __name__ == '__main__':

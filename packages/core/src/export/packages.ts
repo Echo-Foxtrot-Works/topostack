@@ -79,11 +79,16 @@ function landsSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
     return `${PAINT_REGION_LABELS[landClass]} ${format(stroke.widthMm)} mm (${stroke.dash ? `dashes ${stroke.dash.map(format).join("/")} mm` : "solid"})`;
   });
   const extras = [lands.labels ? "names inside the largest units" : "", lands.hatched && config.outputMode === "engraving" ? "short ticks just inside each boundary" : ""].filter(Boolean);
+  const named: Record<"padus" | "cpcad", string> = {
+    padus: `the USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}`,
+    cpcad: "the Canadian Protected and Conserved Areas Database (CPCAD; contains information licensed under the Open Government Licence – Canada)",
+  };
+  const sources = ir.landsSources ?? ["padus"];
   const source = ir.landsStatus === "not-covered"
-    ? "Neither PAD-US nor OpenStreetMap has public land of these kinds here, so this area has none."
-    : ir.landsSource === "openstreetmap"
+    ? "Neither the public land databases nor OpenStreetMap have land of these kinds here, so this area has none."
+    : sources.includes("openstreetmap")
       ? "Source: OpenStreetMap protected areas (national parks, nature reserves and military land, unnamed), as completely as they are mapped."
-      : `Source: USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}. Boundaries are as published and can lag changes on the ground.`;
+      : `Source: ${sources.filter((entry): entry is "padus" | "cpcad" => entry !== "openstreetmap").map((entry) => named[entry]).join(" and ")}. Boundaries are as published and can lag changes on the ground.`;
   return `Public land boundaries: ${drawn.join(", ")}${extras.length ? `, with ${extras.join(" and ")}` : ""}. ${source}\n`;
 }
 

@@ -43,7 +43,8 @@ function aviationEntry(sources: AviationSources): ManifestSource {
 }
 
 function landsEntry(sources: LandsSources): ManifestSource {
-  return { id: sources.dataset, name: sources.name, url: sources.url, license: sources.license, version: sources.padusVersion, archive: "/v1/lands.pmtiles", optional: true, minZoom: sources.minZoom, maxZoom: sources.maxZoom };
+  const canada = sources.canada;
+  return { id: sources.dataset, name: canada ? `${sources.name}; ${canada.name}` : sources.name, url: sources.url, license: canada ? `${sources.license} ${canada.license}` : sources.license, version: sources.padusVersion, archive: "/v1/lands.pmtiles", optional: true, minZoom: sources.minZoom, maxZoom: sources.maxZoom };
 }
 
 export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>, aviation?: AviationSources, lands?: LandsSources) {

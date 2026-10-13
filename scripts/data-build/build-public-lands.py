@@ -19,6 +19,12 @@ docs/reports/public-lands-spike-2026-10-13.md:
   overlay refuge on another agency's land, such as a Corps of Engineers
   reservoir). Otherwise the boundary is an acquisition area drawn around a
   region, and the refuge is the land the service owns inside it.
+- Canadian units come from CPCAD (Environment and Climate Change Canada),
+  land areas only, mapped onto the same classes by designation type
+  (`CPCAD_TYPES`). Canada has no counterpart to national forests, BLM or
+  military land, and CPCAD's Indigenous protected areas are conservation
+  land, not reserves, so they are preserves. Each Canadian unit carries
+  `source: "cpcad"` so the studio credits the database it used.
 - Tribal land is the Census AIANNH outlines PAD-US carries. Oklahoma Tribal
   Statistical Areas are kept as reservations under the tribe's name; the
   other statistical areas (Alaska Native villages, designated and
@@ -60,6 +66,24 @@ PROPERTIES = ('Des_Tp', 'Mang_Name', 'Unit_Nm', 'State_Nm')
 NON_RESERVATION_AREAS = ('Alaska Native Village Statistical Area', 'Tribal Designated Statistical Area', 'State Designated Tribal Statistical Area')
 OKLAHOMA_STATISTICAL_AREA = ' Oklahoma Tribal Statistical Area'
 UNNAMED = re.compile(r'^(unknown\b|none$|unnamed$|$)', re.I)
+# CPCAD designation types (TYPE_E) by class. Anything else - proposed or reserved areas,
+# pastures, habitat designations, planning areas - is not land a model would paint.
+CPCAD_TYPES = {
+    'National Park': 'national-park', 'National Historic Site': 'national-park',
+    'Wilderness Area': 'wilderness', 'Wilderness Park': 'wilderness', 'Wildland Provincial Park': 'wilderness', 'Wilderness Reserve': 'wilderness',
+    'National Wildlife Area': 'wildlife-refuge', 'Migratory Bird Sanctuary': 'wildlife-refuge', 'Wildlife Sanctuary': 'wildlife-refuge',
+    'Wildlife Management Area': 'wildlife-refuge', 'Game Preserve': 'wildlife-refuge',
+    'Provincial Park': 'state-park', 'A - Park': 'state-park', 'Territorial Park': 'state-park', "Quebec's national park": 'state-park',
+    "Quebec's national park reserve": 'state-park', 'Conservancy': 'state-park', 'Provincial Recreation Area': 'state-park',
+    'Natural Environment Park': 'state-park', 'Park Reserve': 'state-park',
+    'Ecological Reserve': 'preserve', 'Conservation Reserve': 'preserve', 'Representative Area Ecological Reserve': 'preserve',
+    'Biodiversity reserve': 'preserve', 'Protected Natural Area': 'preserve', 'Nature Legacy protected area': 'preserve',
+    'Protected Area': 'preserve', 'Natural Area': 'preserve', 'Biological refuge': 'preserve', 'Conservation Area': 'preserve',
+    'Conservation Park': 'preserve', 'Privately Protected Area': 'preserve', 'Private Conservation Lands': 'preserve',
+    'Ownership by Environmental Non-Governmental Organization': 'preserve', 'Privately Owned Conservation Area': 'preserve',
+    'NGO/Land Trust/Agency - Fee Simple Property': 'preserve', 'Indigenous and Territorial Protected Area': 'preserve',
+    'Indigenous owned conservation area': 'preserve', 'Indigenous owned protected area': 'preserve',
+}
 
 
 def proclamation_class(props):
@@ -93,17 +117,27 @@ def fee_class(props):
     return cls
 
 
+def cpcad_class(props):
+    """The class of a CPCAD area: land only (marine areas lie on the sea, which is cut flat), by designation type."""
+    return CPCAD_TYPES.get(props.get('TYPE_E')) if props.get('BIOME') == 'T' else None
+
+
 def unit_name(cls, name):
     """The source name, spaced once. Agencies name one wilderness "X Wilderness" or "X Wilderness Area"."""
     name = re.sub(r'\s+', ' ', name or '').strip()
     return re.sub(r' Wilderness Area$', ' Wilderness', name) if cls == 'wilderness' else name
 
 
-def display_name(cls, name):
+def display_name(cls, name, source=None):
     """The name a label would print, or None for BLM land and placeholders such as "Unknown Park"."""
     name = unit_name(cls, name)
     if cls == 'blm' or UNNAMED.match(name):
         return None
+    if source == 'cpcad':
+        # Parks Canada's legal names end "of Canada"; some provinces write names in capitals.
+        name = re.sub(r' of Canada$', '', name, flags=re.I)
+        if name.isupper():
+            name = re.sub(r'[A-Z]+', lambda word: word.group(0).capitalize(), name)
     if cls == 'tribal' and name.endswith(OKLAHOMA_STATISTICAL_AREA):
         return name[:-len(OKLAHOMA_STATISTICAL_AREA)]
     return name[:160]
@@ -111,6 +145,9 @@ def display_name(cls, name):
 
 def unit_key(cls, props):
     """One unit per class and name; state parks and preserves repeat names across states, and BLM has none."""
+    if props.get('source') == 'cpcad':
+        # Canadian names repeat across provinces ("DUC Fee Simple Lands"), so the province is part of every unit.
+        return f"ca:{cls}:{unit_name(cls, props.get('Unit_Nm'))}:{props.get('State_Nm')}"
     if cls == 'blm':
         return f"blm:{props.get('State_Nm')}"
     name = unit_name(cls, props.get('Unit_Nm'))
@@ -190,18 +227,32 @@ def apply_refuge_rule(units, owned, minimum_share):
     return result
 
 
+def read_cpcad(gdb, layer, crs):
+    """(class, properties, geometry) for every CPCAD land area of a class, in `crs`."""
+    kept = []
+    with fiona.open(gdb, layer=layer) as source:
+        for item in source:
+            props = dict(item.properties)
+            cls = cpcad_class(props)
+            if not cls or not item.geometry:
+                continue
+            geometry = shapely.make_valid(shape(transform_geom(source.crs, crs, item.geometry)))
+            kept.append((cls, {'Unit_Nm': props.get('NAME_E'), 'State_Nm': f"CA-{props.get('LOC')}", 'source': 'cpcad'}, geometry))
+    print(f'CPCAD: {len(kept)} features kept', flush=True)
+    return kept
+
+
 def unit_feature(key, cls, props, geometry, crs):
     """The GeoJSON feature the archive stores for one unit, in WGS84."""
     wgs84 = shape(transform_geom(crs, 'EPSG:4326', mapping(geometry)))
     wgs84 = shapely.transform(wgs84, lambda coordinates: np.round(coordinates, COORDINATE_DECIMALS))
-    properties = {'class': cls, 'unit': key, 'name': display_name(cls, props.get('Unit_Nm')), 'manager': props.get('Mang_Name'),
-                  'acres': round(geometry.area / ACRE_M2)}
+    properties = {'class': cls, 'unit': key, 'name': display_name(cls, props.get('Unit_Nm'), props.get('source')), 'manager': props.get('Mang_Name'),
+                  'acres': round(geometry.area / ACRE_M2), 'source': props.get('source')}
     return {'type': 'Feature', 'properties': {k: v for k, v in properties.items() if v is not None}, 'geometry': mapping(wgs84)}
 
 
-def gdb_path(pins, cache):
-    """The geodatabase directory, unpacked from the verified zip on first use."""
-    pin = pins['files']['padus']
+def gdb_path(pin, cache):
+    """The geodatabase directory of a pinned zip, unpacked from the verified zip on first use."""
     archive = cache / pin['file']
     if not archive.exists():
         download(pin['url'], archive, timeout=1800, retries=2)
@@ -218,21 +269,25 @@ def gdb_path(pins, cache):
     return gdb
 
 
-def build_units(pins, gdb):
+def build_units(pins, gdb, cpcad=None):
     proclamation, _, crs = read_layer(gdb, 'Proclamation', proclamation_class)
     designation, _, _ = read_layer(gdb, 'Designation', designation_class)
     fee, fws, _ = read_layer(gdb, 'Fee', fee_class, owner='FWS')
-    units = dissolve(proclamation + designation + fee)
+    # PAD-US is in CONUS Albers, an equal-area projection; CPCAD is reprojected into it, so every unit is measured in one.
+    canada = read_cpcad(cpcad, pins['files']['cpcad']['layer'], crs) if cpcad else []
+    units = dissolve(proclamation + designation + fee + canada)
     units = apply_refuge_rule(units, owned_land(fws), pins['refugeOwnedShare'])
     return units, crs
 
 
 def write_archive(units, crs, pins, output, work):
     counts = defaultdict(int)
+    by_source = defaultdict(int)
     features = work / 'lands.geojsonl'
     with features.open('w') as handle:
         for key, cls, props, geometry in units:
             counts[cls] += 1
+            by_source[props.get('source') or 'padus'] += 1
             handle.write(json.dumps(unit_feature(key, cls, props, geometry, crs), separators=(',', ':')) + '\n')
     # The contract check runs the browser's own parser over every unit and requires every class.
     subprocess.run(['node', str(ROOT / 'scripts/data-build/check-lands-features.mjs'), str(features)], check=True)
@@ -243,7 +298,9 @@ def write_archive(units, crs, pins, output, work):
                     '--layer=lands', '--drop-rate=1', '--no-feature-limit', '--no-tile-size-limit', '--no-tiny-polygon-reduction',
                     '--detect-shared-borders', '--quiet', str(features)], check=True)
     metadata = {'name': pins['dataset'], 'topostack_dataset': pins['dataset'], 'padus_version': pins['padusVersion'],
-                'padus_date': pins['padusDate'], 'attribution': pins['name'], 'description': pins['license']}
+                'padus_date': pins['padusDate'], **({'cpcad_date': pins['canada']['date']} if 'canada' in pins else {}),
+                'attribution': pins['name'] + (f"; {pins['canada']['name']}" if 'canada' in pins else ''),
+                'description': pins['license'] + (f" {pins['canada']['license']}" if 'canada' in pins else '')}
     with sqlite3.connect(mbtiles) as db:
         # tippecanoe records temporary paths in name and generator_options; replace them so rebuilds are byte-identical.
         db.executemany('DELETE FROM metadata WHERE name = ?', [(key,) for key in [*metadata, 'generator_options']])
@@ -253,7 +310,8 @@ def write_archive(units, crs, pins, output, work):
     subprocess.run(['pmtiles', 'verify', str(partial)], check=True)
     partial.rename(output)
     receipt = {'dataset': pins['dataset'], 'sha256': file_sha256(output), 'bytes': output.stat().st_size,
-               'units': dict(sorted(counts.items())), 'sources': {key: pin['sha256'] for key, pin in pins['files'].items()}}
+               'units': dict(sorted(counts.items())), 'unitsBySource': dict(sorted(by_source.items())),
+               'sources': {key: pin['sha256'] for key, pin in pins['files'].items()}}
     output.with_suffix('.sources.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(f"Built {pins['dataset']}: {receipt['units']}; SHA256 {receipt['sha256']}", flush=True)
     return receipt
@@ -268,7 +326,8 @@ def main():
     pins = json.loads(args.sources.read_text())
     args.cache.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    units, crs = build_units(pins, gdb_path(pins, args.cache))
+    cpcad = gdb_path(pins['files']['cpcad'], args.cache) if 'cpcad' in pins['files'] else None
+    units, crs = build_units(pins, gdb_path(pins['files']['padus'], args.cache), cpcad)
     with tempfile.TemporaryDirectory() as work:
         write_archive(units, crs, pins, args.output, Path(work))
 

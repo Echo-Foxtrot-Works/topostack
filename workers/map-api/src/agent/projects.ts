@@ -113,9 +113,9 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   if (projectDrawsAviation(project)) notes.push(coverage.aviation
     ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
     : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
-  if (projectUsesLands(project)) notes.push(coverage.publicLands
-    ? `Public land outlines come from ${coverage.publicLands.name}. Boundaries are as published and can lag changes on the ground.`
-    : "Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land only, without names. Other kinds will be empty here.");
+  if (projectUsesLands(project)) notes.push(coverage.publicLands.length
+    ? `Public land outlines come from ${coverage.publicLands.map(({ name }) => name).join(" and ")}. Boundaries are as published and can lag changes on the ground.`
+    : "Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land only, without names. Other kinds will be empty here.");
   if (plan.output === "flat" && project.paintTemplates.length) notes.push("Paint templates are made for layered models only, so flat output leaves them out.");
   notes.push(...airspaceNotes(project, plan));
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;

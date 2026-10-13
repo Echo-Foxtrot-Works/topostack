@@ -1,5 +1,5 @@
 {
- "dataset": "public-lands-2025-03-31-v1",
+ "dataset": "public-lands-2025-03-31-v2",
  "padusVersion": "4.1",
  "padusDate": "2025-03-31",
  "name": "USGS Protected Areas Database of the United States (PAD-US) 4.1",
@@ -8,6 +8,12 @@
  "minZoom": 4,
  "maxZoom": 12,
  "refugeOwnedShare": 0.25,
+ "canada": {
+  "name": "Canadian Protected and Conserved Areas Database (CPCAD), Environment and Climate Change Canada",
+  "url": "https://open.canada.ca/data/en/dataset/6c343726-1e92-451a-876a-76e17d398a1c",
+  "license": "Contains information licensed under the Open Government Licence – Canada.",
+  "date": "2025-12-31"
+ },
  "files": {
   "padus": {
    "url": "https://www.sciencebase.gov/catalog/file/get/652d4fc5d34e44db0e2ee45e?name=PADUS4_1Geodatabase.zip",
@@ -15,6 +21,14 @@
    "member": "PADUS4_1Geodatabase.gdb",
    "bytes": 1523434496,
    "sha256": "62ed113335e359509ad68a731146c74aa873c5a92da4f3fda572e54bc9b823ab"
+  },
+  "cpcad": {
+   "url": "https://data-donnees.az.ec.gc.ca/api/file?path=%2Fspecies%2Fprotectrestore%2Fcanadian-protected-conserved-areas-database%2FDatabases%2FProtectedConservedArea_2025.zip",
+   "file": "ProtectedConservedArea_2025.zip",
+   "member": "ProtectedConservedArea_2025.gdb",
+   "layer": "ProtectedConservedArea_2025",
+   "bytes": 132159054,
+   "sha256": "39ad7a58aec50b3e216c5d6958968fac286095cff5229dfdf331b3a1f9befaee"
   }
  },
  "coverage": [
@@ -31,6 +45,7 @@
   { "id": "guam-northern-marianas", "bounds": [144.5, 13.0, 146.2, 20.7] },
   { "id": "american-samoa", "bounds": [-171.2, -14.6, -168.1, -11.0] },
   { "id": "midway", "bounds": [-177.5, 28.1, -177.3, 28.3] },
-  { "id": "wake", "bounds": [166.5, 19.2, 166.7, 19.4] }
+  { "id": "wake", "bounds": [166.5, 19.2, 166.7, 19.4] },
+  { "id": "canada", "bounds": [-141.01, 41.6, -52.5, 83.2], "source": "cpcad" }
  ]
 }

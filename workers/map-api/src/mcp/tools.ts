@@ -144,7 +144,7 @@ export const TOOLS: ToolDefinition[] = [
       const detail = coverage.terrain.highResolution.length ? `High-resolution terrain: ${coverage.terrain.highResolution.map(({ name, resolutionM }) => `${name} (${resolutionM} m)`).join("; ")}.` : "No high-resolution terrain here; the global terrain is used.";
       const lakes = coverage.lakeSurveys.length ? `Surveyed lake floors: ${coverage.lakeSurveys.map(({ name }) => name).join("; ")}.` : "No surveyed lake floors here; lake depths are modeled.";
       const aviation = coverage.aviation ? `FAA aviation detail available (NASR cycle ${coverage.aviation.nasrCycle}; decorative, not for navigation).` : "No FAA aviation detail here (US and territories only).";
-      const lands = coverage.publicLands ? `Public land outlines available (PAD-US ${coverage.publicLands.version}) for paint templates and engraved boundaries.` : "No PAD-US public land here; OpenStreetMap national parks, nature reserves and military land are used where mapped, without names.";
+      const lands = coverage.publicLands.length ? `Public land outlines available from ${coverage.publicLands.map(({ name, version }) => `${name} (${version})`).join(" and ")} for paint templates and engraved boundaries.` : "No PAD-US or CPCAD public land here; OpenStreetMap national parks, nature reserves and military land are used where mapped, without names.";
       return { structured: { ...coverage, attribution }, text: [detail, lakes, aviation, lands, ...coverage.notes, `Data: ${attribution.text}`].join("\n") };
     },
   },

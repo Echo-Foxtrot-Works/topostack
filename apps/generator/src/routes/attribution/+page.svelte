@@ -118,8 +118,14 @@
     <h2 id="public-lands-title">Public lands</h2>
     <div class="source">
       <h3><a href={landsSources.url}>USGS Protected Areas Database of the United States (PAD-US) {landsSources.padusVersion}</a></h3>
-      <p>When a layered model paints public land in the United States or its territories, the outlines of national parks and monuments, national forests, wilderness, BLM land, wildlife refuges, state parks, preserves, tribal land and military land come from PAD-US {landsSources.padusVersion} ({landsSources.padusDate}). TopoStack groups them into those kinds, joins the pieces of each unit and clips them to your area. Boundaries are as published and can lag changes on the ground.</p>
+      <p>When a model paints or engraves public land in the United States or its territories, the outlines of national parks and monuments, national forests, wilderness, BLM land, wildlife refuges, state parks, preserves, tribal land and military land come from PAD-US {landsSources.padusVersion} ({landsSources.padusDate}). TopoStack groups them into those kinds, joins the pieces of each unit and clips them to your area. Boundaries are as published and can lag changes on the ground.</p>
       <p class="credit"><strong>Credit / license:</strong> {landsSources.license}</p>
+    </div>
+    <div class="source">
+      <h3><a href={landsSources.canada.url}>Canadian Protected and Conserved Areas Database (CPCAD)</a></h3>
+      <p>In Canada, the outlines of national parks, provincial and territorial parks, wilderness areas, national wildlife areas and migratory bird sanctuaries, and ecological, private and Indigenous conservation areas come from Environment and Climate Change Canada's CPCAD ({landsSources.canada.date}).</p>
+      <p>Elsewhere, national parks, nature reserves and military land come from OpenStreetMap where they are mapped, credited with the rest of the map data.</p>
+      <p class="credit"><strong>Credit / license:</strong> {landsSources.canada.license}</p>
     </div>
   </section>
 

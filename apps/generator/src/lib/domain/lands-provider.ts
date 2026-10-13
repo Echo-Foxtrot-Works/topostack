@@ -1,5 +1,5 @@
 import rawLandsSources from "../../../../../scripts/data/public-lands-sources.json";
-import type { GeoBounds, LandAreaV1, LandClass, LandsStatus, Polygon2D, ProjectConfigV1, SourceAttribution } from "@topostack/core";
+import type { GeoBounds, LandAreaV1, LandClass, LandsSource, LandsStatus, Polygon2D, ProjectConfigV1, SourceAttribution } from "@topostack/core";
 import { LANDS_LAYER, landsCovers, parseLandProperties, parseLandsArchiveMetadata, validateLandsSources } from "@topostack/data-contracts/land-tiles";
 import { VectorTile, type VectorTileFeature } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
@@ -27,16 +27,24 @@ export const MAX_LAND_UNITS = 600;
 export interface LandAreaData {
   areas: LandAreaV1[];
   status: LandsStatus;
-  /** Where the outlines came from: PAD-US inside its coverage, OpenStreetMap outside it. Absent when nothing was read. */
-  source?: "padus" | "openstreetmap";
+  /** Where the loaded units came from: PAD-US or CPCAD inside the archive's coverage, OpenStreetMap outside it. */
+  sources?: LandsSource[];
   /** PAD-US version of the archive actually read. */
   version?: string;
   attribution: SourceAttribution[];
 }
 
-function landsAttribution(version: string): SourceAttribution {
-  return { name: `USGS Protected Areas Database of the United States (PAD-US) ${version}`, url: LANDS_SOURCES.url, license: LANDS_SOURCES.license };
+/** Credit for each archive source a load actually used. */
+function landsAttribution(sources: LandsSource[], version: string): SourceAttribution[] {
+  return sources.flatMap((source): SourceAttribution[] => {
+    if (source === "padus") return [{ name: `USGS Protected Areas Database of the United States (PAD-US) ${version}`, url: LANDS_SOURCES.url, license: LANDS_SOURCES.license }];
+    if (source === "cpcad" && LANDS_SOURCES.canada) return [{ name: LANDS_SOURCES.canada.name, url: LANDS_SOURCES.canada.url, license: LANDS_SOURCES.canada.license }];
+    return [];
+  });
 }
+
+/** The sources of the units loaded, PAD-US first. */
+const sourcesOf = (areas: LandAreaV1[]): LandsSource[] => (["padus", "cpcad"] as const).filter((source) => areas.some((area) => (area.source ?? "padus") === source));
 
 /**
  * The land classes OpenStreetMap can stand in for outside PAD-US, by the
@@ -53,7 +61,7 @@ const OSM_LAND_KINDS: Readonly<Record<string, LandClass>> = {
 
 const BUDGET_EXCEEDED = /safe complexity limit/;
 
-interface UnitPiece { unit: string; landClass: LandClass; name?: string }
+interface UnitPiece { unit: string; landClass: LandClass; name?: string; source?: LandsSource }
 
 export async function loadLandAreas(
   bounds: GeoBounds,
@@ -70,9 +78,10 @@ export async function loadLandAreas(
     const result = await loadUnits(`${apiBase()}/v1/lands.pmtiles`, LANDS_LAYER, bounds, requestedZoom, config, (metadata) => { version = parseLandsArchiveMetadata(metadata).padusVersion; }, (feature) => {
       if (!wanted.has(String(feature.properties.class))) return undefined;
       const properties = parseLandProperties(feature.properties);
-      return properties ? { unit: properties.unit, landClass: properties.class, ...(properties.name ? { name: properties.name } : {}) } : undefined;
+      return properties ? { unit: properties.unit, landClass: properties.class, ...(properties.name ? { name: properties.name } : {}), ...(properties.source ? { source: properties.source } : {}) } : undefined;
     }, signal);
-    return { ...result, source: "padus", version, attribution: [landsAttribution(version)] };
+    const sources = sourcesOf(result.areas);
+    return { ...result, sources, version, attribution: landsAttribution(sources, version) };
   }
   // Outside PAD-US, the basemap's protected areas where they are mapped; OSM is credited with every map already.
   const osmClasses = Object.values(OSM_LAND_KINDS).filter((landClass) => wanted.has(landClass));
@@ -81,9 +90,9 @@ export async function loadLandAreas(
     const landClass = OSM_LAND_KINDS[String(feature.properties.kind)];
     if (!landClass || !wanted.has(landClass)) return undefined;
     // A feature id joins one area's tile pieces; without one, each tile's piece stands alone.
-    return { unit: `osm:${landClass}:${feature.id ?? `${tileKey}-${featureIndex}`}`, landClass };
+    return { unit: `osm:${landClass}:${feature.id ?? `${tileKey}-${featureIndex}`}`, landClass, source: "openstreetmap" };
   }, signal);
-  return result.areas.length || result.status === "partial" ? { ...result, source: "openstreetmap", attribution: [] } : { areas: [], status: "not-covered", attribution: [] };
+  return result.areas.length || result.status === "partial" ? { ...result, sources: ["openstreetmap"], attribution: [] } : { areas: [], status: "not-covered", attribution: [] };
 }
 
 /** Units from one archive layer: each kept feature's tile pieces joined by unit, cut to the crop, largest first. */

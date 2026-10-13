@@ -51,9 +51,9 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
       code: "LANDS_NOT_COVERED",
       message: "Neither PAD-US nor OpenStreetMap has public land of the asked-for kinds here, so this area has no public land paint or boundaries.",
     });
-    if (source.landsSource === "openstreetmap") warnings.push({
+    if (source.landsSources?.includes("openstreetmap")) warnings.push({
       code: "LANDS_FROM_OPENSTREETMAP",
-      message: "Outside the United States, public land comes from OpenStreetMap: national parks, nature reserves (as preserves) and military land only, unnamed, and only as completely as they are mapped.",
+      message: "Outside the United States and Canada, public land comes from OpenStreetMap: national parks, nature reserves (as preserves) and military land only, unnamed, and only as completely as they are mapped.",
     });
   }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({

@@ -36,12 +36,12 @@ export function projectUsesLands(project: Pick<ProjectConfigV1, "lands" | "paint
 
 export function attributionFor(origin: string, coverage?: AreaCoverage, options: { geocoder?: boolean; aviation?: boolean; lands?: boolean } = {}): Attribution {
   const aviation = options.aviation && coverage?.aviation;
-  const lands = options.lands && coverage?.publicLands;
+  const lands = options.lands ? coverage?.publicLands ?? [] : [];
   const regional: AttributionEntry[] = [
     ...(coverage?.terrain.highResolution ?? []).map(({ name, license }) => ({ name, license })),
     ...(coverage?.lakeSurveys ?? []).map(({ name, license }) => ({ name, license })),
     ...(aviation ? [{ name: `${aviation.name}, NASR cycle ${aviation.nasrCycle}`, license: aviation.license }] : []),
-    ...(lands ? [{ name: lands.name, license: lands.license }] : []),
+    ...lands.map(({ name, license }) => ({ name, license })),
   ];
   const sources = [...BASE, ...regional, ...(options.geocoder ? [GEOCODER] : [])];
   return {
