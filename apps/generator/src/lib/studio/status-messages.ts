@@ -35,7 +35,7 @@ export function generationStatus(outcome: GenerationOutcome, project: ProjectCon
   if (outcome.vectorUnavailable) return "Terrain ready · map detail data incomplete";
   if (outcome.lakeUnavailable) return "Terrain ready · lake depth data unavailable";
   if (outcome.waterWarning) return "Terrain ready · water outlines could not be applied";
-  if (project.outputMode === "engraving") return `Engraving ready · ${project.engravingContourCount} contours · one SVG`;
+  if (project.outputMode === "engraving") return `Engraving ready · ${project.showEngravingContours ? `${project.engravingContourCount} contours` : "no contours"} · one SVG`;
   return `Real terrain ready · ${geometry.layers.length} layers · ${geometry.layers.length - geometry.fabricationNests.length} cut panels`;
 }
 
