@@ -10,6 +10,7 @@
     "./changelog": "./src/changelog.ts",
     "./chart-bathymetry": "./src/chart-bathymetry.ts",
     "./feedback": "./src/feedback.ts",
+    "./land-tiles": "./src/land-tiles.ts",
     "./share-link": "./src/share-link.ts",
     "./source-catalog": "./src/source-catalog.ts",
     "./terrain-png": "./src/terrain-png.ts",

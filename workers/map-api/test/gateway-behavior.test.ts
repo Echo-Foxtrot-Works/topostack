@@ -84,6 +84,19 @@ describe("PMTiles archive releases", () => {
     }
   });
 
+  it("serves the promoted public lands archive by range", async () => {
+    const landsKey = "lands/current.pmtiles";
+    await seedRelease(landsKey, 5);
+    try {
+      const ranged = await worker.fetch(request("/v1/lands.pmtiles", { headers: { range: "bytes=0-3" } }), env, context);
+      expect(ranged.status).toBe(206);
+      expect(new Uint8Array(await ranged.arrayBuffer())).toEqual(new Uint8Array(4).fill(5));
+      expectCors(ranged);
+    } finally {
+      await env.VECTOR_DATA.delete(`releases/${landsKey}.json`);
+    }
+  });
+
   it("memoizes release resolution so repeated range reads cost one R2 read", async () => {
     await seedRelease(logicalKey, 3);
     const reads = [];
