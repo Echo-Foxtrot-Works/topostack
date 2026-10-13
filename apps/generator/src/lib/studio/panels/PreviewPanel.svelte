@@ -63,7 +63,7 @@
   </div>
   <div class="preview-stage" aria-busy={studio.previewBusy} data-placement-graphics={studio.project.customGraphics?.length ? "" : undefined} data-placement-fade={studio.placementFade || undefined}
     data-road-markings={studio.detailCounts.road} data-trail-markings={studio.detailCounts.trail} data-transportation-label-markings={studio.detailCounts.transportationLabel} data-water-markings={studio.detailCounts.water} data-contour-markings={studio.detailCounts.contour} data-alignment-markings={studio.detailCounts.alignment} data-elevation-markings={studio.detailCounts.elevation}
-    data-north-markings={studio.detailCounts.north} data-scale-markings={studio.detailCounts.scale} data-plaque-markings={studio.detailCounts.plaque} data-marker-markings={studio.detailCounts.marker} data-custom-line-markings={studio.detailCounts.customLine} data-aviation-markings={studio.detailCounts.aviation} data-aviation-label-markings={studio.detailCounts.aviationLabel}>
+    data-north-markings={studio.detailCounts.north} data-scale-markings={studio.detailCounts.scale} data-plaque-markings={studio.detailCounts.plaque} data-marker-markings={studio.detailCounts.marker} data-custom-line-markings={studio.detailCounts.customLine} data-aviation-markings={studio.detailCounts.aviation} data-aviation-label-markings={studio.detailCounts.aviationLabel} data-land-markings={studio.detailCounts.land} data-land-label-markings={studio.detailCounts.landLabel}>
     {#if !studio.embeddedInPlatform}<FeedbackButton edge getContext={getFeedbackContext} />{/if}
     {#if studio.mode === "map" && studio.placementBackdrop !== "3d"}
       <MapStage onUnavailable={mapUnavailable} />

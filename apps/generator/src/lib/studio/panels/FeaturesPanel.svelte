@@ -2,6 +2,7 @@
   import { Grid3X3, Map as MapIcon, Minus, Square } from "@lucide/svelte";
   import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
   import { LAND_PAINT_OPTIONS, PAINT_COLORS, withPaintKind } from "$lib/studio/paint-colors";
+  import { landStroke, type LandClass, type LandsDetailsV1 } from "@topostack/core";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
@@ -16,6 +17,19 @@
   const studio = getStudio();
   const { navigateChoice, trailPatternDash, updateFabrication, updateMapDetails } = studio;
   const lineStyle = $derived(studio.project.lineStyle);
+  const lands = $derived<LandsDetailsV1>(studio.project.lands ?? { boundaries: [], hatched: false, labels: false });
+
+  /** Engraved public land; dropping every class drops the setting, as a project that never used it. */
+  function updateLands(patch: Partial<LandsDetailsV1>): void {
+    const next = { ...lands, ...patch };
+    void updateMapDetails({ lands: next.boundaries.length ? next : undefined });
+  }
+  function toggleBoundary(landClass: LandClass, on: boolean): void {
+    const others = lands.boundaries.filter((entry) => entry !== landClass);
+    updateLands({ boundaries: on ? [...others, landClass] : others });
+  }
+  /** A short sample of the class's dash, drawn at a readable scale. */
+  const dashSample = (landClass: LandClass) => landStroke(landClass, { boundaryMm: 0.4 }).dash?.join(" ");
 </script>
 
 <PanelFrame id="features" title="Map features" class="features-panel">
@@ -94,6 +108,31 @@
       {/if}
     </div>
   </div>
+  <div class="detail-group">
+    <p class="subgroup-heading">Public land boundaries</p>
+    <div class="toggle-stack land-boundary-kinds">
+      {#each LAND_PAINT_OPTIONS as option (option.value)}
+        <Switch checked={lands.boundaries.includes(option.value)} onCheckedChange={(on) => toggleBoundary(option.value, on)} aria-label={`${option.label} boundaries`}><span class="toggle-label"><svg class="dash-sample" viewBox="0 0 28 6" aria-hidden="true"><path d="M1 3H27" stroke-width={option.value === "national-park" ? 2.2 : 1.4} stroke-dasharray={dashSample(option.value)} /></svg>{option.label}</span></Switch>
+      {/each}
+    </div>
+    {#if lands.boundaries.length}
+      <div class="toggle-settings">
+        <div class="field-stack"><LineWidthField label="Width" fieldLabel="Public land boundary width" key="boundaryMm" /></div>
+        <div class="toggle-stack">
+          <Switch checked={lands.labels} onCheckedChange={(labels) => updateLands({ labels })} aria-label="Public land names"><span class="toggle-label">Names</span></Switch>
+          {#if studio.project.outputMode === "engraving"}
+            <Switch checked={lands.hatched} onCheckedChange={(hatched) => updateLands({ hatched })} aria-label="Hatch inside public land boundaries"><span class="toggle-label">Hatch the inside edge</span></Switch>
+          {/if}
+        </div>
+      </div>
+    {/if}
+    {#if studio.activeSource.landsStatus === "not-covered" && lands.boundaries.length}
+      <small class="depth-note">Public lands data covers only the United States and its territories, so this area has no public land boundaries.</small>
+    {:else}
+      <small class="depth-note">Each kind has its own dash. The width is shared with state and province boundaries. Names go inside the largest units that have room.</small>
+    {/if}
+  </div>
+
   {#if studio.project.outputMode === "stack"}
     <div class="detail-group">
       <p class="subgroup-heading">Public land paint</p>

@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, LAND_CLASSES, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { AVIATION_DATA_DETAILS, landClassesNeeded, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import type { SurveyResult } from "$lib/domain/bathymetry";
 import type { VectorData } from "$lib/domain/vector-loader";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
@@ -23,8 +23,6 @@ export interface SourceRefreshDependencies {
   /** The whole zoom `loadTerrain` gives the same loaders. */
   dataZoom: (zoom: number) => number;
 }
-
-const landClassesOf = (project: ProjectConfigV1) => project.paintTemplates.filter((kind) => (LAND_CLASSES as readonly string[]).includes(kind));
 
 export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: ProjectConfigV1): SourceBundleV1 {
   if (from.widthMm === to.widthMm && from.heightMm === to.heightMm) return source;
@@ -72,11 +70,11 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
     const changesPartial = source.airspaceStatus === "partial" && JSON.stringify(had) !== JSON.stringify(needs);
     if (enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
   }
-  // Loaded land holds only the classes painted then, filtered before the unit
-  // limit. Painting another class reloads; a partial load may fit more now.
-  if ("paintTemplates" in patch && sourceRequirements(nextProject).lands) {
-    const had = new Set(source.landAreas ? landClassesOf(sourceProject) : []);
-    const needs = landClassesOf(nextProject);
+  // Loaded land holds only the classes painted or engraved then, filtered before
+  // the unit limit. Another class reloads; a partial load may fit more now.
+  if (("paintTemplates" in patch || "lands" in patch || "outputMode" in patch) && sourceRequirements(nextProject).lands) {
+    const had = new Set(source.landAreas ? landClassesNeeded(sourceProject) : []);
+    const needs = landClassesNeeded(nextProject);
     if (needs.some((landClass) => !had.has(landClass)) || (source.landsStatus === "partial" && needs.length !== had.size)) {
       next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsAttribution: undefined };
     }

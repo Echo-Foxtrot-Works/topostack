@@ -1,6 +1,6 @@
 import { isTextFont } from "../annotate/font-data.js";
 import { MERCATOR_MAX_LATITUDE } from "../primitives/units.js";
-import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS } from "../types.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS, LAND_CLASSES } from "../types.js";
 import {
   CUSTOM_LINE_KINDS,
   PAINT_REGION_KINDS,
@@ -129,6 +129,12 @@ export function validateProject(config: ProjectConfigV1): void {
   if (lineWidths.some((width) => width < 0.05 || width > 1.5)) throw new Error("Line widths must be between 0.05 and 1.5 mm.");
   if (config.lineStyle.aviationMm !== undefined && (!Number.isFinite(config.lineStyle.aviationMm) || config.lineStyle.aviationMm < 0.05 || config.lineStyle.aviationMm > 1.5)) throw new Error("Line widths must be between 0.05 and 1.5 mm.");
   if (config.lineStyle.aviationSymbolMm !== undefined && (!Number.isFinite(config.lineStyle.aviationSymbolMm) || config.lineStyle.aviationSymbolMm < MIN_AVIATION_SYMBOL_MM || config.lineStyle.aviationSymbolMm > MAX_AVIATION_SYMBOL_MM)) throw new Error(`Aviation symbol size must be between ${MIN_AVIATION_SYMBOL_MM} and ${MAX_AVIATION_SYMBOL_MM} mm.`);
+  if (config.lands !== undefined) {
+    const { boundaries, hatched, labels } = config.lands ?? {};
+    if (!config.lands || typeof config.lands !== "object") throw new Error("Public land settings are invalid.");
+    if (!Array.isArray(boundaries) || boundaries.some((entry) => !LAND_CLASSES.includes(entry)) || new Set(boundaries).size !== boundaries.length) throw new Error("Public land boundaries must list each land class at most once.");
+    if (typeof hatched !== "boolean" || typeof labels !== "boolean") throw new Error("Public land hatching and labels must be true or false.");
+  }
   if (config.aviation !== undefined) {
     if (!config.aviation || typeof config.aviation !== "object") throw new Error("Aviation settings are invalid.");
     for (const [key, value] of Object.entries(config.aviation)) if (typeof value !== "boolean") throw new Error(`aviation.${key} must be true or false.`);

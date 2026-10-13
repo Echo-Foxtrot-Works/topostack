@@ -45,7 +45,8 @@ export { carveWaterDepth } from "./water/water.js";
 export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
 export { exportBlockReason } from "./export/export-policy.js";
-export { sourceRequirements } from "./pipeline/source-requirements.js";
+export { landClassesNeeded, sourceRequirements } from "./pipeline/source-requirements.js";
+export { landStroke, type LandStroke } from "./pipeline/lands.js";
 export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationRequested, aviationStroke, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
 export { cropRadiusMm } from "./primitives/crop.js";
 

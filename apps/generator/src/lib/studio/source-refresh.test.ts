@@ -144,6 +144,19 @@ describe("public land areas", () => {
     expect(markStaleSourceData(partial, { paintTemplates: parks.paintTemplates }, parksAndForests, parks).landsStatus).toBeUndefined();
   });
 
+  it("loads the classes a project engraves as well as those it paints, in either mode", () => {
+    const source = loaded({ landAreas: [park], landsStatus: "available" });
+    const parks = painting("national-park");
+    const engraving: ProjectConfigV1 = { ...parks, outputMode: "engraving", lands: { boundaries: ["national-park"], hatched: false, labels: false } };
+    // Engraving the class already loaded for paint reuses it; a new class reloads.
+    expect(markStaleSourceData(source, { lands: engraving.lands }, parks, { ...parks, lands: engraving.lands })).toBe(source);
+    const withBlm = { ...parks, lands: { boundaries: ["blm" as const], hatched: false, labels: false } };
+    expect(markStaleSourceData(source, { lands: withBlm.lands }, parks, withBlm).landAreas).toBeUndefined();
+    // Names and hatching only change how loaded land is drawn.
+    const named = { ...engraving, lands: { ...engraving.lands!, labels: true } };
+    expect(markStaleSourceData(source, { lands: named.lands }, engraving, named)).toBe(source);
+  });
+
   it("scales land areas with the model", () => {
     const resized = resizeSource(loaded({ landAreas: [park] }), DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm * 2 });
     expect(resized.landAreas![0]!.polygons[0]!.outer[1]).toEqual({ x: 20, y: 0 });

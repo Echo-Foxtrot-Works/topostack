@@ -407,6 +407,12 @@ export interface ProjectConfigV1 {
    * that never turned it on, which keeps their fingerprints.
    */
   aviation?: AviationDetailsV1;
+  /**
+   * Public land drawn as engraved lines (US only), in either output mode and
+   * independent of the paint templates. Absent in every project that never
+   * turned it on, which keeps their fingerprints.
+   */
+  lands?: LandsDetailsV1;
   showCoordinateGrid: boolean;
   showWaterDepth: boolean;
   /** Depth multiplier relative to the terrain's vertical scale; 1 matches it. */
@@ -611,12 +617,14 @@ export interface SourceAttribution {
 
 export interface MarkingFeature {
   id: string;
-  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation";
+  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
   operation: Exclude<Operation, "cut">;
   points: Point2D[];
   label?: string;
   transportationClass?: TransportationClass;
   aviationClass?: AviationClass;
+  /** Public land boundaries, hatching and names: the class that sets the dash. */
+  landClass?: LandClass;
   /** Aviation points only: one point, drawn as this symbol at a fixed size. */
   aviationSymbol?: AviationSymbol;
   aviationDetail?: AviationSymbolDetail;
@@ -700,6 +708,16 @@ export const PAINT_REGION_LABELS: Record<PaintRegionKind, string> = {
   wilderness: "wilderness", blm: "BLM land", "wildlife-refuge": "wildlife refuge", "state-park": "state park", preserve: "preserve",
   tribal: "tribal land", military: "military land",
 };
+
+/** Public land engraved on the model, apart from any paint template. */
+export interface LandsDetailsV1 {
+  /** Classes whose boundaries are engraved, each in its own dash; each listed at most once. */
+  boundaries: LandClass[];
+  /** Flat engravings only: short ticks just inside each boundary, so the land side reads at a glance. */
+  hatched: boolean;
+  /** The names of the largest named units, where one fits inside its unit. */
+  labels: boolean;
+}
 
 /** One unit of public land clipped to the crop, in crop millimetres. */
 export interface LandAreaV1 {
@@ -879,6 +897,7 @@ export interface OperationPath {
   textStyle?: TextStyleV1;
   transportationClass?: TransportationClass;
   aviationClass?: AviationClass;
+  landClass?: LandClass;
   /** Closed engraving paths that should render as solid marker artwork. */
   filled?: boolean;
   /** Interior voids in a filled marking, including areas covered by upper sheets. */

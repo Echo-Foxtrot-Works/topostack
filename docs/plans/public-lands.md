@@ -1,6 +1,6 @@
 # Public and protected lands
 
-Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done, and phases 1 and 2 are built: the archive, contract, provisioning and Worker route ([runbook](../public-lands.md)), then the paint stencils in core and the studio. The archive is provisioned in development only.
+Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done, and phases 1 to 3 are built: the archive, contract, provisioning and Worker route ([runbook](../public-lands.md)), the paint stencils, and engraved boundaries with names and hatching. The archive is provisioned in development only.
 
 Paint templates gain land kinds: national parks, national forests, wilderness, BLM land, state parks, wildlife refuges, preserves, tribal and military land. Each kind gets its own paper stencil per panel, cut the same way water stencils are today. Each kind can also be engraved as a boundary line, so flat engravings get the feature too.
 
@@ -86,11 +86,12 @@ Optional later: county and state boundaries from TIGER cartographic files (`cb_2
      - Per-panel `-paint-<kind>.svg`, plus manifest entries for kinds and file counts.
      - The README and assembly guide list a paint order: water last, more specific classes after broad ones.
      - PAD-US, NPS and Census credits appear only while lands are used.
-3. **Boundary lines and flat engraving.**
-   - A `MarkingFeature` kind `land` with a `landClass`, routed over exposed layers the way boundaries are, with a dash per class.
-   - In flat engraving, an optional interior hatch reuses `specialUseHatching` from aviation.
-   - Unit names are placed as optional labels by `acres`, through the existing collision checks.
-   - Project field: `lands: { boundaries: LandClass[], labels: boolean }`, absent meaning off.
+3. **Boundary lines and flat engraving (built, stacked on phase 2).**
+   - A `MarkingFeature` kind `land` with a `landClass`, routed over exposed layers the way boundaries are, with a dash per class (`landStroke`). Edges the crop added are left out.
+   - In flat engraving, an optional interior hatch uses the tick drawing of the special use airspace hatch (`leftTicks`).
+   - Unit names, up to 12, go at each unit's roomiest point, largest first, where they fit inside the unit and clear of other names.
+   - Project field: `lands: { boundaries: LandClass[], hatched: boolean, labels: boolean }`, absent meaning off. Land is loaded for the classes engraved as well as those painted.
+   - Known limit: two classes that share a border (a wilderness edge on a forest edge) each engrave their own line.
 4. **Agents.** Expose `paintTemplates` and `lands` in `ProjectRequestV1` and its JSON Schema (`paintTemplates` is not exposed today). Add coverage and plan notes, the attribution, the MCP guide, and WebMCP.
 5. **Canada, OSM fallback, per-unit selection.**
    - CPCAD as a second build input.

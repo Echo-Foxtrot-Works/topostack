@@ -84,9 +84,17 @@ export function runwayPaths(points: Point2D[], widthM: number | undefined, mmPer
  * ticks go to the left of travel, even on a piece clipped open by the crop.
  */
 export function specialUseHatching(points: Point2D[], style: Pick<LineStyleV1, "aviationMm">): Point2D[][] {
-  const width = style.aviationMm ?? DEFAULT_AVIATION_MM;
-  const spacing = Math.max(width * 3, 0.6);
-  const length = Math.max(width * 5, 1.1);
+  return leftTicks(points, style.aviationMm ?? DEFAULT_AVIATION_MM);
+}
+
+/**
+ * Short ticks at right angles to a line, on the left of travel on a y-down
+ * page, spaced and sized from the stroke they are drawn with. Hatches the
+ * inside of an area whose boundary runs with the area on its left.
+ */
+export function leftTicks(points: Point2D[], widthMm: number): Point2D[][] {
+  const spacing = Math.max(widthMm * 3, 0.6);
+  const length = Math.max(widthMm * 5, 1.1);
   const ticks: Point2D[][] = [];
   let next = spacing / 2;
   let travelled = 0;

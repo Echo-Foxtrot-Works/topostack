@@ -25,6 +25,7 @@ function context(config: Partial<ProjectConfigV1> = {}, source: Partial<SourceBu
     clip: cropBoundary(project),
     warnings: [],
     aviation: { lines: [], labels: [], altitudes: [], symbols: [] },
+    lands: { lines: [], labels: [] },
     ...flags,
   };
 }

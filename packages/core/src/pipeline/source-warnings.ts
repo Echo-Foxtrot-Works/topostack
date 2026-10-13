@@ -41,15 +41,15 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
   if (sourceRequirements(config).lands) {
     if (source.landsStatus === "partial") warnings.push({
       code: "LANDS_DATA_PARTIAL",
-      message: "The public lands feature limit was reached, so some parks, forests, or preserves may be missing from the paint templates. Narrow the map area or turn off some land kinds.",
+      message: "The public lands feature limit was reached, so some parks, forests, or preserves may be missing. Narrow the map area or turn off some land kinds.",
     });
     if (source.landsStatus === "unavailable" || source.landsStatus === undefined) warnings.push({
       code: "LANDS_DATA_UNAVAILABLE",
-      message: "Public lands data is unavailable. This project cannot be exported until the data is restored or the land paint templates are turned off.",
+      message: "Public lands data is unavailable. This project cannot be exported until the data is restored or public land paint and boundaries are turned off.",
     });
     if (source.landsStatus === "not-covered") warnings.push({
       code: "LANDS_NOT_COVERED",
-      message: "Public lands data covers only the United States and its territories, so this area has no land paint templates.",
+      message: "Public lands data covers only the United States and its territories, so this area has no public land paint or boundaries.",
     });
   }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({

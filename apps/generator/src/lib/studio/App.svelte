@@ -717,7 +717,7 @@
     return refreshPreview(updatesCustomData ? "customData" : "fabrication", delayMs);
   }
 
-  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "aviation", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
+  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "aviation", "lands", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
