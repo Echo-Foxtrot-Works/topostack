@@ -136,9 +136,9 @@
       </div>
     {/if}
     {#if studio.activeSource.landsStatus === "not-covered" && lands.boundaries.length}
-      <small class="depth-note">No public land of these kinds here. Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
-    {:else if studio.activeSource.landsSource === "openstreetmap" && lands.boundaries.length}
-      <small class="depth-note">Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+      <small class="depth-note">No public land of these kinds here. Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+    {:else if studio.activeSource.landsSources?.includes("openstreetmap") && lands.boundaries.length}
+      <small class="depth-note">Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
     {:else}
       <small class="depth-note">Each kind has its own dash. The width is shared with state and province boundaries. Names go inside the largest units that have room.</small>
     {/if}
@@ -165,9 +165,9 @@
         {/each}
       </div>
       {#if studio.activeSource.landsStatus === "not-covered" && studio.project.paintTemplates.some((kind) => kind !== "water")}
-        <small class="depth-note">No public land of these kinds here. Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
-      {:else if studio.activeSource.landsSource === "openstreetmap" && studio.project.paintTemplates.some((kind) => kind !== "water")}
-        <small class="depth-note">Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+        <small class="depth-note">No public land of these kinds here. Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+      {:else if studio.activeSource.landsSources?.includes("openstreetmap") && studio.project.paintTemplates.some((kind) => kind !== "water")}
+        <small class="depth-note">Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
       {:else}
         <small class="depth-note">Each kind turned on gets a paper template per panel, cut to the land that stays visible after assembly. Where kinds overlap, the more specific one paints: a park over the wilderness and forest around it. US public lands from the USGS PAD-US database.</small>
       {/if}

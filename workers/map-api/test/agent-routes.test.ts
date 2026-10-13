@@ -188,11 +188,16 @@ describe("GET /v1/coverage", () => {
     expect(alps.attribution.sources.some(({ name }) => name.includes("PAD-US"))).toBe(false);
   });
 
-  it("reports public land outlines only inside US coverage", async () => {
-    const estes = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=40.34&lon=-105.68&widthKm=20"), env, context)).json<{ publicLands: { version: string; name: string } | null }>();
-    expect(estes.publicLands).toMatchObject({ version: "4.1" });
-    const ontario = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<{ publicLands: unknown }>();
-    expect(ontario.publicLands).toBeNull();
+  it("reports the public land databases reaching an area: PAD-US, CPCAD, both or neither", async () => {
+    type Coverage = { publicLands: Array<{ name: string; version: string }> };
+    const estes = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=40.34&lon=-105.68&widthKm=20"), env, context)).json<Coverage>();
+    expect(estes.publicLands).toEqual([expect.objectContaining({ version: "4.1" })]);
+    const algonquin = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<Coverage>();
+    expect(algonquin.publicLands).toEqual([expect.objectContaining({ name: expect.stringContaining("CPCAD"), version: "2025-12-31" })]);
+    const border = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=49.0&lon=-114.0&widthKm=30"), env, context)).json<Coverage>();
+    expect(border.publicLands).toHaveLength(2);
+    const alps = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=46.55&lon=7.9&widthKm=20"), env, context)).json<Coverage>();
+    expect(alps.publicLands).toEqual([]);
   });
 
   it("reports FAA aviation data only inside US coverage", async () => {

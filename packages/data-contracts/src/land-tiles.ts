@@ -10,6 +10,10 @@ import { isMercatorBoundsTuple } from "./geo-bounds.ts";
  * A unit is cut by tile seams like any polygon; the browser unions a unit's
  * pieces by `unit`. Units of different classes overlap (a wilderness inside a
  * national forest); the studio decides which paints where, not the archive.
+ *
+ * Units come from USGS PAD-US (the United States) and, from the second
+ * release, from Canada's CPCAD; each Canadian unit says so in `source`, so the
+ * studio credits the source a model actually used.
  */
 
 export const LANDS_LAYER = "lands";
@@ -21,6 +25,9 @@ export const LAND_CLASSES = [
 ] as const;
 export type LandClass = (typeof LAND_CLASSES)[number];
 
+export const LAND_SOURCES = ["padus", "cpcad"] as const;
+export type LandSource = (typeof LAND_SOURCES)[number];
+
 export interface LandProperties {
   class: LandClass;
   /** Unique within the archive; joins one unit's tile pieces. */
@@ -31,6 +38,8 @@ export interface LandProperties {
   manager?: string;
   /** Area of the whole unit, for ranking labels. */
   acres: number;
+  /** Where the outline comes from; absent means PAD-US, as in every first-release archive. */
+  source?: LandSource;
 }
 
 type Raw = Record<string, unknown>;
@@ -62,7 +71,8 @@ export function parseLandProperties(raw: unknown): LandProperties | undefined {
   if (!cls || !unit || typeof acres !== "number" || !Number.isInteger(acres) || acres < 0 || acres > MAX_ACRES) return undefined;
   const name = text(record, "name", 160);
   const manager = text(record, "manager", 8);
-  return { class: cls, unit, ...(name ? { name } : {}), ...(manager ? { manager } : {}), acres };
+  const source = member(LAND_SOURCES, record.source);
+  return { class: cls, unit, ...(name ? { name } : {}), ...(manager ? { manager } : {}), acres, ...(source && source !== "padus" ? { source } : {}) };
 }
 
 /** The exact properties the builder writes for a feature; throws when the value would not parse back whole. */
@@ -80,6 +90,8 @@ export interface LandsArchiveMetadata {
   padusVersion: string;
   /** PAD-US publication date. */
   padusDate: string;
+  /** CPCAD release date, when the archive holds Canadian units. */
+  cpcadDate?: string;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,16 +109,31 @@ export function parseLandsArchiveMetadata(value: unknown): LandsArchiveMetadata 
   const padusDate = raw.padus_date;
   if (typeof padusDate !== "string" || !ISO_DATE.test(padusDate) || !Number.isFinite(Date.parse(padusDate))) throw new Error("Lands archive metadata requires padus_date.");
   if (!dataset.startsWith(`public-lands-${padusDate}-`)) throw new Error("Lands archive dataset does not match its PAD-US date.");
-  return { dataset, padusVersion, padusDate };
+  const cpcadDate = raw.cpcad_date;
+  if (cpcadDate !== undefined && (typeof cpcadDate !== "string" || !ISO_DATE.test(cpcadDate) || !Number.isFinite(Date.parse(cpcadDate)))) throw new Error("Lands archive metadata has an invalid cpcad_date.");
+  return { dataset, padusVersion, padusDate, ...(cpcadDate ? { cpcadDate } : {}) };
 }
 
 export function landsArchiveMetadata(value: LandsArchiveMetadata): Record<string, string> {
-  const metadata = { topostack_dataset: value.dataset, padus_version: value.padusVersion, padus_date: value.padusDate };
+  const metadata = { topostack_dataset: value.dataset, padus_version: value.padusVersion, padus_date: value.padusDate, ...(value.cpcadDate ? { cpcad_date: value.cpcadDate } : {}) };
   parseLandsArchiveMetadata(metadata);
   return metadata;
 }
 
-export interface LandsCoverageRegion { id: string; bounds: [number, number, number, number] }
+export interface LandsCoverageRegion {
+  id: string;
+  bounds: [number, number, number, number];
+  /** The source with units there; absent means PAD-US. */
+  source?: LandSource;
+}
+
+/** The second source's registration: Canada's Protected and Conserved Areas Database. */
+export interface LandsCanadaSource {
+  name: string;
+  url: string;
+  license: string;
+  date: string;
+}
 
 /** The pinned build registration in `scripts/data/public-lands-sources.json`. */
 export interface LandsSources extends LandsArchiveMetadata {
@@ -123,14 +150,17 @@ export interface LandsSources extends LandsArchiveMetadata {
    * may one day buy into.
    */
   refugeOwnedShare: number;
-  /** Where PAD-US has data; a crop outside every box is not covered. */
+  /** Where the archive has data; a crop outside every box is not covered. */
   coverage: LandsCoverageRegion[];
+  /** Present when the archive also holds CPCAD units; its date is the archive's `cpcad_date`. */
+  canada?: LandsCanadaSource;
 }
 
 export function validateLandsSources(value: unknown): LandsSources {
   if (!value || typeof value !== "object") throw new Error("Lands sources must be an object.");
   const raw = value as Raw;
-  const metadata = parseLandsArchiveMetadata({ topostack_dataset: raw.dataset, padus_version: raw.padusVersion, padus_date: raw.padusDate });
+  const canadaRaw = raw.canada === undefined ? undefined : (raw.canada && typeof raw.canada === "object" ? raw.canada as Raw : {});
+  const metadata = parseLandsArchiveMetadata({ topostack_dataset: raw.dataset, padus_version: raw.padusVersion, padus_date: raw.padusDate, ...(canadaRaw ? { cpcad_date: canadaRaw.date } : {}) });
   const required = (key: string): string => {
     const entry = text(raw, key, 400);
     if (!entry) throw new Error(`Lands sources require ${key}.`);
@@ -154,14 +184,33 @@ export function validateLandsSources(value: unknown): LandsSources {
     const region = (item && typeof item === "object" ? item : {}) as Raw;
     const id = text(region, "id", 64);
     const bounds = region.bounds;
-    if (!id || ids.has(id) || !isMercatorBoundsTuple(bounds)) throw new Error(`Invalid lands coverage region: ${id ?? "unnamed"}`);
+    const source = region.source === undefined ? undefined : member(LAND_SOURCES, region.source);
+    if (!id || ids.has(id) || !isMercatorBoundsTuple(bounds) || (region.source !== undefined && !source) || (source === "cpcad" && !canadaRaw)) throw new Error(`Invalid lands coverage region: ${id ?? "unnamed"}`);
     ids.add(id);
-    return { id, bounds: [...bounds] };
+    return { id, bounds: [...bounds], ...(source && source !== "padus" ? { source } : {}) };
   });
-  return { ...metadata, name: required("name"), url, license: required("license"), minZoom, maxZoom, refugeOwnedShare, coverage };
+  let canada: LandsCanadaSource | undefined;
+  if (canadaRaw) {
+    const field = (key: string): string => {
+      const entry = text(canadaRaw, key, 400);
+      if (!entry) throw new Error(`Lands sources require canada.${key}.`);
+      return entry;
+    };
+    canada = { name: field("name"), url: field("url"), license: field("license"), date: metadata.cpcadDate! };
+    if (new URL(canada.url).protocol !== "https:") throw new Error("Lands Canada source URL must use https.");
+  }
+  return { ...metadata, name: required("name"), url, license: required("license"), minZoom, maxZoom, refugeOwnedShare, coverage, ...(canada ? { canada } : {}) };
 }
 
-/** True when a crop (west, south, east, north) touches PAD-US coverage. */
+/** True when a crop (west, south, east, north) touches the archive's coverage. */
 export function landsCovers(sources: Pick<LandsSources, "coverage">, bounds: { west: number; south: number; east: number; north: number }): boolean {
-  return sources.coverage.some(({ bounds: [west, south, east, north] }) => bounds.west < east && bounds.east > west && bounds.south < north && bounds.north > south);
+  return landSourcesCovering(sources, bounds).length > 0;
+}
+
+/** The sources whose coverage a crop touches, PAD-US first. */
+export function landSourcesCovering(sources: Pick<LandsSources, "coverage">, bounds: { west: number; south: number; east: number; north: number }): LandSource[] {
+  const touched = new Set(sources.coverage
+    .filter(({ bounds: [west, south, east, north] }) => bounds.west < east && bounds.east > west && bounds.south < north && bounds.north > south)
+    .map((region) => region.source ?? "padus"));
+  return LAND_SOURCES.filter((source) => touched.has(source));
 }

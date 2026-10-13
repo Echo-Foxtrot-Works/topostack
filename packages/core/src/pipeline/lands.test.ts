@@ -121,12 +121,23 @@ describe("land boundaries in generated geometry", () => {
 
   it("says when land comes from OpenStreetMap, in the warnings and the README", async () => {
     const project = { ...config({ boundaries: ["national-park"], hatched: false, labels: false }), showWater: false, showWaterDepth: false };
-    const ir = generateGeometry(project, { ...source(project, [park]), landsSource: "openstreetmap", landsVersion: undefined });
-    expect(ir.landsSource).toBe("openstreetmap");
+    const ir = generateGeometry(project, { ...source(project, [park]), landsSources: ["openstreetmap"], landsVersion: undefined });
+    expect(ir.landsSources).toEqual(["openstreetmap"]);
     expect(ir.warnings.map((warning) => warning.code)).toContain("LANDS_FROM_OPENSTREETMAP");
     const readme = await buildFabricationPackage(ir, project).files.find((file) => file.filename === "README.txt")!.blob.text();
     expect(readme).toContain("Source: OpenStreetMap protected areas");
     expect(generateGeometry(project, source(project, [park])).warnings.map((warning) => warning.code)).not.toContain("LANDS_FROM_OPENSTREETMAP");
+  });
+
+  it("credits each database a model used in the README, Canada's under its licence", async () => {
+    const project = { ...config({ boundaries: ["national-park"], hatched: false, labels: false }), showWater: false, showWaterDepth: false };
+    const readme = async (sources: SourceBundleV1["landsSources"]) => buildFabricationPackage(generateGeometry(project, { ...source(project, [park]), landsSources: sources }), project).files.find((file) => file.filename === "README.txt")!.blob.text();
+    const both = await readme(["padus", "cpcad"]);
+    expect(both).toContain("(PAD-US) 4.1 and the Canadian Protected and Conserved Areas Database (CPCAD");
+    expect(both).toContain("Open Government Licence – Canada");
+    expect(await readme(["cpcad"])).not.toContain("PAD-US");
+    // A model generated before sources were recorded reads as PAD-US.
+    expect(await readme(undefined)).toContain("(PAD-US) 4.1.");
   });
 
   it("hatches the inside in a flat engraving", async () => {

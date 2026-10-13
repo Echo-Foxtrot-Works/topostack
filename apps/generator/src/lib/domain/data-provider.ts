@@ -51,12 +51,12 @@ export async function loadAirspace(bounds: GeoBounds, zoom: number, config: Proj
  * blocks export.
  * @public Also passed to the refresh cache by source-preparation.ts, which App.svelte imports lazily.
  */
-export async function loadLands(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsSource" | "landsAttribution">> {
+export async function loadLands(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsSources" | "landsAttribution">> {
   const classes = landClassesNeeded(config);
   try {
     const { loadLandAreas } = await import("$lib/domain/lands-provider");
-    const { areas, status, source, version, attribution } = await loadLandAreas(bounds, zoom, config, classes, signal);
-    return { landAreas: areas, landsStatus: status, ...(source ? { landsSource: source } : {}), ...(version ? { landsVersion: version } : {}), landsAttribution: attribution };
+    const { areas, status, sources, version, attribution } = await loadLandAreas(bounds, zoom, config, classes, signal);
+    return { landAreas: areas, landsStatus: status, ...(sources?.length ? { landsSources: sources } : {}), ...(version ? { landsVersion: version } : {}), landsAttribution: attribution };
   } catch (error) {
     if (signal?.aborted) throw error;
     return { landsStatus: "unavailable" };
@@ -115,7 +115,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
     const aviation = sourceRequirements(config).aviation ? { aviationMarkings: e2eAviationFixture(config), aviationStatus: "available" as const, aviationCycle: "2026-01-01" } : {};
     const airspace = sourceRequirements(config).airspace ? { airspaceVolumes: e2eAirspaceFixture(fixture), airspaceStatus: "available" as const, airspaceCycle: "2026-01-01" } : {};
-    const lands = sourceRequirements(config).lands ? { landAreas: e2eLandsFixture(config), landsStatus: "available" as const, landsVersion: "4.1", landsSource: "padus" as const } : {};
+    const lands = sourceRequirements(config).lands ? { landAreas: e2eLandsFixture(config), landsStatus: "available" as const, landsVersion: "4.1", landsSources: ["padus" as const] } : {};
     return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation, ...airspace, ...lands } };
   }
   const zoom = dataZoom(config.location.zoom);

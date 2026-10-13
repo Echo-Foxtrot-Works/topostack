@@ -732,10 +732,12 @@ export interface LandAreaV1 {
   unit: string;
   landClass: LandClass;
   name?: string;
+  /** Where the outline comes from; absent means PAD-US. */
+  source?: LandsSource;
   polygons: Polygon2D[];
 }
 
-export type LandsSource = "padus" | "openstreetmap";
+export type LandsSource = "padus" | "cpcad" | "openstreetmap";
 
 /** `not-covered` is an area neither PAD-US nor OpenStreetMap has public land for, where `landAreas` is empty. */
 export type LandsStatus = "available" | "partial" | "unavailable" | "not-covered";
@@ -864,8 +866,8 @@ export interface SourceBundleV1 {
   landsStatus?: LandsStatus;
   /** PAD-US version the land areas come from. */
   landsVersion?: string;
-  /** PAD-US inside its coverage; outside it, OpenStreetMap's protected areas, unnamed. */
-  landsSource?: LandsSource;
+  /** Where the land areas came from: PAD-US and CPCAD units from the lands archive; outside its coverage, OpenStreetMap's protected areas, unnamed. */
+  landsSources?: LandsSource[];
   /** Credit for the lands archive, added to the geometry's attribution only while the project uses public lands. */
   landsAttribution?: SourceAttribution[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
@@ -1283,7 +1285,7 @@ export interface GeometryIRV1 {
   /** Status of the public lands source; present only when the project uses public lands. */
   landsStatus?: LandsStatus;
   landsVersion?: string;
-  landsSource?: LandsSource;
+  landsSources?: LandsSource[];
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;

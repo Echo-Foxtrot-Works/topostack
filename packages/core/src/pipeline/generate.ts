@@ -348,7 +348,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     waterPatternAreas,
     fabricationNests,
     paintRegions: paintWindows,
-    ...(sourceRequirements(config).lands ? { landsStatus: source.landsStatus, landsVersion: source.landsVersion, ...(source.landsSource ? { landsSource: source.landsSource } : {}) } : {}),
+    ...(sourceRequirements(config).lands ? { landsStatus: source.landsStatus, landsVersion: source.landsVersion, ...(source.landsSources?.length ? { landsSources: [...source.landsSources] } : {}) } : {}),
     ...(water ? { waterInserts, waterInsertMaterial: water.material } : {}),
     ...(airspaceStack ? { airspaceStack } : {}),
     splitPlan,

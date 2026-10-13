@@ -81,7 +81,7 @@ describe("land area loading", () => {
     };
     const alps = { west: 10.0, east: 10.3, south: 46.55, north: 46.75 };
     const result = await loadLandAreas(alps, 11, config, ["national-park", "preserve", "wilderness"]);
-    expect(result.source).toBe("openstreetmap");
+    expect(result.sources).toEqual(["openstreetmap"]);
     expect(result.status).toBe("available");
     expect(result.attribution).toEqual([]);
     expect(new Set(result.areas.map((area) => area.landClass))).toEqual(new Set(["national-park", "preserve"]));
@@ -104,7 +104,7 @@ describe("land area loading", () => {
     const result = await loadLandAreas(estesPark, 13, config, ["national-park"]);
     expect([...zooms]).toEqual([12]);
     expect(result.status).toBe("available");
-    expect(result.source).toBe("padus");
+    expect(result.sources).toEqual(["padus"]);
     expect(result.version).toBe(LANDS_SOURCES.padusVersion);
     expect(result.attribution[0]!.name).toContain(`PAD-US) ${LANDS_SOURCES.padusVersion}`);
     expect(result.areas).toHaveLength(1);
@@ -112,6 +112,21 @@ describe("land area loading", () => {
     expect(unit).toMatchObject({ unit: park.unit, landClass: "national-park", name: park.name });
     expect(unit!.polygons).toHaveLength(1);
     expect(area(unit!.polygons[0]!.outer)).toBeCloseTo(config.widthMm * config.heightMm, 0);
+  });
+
+  it("credits the databases whose units it loaded: CPCAD in Canada, both across the border", async () => {
+    const banffPark = { class: "national-park", unit: "ca:national-park:Banff National Park:CA-7", name: "Banff National Park", acres: 1_640_000, source: "cpcad" };
+    archive.tile = () => ({ lands: [{ type: 3, properties: banffPark, geometry: wholeTile }] });
+    const banff = { west: -115.8, east: -115.4, south: 51.1, north: 51.3 };
+    const canadian = await loadLandAreas(banff, 11, config, ["national-park"]);
+    expect(canadian.sources).toEqual(["cpcad"]);
+    expect(canadian.areas[0]).toMatchObject({ source: "cpcad", name: "Banff National Park" });
+    expect(canadian.attribution.map((item) => item.name)).toEqual([LANDS_SOURCES.canada!.name]);
+    expect(canadian.attribution[0]!.license).toContain("Open Government Licence");
+    archive.tile = (_z, x) => ({ lands: [{ type: 3, properties: x % 2 ? banffPark : park, geometry: wholeTile }] });
+    const border = await loadLandAreas({ west: -114.3, east: -113.7, south: 48.8, north: 49.2 }, 11, config, ["national-park"]);
+    expect(border.sources).toEqual(["padus", "cpcad"]);
+    expect(border.attribution).toHaveLength(2);
   });
 
   it("keeps only the classes asked for, names only named units, and drops features that break the contract", async () => {
