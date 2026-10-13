@@ -1,6 +1,6 @@
 # Public and protected lands
 
-Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done, and phases 1 to 3 are built: the archive, contract, provisioning and Worker route ([runbook](../public-lands.md)), the paint stencils, and engraved boundaries with names and hatching. The archive is provisioned in development only.
+Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done, and phases 1 to 4 are built: the archive, contract, provisioning and Worker route ([runbook](../public-lands.md)), the paint stencils, engraved boundaries with names and hatching, and the agent surfaces. The archive is provisioned in development only.
 
 Paint templates gain land kinds: national parks, national forests, wilderness, BLM land, state parks, wildlife refuges, preserves, tribal and military land. Each kind gets its own paper stencil per panel, cut the same way water stencils are today. Each kind can also be engraved as a boundary line, so flat engravings get the feature too.
 
@@ -92,7 +92,7 @@ Optional later: county and state boundaries from TIGER cartographic files (`cb_2
    - Unit names, up to 12, go at each unit's roomiest point, largest first, where they fit inside the unit and clear of other names.
    - Project field: `lands: { boundaries: LandClass[], hatched: boolean, labels: boolean }`, absent meaning off. Land is loaded for the classes engraved as well as those painted.
    - Known limit: two classes that share a border (a wilderness edge on a forest edge) each engrave their own line.
-4. **Agents.** Expose `paintTemplates` and `lands` in `ProjectRequestV1` and its JSON Schema (`paintTemplates` is not exposed today). Add coverage and plan notes, the attribution, the MCP guide, and WebMCP.
+4. **Agents (built, stacked on phase 3).** `ProjectRequestV1` gains `paintTemplates` (a list, replaced whole) and `publicLands` (`boundaries`, `names`, `hatched`, or `false`), additive so `requestVersion` stays 1. Coverage reports `publicLands` (the PAD-US version) and plan notes say when an area has none or when flat output drops paint templates. Plans credit PAD-US only when a design paints or engraves land. The MCP guide, the agent API, MCP server and browser agent guides, and the WebMCP update tool's description name the new fields.
 5. **Canada, OSM fallback, per-unit selection.**
    - CPCAD as a second build input.
    - The OSM `landuse` fallback, if the spike supports it.

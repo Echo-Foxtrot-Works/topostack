@@ -76,6 +76,7 @@
     <li>surveyed lakes, whose depth adds sheets below the shoreline;</li>
     <li>models larger than the laser bed, which are split into pieces with alignment tabs;</li>
     <li>aviation detail and airspace in acrylic: the FAA cycle, or that the area has no FAA data;</li>
+    <li>public land paint templates and boundaries: the PAD-US version, or that the area has none, and that flat output has no paint templates;</li>
     <li>airspace in acrylic: its estimated height at the ceiling cap, a stack taller than 250 mm, exaggeration below 10× (some levels merge), and that the studio places the rods when it generates.</li>
   </ul>
 

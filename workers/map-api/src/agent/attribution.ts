@@ -29,12 +29,19 @@ export function projectDrawsAviation(project: Pick<ProjectConfigV1, "aviation" |
   return Object.entries(project.aviation ?? {}).some(([key, enabled]) => key !== "labels" && enabled === true);
 }
 
-export function attributionFor(origin: string, coverage?: AreaCoverage, options: { geocoder?: boolean; aviation?: boolean } = {}): Attribution {
+/** True when a project paints public land on a layered model or engraves its boundaries; every paint kind but water is land. */
+export function projectUsesLands(project: Pick<ProjectConfigV1, "lands" | "paintTemplates" | "outputMode">): boolean {
+  return Boolean(project.lands?.boundaries.length) || (project.outputMode === "stack" && project.paintTemplates.some((kind) => kind !== "water"));
+}
+
+export function attributionFor(origin: string, coverage?: AreaCoverage, options: { geocoder?: boolean; aviation?: boolean; lands?: boolean } = {}): Attribution {
   const aviation = options.aviation && coverage?.aviation;
+  const lands = options.lands && coverage?.publicLands;
   const regional: AttributionEntry[] = [
     ...(coverage?.terrain.highResolution ?? []).map(({ name, license }) => ({ name, license })),
     ...(coverage?.lakeSurveys ?? []).map(({ name, license }) => ({ name, license })),
     ...(aviation ? [{ name: `${aviation.name}, NASR cycle ${aviation.nasrCycle}`, license: aviation.license }] : []),
+    ...(lands ? [{ name: lands.name, license: lands.license }] : []),
   ];
   const sources = [...BASE, ...regional, ...(options.geocoder ? [GEOCODER] : [])];
   return {
