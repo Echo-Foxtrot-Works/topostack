@@ -67,7 +67,8 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   const { landMin, landMax, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
-  if (landRelief < LOW_RELIEF_M) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical." });
+  const engravedContours = flatEngraving && config.showEngravingContours;
+  if (landRelief < LOW_RELIEF_M && (!flatEngraving || config.showEngravingContours)) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical." });
 
   const hasOcean = !flatEngraving && waterAreas.some((area) => area.kind === "ocean");
   const stack = planTerrainStack(config, landRelief, source.bounds, depthBelowLandM);
@@ -85,9 +86,10 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // Keeping the planned count instead would drop the summit off the top. The
   // step itself is unchanged, so the planned exaggeration still describes the cut.
   // A flat engraving of flat ground has no contours to draw: every threshold
-  // would coincide and repeat the crop outline, so only the base remains.
+  // would coincide and repeat the crop outline, so only the base remains. The
+  // same single base carries the map details when contours are turned off.
   const ladderLayerCount = flatEngraving
-    ? landRelief > 0 ? config.engravingContourCount + 1 : 1
+    ? engravedContours && landRelief > 0 ? config.engravingContourCount + 1 : 1
     : stack.metersPerLayer > 0
       ? Math.max(MIN_LAYER_COUNT, Math.ceil((landMax - ladderBase) / stack.metersPerLayer - 1e-9) + (landRelief === 0 ? 1 : 0))
       : stack.layerCount;
