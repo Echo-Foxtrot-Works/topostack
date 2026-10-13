@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Grid3X3, Map as MapIcon, Minus, Square } from "@lucide/svelte";
   import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
-  import { LAND_PAINT_OPTIONS, PAINT_COLORS, withPaintKind } from "$lib/studio/paint-colors";
+  import { LAND_PAINT_OPTIONS, LISTED_LAND_UNITS, PAINT_COLORS, landUnitLabel, withPaintKind } from "$lib/studio/paint-colors";
   import { landStroke, type LandClass, type LandsDetailsV1 } from "@topostack/core";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
@@ -27,6 +27,15 @@
   function toggleBoundary(landClass: LandClass, on: boolean): void {
     const others = lands.boundaries.filter((entry) => entry !== landClass);
     updateLands({ boundaries: on ? [...others, landClass] : others });
+  }
+  // Units in this area, for leaving one out (a forest around the park being modelled).
+  const landUnits = $derived((studio.activeSource.landAreas ?? []).slice(0, LISTED_LAND_UNITS));
+  const leftOut = $derived(new Set(studio.project.landExclusions ?? []));
+  const usesLand = $derived(Boolean(studio.project.lands?.boundaries.length) || (studio.project.outputMode === "stack" && studio.project.paintTemplates.some((kind) => kind !== "water")));
+  function toggleUnit(unit: string, kept: boolean): void {
+    const next = (studio.project.landExclusions ?? []).filter((entry) => entry !== unit);
+    if (!kept) next.push(unit);
+    void updateMapDetails({ landExclusions: next.length ? next : undefined });
   }
   /** A short sample of the class's dash, drawn at a readable scale. */
   const dashSample = (landClass: LandClass) => landStroke(landClass, { boundaryMm: 0.4 }).dash?.join(" ");
@@ -127,11 +136,25 @@
       </div>
     {/if}
     {#if studio.activeSource.landsStatus === "not-covered" && lands.boundaries.length}
-      <small class="depth-note">Public lands data covers only the United States and its territories, so this area has no public land boundaries.</small>
+      <small class="depth-note">No public land of these kinds here. Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+    {:else if studio.activeSource.landsSource === "openstreetmap" && lands.boundaries.length}
+      <small class="depth-note">Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
     {:else}
       <small class="depth-note">Each kind has its own dash. The width is shared with state and province boundaries. Names go inside the largest units that have room.</small>
     {/if}
   </div>
+
+  {#if usesLand && landUnits.length}
+    <div class="detail-group">
+      <p class="subgroup-heading">Public land in this area</p>
+      <div class="toggle-stack land-units">
+        {#each landUnits as area (area.unit)}
+          <Switch checked={!leftOut.has(area.unit)} onCheckedChange={(kept) => toggleUnit(area.unit, kept)} aria-label={`Include ${landUnitLabel(area)}`}><span class="toggle-label"><span class="paint-swatch" style:background={PAINT_COLORS[area.landClass]} aria-hidden="true"></span>{landUnitLabel(area)}</span></Switch>
+        {/each}
+      </div>
+      <small class="depth-note">Turn a unit off to leave it out of the paint templates and boundaries, such as the forest around a park.{#if (studio.activeSource.landAreas?.length ?? 0) > LISTED_LAND_UNITS} The largest {LISTED_LAND_UNITS} are listed.{/if}</small>
+    </div>
+  {/if}
 
   {#if studio.project.outputMode === "stack"}
     <div class="detail-group">
@@ -142,7 +165,9 @@
         {/each}
       </div>
       {#if studio.activeSource.landsStatus === "not-covered" && studio.project.paintTemplates.some((kind) => kind !== "water")}
-        <small class="depth-note">Public lands data covers only the United States and its territories, so this area has no land paint templates.</small>
+        <small class="depth-note">No public land of these kinds here. Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
+      {:else if studio.activeSource.landsSource === "openstreetmap" && studio.project.paintTemplates.some((kind) => kind !== "water")}
+        <small class="depth-note">Outside the United States, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land, without names.</small>
       {:else}
         <small class="depth-note">Each kind turned on gets a paper template per panel, cut to the land that stays visible after assembly. Where kinds overlap, the more specific one paints: a park over the wilderness and forest around it. US public lands from the USGS PAD-US database.</small>
       {/if}

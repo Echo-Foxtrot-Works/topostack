@@ -174,6 +174,22 @@ describe("paint regions", () => {
     expect(warnings).toEqual([{ code: "PAINT_WINDOWS_OMITTED", message: expect.stringContaining("layer 2 could not be cut") }]);
   });
 
+  it("retries a piece the clipper refuses with every coordinate snapped to a micron", () => {
+    const layer: LayerIR = { id: "layer-02", index: 1, elevationM: 0, materialThicknessMm: 3, polygons: [{ outer: square(-50, -50, 50, 50), holes: [] }], markings: [], pieces: [] };
+    const sources = { waterSurfaces: [{ id: "lake", kind: "lake" as const, polygons: [{ outer: circleRing(0, 0, 30.00012), holes: [] }], surfaceElevationM: 0, bedElevationM: 0, layerIndex: 1, depthSource: "modeled" as const }], flatWater: [], cellPitchMm: 1 };
+    const refuseOnce = vi.spyOn(polygonClipping, "intersection").mockImplementationOnce(() => { throw new Error("degenerate ring"); });
+    const warnings: GeometryWarning[] = [];
+    try {
+      const regions = paintRegions(base, [{ layer, covering: preparePolygons([]) }], sources, [], warnings);
+      // The second attempt, on snapped coordinates, still cuts the window.
+      expect(regions).toHaveLength(1);
+      expect(regions[0]!.polygons.length).toBeGreaterThan(0);
+    } finally {
+      refuseOnce.mockRestore();
+    }
+    expect(warnings).toEqual([]);
+  });
+
   it("survives a degenerate piece and drops windows thinner than the minimum feature", () => {
     const degenerate: LayerIR = { id: "layer-01", index: 0, elevationM: 0, materialThicknessMm: 3, polygons: [{ outer: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], holes: [] }], markings: [], pieces: [] };
     const sources = { waterSurfaces: [{ id: "lake", kind: "lake" as const, polygons: [{ outer: circleRing(0, 0, 30), holes: [] }], surfaceElevationM: 0, bedElevationM: 0, layerIndex: 0, depthSource: "modeled" as const }], flatWater: [], cellPitchMm: 1 };

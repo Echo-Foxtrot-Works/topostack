@@ -1,4 +1,4 @@
-import polygonClipping from "polygon-clipping";
+import polygonClipping, { type MultiPolygon } from "polygon-clipping";
 import { boundsOverlap, normalizeMultiPolygon, preparePolygons, ringBounds, signedArea, toMultiPolygon, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
 import { LAND_CLASSES, type FabricationNest, type GeometryWarning, type LandAreaV1, type LandClass, type LayerIR, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type ProjectConfigV1, type WaterSurfaceIR } from "../types.js";
@@ -69,6 +69,25 @@ export const PAINT_PRIORITY: readonly PaintRegionKind[] = [
 
 const landRegion = (landClass: LandClass) => (_layerIndex: number, { landAreas = [] }: PaintRegionSources): Polygon2D[] =>
   landAreas.filter((area) => area.landClass === landClass).flatMap((area) => area.polygons);
+
+/**
+ * One land kind's units as a clean region: overlapping and touching units
+ * merged, so the windows cut from it never meet a self-touching ring. Units
+ * from OpenStreetMap often overlap. Unchanged if the clipper refuses it.
+ */
+function merged(polygons: Polygon2D[]): Polygon2D[] {
+  if (polygons.length < 2) return polygons;
+  try {
+    return normalizeMultiPolygon(polygonClipping.union(toMultiPolygon(polygons)));
+  } catch {
+    return polygons;
+  }
+}
+
+/** A shape with every coordinate rounded to a micron, far below anything a laser cuts. */
+function snapped(shape: MultiPolygon): MultiPolygon {
+  return shape.map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as [number, number])));
+}
 
 /** `a` less `b`; `a` unchanged when the clipper refuses a degenerate ring, since an overlapping coat beats a missing one. */
 function without(a: Polygon2D[], b: Polygon2D[]): Polygon2D[] {
@@ -183,7 +202,7 @@ export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], s
   let claimed: Polygon2D[] = [];
   for (const kind of painted) {
     if (kind === "water") continue;
-    const raw = REGION_SOURCES[kind](0, sources, grow);
+    const raw = merged(REGION_SOURCES[kind](0, sources, grow));
     land.set(kind, without(raw, claimed));
     claimed = [...claimed, ...raw];
   }
@@ -207,18 +226,26 @@ export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], s
         const box = ringBounds(polygon.outer);
         if (!boundsOverlap(box, regionPrepared.bounds)) return;
         const near = covering.polygons.filter((_, index) => boundsOverlap(box, covering.outerBounds[index]!));
-        try {
-          const piece = toMultiPolygon([polygon]);
-          const nearMulti = toMultiPolygon(near);
+        const cut = (piece: MultiPolygon, nearMulti: MultiPolygon, regionShape: MultiPolygon): Polygon2D[] => {
           const exposed = near.length ? polygonClipping.difference(piece, nearMulti) : piece;
-          if (!exposed.length) return;
-          const exact = polygonClipping.intersection(exposed, regionMulti);
-          if (!exact.length) return;
+          if (!exposed.length) return [];
+          const exact = polygonClipping.intersection(exposed, regionShape);
+          if (!exact.length) return [];
           const covered = near.length ? polygonClipping.intersection(piece, nearMulti) : [];
           const allowed = covered.length ? polygonClipping.union(exact, covered) : exact;
           const dilated = offsetPolygons(normalizeMultiPolygon(exact), PAINT_BLEED_MM, "round");
           const window = dilated.length ? polygonClipping.intersection(toMultiPolygon(dilated), allowed) : exact;
-          const polygons = normalizeMultiPolygon(window, refine);
+          return normalizeMultiPolygon(window, refine);
+        };
+        try {
+          let polygons: Polygon2D[];
+          try {
+            polygons = cut(toMultiPolygon([polygon]), toMultiPolygon(near), regionMulti);
+          } catch {
+            // Edges that nearly coincide (a mapped boundary along a contour) can defeat
+            // the clipper; snapped to a micron, they meet or part cleanly.
+            polygons = cut(snapped(toMultiPolygon([polygon])), snapped(toMultiPolygon(near)), snapped(regionMulti));
+          }
           if (!polygons.length) return;
           const omittedHoles = omitted.get(polygonIndex) ?? new Set<number>();
           const sheet = omittedHoles.size ? { outer: polygon.outer, holes: polygon.holes.filter((_, holeIndex) => !omittedHoles.has(holeIndex)) } : polygon;

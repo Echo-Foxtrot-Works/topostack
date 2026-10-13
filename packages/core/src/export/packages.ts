@@ -80,8 +80,10 @@ function landsSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
   });
   const extras = [lands.labels ? "names inside the largest units" : "", lands.hatched && config.outputMode === "engraving" ? "short ticks just inside each boundary" : ""].filter(Boolean);
   const source = ir.landsStatus === "not-covered"
-    ? "PAD-US covers only the United States and its territories, so this area has none."
-    : `Source: USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}. Boundaries are as published and can lag changes on the ground.`;
+    ? "Neither PAD-US nor OpenStreetMap has public land of these kinds here, so this area has none."
+    : ir.landsSource === "openstreetmap"
+      ? "Source: OpenStreetMap protected areas (national parks, nature reserves and military land, unnamed), as completely as they are mapped."
+      : `Source: USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}. Boundaries are as published and can lag changes on the ground.`;
   return `Public land boundaries: ${drawn.join(", ")}${extras.length ? `, with ${extras.join(" and ")}` : ""}. ${source}\n`;
 }
 

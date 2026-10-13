@@ -93,10 +93,10 @@ Optional later: county and state boundaries from TIGER cartographic files (`cb_2
    - Project field: `lands: { boundaries: LandClass[], hatched: boolean, labels: boolean }`, absent meaning off. Land is loaded for the classes engraved as well as those painted.
    - Known limit: two classes that share a border (a wilderness edge on a forest edge) each engrave their own line.
 4. **Agents (built, stacked on phase 3).** `ProjectRequestV1` gains `paintTemplates` (a list, replaced whole) and `publicLands` (`boundaries`, `names`, `hatched`, or `false`), additive so `requestVersion` stays 1. Coverage reports `publicLands` (the PAD-US version) and plan notes say when an area has none or when flat output drops paint templates. Plans credit PAD-US only when a design paints or engraves land. The MCP guide, the agent API, MCP server and browser agent guides, and the WebMCP update tool's description name the new fields.
-5. **Canada, OSM fallback, per-unit selection.**
-   - CPCAD as a second build input.
-   - The OSM `landuse` fallback, if the spike supports it.
-   - Choosing or excluding a single unit by `unit` id, so a user can paint Rocky Mountain NP and not the forest around it. Maybe click-to-pick on the map.
+5. **Canada, OSM fallback, per-unit selection.** Per-unit selection and the OSM fallback are built (stacked on phase 4); Canada is next, as a rebuilt archive.
+   - CPCAD as a second build input (next): the archive contract gains a second source date and a per-unit source for attribution, and the archive is rebuilt and provisioned.
+   - The OSM `landuse` fallback outside PAD-US (built): `national_park`, `nature_reserve`/`protected_area` (as preserve) and `military`, unnamed, joined by feature id; `landsSource` says which source a model used, with a warning and a README line.
+   - Leaving units out (built): `landExclusions` lists unit ids, applied to paint and boundaries without reloading; the Features panel lists the 40 largest units in the area. Click-to-pick on the map and an agent field are later.
 
 ## Known limits (expected)
 

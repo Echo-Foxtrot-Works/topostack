@@ -184,7 +184,7 @@ describe("GET /v1/coverage", () => {
     expect(flat.notes).toContain("Paint templates are made for layered models only, so flat output leaves them out.");
     // Outside the US there is nothing to draw.
     const alps = await (await worker.fetch(post("/v1/projects/plan", { ...request, area: { center: { lat: 46.55, lon: 7.9 }, widthKm: 20 } }), env, context)).json<{ notes: string[]; attribution: { sources: Array<{ name: string }> } }>();
-    expect(alps.notes.some((note) => /covers only the United States/.test(note) && /public land/.test(note))).toBe(true);
+    expect(alps.notes.some((note) => /comes from OpenStreetMap/.test(note) && /public land/.test(note))).toBe(true);
     expect(alps.attribution.sources.some(({ name }) => name.includes("PAD-US"))).toBe(false);
   });
 

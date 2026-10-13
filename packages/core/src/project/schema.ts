@@ -112,11 +112,11 @@ const PAINT_TEMPLATES_SCHEMA: Schema = {
   type: "array",
   uniqueItems: true,
   items: { enum: [...PAINT_REGION_KINDS] },
-  description: `Layered output only: a paper paint stencil per panel for each kind listed, cut to what stays visible after assembly. water, or a kind of US public land: ${LAND_KINDS_DESCRIPTION}. Where kinds overlap, the more specific one paints (water, then parks and monuments, ..., forest and BLM land last). Replaces the design's list; [] removes them.`,
+  description: `Layered output only: a paper paint stencil per panel for each kind listed, cut to what stays visible after assembly. water, or a kind of public land: ${LAND_KINDS_DESCRIPTION}. Public land is USGS PAD-US in the United States; elsewhere only national-park, preserve and military, from OpenStreetMap where mapped. Where kinds overlap, the more specific one paints (water, then parks and monuments, ..., forest and BLM land last). Replaces the design's list; [] removes them.`,
 };
 
 const PUBLIC_LANDS_SCHEMA: Schema = {
-  description: "Public land engraved as lines, US and territories only, in either output. false turns it off. On a design that has it, only the fields given change.",
+  description: "Public land engraved as lines, in either output: PAD-US in the United States, OpenStreetMap national parks, nature reserves and military land elsewhere. false turns it off. On a design that has it, only the fields given change.",
   anyOf: [
     { const: false },
     {
