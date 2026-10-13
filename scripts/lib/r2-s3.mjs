@@ -22,9 +22,27 @@ export async function temporaryR2Client({ cloudflare, accountId, bucket, parentA
   if (!credentials?.accessKeyId || !credentials.secretAccessKey || !credentials.sessionToken) throw new Error("Missing temporary R2 credentials.");
   const client = new AwsClient({ ...credentials, service: "s3", region: "auto", retries: 0 });
   const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-  const request = async (key, init) => client.fetch(`${endpoint}/${bucket}/${encodeObjectKey(key)}`, { signal: AbortSignal.timeout(30_000), ...init });
-  const list = (options) => listObjects((query) => client.fetch(`${endpoint}/${bucket}?${query}`, { signal: AbortSignal.timeout(30_000) }), options);
+  const send = (url, init) => client.fetch(url, { signal: AbortSignal.timeout(30_000), ...init });
+  const request = async (key, init) => retryReads(() => send(`${endpoint}/${bucket}/${encodeObjectKey(key)}`, init), init?.method);
+  const list = (options) => listObjects((query) => retryReads(() => send(`${endpoint}/${bucket}?${query}`)), options);
   return { credentials, endpoint, request, list };
+}
+
+/**
+ * Retries a read whose connection failed or timed out; a deploy preflight
+ * makes thousands of them. Writes are never retried here, and an HTTP error
+ * response is returned unchanged.
+ */
+export async function retryReads(send, method = "GET", { attempts = 3, delayMs = 2_000 } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await send();
+    } catch (error) {
+      if (!["GET", "HEAD"].includes(method.toUpperCase()) || attempt >= attempts) throw error;
+      console.warn(`R2 ${method} failed (${error.name}: ${error.message}); retrying.`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
 }
 
 const XML_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };

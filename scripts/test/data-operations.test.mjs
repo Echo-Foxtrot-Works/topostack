@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { stageArchive } from "../lib/archive-provisioning.mjs";
 import { GEOCODE_EXPIRY_RULE, reconcileCacheLifecycle, hasGeocodeExpiry, lifecycleSatisfies, retiredTerrainRule, terrainVersionsFromPrefixes } from "../lib/cache-lifecycle.mjs";
 import { DAY_MS, planArchivePrune, pointersUnchanged, readReleasePointers } from "../lib/archive-pruning.mjs";
-import { parseListObjectsXml, listObjects } from "../lib/r2-s3.mjs";
+import { parseListObjectsXml, listObjects, retryReads } from "../lib/r2-s3.mjs";
 import { liveDatasetVersion, verifyPromotionGateway } from "../lib/gateway.mjs";
 import { stripJsonc } from "../lib/r2-buckets.mjs";
 
@@ -106,6 +106,30 @@ test("managed terrain rules that were edited by hand fail closed", () => {
   assert.throws(() => reconcileCacheLifecycle({ rules: [tampered] }, { protectedTerrainVersions: [current] }), /Review managed terrain rule/);
   assert.throws(() => terrainVersionsFromPrefixes(["terrain/"]));
   assert.deepEqual(terrainVersionsFromPrefixes([`terrain/${current}/`]), [current]);
+});
+
+test("R2 reads retry a failed connection; writes and HTTP errors do not", async (t) => {
+  t.mock.method(console, "warn", () => {});
+  const failing = (outcomes) => t.mock.fn(async () => {
+    const next = outcomes.shift();
+    if (next instanceof Error) throw next;
+    return next;
+  });
+  const dropped = () => new TypeError("fetch failed");
+  for (const method of ["GET", "HEAD", "head"]) {
+    const send = failing([dropped(), dropped(), new Response("ok")]);
+    assert.equal((await retryReads(send, method, { delayMs: 0 })).status, 200);
+    assert.equal(send.mock.callCount(), 3);
+  }
+  const exhausted = failing([dropped(), dropped(), dropped()]);
+  await assert.rejects(retryReads(exhausted, "GET", { delayMs: 0 }), TypeError);
+  assert.equal(exhausted.mock.callCount(), 3);
+  const write = failing([dropped()]);
+  await assert.rejects(retryReads(write, "PUT", { delayMs: 0 }), TypeError);
+  assert.equal(write.mock.callCount(), 1);
+  const missing = failing([new Response("missing", { status: 404 })]);
+  assert.equal((await retryReads(missing, undefined, { delayMs: 0 })).status, 404);
+  assert.equal(missing.mock.callCount(), 1);
 });
 
 test("R2 listings parse XML entities and follow continuation tokens", async () => {
