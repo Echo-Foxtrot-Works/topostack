@@ -68,6 +68,8 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
     (feature.kind === "grid" && config.showCoordinateGrid) ||
     // Aviation lines are filtered by class when they are built (aviationFeatures).
     feature.kind === "aviation" ||
+    // Land lines are filtered by class when they are built (landFeatures).
+    feature.kind === "land" ||
     feature.kind === "contour" || feature.kind === "label" || feature.kind === "guide";
 }
 
@@ -84,6 +86,7 @@ function mapFeatures(context: GenerationContext, modelGrid: ElevationGrid): Arra
   const mapMarkings = [
     ...source.markings,
     ...context.aviation.lines,
+    ...context.lands.lines,
     ...customLineMarkings,
     ...(config.showCoordinateGrid ? coordinateGridMarkings(config, source.bounds, modelGrid) : []),
   ];
@@ -125,7 +128,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
   }
   clipPolyline(feature.points, baseMaterial)
     .filter((points) => feature.kind !== "water" || polylineLength(points) >= config.minimumFeatureMm)
-    .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), points }));
+    .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), ...(feature.landClass ? { landClass: feature.landClass } : {}), points }));
 }
 
 function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], layers: LayerIR[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
@@ -152,14 +155,15 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
   // leaving the score line visibly short of the step edge. Clipping the full
   // path against each exposed layer footprint makes adjacent pieces meet at
   // the exact contour intersection, independent of source vertex spacing.
-  // Aviation detail lies on the ground wherever it is, so it takes the same path.
-  if ((feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
+  // Aviation detail and public land lie on the ground wherever they are, so they take the same path.
+  if ((feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || feature.kind === "land" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
     clips.forEach(({ layer, material, covering }) => {
       clipPolyline(feature.points, material, covering).forEach((points, clipIndex) => layer.markings.push({
         id: `${featureId}-${layer.index}-terrain-${clipIndex}`,
         operation: feature.operation,
         kind: feature.kind,
         ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}),
+        ...(feature.landClass ? { landClass: feature.landClass } : {}),
         points,
       }));
     });

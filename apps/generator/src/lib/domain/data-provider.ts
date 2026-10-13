@@ -1,6 +1,6 @@
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { apiBase } from "$lib/domain/api-base";
-import { boundsForProject, groundWidthMFor, LAND_CLASSES, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type LandAreaV1, type LandClass, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, landClassesNeeded, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type LandAreaV1, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { dataZoom, fittingTileWindow } from "$lib/domain/tile-math";
@@ -45,14 +45,14 @@ export async function loadAirspace(bounds: GeoBounds, zoom: number, config: Proj
 }
 
 /**
- * Public land units for the land paint stencils the project asks for.
+ * Public land units for the land paint stencils and boundaries the project asks for.
  * Imported on demand like aviation. Outside PAD-US coverage the areas are
  * empty; when loading fails they stay absent and the status says so, which
  * blocks export.
  * @public Also passed to the refresh cache by source-preparation.ts, which App.svelte imports lazily.
  */
 export async function loadLands(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsAttribution">> {
-  const classes = config.paintTemplates.filter((kind): kind is LandClass => (LAND_CLASSES as readonly string[]).includes(kind));
+  const classes = landClassesNeeded(config);
   try {
     const { loadLandAreas } = await import("$lib/domain/lands-provider");
     const { areas, status, version, attribution } = await loadLandAreas(bounds, zoom, config, classes, signal);

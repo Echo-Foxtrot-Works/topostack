@@ -8,6 +8,7 @@ import { formatNumber as format } from "../primitives/format.js";
 import { ringBounds } from "../primitives/geometry2d.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
+import { landStroke } from "../pipeline/lands.js";
 import { PAINT_BLEED_MM, PAINT_PRIORITY } from "../pipeline/paint-regions.js";
 import { alignmentOutlineInsetMm } from "../pipeline/hidden-marks.js";
 import { aviationRequested, aviationStroke } from "../pipeline/aviation.js";
@@ -64,6 +65,24 @@ function aviationSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
     ? " Symbols follow the FAA VFR sectional legend in one colour, so towered airports, which the chart shows in blue, look like the rest."
     : "";
   return `Aviation detail: ${drawn.join(", ")}.${symbols} ${source} NOT FOR NAVIGATION: aeronautical data is replaced every 28 days and this piece is never updated.\n`;
+}
+
+/**
+ * README paragraph for engraved public land: each class and the dash it was
+ * drawn with, and the PAD-US version. Empty when the project has none.
+ */
+function landsSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
+  const lands = config.lands;
+  if (!lands?.boundaries.length) return "";
+  const drawn = lands.boundaries.map((landClass) => {
+    const stroke = landStroke(landClass, config.lineStyle);
+    return `${PAINT_REGION_LABELS[landClass]} ${format(stroke.widthMm)} mm (${stroke.dash ? `dashes ${stroke.dash.map(format).join("/")} mm` : "solid"})`;
+  });
+  const extras = [lands.labels ? "names inside the largest units" : "", lands.hatched && config.outputMode === "engraving" ? "short ticks just inside each boundary" : ""].filter(Boolean);
+  const source = ir.landsStatus === "not-covered"
+    ? "PAD-US covers only the United States and its territories, so this area has none."
+    : `Source: USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}. Boundaries are as published and can lag changes on the ground.`;
+  return `Public land boundaries: ${drawn.join(", ")}${extras.length ? `, with ${extras.join(" and ")}` : ""}. ${source}\n`;
 }
 
 function attributionText(ir: GeometryIRV1): string {
@@ -460,7 +479,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   const fittedDepths = ir.waterSurfaces.filter((surface) => surface.depthFitScale !== undefined)
     .map((surface) => `${surface.name ?? "Lake"}: fitted to ${(surface.depthFitScale! * 100).toFixed(1)}% of requested depth; ${surface.appliedDepthExaggeration!.toFixed(3)}x terrain depth scale.\n`).join("");
   const vertical = `Vertical exaggeration: ${ir.verticalExaggeration.toFixed(1)}x${scale}\n`;
-  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config);
+  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config) + landsSummary(ir, config);
   const seams = ir.splitPlan ? (() => {
     const pieces = ir.layers.reduce((total, layer) => total + layer.pieces.length, 0);
     const perLayer = `${ir.splitPlan!.columns} x ${ir.splitPlan!.rows}`;
@@ -551,7 +570,7 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
   ].filter(Boolean);
   const linework = lineworkSummary(config.lineStyle, "Line widths",
     [`minor contours ${format(config.lineStyle.contourMm)} mm`, `index contours ${format(config.lineStyle.indexContourMm)} mm`],
-    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]) + aviationSummary(ir, config);
+    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]) + aviationSummary(ir, config) + landsSummary(ir, config);
   const readme = `${ir.projectName}\n\nFlat topographic engraving\nArtwork size: ${size}\nContour lines: ${config.engravingContourCount}\nIndex contour: every ${config.engravingIndexInterval} lines\nWater fill: ${config.showWater ? config.waterFillPattern : "none"}\n${linework}Map details: ${details.length ? details.join(", ") : "none"}\nBorder: ${config.showEngravingBorder ? "engraved" : "none"}\n\nThe SVG contains one blue ENGRAVE operation group and no CUT or SCORE paths. In xTool Studio, choose Score for blue linework. Engrave fills closed shapes; reserve it for intentionally filled markers. Marker clearances are gaps in the line geometry; there is no white engraving operation. Minor and index contours are separated into named subgroups so their line weights can be assigned independently. Verify physical dimensions, focus, power, speed, and material settings with a small test engraving before processing the final item. Terrain data is decorative and is not survey, navigation, or engineering data.\n\n${EXPORT_CREDIT}\n`;
   const files: ExportFile[] = [
     master,

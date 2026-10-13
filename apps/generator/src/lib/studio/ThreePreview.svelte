@@ -402,10 +402,12 @@
       const aviationDashedMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["aviation-dashed"], linewidth: aviationStroke("class-d", style).widthMm, dashSize: classDDash, gapSize: classDGap });
       // Special use airspace is solid; its inside hatching arrives as geometry.
       const specialUseMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm });
+      // Public land boundaries share one solid line here; the cut and engraving previews dash each class.
+      const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial,
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
-        "special-use": specialUseMaterial, engrave: engraveMaterial,
+        "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,
       };
       const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
@@ -417,7 +419,7 @@
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, landMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);

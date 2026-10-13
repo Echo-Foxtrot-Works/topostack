@@ -1,4 +1,4 @@
-import { PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1, type AirspaceStackSettingsV1 } from "../types.js";
+import { LAND_CLASSES, PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type LandsDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1, type AirspaceStackSettingsV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
 import { validateProject } from "../pipeline/validate.js";
@@ -164,6 +164,20 @@ function aviationValue(value: unknown): AviationDetailsV1 {
   const record = value as Record<string, unknown>;
   // A missing switch is off, so details added later never change an older project.
   return Object.fromEntries(AVIATION_DETAIL_KEYS.map((key) => [key, record[key] === undefined ? false : booleanValue(record[key], `aviation.${key}`)])) as Record<keyof AviationDetailsV1, boolean>;
+}
+
+function landsValue(value: unknown): LandsDetailsV1 {
+  const record = objectFields(value);
+  if (!record || Array.isArray(value)) throw new Error("Public land settings are invalid.");
+  const boundaries = record.boundaries === undefined ? [] : record.boundaries;
+  if (!Array.isArray(boundaries) || boundaries.some((entry) => !(LAND_CLASSES as readonly unknown[]).includes(entry)) || new Set(boundaries).size !== boundaries.length) {
+    throw new Error("Public land boundaries must list each land class at most once.");
+  }
+  return {
+    boundaries: [...boundaries] as LandsDetailsV1["boundaries"],
+    hatched: record.hatched === undefined ? false : booleanValue(record.hatched, "lands.hatched"),
+    labels: record.labels === undefined ? false : booleanValue(record.labels, "lands.labels"),
+  };
 }
 
 function markerSymbolValue(value: unknown): MarkerSymbol {
@@ -414,6 +428,8 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     showBoundaries: record.showBoundaries === undefined ? DEFAULT_PROJECT.showBoundaries : booleanValue(record.showBoundaries, "showBoundaries"),
     // Absent keeps every project saved before aviation detail, and its fingerprint.
     ...(record.aviation === undefined ? {} : { aviation: aviationValue(record.aviation) }),
+    // Absent keeps every project saved before public land lines, and its fingerprint.
+    ...(record.lands === undefined ? {} : { lands: landsValue(record.lands) }),
     showCoordinateGrid: record.showCoordinateGrid === undefined ? DEFAULT_PROJECT.showCoordinateGrid : booleanValue(record.showCoordinateGrid, "showCoordinateGrid"),
     showWaterDepth: record.showWaterDepth === undefined ? DEFAULT_PROJECT.showWaterDepth : booleanValue(record.showWaterDepth, "showWaterDepth"),
     waterDepthExaggeration: record.waterDepthExaggeration === undefined ? DEFAULT_PROJECT.waterDepthExaggeration : numberValue(record.waterDepthExaggeration),

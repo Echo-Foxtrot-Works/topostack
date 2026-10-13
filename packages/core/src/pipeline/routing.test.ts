@@ -35,6 +35,7 @@ function setup(markings: MarkingFeature[], options: { config?: Partial<ProjectCo
     clip: cropBoundary(config),
     warnings: [],
     aviation: { lines: [], labels: [], altitudes: [], symbols: [] },
+    lands: { lines: [], labels: [] },
   };
   const layers = options.flatEngraving ? [layer(0, cropBoundary(config))] : [layer(0, cropBoundary(config)), layer(1, square(0, -100, 150, 100))];
   const grid = splitGrid();

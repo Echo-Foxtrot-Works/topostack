@@ -17,8 +17,8 @@ export function exportBlockReason(geometry: GeometryIRV1, project: ProjectConfig
   if (needsAviation && geometry.aviationStatus === "partial") return "Aviation data exceeded the safe feature limit. Narrow the map area or turn off some aviation details, then regenerate.";
   if (needsAviation && geometry.aviationStatus !== "available" && geometry.aviationStatus !== "not-covered") return "FAA aviation data is unavailable. Turn off aviation details or regenerate after the service is restored.";
   // A stencil missing part of a park would leave it unpainted, so incomplete land data blocks export; outside PAD-US there is simply none.
-  if (needsLands && geometry.landsStatus === "partial") return "Public lands data exceeded the safe feature limit. Narrow the map area or turn off some land paint templates, then regenerate.";
-  if (needsLands && geometry.landsStatus !== "available" && geometry.landsStatus !== "not-covered") return "Public lands data is unavailable. Turn off the land paint templates or regenerate after the service is restored.";
+  if (needsLands && geometry.landsStatus === "partial") return "Public lands data exceeded the safe feature limit. Narrow the map area or turn off some land kinds, then regenerate.";
+  if (needsLands && geometry.landsStatus !== "available" && geometry.landsStatus !== "not-covered") return "Public lands data is unavailable. Turn off public land paint and boundaries, or regenerate after the service is restored.";
   // A project that asks for airspace never exports without it; an area with none simply has no pieces.
   if (project.outputMode === "stack" && project.airspaceStack) {
     if (geometry.airspaceStatus === "partial") return "Airspace data exceeded the safe feature limit. Narrow the map area or turn off some airspace classes, then regenerate.";

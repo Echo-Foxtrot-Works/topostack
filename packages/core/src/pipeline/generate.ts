@@ -21,6 +21,8 @@ import { insertedShorelines, markingEnabled, placeTransportationLabels, routeMar
 import { addAlignmentGuides, addPieceLabels } from "./assembly-marks.js";
 import { cutPlacedGraphics, elevationLabelTexts, placeAnnotations, placeElevationLabels, placeGraphics, placeMarkers, placePlaque } from "./annotations.js";
 import { placeAviationLabels } from "./aviation-labels.js";
+import { landFeatures } from "./lands.js";
+import { placeLandLabels } from "./land-labels.js";
 import { registeredAirspaceStage, type AirspaceStageMemo } from "./airspace-settings.js";
 
 /**
@@ -89,7 +91,7 @@ interface GenerationSession {
 // Everything affects terrain unless explicitly known to be downstream of it.
 // New config fields therefore invalidate safely until their dependency is reviewed.
 const TERRAIN_INDEPENDENT_FIELDS = [
-  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation",
+  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation", "lands",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
   "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "airspaceStack", "showElevationLabels",
@@ -205,6 +207,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     clip: boundary(config),
     warnings: [],
     aviation: aviationFeatures(source.aviationMarkings ?? [], config, config.widthMm / groundWidthMFor(source.bounds)),
+    lands: landFeatures(source.landAreas ?? [], config),
   };
   addSourceWarnings(context);
   stage("prepare");
@@ -252,7 +255,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Nesting has finished carving cavities, so layer material is final for routing.
   // Boolean unions pay off when many paths repeatedly query a tall stack.
   // Sparse maps and flat engravings keep the cheap original covering sets.
-  const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + config.customLines.length;
+  const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + context.lands.lines.length + config.customLines.length;
   const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= UNION_COVERING_MIN_WORK);
   const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm, landAreas: source.landAreas ?? [] }, fabricationNests, context.warnings);
   // Map detail treats acrylic as the surface it lies on; hidden marks keep the wood `clips`.
@@ -285,6 +288,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     message: "Transportation labels do not fit the exposed material. Reduce Text size or Vertical exaggeration, or increase the artwork size.",
   });
   placeAviationLabels(context, surfaceClips);
+  placeLandLabels(context, surfaceClips);
   if (config.showElevationLabels) {
     const coverings = labelCoverings(layers, waterInserts, water?.material);
     if (usePool) {
