@@ -396,6 +396,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     units: unitValue(record.units),
     outputMode: outputModeValue(record.outputMode),
     widthMm: numberValue(record.widthMm), heightMm: numberValue(record.heightMm), materialThicknessMm: numberValue(record.materialThicknessMm),
+    showEngravingContours: record.showEngravingContours === undefined ? DEFAULT_PROJECT.showEngravingContours : booleanValue(record.showEngravingContours, "showEngravingContours"),
     engravingContourCount: record.engravingContourCount === undefined ? DEFAULT_PROJECT.engravingContourCount : numberValue(record.engravingContourCount),
     engravingIndexInterval: record.engravingIndexInterval === undefined ? DEFAULT_PROJECT.engravingIndexInterval : numberValue(record.engravingIndexInterval),
     showEngravingBorder: record.showEngravingBorder === undefined ? DEFAULT_PROJECT.showEngravingBorder : booleanValue(record.showEngravingBorder, "showEngravingBorder"),
