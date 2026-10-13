@@ -4,6 +4,7 @@
   import { displayElevation, elevationUnit, paintStencil, type GeometryIRV1 } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
   import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
+  import { PAINT_COLORS } from "$lib/studio/paint-colors";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
   let { geometry, selectedLayer, selectedAirspaceLevel }: { geometry: GeometryIRV1; selectedLayer: number; selectedAirspaceLevel?: number } = $props();
   const airspaceLevel = $derived(selectedAirspaceLevel === undefined ? undefined : geometry.airspaceStack?.levels[selectedAirspaceLevel]);
@@ -55,7 +56,7 @@
       {/each}
       {#each paint as region (`${region.kind}-${region.polygonIndex}`)}
         {#each region.polygons as polygon}
-          <path data-paint-kind={region.kind} d={`${pointsToPath(polygon.outer)} Z ${polygon.holes.map((hole) => `${pointsToPath(hole)} Z`).join(" ")}`} fill="#2f7fb0" fill-opacity="0.55" stroke="#1f5f88" stroke-width="0.3" stroke-dasharray="1 0.8" fill-rule="evenodd" />
+          <path data-paint-kind={region.kind} d={`${pointsToPath(polygon.outer)} Z ${polygon.holes.map((hole) => `${pointsToPath(hole)} Z`).join(" ")}`} fill={PAINT_COLORS[region.kind]} fill-opacity="0.55" stroke={PAINT_COLORS[region.kind]} stroke-width="0.3" stroke-dasharray="1 0.8" fill-rule="evenodd" />
         {/each}
       {/each}
       {#each layer.markings as marking (marking.id)}

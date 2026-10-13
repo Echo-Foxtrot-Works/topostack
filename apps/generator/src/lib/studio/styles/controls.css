@@ -193,6 +193,15 @@
   color: var(--loidolt-text-muted);
 }
 
+/* The suggested paint beside each public land kind. */
+.paint-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: var(--loidolt-border-width) solid var(--loidolt-border-control);
+  border-radius: 3px;
+}
+
 /* Per-lake acrylic switches: the lake's name, then which insert it became. */
 .insert-lakes .toggle-label small {
   margin-left: auto;

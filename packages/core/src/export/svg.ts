@@ -3,7 +3,7 @@ import { type FabricationPanel, fabricationPanels } from "./panel-layout.js";
 import { formatNumber as format } from "../primitives/format.js";
 import { markingsWithin } from "../pipeline/marking-clip.js";
 import { omittedNestHoles, paintStencil } from "../pipeline/paint-regions.js";
-import type { GeometryIRV1, LayerIR, LineStyleV1, PaintRegionKind, ProjectConfigV1 } from "../types.js";
+import { PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type LineStyleV1, type PaintRegionKind, type ProjectConfigV1 } from "../types.js";
 
 export function layerToSvg(ir: GeometryIRV1, layer: LayerIR): string {
   const width = ir.widthMm + ir.laserKerfMm;
@@ -101,7 +101,7 @@ export function paintTemplateSvg(ir: GeometryIRV1, config: ProjectConfigV1, pane
   if (!groups) return undefined;
   const layerIds = panel.layerIndexes.map((index) => ir.layers[index]?.id).filter(Boolean).join(", ");
   const cell = panel.cellName ? ` — cell ${panel.cellName}` : "";
-  return paintTemplateDocument(ir, panel, kind, groups, `${ir.projectName} — ${kind} paint template${cell} — ${layerIds}`);
+  return paintTemplateDocument(ir, panel, kind, groups, `${ir.projectName} — ${PAINT_REGION_LABELS[kind]} paint template${cell} — ${layerIds}`);
 }
 
 /** The stencil shell shared by panel and sheet templates: one CUT group holding `groups`. */

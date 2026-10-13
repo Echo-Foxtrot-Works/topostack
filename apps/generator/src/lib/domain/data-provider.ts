@@ -1,6 +1,6 @@
 import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
 import { apiBase } from "$lib/domain/api-base";
-import { boundsForProject, groundWidthMFor, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { boundsForProject, groundWidthMFor, LAND_CLASSES, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type LandAreaV1, type LandClass, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
 import { dataZoom, fittingTileWindow } from "$lib/domain/tile-math";
@@ -41,6 +41,25 @@ export async function loadAirspace(bounds: GeoBounds, zoom: number, config: Proj
   } catch (error) {
     if (signal?.aborted) throw error;
     return { airspaceStatus: "unavailable" };
+  }
+}
+
+/**
+ * Public land units for the land paint stencils the project asks for.
+ * Imported on demand like aviation. Outside PAD-US coverage the areas are
+ * empty; when loading fails they stay absent and the status says so, which
+ * blocks export.
+ * @public Also passed to the refresh cache by source-preparation.ts, which App.svelte imports lazily.
+ */
+export async function loadLands(bounds: GeoBounds, zoom: number, config: ProjectConfigV1, signal?: AbortSignal): Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsAttribution">> {
+  const classes = config.paintTemplates.filter((kind): kind is LandClass => (LAND_CLASSES as readonly string[]).includes(kind));
+  try {
+    const { loadLandAreas } = await import("$lib/domain/lands-provider");
+    const { areas, status, version, attribution } = await loadLandAreas(bounds, zoom, config, classes, signal);
+    return { landAreas: areas, landsStatus: status, ...(version ? { landsVersion: version } : {}), landsAttribution: attribution };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return { landsStatus: "unavailable" };
   }
 }
 
@@ -96,7 +115,8 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
     const aviation = sourceRequirements(config).aviation ? { aviationMarkings: e2eAviationFixture(config), aviationStatus: "available" as const, aviationCycle: "2026-01-01" } : {};
     const airspace = sourceRequirements(config).airspace ? { airspaceVolumes: e2eAirspaceFixture(fixture), airspaceStatus: "available" as const, airspaceCycle: "2026-01-01" } : {};
-    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation, ...airspace } };
+    const lands = sourceRequirements(config).lands ? { landAreas: e2eLandsFixture(config), landsStatus: "available" as const, landsVersion: "4.1" } : {};
+    return { fallback: false, source: { ...fixture, sourceKind: "real", datasetVersion: "topostack-browser-e2e-v1", vectorStatus: "available", ...aviation, ...airspace, ...lands } };
   }
   const zoom = dataZoom(config.location.zoom);
   const userSignal = signal;
@@ -105,7 +125,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
   try {
     // Ocean polygons are how geometry separates bathymetry from land relief,
     // so depth modeling needs vectors even when shoreline scoring is hidden.
-    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas, aviation: aviationRequested, airspace: airspaceRequested } = sourceRequirements(config);
+    const { lakes: usesWaterDepth, vectors: vectorRequested, water: usesWaterAreas, aviation: aviationRequested, airspace: airspaceRequested, lands: landsRequested } = sourceRequirements(config);
     let loaded;
     try {
       // Choose elevation detail from the crop, independently of the camera zoom.
@@ -133,6 +153,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
           : Promise.resolve({ areas: [] as WaterAreaV1[], status: "not-requested" as const }),
         aviationRequested ? loadAviation(bounds, zoom, config, signal) : Promise.resolve(undefined),
         airspaceRequested ? loadAirspace(bounds, zoom, config, signal) : Promise.resolve(undefined),
+        landsRequested ? loadLands(bounds, zoom, config, signal) : Promise.resolve(undefined),
       ]);
     } catch (error) {
       if (userSignal?.aborted) throw error;
@@ -141,15 +162,15 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
       onStage?.("preparing");
       const source = createSyntheticSource({ ...config, location: { ...config.location, bounds } });
       return {
-        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested", ...(aviationRequested ? { aviationMarkings: [], aviationStatus: "unavailable" as const } : {}), ...(airspaceRequested ? { airspaceStatus: "unavailable" as const } : {}) },
+        source: { ...source, vectorStatus: vectorRequested ? "unavailable" : "not-requested", lakeDataStatus: usesWaterDepth ? "unavailable" : "not-requested", ...(aviationRequested ? { aviationMarkings: [], aviationStatus: "unavailable" as const } : {}), ...(airspaceRequested ? { airspaceStatus: "unavailable" as const } : {}), ...(landsRequested ? { landsStatus: "unavailable" as const } : {}) },
         fallback: true,
         fallbackReason: errorMessage(error, "The terrain service could not be reached."),
       };
     }
     signal.throwIfAborted();
     onStage?.("preparing");
-    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation, airspace] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, ...airspace, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation, airspace, lands] = loaded;
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, ...airspace, ...lands, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth
@@ -171,6 +192,16 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
   } finally {
     operation.abort();
   }
+}
+
+/** A park inside a national forest for the Playwright build, which never reaches the map API. */
+function e2eLandsFixture(config: ProjectConfigV1): LandAreaV1[] {
+  const square = (half: number) => [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }];
+  const half = Math.min(config.widthMm, config.heightMm) / 2;
+  return [
+    { unit: "national-forest:E2E National Forest", landClass: "national-forest", name: "E2E National Forest", polygons: [{ outer: square(half), holes: [] }] },
+    { unit: "national-park:E2E National Park", landClass: "national-park", name: "E2E National Park", polygons: [{ outer: square(half * 0.4), holes: [] }] },
+  ];
 }
 
 /** A Class B ring, a runway and an airport for the Playwright build, which never reaches the map API. */

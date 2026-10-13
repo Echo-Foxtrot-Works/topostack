@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import polygonClipping from "polygon-clipping";
-import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, validateProject, type GeometryIRV1, type GeometryWarning, type LayerIR, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
-import { distanceToSegment, pointInPolygon, pointInPreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
-import { PAINT_BLEED_MM, PAINT_LOOSE_SHEET_MIN_MM, PAINT_PAPER_MIN_MM, paintRegions, paintStencil } from "./paint-regions.js";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, exportBlockReason, generateGeometry, LAND_CLASSES, PAINT_REGION_KINDS, validateProject, type GeometryIRV1, type LandAreaV1, type PaintRegionIR, type GeometryWarning, type LayerIR, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "../index.js";
+import { distanceToSegment, pointInPolygon, pointInPreparedPolygons, preparePolygons, signedArea } from "../primitives/geometry2d.js";
+import { PAINT_BLEED_MM, PAINT_LOOSE_SHEET_MIN_MM, PAINT_PAPER_MIN_MM, PAINT_PRIORITY, paintRegions, paintStencil } from "./paint-regions.js";
 import { sourceRequirements } from "./source-requirements.js";
 
 const EARTH_RADIUS_M = 6_371_008.8;
@@ -256,9 +256,117 @@ describe("paint regions", () => {
 
   it("needs the vector water layer when a water stencil is the only reason", () => {
     const bare: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: false, showWaterDepth: false, showRoads: false, showTrails: false, showBoundaries: false };
-    expect(sourceRequirements(bare)).toEqual({ vectors: false, lakes: false, water: false, aviation: false, airspace: false });
-    expect(sourceRequirements({ ...bare, paintTemplates: ["water"] })).toEqual({ vectors: true, lakes: false, water: true, aviation: false, airspace: false });
+    expect(sourceRequirements(bare)).toEqual({ vectors: false, lakes: false, water: false, aviation: false, airspace: false, lands: false });
+    expect(sourceRequirements({ ...bare, paintTemplates: ["water"] })).toEqual({ vectors: true, lakes: false, water: true, aviation: false, airspace: false, lands: false });
     expect(sourceRequirements({ ...bare, paintTemplates: ["water"], outputMode: "engraving" }).water).toBe(false);
+  });
+});
+
+describe("land paint regions", () => {
+  const area = (polygons: Polygon2D[]) => polygons.reduce((total, polygon) => total + signedArea(polygon.outer) + polygon.holes.reduce((sum, hole) => sum + signedArea(hole), 0), 0);
+  const unit = (landClass: LandAreaV1["landClass"], ring: Point2D[], name: string = landClass): LandAreaV1 => ({ unit: `${landClass}:${name}`, landClass, name, polygons: [{ outer: ring, holes: [] }] });
+  const flat = (polygons: Polygon2D[], index = 0): LayerIR => ({ id: `layer-0${index + 1}`, index, elevationM: index * 100, materialThicknessMm: 3, polygons, markings: [], pieces: [] });
+  const sources = (landAreas: LandAreaV1[], extra: Partial<Parameters<typeof paintRegions>[2]> = {}) => ({ waterSurfaces: [], flatWater: [], cellPitchMm: 1, landAreas, ...extra });
+  const windowsOf = (regions: PaintRegionIR[], kind: PaintRegionIR["kind"], layerIndex = 0) => regions.filter((region) => region.kind === kind && region.layerIndex === layerIndex).flatMap((region) => region.polygons);
+  const land = (kinds: ProjectConfigV1["paintTemplates"]): ProjectConfigV1 => ({ ...base, paintTemplates: kinds });
+
+  it("paints land on every layer it shows on, and only where it shows", () => {
+    // The lower layer is covered on its east half by the upper one; the park spans both.
+    const lower = flat([{ outer: square(-50, -50, 50, 50), holes: [] }]);
+    const upper = flat([{ outer: square(0, -50, 50, 50), holes: [] }], 1);
+    const clips = [{ layer: lower, covering: preparePolygons(upper.polygons) }, { layer: upper, covering: preparePolygons([]) }];
+    const regions = paintRegions(land(["national-park"]), clips, sources([unit("national-park", square(-40, -40, 40, 40))]));
+    // The lower window is the exposed west part plus the bleed under the upper layer, rounded at its two corners.
+    expect(area(windowsOf(regions, "national-park", 0))).toBeCloseTo(40 * 80 + PAINT_BLEED_MM * 80 + (Math.PI * PAINT_BLEED_MM ** 2) / 2, 1);
+    expect(area(windowsOf(regions, "national-park", 1))).toBeCloseTo(40 * 80, 0);
+  });
+
+  it("gives each spot to the highest kind painted, so one piece's windows never overlap", () => {
+    const piece = flat([{ outer: square(-50, -50, 50, 50), holes: [] }]);
+    const clips = [{ layer: piece, covering: preparePolygons([]) }];
+    const areas = [unit("national-forest", square(-50, -50, 50, 50)), unit("wilderness", square(-30, -30, 30, 30)), unit("national-park", square(-10, -10, 10, 10))];
+    const all = paintRegions(land(["national-forest", "wilderness", "national-park"]), clips, sources(areas));
+    expect(area(windowsOf(all, "national-park"))).toBeCloseTo(400, 3);
+    expect(area(windowsOf(all, "wilderness"))).toBeCloseTo(3600 - 400, 3);
+    expect(area(windowsOf(all, "national-forest"))).toBeCloseTo(10_000 - 3600, 3);
+    // A kind that is not painted takes nothing from the kinds that are.
+    const forestOnly = paintRegions(land(["national-forest"]), clips, sources(areas));
+    expect(area(windowsOf(forestOnly, "national-forest"))).toBeCloseTo(10_000, 3);
+    expect(forestOnly.every((region) => region.kind === "national-forest")).toBe(true);
+  });
+
+  it("leaves a lake in a park to the water stencil", () => {
+    const piece = flat([{ outer: square(-50, -50, 50, 50), holes: [] }]);
+    const lake = { outer: square(-10, -10, 10, 10), holes: [] };
+    const waterSurfaces = [{ id: "lake", kind: "lake" as const, polygons: [lake], surfaceElevationM: 0, bedElevationM: 0, layerIndex: 0, depthSource: "modeled" as const }];
+    const both = paintRegions(land(["national-park", "water"]), [{ layer: piece, covering: preparePolygons([]) }], sources([unit("national-park", square(-50, -50, 50, 50))], { waterSurfaces }));
+    expect(area(windowsOf(both, "water"))).toBeCloseTo(400, 3);
+    expect(area(windowsOf(both, "national-park"))).toBeCloseTo(10_000 - 400, 3);
+    // Without the water stencil the park keeps its lake.
+    const parkOnly = paintRegions(land(["national-park"]), [{ layer: piece, covering: preparePolygons([]) }], sources([unit("national-park", square(-50, -50, 50, 50))], { waterSurfaces }));
+    expect(area(windowsOf(parkOnly, "national-park"))).toBeCloseTo(10_000, 3);
+  });
+
+  it("writes nothing for a land kind with no units in the crop", () => {
+    const piece = flat([{ outer: square(-50, -50, 50, 50), holes: [] }]);
+    expect(paintRegions(land(["blm"]), [{ layer: piece, covering: preparePolygons([]) }], sources([unit("national-park", square(-10, -10, 10, 10))]))).toEqual([]);
+    expect(paintRegions(land(["blm"]), [{ layer: piece, covering: preparePolygons([]) }], { waterSurfaces: [], flatWater: [], cellPitchMm: 1 })).toEqual([]);
+  });
+
+  it("ranks every kind exactly once", () => {
+    expect([...PAINT_PRIORITY].sort()).toEqual([...PAINT_REGION_KINDS].sort());
+    expect(PAINT_PRIORITY[0]).toBe("water");
+  });
+
+  it("needs the lands archive only for a layered model that paints land", () => {
+    const bare: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: false, showWaterDepth: false, showRoads: false, showTrails: false, showBoundaries: false };
+    for (const landClass of LAND_CLASSES) expect(sourceRequirements({ ...bare, paintTemplates: [landClass] }).lands).toBe(true);
+    expect(sourceRequirements({ ...bare, paintTemplates: ["wilderness"] }).vectors).toBe(false);
+    expect(sourceRequirements({ ...bare, paintTemplates: ["water"] }).lands).toBe(false);
+    expect(sourceRequirements({ ...bare, paintTemplates: ["wilderness"], outputMode: "engraving" }).lands).toBe(false);
+    expect(() => validateProject({ ...DEFAULT_PROJECT, paintTemplates: ["water", "national-park", "blm"] })).not.toThrow();
+  });
+
+  it("writes a template per land kind, credits PAD-US, and blocks export without the data", async () => {
+    const project: ProjectConfigV1 = { ...base, paintTemplates: ["national-park", "national-forest"] };
+    const [scaledProject, scaled] = scaledForLayers(project, flatLake(project), 6);
+    const credit = { name: "PAD-US 4.1", url: "https://doi.org/10.5066/P96WBCHS", license: "Public domain" };
+    const landAreas = [unit("national-forest", square(-200, -200, 200, 200)), unit("national-park", square(-60, -60, 0, 0), "Rocky Mountain National Park")];
+    const source: SourceBundleV1 = { ...scaled, landAreas, landsStatus: "available", landsVersion: "4.1", landsAttribution: [credit] };
+    const result = generateGeometry(scaledProject, source);
+    expect(result.landsStatus).toBe("available");
+    expect(result.landsVersion).toBe("4.1");
+    expect(result.attribution).toContainEqual(credit);
+    expect(exportBlockReason(result, scaledProject)).toBeUndefined();
+    const output = buildFabricationPackage(result, scaledProject);
+    const names = output.files.map((file) => file.filename);
+    expect(names.some((name) => name.endsWith("-paint-national-park.svg"))).toBe(true);
+    expect(names.some((name) => name.endsWith("-paint-national-forest.svg"))).toBe(true);
+    const parkTemplate = await output.files.find((file) => file.filename.endsWith("-paint-national-park.svg"))!.blob.text();
+    expect(parkTemplate).toContain("national park paint template");
+    const readme = await output.files.find((file) => file.filename === "README.txt")!.blob.text();
+    expect(readme).toContain("the national park/national forest that stays visible");
+    expect(readme).toContain("national park, then national forest.");
+    const html = await output.files.find((file) => file.filename.endsWith("-assembly-guide.html"))!.blob.text();
+    expect(html).toContain("Paint the national park first");
+
+    // Outside PAD-US there is nothing to paint, which warns but never blocks.
+    const outside = generateGeometry(scaledProject, { ...source, landAreas: [], landsStatus: "not-covered" });
+    expect(outside.warnings.map((warning) => warning.code)).toContain("LANDS_NOT_COVERED");
+    expect(outside.attribution).not.toContainEqual(credit);
+    expect(exportBlockReason(outside, scaledProject)).toBeUndefined();
+    const failed = generateGeometry(scaledProject, { ...source, landAreas: [], landsStatus: "unavailable" });
+    expect(failed.warnings.map((warning) => warning.code)).toContain("LANDS_DATA_UNAVAILABLE");
+    expect(exportBlockReason(failed, scaledProject)).toMatch(/Public lands data is unavailable/);
+    const partial = generateGeometry(scaledProject, { ...source, landsStatus: "partial" });
+    expect(partial.warnings.map((warning) => warning.code)).toContain("LANDS_DATA_PARTIAL");
+    expect(exportBlockReason(partial, scaledProject)).toMatch(/safe feature limit/);
+    const neverLoaded = generateGeometry(scaledProject, { ...source, landAreas: undefined, landsStatus: undefined });
+    expect(neverLoaded.warnings.map((warning) => warning.code)).toContain("LANDS_DATA_UNAVAILABLE");
+    // Projects that paint no land carry no lands status and no PAD-US credit.
+    const water = generateGeometry({ ...scaledProject, paintTemplates: ["water"] }, source);
+    expect(water.landsStatus).toBeUndefined();
+    expect(water.attribution).not.toContainEqual(credit);
   });
 });
 

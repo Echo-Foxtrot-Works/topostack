@@ -10,7 +10,7 @@ Panels group controls by what they change on the model, not by kind of setting. 
 | --- | --- | --- | --- |
 | Place | Place and size | Location, suggested places, units, crop shape, width and height | `PlacePanel.svelte` (location in `LocationPicker.svelte`) |
 | Terrain | Terrain layers / Contour design | Vertical exaggeration, material, contour density and index, smoothing, contour widths (flat) | `TerrainPanel.svelte` |
-| Features | Map features | Line weight presets, then roads, trails, transportation labels, boundaries, grid, engraved border, each with its widths and patterns under its switch | `FeaturesPanel.svelte` |
+| Features | Map features | Line weight presets, then roads, trails, transportation labels, boundaries, grid, engraved border, each with its widths and patterns under its switch; for layered models, a paint template switch and swatch per kind of public land | `FeaturesPanel.svelte` |
 | Water | Water | Outlines and fill pattern, water depth and per-lake depth, acrylic inserts, paint templates | `WaterPanel.svelte` |
 | Aviation | Aviation (US) | FAA layers, aviation line style, airspace in acrylic | `AviationPanel.svelte` |
 | Labels | Labels and marks | Font, text size, label line width, elevation labels, north arrow, scale bar, title | `LabelsPanel.svelte` |

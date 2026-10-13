@@ -1,7 +1,7 @@
 import polygonClipping from "polygon-clipping";
 import { boundsOverlap, normalizeMultiPolygon, preparePolygons, ringBounds, signedArea, toMultiPolygon, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { clipPolygons, offsetPolygons } from "../primitives/offset.js";
-import type { FabricationNest, GeometryWarning, LayerIR, PaintRegionIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterSurfaceIR } from "../types.js";
+import { LAND_CLASSES, type FabricationNest, type GeometryWarning, type LandAreaV1, type LandClass, type LayerIR, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type ProjectConfigV1, type WaterSurfaceIR } from "../types.js";
 
 /**
  * How far a paint window reaches under the layer stacked above it. A stencil
@@ -52,11 +52,40 @@ export interface PaintRegionSources {
    * shoreline; the bed steps below the surface reach that far too.
    */
   cellPitchMm: number;
+  /** Public land units clipped to the crop; absent or empty when no land kind is painted. */
+  landAreas?: LandAreaV1[];
 }
 
 /**
- * Region polygons per kind for one layer. A future kind (public land, a park
- * boundary) adds a member to `PAINT_REGION_KINDS` and one entry here.
+ * Which kind paints where two overlap, highest first. Each kind's windows
+ * leave out every higher kind the project paints, so no spot gets two coats
+ * and the stencils of one piece never overlap. Water outranks land, so a lake
+ * in a park stays blue. Named units outrank wilderness, which covers most of
+ * many parks; wilderness outranks the forest and BLM land it lies in.
+ */
+export const PAINT_PRIORITY: readonly PaintRegionKind[] = [
+  "water", "national-park", "national-monument", "wildlife-refuge", "preserve", "state-park", "military", "tribal", "wilderness", "national-forest", "blm",
+];
+
+const landRegion = (landClass: LandClass) => (_layerIndex: number, { landAreas = [] }: PaintRegionSources): Polygon2D[] =>
+  landAreas.filter((area) => area.landClass === landClass).flatMap((area) => area.polygons);
+
+/** `a` less `b`; `a` unchanged when the clipper refuses a degenerate ring, since an overlapping coat beats a missing one. */
+function without(a: Polygon2D[], b: Polygon2D[]): Polygon2D[] {
+  if (!a.length || !b.length) return a;
+  try {
+    return normalizeMultiPolygon(polygonClipping.difference(toMultiPolygon(a), toMultiPolygon(b)));
+  } catch {
+    return a;
+  }
+}
+
+/**
+ * Region polygons per kind for one layer. A new kind adds a member to
+ * `PAINT_REGION_KINDS`, one entry here and a place in `PAINT_PRIORITY`.
+ *
+ * Land belongs to every layer: the exposed face of each piece decides what
+ * shows, so a park on a hillside is painted on every step it covers.
  *
  * Water belongs to every layer at or below its surface: the basin steps carved
  * under a lake are its bed, while material above the surface inside the
@@ -72,6 +101,7 @@ const REGION_SOURCES: Record<PaintRegionKind, (layerIndex: number, sources: Pain
     ...flatWater.filter((area) => area.layerIndex === layerIndex).flatMap((area) => area.polygons),
     ...grow(flatWater.filter((area) => area.layerIndex > layerIndex).flatMap((area) => area.polygons)),
   ],
+  ...Object.fromEntries(LAND_CLASSES.map((landClass) => [landClass, landRegion(landClass)])) as Record<LandClass, ReturnType<typeof landRegion>>,
 };
 
 function tinyRing(points: Point2D[], minimumFeatureMm: number): boolean {
@@ -147,9 +177,28 @@ export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], s
     }
     return result;
   };
+  // Land is the same on every layer, so each land kind gives way to the higher land kinds once.
+  const painted = PAINT_PRIORITY.filter((kind) => config.paintTemplates.includes(kind));
+  const land = new Map<PaintRegionKind, Polygon2D[]>();
+  let claimed: Polygon2D[] = [];
+  for (const kind of painted) {
+    if (kind === "water") continue;
+    const raw = REGION_SOURCES[kind](0, sources, grow);
+    land.set(kind, without(raw, claimed));
+    claimed = [...claimed, ...raw];
+  }
+  // Water varies by layer, and outranks every land kind.
+  const water = new Map<number, Polygon2D[]>();
+  const waterOn = (layerIndex: number): Polygon2D[] => {
+    if (!painted.includes("water")) return [];
+    let region = water.get(layerIndex);
+    if (!region) water.set(layerIndex, region = REGION_SOURCES.water(layerIndex, sources, grow));
+    return region;
+  };
   for (const kind of config.paintTemplates) {
     for (const { layer, covering } of clips) {
-      const region = REGION_SOURCES[kind](layer.index, sources, grow);
+      const landWindows = land.get(kind);
+      const region = landWindows ? without(landWindows, waterOn(layer.index)) : REGION_SOURCES[kind](layer.index, sources, grow);
       if (!region.length) continue;
       const regionPrepared = preparePolygons(region);
       const regionMulti = toMultiPolygon(region);

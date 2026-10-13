@@ -38,6 +38,20 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
       message: "Aviation symbols are less than ten aviation line widths across, so their inner detail engraves solid and airports, navaids and obstacles look alike. Enlarge the symbol size or thin the aviation line width.",
     });
   }
+  if (sourceRequirements(config).lands) {
+    if (source.landsStatus === "partial") warnings.push({
+      code: "LANDS_DATA_PARTIAL",
+      message: "The public lands feature limit was reached, so some parks, forests, or preserves may be missing from the paint templates. Narrow the map area or turn off some land kinds.",
+    });
+    if (source.landsStatus === "unavailable" || source.landsStatus === undefined) warnings.push({
+      code: "LANDS_DATA_UNAVAILABLE",
+      message: "Public lands data is unavailable. This project cannot be exported until the data is restored or the land paint templates are turned off.",
+    });
+    if (source.landsStatus === "not-covered") warnings.push({
+      code: "LANDS_NOT_COVERED",
+      message: "Public lands data covers only the United States and its territories, so this area has no land paint templates.",
+    });
+  }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({
     code: "LAKE_DATA_UNAVAILABLE",
     message: "Lake depth data is unavailable. Disable water depth or regenerate after the service is restored before exporting.",
