@@ -192,7 +192,7 @@ export function panelSummary(panel: DisclosureId, project: ProjectConfigV1, stac
   switch (panel) {
     case "setup": return `${stack ? "Layered relief" : "Flat engraving"} · ${project.location.label.split(",")[0]}`;
     case "place": return `${project.cropShape === "circle" ? "Circle" : "Rectangle"} · ${shownLength(project.widthMm, project.units)} × ${shownLength(project.heightMm, project.units)} ${unit}`;
-    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}`;
+    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : project.showEngravingContours ? `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}` : "Contours off";
     case "features": {
       const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder, Boolean(project.lands?.boundaries.length), stack && project.paintTemplates.some((kind) => kind !== "water")].filter(Boolean).length;
       const preset = activeLinePreset(project.lineStyle);

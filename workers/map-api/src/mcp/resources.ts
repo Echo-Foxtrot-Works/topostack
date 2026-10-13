@@ -25,7 +25,7 @@ TopoStack turns real terrain into laser-cutter files. Files are generated and ex
 ## Layered or flat
 
 - **layered** (default): a stack of cut sheets that rebuilds the terrain in 3D. Each sheet covers one band of elevation; lakes can be carved below the shoreline. Good for plywood, MDF, acrylic, cardboard.
-- **flat**: one sheet engraved with contour lines, roads, water and labels. Nothing is stacked; set how many contours with \`contourCount\` (${PROJECT_REQUEST_LIMITS.contourCount.min}–${PROJECT_REQUEST_LIMITS.contourCount.max}).
+- **flat**: one sheet engraved with contour lines, roads, water and labels. Nothing is stacked; set how many contours with \`contourCount\` (${PROJECT_REQUEST_LIMITS.contourCount.min}–${PROJECT_REQUEST_LIMITS.contourCount.max}), or 0 for a clean map of roads, water and labels with no contours.
 
 ## What decides the number of sheets
 

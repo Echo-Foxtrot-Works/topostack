@@ -45,7 +45,7 @@ describe("studio WebMCP tools", () => {
     const { tool, host, project } = fakeHost();
     const result = await tool("topostack_update_design").execute({ output: "flat", contourCount: 20, details: { roads: false } });
     expect(result.isError).toBeUndefined();
-    expect(host.applyPatch).toHaveBeenCalledWith({ outputMode: "engraving", engravingContourCount: 20, showRoads: false });
+    expect(host.applyPatch).toHaveBeenCalledWith({ outputMode: "engraving", showEngravingContours: true, engravingContourCount: 20, showRoads: false });
     expect(project()).toMatchObject({ outputMode: "engraving", engravingContourCount: 20 });
     expect((await tool("topostack_update_design").execute({ materialThicknessMm: 99 })).isError).toBe(true);
     expect((await tool("topostack_update_design").execute({ markers: [] })).isError).toBe(true);
