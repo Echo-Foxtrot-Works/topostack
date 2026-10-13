@@ -505,4 +505,8 @@ describe("optional HRDEM terrain archive", () => {
     const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
     expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^faa-aviation-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/aviation.pmtiles", optional: true }));
   });
+  it("advertises the pinned PAD-US public lands build as optional", async () => {
+    const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
+    expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^public-lands-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/lands.pmtiles", optional: true, version: "4.1" }));
+  });
 });

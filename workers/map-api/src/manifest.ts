@@ -1,6 +1,7 @@
 import { PROTOMAPS_BASEMAP_VERSION, PROTOMAPS_SNAPSHOT, VECTOR_MAX_ZOOM } from "./dataset";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
 import type { AviationSources } from "@topostack/data-contracts/aviation-tiles";
+import type { LandsSources } from "@topostack/data-contracts/land-tiles";
 import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
 
 interface ManifestSource {
@@ -41,7 +42,11 @@ function aviationEntry(sources: AviationSources): ManifestSource {
   return { id: sources.dataset, name: `${sources.name}, NASR cycle ${sources.nasrCycle}`, url: sources.url, license: sources.license, version: sources.nasrCycle, archive: "/v1/aviation.pmtiles", optional: true, maxZoom: sources.maxZoom };
 }
 
-export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>, aviation?: AviationSources) {
+function landsEntry(sources: LandsSources): ManifestSource {
+  return { id: sources.dataset, name: sources.name, url: sources.url, license: sources.license, version: sources.padusVersion, archive: "/v1/lands.pmtiles", optional: true, minZoom: sources.minZoom, maxZoom: sources.maxZoom };
+}
+
+export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>, aviation?: AviationSources, lands?: LandsSources) {
   return {
     schemaVersion: 1,
     capabilities: { archiveReleases: 1, upstreamProbes: 1 },
@@ -56,6 +61,7 @@ export function buildManifest(datasetVersion: string, terrainSources: ReadonlyAr
       { name: `Protomaps Basemap ${PROTOMAPS_SNAPSHOT}`, url: `https://build.protomaps.com/${PROTOMAPS_SNAPSHOT}.pmtiles`, version: PROTOMAPS_BASEMAP_VERSION, license: "ODbL Produced Work" },
       { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright", license: "ODbL" },
       ...(aviation ? [aviationEntry(aviation)] : []),
+      ...(lands ? [landsEntry(lands)] : []),
     ] satisfies ManifestSource[],
   };
 }
