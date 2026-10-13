@@ -65,13 +65,17 @@ describe("project import validation", () => {
     expect(() => parseProject({ ...DEFAULT_PROJECT, customLines: [{ ...customLines[0], points: [customLines[0]!.points[0]] }] })).toThrow(/at least two points/i);
   });
   it("validates and restores flat engraving settings", () => {
-    expect(parseProject({ ...DEFAULT_PROJECT, outputMode: "engraving", engravingContourCount: 24, engravingIndexInterval: 6, showEngravingBorder: false, waterFillPattern: "ripples" })).toMatchObject({
+    expect(parseProject({ ...DEFAULT_PROJECT, outputMode: "engraving", showEngravingContours: false, engravingContourCount: 24, engravingIndexInterval: 6, showEngravingBorder: false, waterFillPattern: "ripples" })).toMatchObject({
       outputMode: "engraving",
+      showEngravingContours: false,
       engravingContourCount: 24,
       engravingIndexInterval: 6,
       showEngravingBorder: false,
       waterFillPattern: "ripples",
     });
+    const { showEngravingContours: _omitted, ...beforeContourToggle } = DEFAULT_PROJECT;
+    expect(parseProject(beforeContourToggle).showEngravingContours).toBe(true);
+    expect(() => parseProject({ ...DEFAULT_PROJECT, showEngravingContours: "no" })).toThrow(/showEngravingContours/);
     expect(() => parseProject({ ...DEFAULT_PROJECT, outputMode: "print" })).toThrow(/output mode/i);
     expect(() => parseProject({ ...DEFAULT_PROJECT, engravingContourCount: 41 })).toThrow(/contour count/i);
     expect(() => parseProject({ ...DEFAULT_PROJECT, engravingIndexInterval: 1 })).toThrow(/index interval/i);

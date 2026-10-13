@@ -42,7 +42,7 @@
     <thead><tr><th scope="col">Panel</th><th scope="col">What it controls</th></tr></thead>
     <tbody>
       <tr><td>Place</td><td>Location, metric or imperial units, rectangle or circle, finished width and height.</td></tr>
-      <tr><td>Terrain</td><td>Vertical exaggeration and material thickness, or contour density, index contours and contour line widths. Contour smoothing.</td></tr>
+      <tr><td>Terrain</td><td>Vertical exaggeration and material thickness, or contour lines on or off, contour density, index contours and contour line widths. Contour smoothing.</td></tr>
       <tr><td>Features</td><td>Line weight presets, then roads, trails, transportation labels, boundaries, grid and border, each with its line settings under its switch. See <a href={`${base}/guides/map-details`}>map details and linework</a>.</td></tr>
       <tr><td>Water</td><td>Water outlines, water depth, acrylic water inserts and water paint templates.</td></tr>
       <tr><td>Aviation</td><td>FAA airspace, airports and other aviation detail in the United States, and airspace built in acrylic over a layered model.</td></tr>

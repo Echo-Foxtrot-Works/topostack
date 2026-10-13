@@ -326,7 +326,7 @@
   const layerTicks = $derived(geometry.layers.map((layer) => Math.round(displayElevation(layer.elevationM, project.units))));
   const shownLengthUnit = $derived(lengthUnit(project.units));
   const outputSummary = $derived(project.outputMode === "engraving"
-    ? [`${project.engravingContourCount} contours`, "No cut paths"]
+    ? [project.showEngravingContours ? `${project.engravingContourCount} contours` : "No contours", "No cut paths"]
     : [`${geometry.layers.length} layers`, `${fabricationPanelCount} cut panels`, `${shownLength(totalHeight)} ${shownLengthUnit} tall`]);
   const seamGrid = $derived(planSeamGrid(project));
   const seamSummary = $derived(seamGrid
