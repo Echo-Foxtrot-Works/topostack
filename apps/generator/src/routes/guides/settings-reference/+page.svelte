@@ -37,6 +37,7 @@
     <tbody>
       <tr><td>Vertical exaggeration</td><td>1–10×, in 0.1 steps</td><td>2×</td><td><em>Layered</em>. Updates automatically and rounds to whole sheets, with a minimum of two and no upper layer cap. The studio shows the applied value.</td></tr>
       <tr><td>Material thickness</td><td>0.5–25 mm</td><td>3 mm</td><td><em>Layered</em>. With exaggeration, sets the layer count.</td></tr>
+      <tr><td>Contour lines</td><td>On, off</td><td>On</td><td><em>Flat</em>. Off engraves only map details, water and marks.</td></tr>
       <tr><td>Contour density</td><td>4–40 lines</td><td>12</td><td><em>Flat</em>. Lines across the elevation range.</td></tr>
       <tr><td>Index contour</td><td>Every 2–10 lines</td><td>5</td><td><em>Flat</em>. Every nth line is drawn heavier.</td></tr>
       <tr><td>Smooth contours</td><td>On, off</td><td>On</td><td>Rounds sharp corners on contour shapes.</td></tr>

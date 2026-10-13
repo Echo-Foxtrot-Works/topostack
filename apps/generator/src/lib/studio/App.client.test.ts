@@ -789,6 +789,29 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector<HTMLElement>(".svg-canvas")?.style.transform).not.toContain("translate3d(0px, 0px");
   });
 
+  it("turns engraved contour lines off for a map of details only", async () => {
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    await tick();
+    const engraving = target.querySelector<HTMLButtonElement>('button[role="radio"][aria-label="Flat engraving"]')!;
+    engraving.click();
+    await vi.waitFor(() => expect(target.querySelector('svg[aria-label="Flat engraving preview"]')).not.toBeNull());
+    await vi.waitFor(() => expect(target.querySelectorAll(".engraving-contours path").length).toBeGreaterThan(0));
+    const contours = target.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Contour lines"]')!;
+    expect(contours.getAttribute("aria-checked")).toBe("true");
+    contours.click();
+    await vi.waitFor(() => expect(contours.getAttribute("aria-checked")).toBe("false"));
+    expect(target.querySelector('input[aria-label="Contour density"]')).toBeNull();
+    expect(target.querySelector('input[aria-label="Index contour interval"]')).toBeNull();
+    expect(target.querySelector('button[role="switch"][aria-label="Smooth contours"]')).toBeNull();
+    expect(target.querySelector(".relief-summary")?.textContent).toContain("No contour lines");
+    expect(target.querySelector(".output-summary")?.textContent).toContain("No contours");
+    await vi.waitFor(() => expect(target.querySelectorAll(".engraving-contours path")).toHaveLength(0));
+    expect(target.querySelector(".engraving-legend")?.textContent).toContain("No contours");
+    contours.click();
+    await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input[aria-label="Contour density"]')?.value).toBe("12"));
+  });
+
   it("applies linework presets and custom trail patterns to the engraving preview", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });

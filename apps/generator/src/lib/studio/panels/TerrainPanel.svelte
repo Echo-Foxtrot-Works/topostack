@@ -17,6 +17,10 @@
 <PanelFrame id="terrain" title={studio.project.outputMode === "engraving" ? "Contour design" : "Terrain layers"}>
 <div class="detail-group terrain-group">
   {#if studio.project.outputMode === "engraving"}
+    <div class="toggle-stack">
+      <Switch checked={studio.project.showEngravingContours} onCheckedChange={(showEngravingContours) => void updateFabrication({ showEngravingContours })} aria-label="Contour lines"><span class="toggle-label"><PenTool size={16} />Contour lines</span></Switch>
+    </div>
+    {#if studio.project.showEngravingContours}
     <div class="range-field">
       <span class="range-field__label"><b>Contour density</b></span>
       <div class="range-field__row">
@@ -35,6 +39,15 @@
         <small>≈ {Math.round(displayElevation(studio.contourInterval, studio.project.units)).toLocaleString()} {studio.shownElevationUnit} apart · every {studio.project.engravingIndexInterval}th line emphasized</small>
       </span>
     </div>
+    {:else}
+    <div class="relief-summary">
+      <PenTool size={20} />
+      <span>
+        <strong>No contour lines</strong>
+        <small>Only map details, water, and marks are engraved. Elevation labels follow index contours, so they need contour lines.</small>
+      </span>
+    </div>
+    {/if}
   {:else}
   <div class="range-field">
     <span class="range-field__label vertical-exaggeration-heading"><b>Vertical exaggeration</b><span class="terrain-data-badge">Updates automatically</span></span>
@@ -59,6 +72,7 @@
   </div>
   {/if}
 </div>
+{#if studio.project.outputMode !== "engraving" || studio.project.showEngravingContours}
 <div class="detail-group">
   <p class="subgroup-heading">Contour shape</p>
   <div class="toggle-stack">
@@ -71,4 +85,5 @@
     </div>
   {/if}
 </div>
+{/if}
 </PanelFrame>

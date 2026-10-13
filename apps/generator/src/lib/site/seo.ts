@@ -84,7 +84,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Create a flat contour map for laser engraving. Set contour density, add roads and water, and export a single SVG at your chosen physical size.",
     label: "Engraving guide",
     published: "2026-09-15",
-    updated: "2026-09-17",
+    updated: "2026-10-13",
     image: socialCard("guides-topographic-map-engraving", "Topographic map engraving guide card with a flat Crater Lake contour engraving in the studio."),
   },
   "/guides/split-large-maps": {
@@ -156,7 +156,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Find your way around the TopoStack studio: choose a place, frame the map, generate terrain, switch previews, and save or import projects.",
     label: "Studio tour",
     published: "2026-09-17",
-    updated: "2026-10-10",
+    updated: "2026-10-13",
     image: socialCard("guides-studio-tour", "Studio tour card with the TopoStack studio showing a Crater Lake relief in the 3D stack view."),
   },
   "/guides/map-details": {
@@ -220,7 +220,7 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     description: "Every TopoStack studio control with its range, default and output type, from vertical exaggeration and kerf to linework widths.",
     label: "Settings reference",
     published: "2026-09-17",
-    updated: "2026-10-10",
+    updated: "2026-10-13",
     image: socialCard("guides-settings-reference", "Settings reference card with the studio's project controls beside a Crater Lake relief."),
   },
   "/guides/use-with-ai-assistants": {

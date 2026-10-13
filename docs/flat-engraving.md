@@ -9,7 +9,8 @@ the workflow.
 
 1. Choose **Flat engraving** in Output.
 2. Select a location and the physical artwork size/crop.
-3. Set contour density (4–40 lines) and the index-contour cadence.
+3. Set contour density (4–40 lines) and the index-contour cadence, or turn
+   **Contour lines** off for a map of roads, water and labels only.
 4. Add or remove roads, trails, transportation labels, lakes/rivers,
    state/province boundaries, latitude/longitude grid lines, elevation
    labels, compass, scale bar, and the engraved border.

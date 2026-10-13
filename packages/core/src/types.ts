@@ -382,6 +382,8 @@ export interface ProjectConfigV1 {
   outputMode: OutputMode;
   widthMm: number;
   heightMm: number;
+  /** Draws elevation contours in a flat engraving; off leaves only the map details. */
+  showEngravingContours: boolean;
   /** Number of elevation contour lines in a flat engraving. */
   engravingContourCount: number;
   /** Every nth contour is emitted as a heavier index contour. */
@@ -1351,6 +1353,7 @@ export const DEFAULT_PROJECT: ProjectConfigV1 = {
   outputMode: "stack",
   widthMm: 300,
   heightMm: 200,
+  showEngravingContours: true,
   engravingContourCount: 12,
   engravingIndexInterval: 5,
   showEngravingBorder: true,

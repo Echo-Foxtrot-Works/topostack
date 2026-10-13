@@ -91,6 +91,31 @@ describe("SVG export", () => {
     expect(svg).toContain('id="engraving-border"');
   });
 
+  it("engraves only the map details when contour lines are off", async () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving", showEngravingContours: false, showElevationLabels: true, engravingIndexInterval: 2 };
+    const source = {
+      ...realSource(project),
+      markings: [
+        { id: "road-flat", kind: "road" as const, operation: "engrave" as const, transportationClass: "major-road" as const, points: [{ x: -120, y: -30 }, { x: 120, y: 30 }] },
+        { id: "water-flat", kind: "water" as const, operation: "score" as const, points: [{ x: -80, y: 10 }, { x: 80, y: 10 }] },
+      ],
+    };
+    const result = generateGeometry(project, source);
+    expect(result.layers).toHaveLength(1);
+    expect(result.layers[0]!.markings.some((marking) => marking.id.startsWith("elevation-"))).toBe(false);
+    const svg = engravingToSvg(result, project);
+    expect(svg).not.toContain('id="contour-');
+    expect(svg).toContain("road-flat");
+    expect(svg).toContain("water-flat");
+    expect(svg).toContain('id="engraving-border"');
+    const output = buildEngravingPackage(result, project);
+    const readme = await output.files.find((file) => file.filename === "README.txt")!.blob.text();
+    expect(readme).toContain("Contour lines: none\n");
+    expect(readme).not.toContain("Index contour:");
+    const manifest = JSON.parse(await output.files.find((file) => file.filename.endsWith("project.json"))!.blob.text());
+    expect(manifest.result.contourCount).toBe(0);
+  });
+
   it("keeps flat linework bounded and uniquely keyed when provider ids repeat", () => {
     const project: ProjectConfigV1 = {
       ...DEFAULT_PROJECT,
