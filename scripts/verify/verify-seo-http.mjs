@@ -7,10 +7,19 @@ import { isMainModule } from "../lib/main-module.mjs";
 const pages = expectedPages();
 
 // Deployment assets can become available shortly after the Worker itself.
-// Only callers verifying a fresh deployment opt into a shared retry window.
+// Only callers verifying a fresh deployment opt into a shared retry window,
+// which also covers a request that times out or drops at the edge.
 export async function fetchSeoResponse(url, { expectedStatus = 200, deadline = 0, retryDelayMs = 3_000, headers = {} } = {}) {
   while (true) {
-    const response = await fetch(url, { redirect: "manual", headers, signal: AbortSignal.timeout(10_000) });
+    let response;
+    try {
+      response = await fetch(url, { redirect: "manual", headers, signal: AbortSignal.timeout(10_000) });
+    } catch (error) {
+      if (Date.now() + retryDelayMs >= deadline) throw error;
+      console.warn(`SEO request for ${url} failed (${error.name}: ${error.message}); retrying.`);
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      continue;
+    }
     const retryable = response.status === 429 || response.status >= 500
       || (response.status === 404 && expectedStatus === 200);
     if (response.status === expectedStatus || !retryable || Date.now() + retryDelayMs >= deadline) return response;
