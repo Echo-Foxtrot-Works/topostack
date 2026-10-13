@@ -73,7 +73,7 @@ export interface ProjectRequestSettings {
   output?: "layered" | "flat";
   materialThicknessMm?: number;
   verticalExaggeration?: number;
-  /** Flat output only: how many contour lines to engrave. */
+  /** Flat output only: how many contour lines to engrave; 0 engraves none. */
   contourCount?: number;
   details?: ProjectRequestDetails;
   aviation?: ProjectRequestAviation;
@@ -305,7 +305,7 @@ function settingsValue(record: Record<string, unknown>, issues: Issues): Project
   if (record.output !== undefined) settings.output = oneOf(record.output, "output", ["layered", "flat"] as const, issues);
   if (record.materialThicknessMm !== undefined) settings.materialThicknessMm = numberIn(record.materialThicknessMm, "materialThicknessMm", limits.materialThicknessMm, issues);
   if (record.verticalExaggeration !== undefined) settings.verticalExaggeration = numberIn(record.verticalExaggeration, "verticalExaggeration", limits.verticalExaggeration, issues);
-  if (record.contourCount !== undefined) settings.contourCount = numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
+  if (record.contourCount !== undefined) settings.contourCount = record.contourCount === 0 ? 0 : numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
   if (record.details !== undefined) settings.details = switches(record.details, PROJECT_REQUEST_DETAIL_KEYS, "details", issues);
   if (record.aviation !== undefined) settings.aviation = switches(record.aviation, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
   if (record.airspaceStack !== undefined) settings.airspaceStack = airspaceStackValue(record.airspaceStack, issues);
@@ -383,7 +383,8 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
   if (change.output) patch.outputMode = change.output === "flat" ? "engraving" : "stack";
   if (change.materialThicknessMm !== undefined) patch.materialThicknessMm = change.materialThicknessMm;
   if (change.verticalExaggeration !== undefined) patch.verticalExaggeration = change.verticalExaggeration;
-  if (change.contourCount !== undefined) patch.engravingContourCount = change.contourCount;
+  if (change.contourCount === 0) patch.showEngravingContours = false;
+  else if (change.contourCount !== undefined) Object.assign(patch, { showEngravingContours: true, engravingContourCount: change.contourCount });
   for (const key of PROJECT_REQUEST_DETAIL_KEYS) {
     const enabled = change.details?.[key];
     if (enabled !== undefined) (patch as Record<string, unknown>)[DETAIL_FIELDS[key]] = enabled;
@@ -465,7 +466,7 @@ export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
     output: project.outputMode === "engraving" ? "flat" : "layered",
     materialThicknessMm: project.materialThicknessMm,
     verticalExaggeration: project.verticalExaggeration,
-    contourCount: project.engravingContourCount,
+    contourCount: project.showEngravingContours ? project.engravingContourCount : 0,
     details,
     ...(project.aviation ? { aviation: { ...project.aviation } } : {}),
     ...(project.airspaceStack ? { airspaceStack: { ...project.airspaceStack, classes: { ...project.airspaceStack.classes }, rod: { ...project.airspaceStack.rod } } } : {}),

@@ -116,7 +116,7 @@ const SETTINGS_PROPERTIES: Record<string, Schema> = {
   output: { enum: ["layered", "flat"], description: "layered: a stack of laser-cut sheets forming a 3D relief (default). flat: contour lines engraved on a single sheet." },
   materialThicknessMm: range(LIMITS.materialThicknessMm, "Sheet thickness in millimetres (default 3). Thicker material gives fewer, coarser layers."),
   verticalExaggeration: range(LIMITS.verticalExaggeration, "How much to stretch the terrain vertically (default 2). The layer count follows from scale, relief, exaggeration and thickness."),
-  contourCount: range(LIMITS.contourCount, "Flat output only: number of engraved contour lines (default 12).", true),
+  contourCount: { anyOf: [{ const: 0 }, range(LIMITS.contourCount, undefined, true)], description: "Flat output only: number of engraved contour lines (default 12); 0 for none, leaving only roads, water and labels." },
   details: DETAILS_SCHEMA,
   aviation: AVIATION_SCHEMA,
   airspaceStack: AIRSPACE_STACK_SCHEMA,

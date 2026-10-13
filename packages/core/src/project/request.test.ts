@@ -63,6 +63,13 @@ describe("project requests", () => {
     });
   });
 
+  it("treats a contour count of 0 as a flat engraving without contours", () => {
+    const project = expandProjectRequest(parsed({ ...rainier, output: "flat", contourCount: 0 }));
+    expect(project).toMatchObject({ outputMode: "engraving", showEngravingContours: false, engravingContourCount: DEFAULT_PROJECT.engravingContourCount });
+    expect(describeProject(project).contourCount).toBe(0);
+    expect(requestPatch(project, { contourCount: 18 })).toMatchObject({ showEngravingContours: true, engravingContourCount: 18 });
+  });
+
   it("keeps the north arrow within what a small model allows", () => {
     const project = expandProjectRequest(parsed({ ...rainier, widthMm: 40, heightMm: 30 }));
     expect(project.northArrowSizeMm).toBe(northArrowMaximumMm(40, 30));
@@ -241,6 +248,8 @@ describe("request schema", () => {
     ["unknown field", { ...rainier, colour: "red" }],
     ["thin material", { ...rainier, materialThicknessMm: 0.2 }],
     ["fractional contours", { ...rainier, contourCount: 12.5 }],
+    ["no contours", { ...rainier, output: "flat", contourCount: 0 }],
+    ["too few contours", { ...rainier, contourCount: 2 }],
     ["tiny work area", { ...rainier, laser: { workAreaWidthMm: 5 } }],
     ["bad symbol", { ...rainier, markers: [{ lat: 1, lon: 1, symbol: "flag" }] }],
     ["too many markers", { ...rainier, markers: Array.from({ length: 21 }, () => ({ lat: 1, lon: 1 })) }],
