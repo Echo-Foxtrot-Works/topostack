@@ -1,4 +1,4 @@
-import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS, MARKER_SYMBOLS } from "../types.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS, LAND_CLASSES, MARKER_SYMBOLS, PAINT_REGION_KINDS } from "../types.js";
 import { AIRSPACE_DEFAULT_CAP_FT, DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { MERCATOR_MAX_LATITUDE } from "./bounds.js";
 import { PROJECT_REQUEST_AVIATION_KEYS, PROJECT_REQUEST_DETAIL_KEYS, PROJECT_REQUEST_LIMITS as LIMITS } from "./request.js";
@@ -106,6 +106,31 @@ export const AIRSPACE_STACK_SCHEMA: Schema = {
   ],
 };
 
+const LAND_KINDS_DESCRIPTION = "national-park (NPS units), national-monument, national-forest (forests and grasslands), wilderness, blm (Bureau of Land Management), wildlife-refuge, state-park, preserve (private and local conservation land), tribal, military";
+
+const PAINT_TEMPLATES_SCHEMA: Schema = {
+  type: "array",
+  uniqueItems: true,
+  items: { enum: [...PAINT_REGION_KINDS] },
+  description: `Layered output only: a paper paint stencil per panel for each kind listed, cut to what stays visible after assembly. water, or a kind of US public land: ${LAND_KINDS_DESCRIPTION}. Where kinds overlap, the more specific one paints (water, then parks and monuments, ..., forest and BLM land last). Replaces the design's list; [] removes them.`,
+};
+
+const PUBLIC_LANDS_SCHEMA: Schema = {
+  description: "Public land engraved as lines, US and territories only, in either output. false turns it off. On a design that has it, only the fields given change.",
+  anyOf: [
+    { const: false },
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        boundaries: { type: "array", uniqueItems: true, items: { enum: [...LAND_CLASSES] }, description: `Kinds whose boundaries are engraved, each in its own dash: ${LAND_KINDS_DESCRIPTION}. Replaces the design's list; [] turns public land lines off.` },
+        names: { type: "boolean", description: "Engrave the names of the largest units where they fit inside them (default false)." },
+        hatched: { type: "boolean", description: "Flat output only: short ticks just inside each boundary, so the land side reads at a glance (default false)." },
+      },
+    },
+  ],
+};
+
 const SETTINGS_PROPERTIES: Record<string, Schema> = {
   placeLabel: { type: "string", maxLength: LIMITS.placeLabelLength, description: "Human-readable place name, e.g. from search_places." },
   name: { type: "string", maxLength: LIMITS.nameLength, description: "Project name; defaults to the first part of placeLabel." },
@@ -120,6 +145,8 @@ const SETTINGS_PROPERTIES: Record<string, Schema> = {
   details: DETAILS_SCHEMA,
   aviation: AVIATION_SCHEMA,
   airspaceStack: AIRSPACE_STACK_SCHEMA,
+  paintTemplates: PAINT_TEMPLATES_SCHEMA,
+  publicLands: PUBLIC_LANDS_SCHEMA,
   title: { type: "string", maxLength: LIMITS.titleLines * (LIMITS.titleLineLength + 1), description: `Optional engraved title: up to ${LIMITS.titleLines} lines separated by \\n, ${LIMITS.titleLineLength} characters each.` },
   laser: {
     type: "object",

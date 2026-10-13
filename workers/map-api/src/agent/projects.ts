@@ -3,7 +3,7 @@ import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-con
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
 import { terrainResponse } from "../routes/terrain";
-import { attributionFor, projectDrawsAviation, type Attribution } from "./attribution";
+import { attributionFor, projectDrawsAviation, projectUsesLands, type Attribution } from "./attribution";
 import { areaCoverage, type AreaCoverage } from "./coverage";
 import { studioLink } from "./links";
 import { estimateRelief, ReliefUnavailableError, type ReliefEstimate, type ReliefTile } from "./relief";
@@ -113,6 +113,10 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   if (projectDrawsAviation(project)) notes.push(coverage.aviation
     ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
     : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
+  if (projectUsesLands(project)) notes.push(coverage.publicLands
+    ? `Public land outlines come from ${coverage.publicLands.name}. Boundaries are as published and can lag changes on the ground.`
+    : "Public lands data covers only the United States and its territories, so this area will have no public land paint or boundaries.");
+  if (plan.output === "flat" && project.paintTemplates.length) notes.push("Paint templates are made for layered models only, so flat output leaves them out.");
   notes.push(...airspaceNotes(project, plan));
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;
   if (project.widthMm > bedWidth || project.heightMm > bedHeight) notes.push("The model is larger than the laser bed, so each sheet is split into pieces with alignment tabs.");
@@ -154,7 +158,7 @@ export async function planProject(project: ProjectConfigV1, context: AgentContex
     coverage,
     notes: planNotes(project, plan, relief, coverage),
     studioUrl: linkFor(project, origin),
-    attribution: attributionFor(origin, coverage, { aviation: projectDrawsAviation(project) }),
+    attribution: attributionFor(origin, coverage, { aviation: projectDrawsAviation(project), lands: projectUsesLands(project) }),
   };
 }
 
@@ -186,7 +190,7 @@ export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: Req
 
 /** The credits a project's sources require, as the resolve route and the link tool return them. */
 export function projectAttribution(project: ProjectConfigV1, origin: string) {
-  return attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project) });
+  return attributionFor(origin, areaCoverage(boundsForProject(project)), { aviation: projectDrawsAviation(project), lands: projectUsesLands(project) });
 }
 
 /** Coverage with the attribution its sources require, as both surfaces return it. */
