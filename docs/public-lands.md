@@ -74,7 +74,11 @@ Two builds from the same pin were byte-identical (checked before the two naming 
 
 The Worker serves the archive by range at `/v1/lands.pmtiles` from the logical key `lands/current.pmtiles`. It is optional: `/ready` does not wait for it, and the studio will request it only when a project uses public lands. Once the manifest advertises a dataset, the deployment smoke test (`verify-worker-deployment.mjs`) requires the served archive's `topostack_dataset` to match it. A Worker that advertises a dataset must therefore not reach a bucket where that dataset is not provisioned.
 
-Coverage is the list of boxes in the registration, the same boxes the FAA layer uses. A crop that touches none of them is not covered. Near the border a box includes foreign ground, where the archive has no features.
+Coverage is the list of boxes in the registration, the same boxes the FAA layer uses. Near the border a box includes foreign ground, where the archive has no features.
+
+Outside those boxes the studio falls back to the protected areas in the OpenStreetMap basemap (`osm.pmtiles`, `landuse` layer). It maps the Protomaps kinds `national_park` to `national-park`, `nature_reserve` and `protected_area` to `preserve`, and `military` to `military`. These units have no names, so they are never labelled, and they are only as complete as OSM's mapping. Each feature's tile pieces are joined by its id. Other classes have no counterpart there and stay empty. OSM is credited on every model already. A crop where neither source has the classes asked for reports `not-covered`, a warning rather than an export block.
+
+A project can leave single units out of its paint and boundaries (`landExclusions`, unit ids). The studio lists the 40 largest units in the area under Map features.
 
 ## Building and provisioning
 

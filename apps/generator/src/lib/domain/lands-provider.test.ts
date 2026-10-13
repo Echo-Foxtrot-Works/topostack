@@ -62,12 +62,37 @@ describe("land area loading", () => {
     expect([...CORE_LAND_CLASSES]).toEqual([...LAND_CLASSES]);
   });
 
-  it("reports areas outside PAD-US, or no class asked for, without reading the archive", async () => {
+  it("reads no archive when no class is asked for, or when OpenStreetMap has none of the classes outside PAD-US", async () => {
     const tile = vi.fn(() => ({}));
     archive.tile = tile;
-    expect(await loadLandAreas({ west: 7.4, east: 7.6, south: 46.5, north: 46.6 }, 11, config, ["national-park"])).toEqual({ areas: [], status: "not-covered", attribution: [] });
+    expect(await loadLandAreas({ west: 7.4, east: 7.6, south: 46.5, north: 46.6 }, 11, config, ["wilderness", "blm"])).toEqual({ areas: [], status: "not-covered", attribution: [] });
     expect(await loadLandAreas(estesPark, 11, config, [])).toEqual({ areas: [], status: "not-covered", attribution: [] });
     expect(tile).not.toHaveBeenCalled();
+  });
+
+  it("falls back to OpenStreetMap's protected areas outside PAD-US, unnamed and joined by feature", async () => {
+    archive.tile = () => {
+      return { landuse: [
+        { type: 3, properties: { kind: "national_park" }, geometry: wholeTile },
+        { type: 3, properties: { kind: "nature_reserve" }, geometry: square(0, 0, 2000, 2000) },
+        { type: 3, properties: { kind: "forest" }, geometry: wholeTile },
+        { type: 3, properties: { kind: "military" }, geometry: square(2500, 2500, 3000, 3000) },
+      ] };
+    };
+    const alps = { west: 10.0, east: 10.3, south: 46.55, north: 46.75 };
+    const result = await loadLandAreas(alps, 11, config, ["national-park", "preserve", "wilderness"]);
+    expect(result.source).toBe("openstreetmap");
+    expect(result.status).toBe("available");
+    expect(result.attribution).toEqual([]);
+    expect(new Set(result.areas.map((area) => area.landClass))).toEqual(new Set(["national-park", "preserve"]));
+    expect(result.areas.every((area) => area.unit.startsWith("osm:") && area.name === undefined)).toBe(true);
+    // The park covers every tile: its pieces join into one unit, exactly the crop.
+    const park = result.areas.filter((area) => area.landClass === "national-park");
+    expect(park).toHaveLength(1);
+    expect(area(park[0]!.polygons[0]!.outer)).toBeCloseTo(config.widthMm * config.heightMm, 0);
+    // Nothing mapped of the asked-for kinds is the same as no coverage.
+    archive.tile = () => ({ landuse: [{ type: 3, properties: { kind: "forest" }, geometry: wholeTile }] });
+    expect(await loadLandAreas(alps, 11, config, ["national-park"])).toEqual({ areas: [], status: "not-covered", attribution: [] });
   });
 
   it("unions a unit's tile pieces into one area cut to the crop, and credits PAD-US", async () => {
@@ -79,6 +104,7 @@ describe("land area loading", () => {
     const result = await loadLandAreas(estesPark, 13, config, ["national-park"]);
     expect([...zooms]).toEqual([12]);
     expect(result.status).toBe("available");
+    expect(result.source).toBe("padus");
     expect(result.version).toBe(LANDS_SOURCES.padusVersion);
     expect(result.attribution[0]!.name).toContain(`PAD-US) ${LANDS_SOURCES.padusVersion}`);
     expect(result.areas).toHaveLength(1);

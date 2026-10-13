@@ -413,6 +413,12 @@ export interface ProjectConfigV1 {
    * turned it on, which keeps their fingerprints.
    */
   lands?: LandsDetailsV1;
+  /**
+   * Public land units left out of paint templates and engraved boundaries,
+   * by unit id (`LandAreaV1.unit`), such as a forest around the park being
+   * modelled. Absent in every project that never left one out.
+   */
+  landExclusions?: string[];
   showCoordinateGrid: boolean;
   showWaterDepth: boolean;
   /** Depth multiplier relative to the terrain's vertical scale; 1 matches it. */
@@ -719,6 +725,9 @@ export interface LandsDetailsV1 {
   labels: boolean;
 }
 
+/** Most land units a project may leave out. */
+export const MAX_LAND_EXCLUSIONS = 200;
+
 /** One unit of public land clipped to the crop, in crop millimetres. */
 export interface LandAreaV1 {
   /** Unique within the archive, e.g. `national-park:Rocky Mountain National Park`. */
@@ -728,7 +737,9 @@ export interface LandAreaV1 {
   polygons: Polygon2D[];
 }
 
-/** `not-covered` is outside PAD-US coverage, where `landAreas` is empty. */
+export type LandsSource = "padus" | "openstreetmap";
+
+/** `not-covered` is an area neither PAD-US nor OpenStreetMap has public land for, where `landAreas` is empty. */
 export type LandsStatus = "available" | "partial" | "unavailable" | "not-covered";
 
 /**
@@ -855,6 +866,8 @@ export interface SourceBundleV1 {
   landsStatus?: LandsStatus;
   /** PAD-US version the land areas come from. */
   landsVersion?: string;
+  /** PAD-US inside its coverage; outside it, OpenStreetMap's protected areas, unnamed. */
+  landsSource?: LandsSource;
   /** Credit for the lands archive, added to the geometry's attribution only while the project uses public lands. */
   landsAttribution?: SourceAttribution[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
@@ -1234,6 +1247,7 @@ export type GeometryWarningCode =
   | "LANDS_DATA_PARTIAL"
   | "LANDS_DATA_UNAVAILABLE"
   | "LANDS_NOT_COVERED"
+  | "LANDS_FROM_OPENSTREETMAP"
   | "WATER_INSERT_SKIPPED"
   | "WATER_INSERT_PROUD"
   | "WATER_INSERT_OVERSIZE"
@@ -1271,6 +1285,7 @@ export interface GeometryIRV1 {
   /** Status of the public lands source; present only when the project uses public lands. */
   landsStatus?: LandsStatus;
   landsVersion?: string;
+  landsSource?: LandsSource;
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;

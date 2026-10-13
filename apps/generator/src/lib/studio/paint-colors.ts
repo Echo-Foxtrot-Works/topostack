@@ -1,4 +1,4 @@
-import type { LAND_CLASSES, LandClass, PaintRegionKind } from "@topostack/core";
+import type { LAND_CLASSES, LandAreaV1, LandClass, PaintRegionKind } from "@topostack/core";
 
 /**
  * Suggested paint per stencil kind: the swatch beside its switch, the window
@@ -38,4 +38,15 @@ export const LAND_PAINT_OPTIONS: Array<{ value: LandClass; label: string }> = [
 export function withPaintKind(kinds: readonly PaintRegionKind[], kind: PaintRegionKind, on: boolean): PaintRegionKind[] {
   const others = kinds.filter((entry) => entry !== kind);
   return on ? [...others, kind] : others;
+}
+
+/** Units listed for leaving out, largest first; the loader ranks them so. */
+export const LISTED_LAND_UNITS = 40;
+
+/** A unit as the panel lists it: its name, or its kind and state when it has none (BLM land, unnamed preserves). */
+export function landUnitLabel(area: Pick<LandAreaV1, "unit" | "landClass" | "name">): string {
+  if (area.name) return area.name;
+  const kind = LAND_PAINT_OPTIONS.find((option) => option.value === area.landClass)?.label ?? area.landClass;
+  const state = area.unit.split(":").at(-1);
+  return state && state.length === 2 ? `${kind}, ${state}` : kind;
 }

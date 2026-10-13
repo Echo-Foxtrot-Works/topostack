@@ -19,7 +19,7 @@ export interface SourceRefreshDependencies {
   /** Never throws: a failed load comes back without volumes, as status "unavailable". */
   loadAirspace: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "airspaceVolumes" | "airspaceStatus" | "airspaceCycle">>;
   /** Never throws: a failed load comes back without areas, as status "unavailable". */
-  loadLands: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsAttribution">>;
+  loadLands: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsSource" | "landsAttribution">>;
   /** The whole zoom `loadTerrain` gives the same loaders. */
   dataZoom: (zoom: number) => number;
 }
@@ -76,7 +76,7 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
     const had = new Set(source.landAreas ? landClassesNeeded(sourceProject) : []);
     const needs = landClassesNeeded(nextProject);
     if (needs.some((landClass) => !had.has(landClass)) || (source.landsStatus === "partial" && needs.length !== had.size)) {
-      next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsAttribution: undefined };
+      next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsSource: undefined, landsAttribution: undefined };
     }
   }
   // Using or dropping a depth chart changes which depths a lake carves, so the

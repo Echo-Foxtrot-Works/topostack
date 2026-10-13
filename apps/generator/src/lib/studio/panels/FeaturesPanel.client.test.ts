@@ -68,9 +68,33 @@ describe("public land paint switches", () => {
     expect(vi.mocked(more.updateMapDetails).mock.calls[0]![0]).toEqual({ lands: undefined });
   });
 
+  it("lists the units in the area and leaves one out, dropping the setting with the last one back in", async () => {
+    const park = { unit: "national-park:Rocky Mountain National Park", landClass: "national-park" as const, name: "Rocky Mountain National Park", polygons: [] };
+    const blm = { unit: "blm:CO", landClass: "blm" as const, polygons: [] };
+    const updateMapDetails = vi.fn();
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "stack", paintTemplates: ["national-park", "blm"] };
+    const studio = { project, activeSource: { landAreas: [park, blm] }, activeLinePreset: undefined, panelSummary: () => "", updateFabrication: vi.fn(), updateMapDetails, navigateChoice: vi.fn(), trailPatternDash: () => "", shownLineWidth: (mm: number) => mm, setLineWidth: vi.fn(), shownLengthUnit: "mm" } as unknown as StudioContext;
+    target = document.createElement("div");
+    document.body.append(target);
+    component = mount(WithStudio, { target, props: { studio, component: FeaturesPanel } });
+    await tick();
+    expect([...target.querySelectorAll('.land-units [role="switch"]')].map((item) => item.getAttribute("aria-label"))).toEqual(["Include Rocky Mountain National Park", "Include BLM land, CO"]);
+    target.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Include BLM land, CO"]')!.click();
+    expect(updateMapDetails.mock.calls[0]![0]).toEqual({ landExclusions: ["blm:CO"] });
+    await unmount(component);
+    target.remove();
+    const leftOut = { ...studio, project: { ...project, landExclusions: ["blm:CO"] }, updateMapDetails: vi.fn() } as unknown as StudioContext;
+    target = document.createElement("div");
+    document.body.append(target);
+    component = mount(WithStudio, { target, props: { studio: leftOut, component: FeaturesPanel } });
+    await tick();
+    target.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Include BLM land, CO"]')!.click();
+    expect(vi.mocked(leftOut.updateMapDetails).mock.calls[0]![0]).toEqual({ landExclusions: undefined });
+  });
+
   it("says when the area is outside PAD-US, and hides the switches for a flat engraving", async () => {
     await render({ ...DEFAULT_PROJECT, outputMode: "stack", paintTemplates: ["national-forest"] }, { landsStatus: "not-covered" });
-    expect(target.textContent).toContain("covers only the United States");
+    expect(target.textContent).toContain("No public land of these kinds here");
     await unmount(component!);
     target.remove();
     component = undefined;

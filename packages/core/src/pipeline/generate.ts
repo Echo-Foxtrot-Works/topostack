@@ -88,10 +88,16 @@ interface GenerationSession {
   airspace?: AirspaceStageMemo;
 }
 
+/** The land units a project paints and engraves: those loaded, less the ones it leaves out. */
+function keptLandAreas(source: SourceBundleV1, config: ProjectConfigV1) {
+  const left = new Set(config.landExclusions ?? []);
+  return (source.landAreas ?? []).filter((area) => !left.has(area.unit));
+}
+
 // Everything affects terrain unless explicitly known to be downstream of it.
 // New config fields therefore invalidate safely until their dependency is reviewed.
 const TERRAIN_INDEPENDENT_FIELDS = [
-  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation", "lands",
+  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showTransportationLabels", "aviation", "lands", "landExclusions",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
   "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "airspaceStack", "showElevationLabels",
@@ -207,7 +213,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     clip: boundary(config),
     warnings: [],
     aviation: aviationFeatures(source.aviationMarkings ?? [], config, config.widthMm / groundWidthMFor(source.bounds)),
-    lands: landFeatures(source.landAreas ?? [], config),
+    lands: landFeatures(keptLandAreas(source, config), config),
   };
   addSourceWarnings(context);
   stage("prepare");
@@ -257,7 +263,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   // Sparse maps and flat engravings keep the cheap original covering sets.
   const featureCount = source.markings.filter((feature) => markingEnabled(feature, config)).length + context.aviation.lines.length + context.lands.lines.length + config.customLines.length;
   const clips = layerClips(layers, !flatEngraving && featureCount * layers.length >= UNION_COVERING_MIN_WORK);
-  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm, landAreas: source.landAreas ?? [] }, fabricationNests, context.warnings);
+  const paintWindows = flatEngraving ? [] : paintRegions(config, clips, { waterSurfaces, flatWater: flatWaterAreas(context, grid, ladder), cellPitchMm, landAreas: keptLandAreas(source, config) }, fabricationNests, context.warnings);
   // Map detail treats acrylic as the surface it lies on; hidden marks keep the wood `clips`.
   // Sheets above the highest insert are unchanged, so their clips carry over.
   const surfaceClips = waterInserts.length
@@ -342,7 +348,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     waterPatternAreas,
     fabricationNests,
     paintRegions: paintWindows,
-    ...(sourceRequirements(config).lands ? { landsStatus: source.landsStatus, landsVersion: source.landsVersion } : {}),
+    ...(sourceRequirements(config).lands ? { landsStatus: source.landsStatus, landsVersion: source.landsVersion, ...(source.landsSource ? { landsSource: source.landsSource } : {}) } : {}),
     ...(water ? { waterInserts, waterInsertMaterial: water.material } : {}),
     ...(airspaceStack ? { airspaceStack } : {}),
     splitPlan,

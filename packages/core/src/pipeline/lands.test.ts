@@ -71,6 +71,11 @@ describe("land settings", () => {
     expect(() => parseProject({ ...DEFAULT_PROJECT, lands: { boundaries: ["city-park"] } })).toThrow(/at most once/);
     expect(() => parseProject({ ...DEFAULT_PROJECT, lands: [] })).toThrow(/invalid/);
     expect(() => parseProject({ ...DEFAULT_PROJECT, lands: { boundaries: [], labels: "yes" } })).toThrow(/lands.labels/);
+    expect(parseProject({ ...DEFAULT_PROJECT }).landExclusions).toBeUndefined();
+    expect(parseProject({ ...DEFAULT_PROJECT, landExclusions: ["blm:UT"] }).landExclusions).toEqual(["blm:UT"]);
+    for (const landExclusions of [["blm:UT", "blm:UT"], [""], "blm:UT", Array.from({ length: 201 }, (_, index) => `unit-${index}`)]) {
+      expect(() => parseProject({ ...DEFAULT_PROJECT, landExclusions })).toThrow(/Left-out land units/);
+    }
   });
 
   it("loads public land for engraved boundaries in either mode, and for paint only in a layered model", () => {
@@ -102,6 +107,26 @@ describe("land boundaries in generated geometry", () => {
     const readme = await output.files.find((file) => file.filename === "README.txt")!.blob.text();
     expect(readme).toContain("Public land boundaries: national park");
     expect(readme).toContain("PAD-US) 4.1");
+  });
+
+  it("leaves out the units a project turns off, from both its lines and its paint", () => {
+    const forest = unit("national-forest", square(-100, -75, 100, 75), "Roosevelt National Forest");
+    const project = { ...config({ boundaries: ["national-park", "national-forest"], hatched: false, labels: false }), paintTemplates: ["national-park", "national-forest"] as ProjectConfigV1["paintTemplates"], showWater: false, showWaterDepth: false };
+    const all = generateGeometry(project, source(project, [park, forest]));
+    const kinds = (ir: typeof all) => new Set([...ir.layers.flatMap((layer) => layer.markings.filter((marking) => marking.kind === "land").map((marking) => marking.landClass)), ...(ir.paintRegions ?? []).map((region) => region.kind)]);
+    expect(kinds(all)).toEqual(new Set(["national-park", "national-forest"]));
+    const withoutForest = generateGeometry({ ...project, landExclusions: [forest.unit] }, source(project, [park, forest]));
+    expect(kinds(withoutForest)).toEqual(new Set(["national-park"]));
+  });
+
+  it("says when land comes from OpenStreetMap, in the warnings and the README", async () => {
+    const project = { ...config({ boundaries: ["national-park"], hatched: false, labels: false }), showWater: false, showWaterDepth: false };
+    const ir = generateGeometry(project, { ...source(project, [park]), landsSource: "openstreetmap", landsVersion: undefined });
+    expect(ir.landsSource).toBe("openstreetmap");
+    expect(ir.warnings.map((warning) => warning.code)).toContain("LANDS_FROM_OPENSTREETMAP");
+    const readme = await buildFabricationPackage(ir, project).files.find((file) => file.filename === "README.txt")!.blob.text();
+    expect(readme).toContain("Source: OpenStreetMap protected areas");
+    expect(generateGeometry(project, source(project, [park])).warnings.map((warning) => warning.code)).not.toContain("LANDS_FROM_OPENSTREETMAP");
   });
 
   it("hatches the inside in a flat engraving", async () => {

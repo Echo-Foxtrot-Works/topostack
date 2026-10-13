@@ -1,4 +1,4 @@
-import { LAND_CLASSES, PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type LandsDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1, type AirspaceStackSettingsV1 } from "../types.js";
+import { LAND_CLASSES, MAX_LAND_EXCLUSIONS, PAINT_REGION_KINDS, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, isDepthChartLakeKey, MAP_MARKER_SIZE_MM, MARKER_ICON_ID_PATTERN, MARKER_ICON_UNITS, MARKER_SYMBOLS, MAX_MARKER_ICON_POINTS, MAX_MARKER_ICONS, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, GRAPHIC_OPERATIONS, MAX_CUSTOM_GRAPHIC_POINTS, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, NORTH_ARROW_ANCHORS, SHEET_NEST_ROTATIONS, type CustomGraphicV1, type CustomLineFeatureV1, type CustomLineKind, type GraphicOperation, type MapMarkerV1, type MarkerIconShapeV1, type MarkerIconV1, type MarkerSymbol, type NorthArrowAnchor, type NorthArrowStyle, type AviationDetailsV1, type LandsDetailsV1, type PlacedGraphicV1, type PlaqueV1, type ProjectConfigV1, type SheetNestSettingsV1, type UserDepthChartRefV1, type WaterInsertSettingsV1, type AirspaceStackSettingsV1 } from "../types.js";
 import { markerIconPointCount } from "../annotate/marker-icons.js";
 import { isTextFont } from "../annotate/font-data.js";
 import { validateProject } from "../pipeline/validate.js";
@@ -178,6 +178,13 @@ function landsValue(value: unknown): LandsDetailsV1 {
     hatched: record.hatched === undefined ? false : booleanValue(record.hatched, "lands.hatched"),
     labels: record.labels === undefined ? false : booleanValue(record.labels, "lands.labels"),
   };
+}
+
+function landExclusionsValue(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > MAX_LAND_EXCLUSIONS || value.some((entry) => typeof entry !== "string" || !entry || entry.length > 200) || new Set(value).size !== value.length) {
+    throw new Error(`Left-out land units must be at most ${MAX_LAND_EXCLUSIONS} distinct unit ids.`);
+  }
+  return [...value] as string[];
 }
 
 function markerSymbolValue(value: unknown): MarkerSymbol {
@@ -431,6 +438,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     ...(record.aviation === undefined ? {} : { aviation: aviationValue(record.aviation) }),
     // Absent keeps every project saved before public land lines, and its fingerprint.
     ...(record.lands === undefined ? {} : { lands: landsValue(record.lands) }),
+    ...(record.landExclusions === undefined ? {} : { landExclusions: landExclusionsValue(record.landExclusions) }),
     showCoordinateGrid: record.showCoordinateGrid === undefined ? DEFAULT_PROJECT.showCoordinateGrid : booleanValue(record.showCoordinateGrid, "showCoordinateGrid"),
     showWaterDepth: record.showWaterDepth === undefined ? DEFAULT_PROJECT.showWaterDepth : booleanValue(record.showWaterDepth, "showWaterDepth"),
     waterDepthExaggeration: record.waterDepthExaggeration === undefined ? DEFAULT_PROJECT.waterDepthExaggeration : numberValue(record.waterDepthExaggeration),
