@@ -679,9 +679,39 @@ export interface WaterAreaV1 {
   };
 }
 
+/**
+ * Classes of public and protected land, as the lands archive
+ * (`@topostack/data-contracts/land-tiles`) writes them. Each is one paint
+ * stencil kind.
+ */
+export const LAND_CLASSES = [
+  "national-park", "national-monument", "national-forest", "wilderness", "blm",
+  "wildlife-refuge", "state-park", "preserve", "tribal", "military",
+] as const;
+export type LandClass = (typeof LAND_CLASSES)[number];
+
 /** Region kinds a paint stencil can be windowed to. Extend here and in the paint-regions source registry. */
-export const PAINT_REGION_KINDS = ["water"] as const;
+export const PAINT_REGION_KINDS = ["water", ...LAND_CLASSES] as const;
 export type PaintRegionKind = (typeof PAINT_REGION_KINDS)[number];
+
+/** What each kind is called in instructions: "Paint the national park first". */
+export const PAINT_REGION_LABELS: Record<PaintRegionKind, string> = {
+  water: "water", "national-park": "national park", "national-monument": "national monument", "national-forest": "national forest",
+  wilderness: "wilderness", blm: "BLM land", "wildlife-refuge": "wildlife refuge", "state-park": "state park", preserve: "preserve",
+  tribal: "tribal land", military: "military land",
+};
+
+/** One unit of public land clipped to the crop, in crop millimetres. */
+export interface LandAreaV1 {
+  /** Unique within the archive, e.g. `national-park:Rocky Mountain National Park`. */
+  unit: string;
+  landClass: LandClass;
+  name?: string;
+  polygons: Polygon2D[];
+}
+
+/** `not-covered` is outside PAD-US coverage, where `landAreas` is empty. */
+export type LandsStatus = "available" | "partial" | "unavailable" | "not-covered";
 
 /**
  * One piece polygon's paint windows for a region kind: the part of the region
@@ -801,6 +831,14 @@ export interface SourceBundleV1 {
   airspaceStatus?: "available" | "partial" | "unavailable" | "not-covered";
   /** Effective date of the FAA NASR cycle the airspace volumes come from. */
   airspaceCycle?: string;
+  /** Public land units for paint stencils, kept apart from `markings` like aviation. Absent when never loaded. */
+  landAreas?: LandAreaV1[];
+  /** Absent means public lands were never requested. */
+  landsStatus?: LandsStatus;
+  /** PAD-US version the land areas come from. */
+  landsVersion?: string;
+  /** Credit for the lands archive, added to the geometry's attribution only while the project uses public lands. */
+  landsAttribution?: SourceAttribution[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
   lakeDataStatus: "available" | "unavailable" | "not-requested";
   /** Survey failures retain modeled lake depths and generate a warning. */
@@ -1174,6 +1212,9 @@ export type GeometryWarningCode =
   | "AVIATION_DATA_UNAVAILABLE"
   | "AVIATION_NOT_COVERED"
   | "AVIATION_SYMBOLS_FILLED"
+  | "LANDS_DATA_PARTIAL"
+  | "LANDS_DATA_UNAVAILABLE"
+  | "LANDS_NOT_COVERED"
   | "WATER_INSERT_SKIPPED"
   | "WATER_INSERT_PROUD"
   | "WATER_INSERT_OVERSIZE"
@@ -1208,6 +1249,9 @@ export interface GeometryIRV1 {
   aviationCycle?: string;
   /** Status of the volume source used for this layered airspace model. */
   airspaceStatus?: SourceBundleV1["airspaceStatus"];
+  /** Status of the public lands source; present only when the project uses public lands. */
+  landsStatus?: LandsStatus;
+  landsVersion?: string;
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;

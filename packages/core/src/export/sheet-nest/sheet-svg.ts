@@ -1,6 +1,6 @@
 import { labelFootprint } from "../../annotate/label-placement.js";
 import { boundsOverlap, ringBounds, type Bounds2D } from "../../primitives/geometry2d.js";
-import { DEFAULT_TEXT_STYLE, type GeometryIRV1, type LayerIR, type PaintRegionKind, type ProjectConfigV1 } from "../../types.js";
+import { DEFAULT_TEXT_STYLE, PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type PaintRegionKind, type ProjectConfigV1 } from "../../types.js";
 import { escapeXml } from "../svg-primitives.js";
 import { OPERATIONS, paintTemplateDocument, paintTemplateGroups, panelBodies, type Operation, type PanelBodies } from "../svg.js";
 import { placementMatrix, suffixIds, type NestedPart, type NestedSheet } from "./apply.js";
@@ -68,5 +68,5 @@ export function nestedPaintTemplateSvg(ir: GeometryIRV1, config: ProjectConfigV1
   const groups = sheet.parts.map((nested, index) => partGroup(ir, nested, index, `paint-${kind}`, paintTemplateGroups(ir, config, nested.panel, kind) ?? "")).join("");
   if (!groups) return undefined;
   const layerIds = sheet.panel.layerIndexes.map((index) => ir.layers[index]?.id).filter(Boolean).join(", ");
-  return paintTemplateDocument(ir, sheet.panel, kind, groups, `${ir.projectName} — ${kind} paint template — sheet ${(sheet.panel.sheetIndex ?? 0) + 1} — ${layerIds}`);
+  return paintTemplateDocument(ir, sheet.panel, kind, groups, `${ir.projectName} — ${PAINT_REGION_LABELS[kind]} paint template — sheet ${(sheet.panel.sheetIndex ?? 0) + 1} — ${layerIds}`);
 }

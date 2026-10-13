@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Grid3X3, Map as MapIcon, Minus, Square } from "@lucide/svelte";
   import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
+  import { LAND_PAINT_OPTIONS, PAINT_COLORS, withPaintKind } from "$lib/studio/paint-colors";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
@@ -9,7 +10,8 @@
   /**
    * What the map draws besides terrain and water, each feature with its own
    * line settings beneath its switch. The weight presets set every stroke in
-   * the project at once, including water, aviation and label lines.
+   * the project at once, including water, aviation and label lines. A layered
+   * model can also take a paint template per kind of public land.
    */
   const studio = getStudio();
   const { navigateChoice, trailPatternDash, updateFabrication, updateMapDetails } = studio;
@@ -92,5 +94,20 @@
       {/if}
     </div>
   </div>
+  {#if studio.project.outputMode === "stack"}
+    <div class="detail-group">
+      <p class="subgroup-heading">Public land paint</p>
+      <div class="toggle-stack land-paint-kinds">
+        {#each LAND_PAINT_OPTIONS as option (option.value)}
+          <Switch checked={studio.project.paintTemplates.includes(option.value)} onCheckedChange={(on) => void updateFabrication({ paintTemplates: withPaintKind(studio.project.paintTemplates, option.value, on) })} aria-label={`${option.label} paint template`}><span class="toggle-label"><span class="paint-swatch" style:background={PAINT_COLORS[option.value]} aria-hidden="true"></span>{option.label}</span></Switch>
+        {/each}
+      </div>
+      {#if studio.activeSource.landsStatus === "not-covered" && studio.project.paintTemplates.some((kind) => kind !== "water")}
+        <small class="depth-note">Public lands data covers only the United States and its territories, so this area has no land paint templates.</small>
+      {:else}
+        <small class="depth-note">Each kind turned on gets a paper template per panel, cut to the land that stays visible after assembly. Where kinds overlap, the more specific one paints: a park over the wilderness and forest around it. US public lands from the USGS PAD-US database.</small>
+      {/if}
+    </div>
+  {/if}
   <small class="linework-note">Stroke widths are physical SVG values. Final engraved width also depends on focus, power, speed, material, and whether your laser software treats strokes as centerlines or filled shapes.</small>
 </PanelFrame>

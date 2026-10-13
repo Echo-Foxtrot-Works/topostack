@@ -6,6 +6,7 @@
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { sources as terrainCatalogSources } from "../../../../../scripts/data/terrain-sources.json";
   import aviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
+  import landsSources from "../../../../../scripts/data/public-lands-sources.json";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -67,7 +68,7 @@
 <Article title="Sources and attribution" intro="TopoStack is built on shared geographic data and open-source work. Here is where that work comes from, how we use it, and who to credit.">
   <nav class="contents" aria-label="On this page">
     <span>On this page</span>
-    <a href="#terrain">Terrain</a><a href="#features">Map features</a><a href="#lakes">Lake models</a><a href="#surveys">Lake surveys</a><a href="#aviation">Aviation</a><a href="#services">Map and search</a><a href="#artwork">Artwork</a><a href="#software">Software</a><a href="#exports">Export credits</a>
+    <a href="#terrain">Terrain</a><a href="#features">Map features</a><a href="#lakes">Lake models</a><a href="#surveys">Lake surveys</a><a href="#aviation">Aviation</a><a href="#public-lands">Public lands</a><a href="#services">Map and search</a><a href="#artwork">Artwork</a><a href="#software">Software</a><a href="#exports">Export credits</a>
   </nav>
 
   {#each sections as section}
@@ -110,6 +111,15 @@
       <p>When aviation detail is turned on for an area in the United States or its territories, Class B, C and D airspace, airports, runways and navaids come from the FAA's 28-day NASR subscription (cycle effective {aviationSources.nasrCycle}). Obstacles come from the Digital Obstacle File ({aviationSources.obstacleDate}), and special use airspace from the FAA's published service ({aviationSources.suaDate}). TopoStack draws airspace and runways as lines and airports, navaids and obstacles as simplified symbols. It clips them to your area and leaves out Class E airspace and private helipads.</p>
       <p><strong>Not for navigation.</strong> Aeronautical data is replaced every 28 days, and an engraving is never updated. Use current FAA charts for flight planning.</p>
       <p class="credit"><strong>Credit / license:</strong> {aviationSources.license}</p>
+    </div>
+  </section>
+
+  <section id="public-lands" aria-labelledby="public-lands-title">
+    <h2 id="public-lands-title">Public lands</h2>
+    <div class="source">
+      <h3><a href={landsSources.url}>USGS Protected Areas Database of the United States (PAD-US) {landsSources.padusVersion}</a></h3>
+      <p>When a layered model paints public land in the United States or its territories, the outlines of national parks and monuments, national forests, wilderness, BLM land, wildlife refuges, state parks, preserves, tribal land and military land come from PAD-US {landsSources.padusVersion} ({landsSources.padusDate}). TopoStack groups them into those kinds, joins the pieces of each unit and clips them to your area. Boundaries are as published and can lag changes on the ground.</p>
+      <p class="credit"><strong>Credit / license:</strong> {landsSources.license}</p>
     </div>
   </section>
 

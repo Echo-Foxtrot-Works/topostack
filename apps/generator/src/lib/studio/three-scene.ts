@@ -1,6 +1,6 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+import { labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -148,6 +148,24 @@ export function waterStainBands(surfaces: ReadonlyArray<Pick<WaterSurfaceIR, "la
   }));
 }
 
+/**
+ * Painted land per kind: the union of its paint windows on every layer, and
+ * the layers that have any. A kind's windows on a layer are where that layer
+ * shows its land, so tinting those layers' faces with all of them is exact
+ * except for the bleed, which mostly hides under the sheet above.
+ */
+export function landPaintStains(regions: ReadonlyArray<Pick<PaintRegionIR, "kind" | "layerIndex" | "polygons">>): Array<{ kind: Exclude<PaintRegionKind, "water">; layers: Set<number>; polygons: Polygon2D[] }> {
+  const byKind = new Map<Exclude<PaintRegionKind, "water">, { kind: Exclude<PaintRegionKind, "water">; layers: Set<number>; polygons: Polygon2D[] }>();
+  for (const region of regions) {
+    if (region.kind === "water") continue;
+    const entry = byKind.get(region.kind) ?? { kind: region.kind, layers: new Set<number>(), polygons: [] };
+    entry.layers.add(region.layerIndex);
+    entry.polygons.push(...region.polygons);
+    byKind.set(region.kind, entry);
+  }
+  return [...byKind.values()];
+}
+
 export interface Bounds { minX: number; minY: number; maxX: number; maxY: number }
 
 export function polygonBounds(polygons: Polygon2D[]): Bounds {
@@ -173,12 +191,12 @@ const STAIN_PX_PER_MM = 4;
 const STAIN_MAX_PX = 2048;
 
 /**
- * A multiply mask over the bounds of `polygons`: stain colour inside the
- * water, white (no change) everywhere else. UVs on a top face are its x and
+ * A multiply mask over the bounds of `polygons`: stain colour inside them
+ * (the water, or one kind of painted land), white (no change) everywhere else. UVs on a top face are its x and
  * y in millimetres, so the texture transform maps those onto the canvas.
  * Undefined where there is no 2D canvas to draw on.
  */
-export function waterStainMask(polygons: Polygon2D[]): THREE.CanvasTexture | undefined {
+export function waterStainMask(polygons: Polygon2D[], color = STAIN_COLOR): THREE.CanvasTexture | undefined {
   const bounds = polygonBounds(polygons);
   const pad = 1;
   const minX = bounds.minX - pad, minY = bounds.minY - pad;
@@ -196,7 +214,7 @@ export function waterStainMask(polygons: Polygon2D[]): THREE.CanvasTexture | und
     const x = (point.x - minX) * scale, y = (minY + heightMm - point.y) * scale;
     if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
   });
-  context.fillStyle = STAIN_COLOR;
+  context.fillStyle = color;
   for (const polygon of polygons) {
     context.beginPath();
     trace(polygon.outer); context.closePath();

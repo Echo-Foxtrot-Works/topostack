@@ -1,6 +1,6 @@
 # Public and protected lands
 
-Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done and phase 1 is built: archive, contract, provisioning and Worker route ([runbook](../public-lands.md)). The archive is not provisioned yet.
+Status: 2026-10-13. Phase 0 (the [spike](../reports/public-lands-spike-2026-10-13.md)) is done, and phases 1 and 2 are built: the archive, contract, provisioning and Worker route ([runbook](../public-lands.md)), then the paint stencils in core and the studio. The archive is provisioned in development only.
 
 Paint templates gain land kinds: national parks, national forests, wilderness, BLM land, state parks, wildlife refuges, preserves, tribal and military land. Each kind gets its own paper stencil per panel, cut the same way water stencils are today. Each kind can also be engraved as a boundary line, so flat engravings get the feature too.
 
@@ -68,7 +68,7 @@ Optional later: county and state boundaries from TIGER cartographic files (`cb_2
    - `provision-lands-data.mjs` on `archive-provisioning.mjs`.
    - Worker route `/v1/lands.pmtiles` (optional, not on `/ready`), a manifest entry, and the deployment smoke test's dataset check. Area coverage for agents moves to phase 4, with the rest of the agent surface.
    - Polygons are stored as polygons, not boundary lines. The browser merges a unit's tile pieces by `unit` and dissolves them, as the HydroLAKES loader does. Tile buffers are removed when the pieces are merged.
-2. **Paint stencils end to end.**
+2. **Paint stencils end to end (built, stacked on phase 1).**
    - Core:
      - Add the land kinds to `PAINT_REGION_KINDS` and give each a `REGION_SOURCES` entry.
      - Add `SourceBundleV1.landAreas` with `landsStatus` and `landsAttribution`.
