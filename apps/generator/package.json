@@ -15,14 +15,14 @@
   "dependencies": {
     "@loidolt/theme-styles": "^0.10.1",
     "@loidolt/theme-svelte": "^0.10.1",
-    "@lucide/svelte": "^1.52.0",
+    "@lucide/svelte": "^1.55.0",
     "@mapbox/vector-tile": "^3.0.0",
     "@topostack/core": "*",
     "@topostack/nest-wasm": "*",
     "d3-contour": "^4.0.2",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.2.2",
-    "maplibre-gl": "^6.12.0",
+    "maplibre-gl": "^6.13.0",
     "pbf": "^5.1.2",
     "pdfjs-dist": "^6.4.299",
     "pmtiles": "^4.5.0",
@@ -37,9 +37,9 @@
     "@types/three": "^0.186.0",
     "@webgpu/types": "^0.1.74",
     "jsdom": "^30.1.2",
-    "svelte": "^5.57.1",
+    "svelte": "^5.57.2",
     "svelte-check": "^4.7.6",
-    "vite": "^8.3.2",
+    "vite": "^8.3.4",
     "vitest": "^4.1.0"
   }
 }
