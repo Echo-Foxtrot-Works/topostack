@@ -2,6 +2,48 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.11.0",
+      "date": "2026-10-27",
+      "entries": [
+        {
+          "type": "feature",
+          "title": "Flat engravings without contour lines",
+          "body": "Flat engravings can now leave the contour lines out. Turn off **Contour lines** in the Contour design panel and the engraving keeps only the roads, trails, water, boundaries and marks you choose: a clean line map, or a base to colour or trace afterwards. Turn it back on and your contour density comes back unchanged.",
+          "pr": 240
+        },
+        {
+          "type": "feature",
+          "title": "Paint templates for national parks, forests, BLM land and other public lands",
+          "body": "Layered models in the United States can now get a paper paint template for each kind of public land: national parks and monuments, national forests, wilderness, BLM land, wildlife refuges, state parks, preserves, tribal and military land. Turn them on under **Public land paint** in Map features. Where kinds overlap, the more specific one paints, so templates never overlap. Outlines come from the USGS PAD-US database.",
+          "pr": 242
+        },
+        {
+          "type": "feature",
+          "title": "Engrave public land boundaries and names on any US model",
+          "body": "Turn on **Public land boundaries** in Map features to engrave national parks, forests, wilderness, BLM land and other public lands, each kind in its own dash, on layered models and flat engravings alike. Add the names of the largest units, and on a flat engraving hatch the inside edge so the land side reads at a glance.",
+          "pr": 243
+        },
+        {
+          "type": "feature",
+          "title": "Leave single parks out, and paint protected areas outside the US",
+          "body": "Under **Public land in this area** in Map features, turn off any unit, such as the forest around the park you are modelling, to leave it out of the paint templates and boundaries. Outside the United States, national parks, nature reserves and military land now come from OpenStreetMap where they are mapped, without names.",
+          "pr": 245
+        },
+        {
+          "type": "feature",
+          "title": "Public lands in Canada",
+          "body": "Paint templates and engraved boundaries now cover Canada: national parks, provincial and territorial parks, wilderness areas, national wildlife areas and bird sanctuaries, and ecological and private conservation land, from Environment and Climate Change Canada's protected areas database.",
+          "pr": 246
+        },
+        {
+          "type": "improvement",
+          "title": "AI assistants can paint and engrave public lands",
+          "body": "Assistants connected to TopoStack can now ask for paint templates (`paintTemplates`) and engraved public land boundaries (`publicLands`) when they plan a model or edit one in the studio, and check_coverage says whether an area has PAD-US public land outlines. See the [project request reference](/guides/agent-api).",
+          "pr": 244
+        }
+      ]
+    },
+    {
       "version": "0.10.1",
       "date": "2026-10-11",
       "entries": [
