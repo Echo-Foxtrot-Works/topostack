@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Bring your own data into TopoStack" intro="The Custom data view holds everything you add to a map yourself: depth charts for lakes, markers for places that matter, trails and boundaries, logos and artwork, and files from your GPS or mapping app.">

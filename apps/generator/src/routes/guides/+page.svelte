@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { DOCS_NAV } from "$lib/site/docs";
+  const base = basePath();
 </script>
 
 <Article title="Guides" intro="Everything you need to turn real terrain into a finished piece: step-by-step workflows, airspace in acrylic, how terrain and lake depths are built, and where the map data comes from.">

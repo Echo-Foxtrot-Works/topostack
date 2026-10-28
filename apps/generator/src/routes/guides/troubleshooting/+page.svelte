@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Troubleshooting and common questions" intro="What the studio's export messages and warnings mean, and how to fix the problems makers run into most often.">

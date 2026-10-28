@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import type { LakePreview } from "$lib/site/lake-pages.server";
+  const base = basePath();
 
   let { preview, name }: { preview: LakePreview; name: string } = $props();
 

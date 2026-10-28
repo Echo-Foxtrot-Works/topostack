@@ -22,7 +22,7 @@ The 3D camera is fitted on first load and by the explicit Fit action; ordinary g
 
 ## Package contents
 
-The Atomm package is the studio alone. With `VITE_SITE_ENV=atomm`, `svelte.config.js` prerenders only `/`, `/studio` and `/attribution` (the credits page the studio links to), the lake and example routes list no entries, and articles render without the site header, guide navigation and footer. `scripts/build/prune-atomm-dist.mjs` then drops the site-only static files listed in `scripts/lib/atomm-site-only.mjs`. What the studio fetches at runtime stays: `data/lake-depth-directory.json` for place search, icons and licence texts. `verify-atomm-dist.mjs --require-sdk-entry` fails if any other page or site-only file is packaged, and CI builds and verifies the package on every run rather than only on `main`.
+The Atomm package is the studio alone. With `VITE_SITE_ENV=atomm`, `apps/generator/sveltekit.config.ts` prerenders only `/`, `/studio` and `/attribution` (the credits page the studio links to), the lake and example routes list no entries, and articles render without the site header, guide navigation and footer. `scripts/build/prune-atomm-dist.mjs` then drops the site-only static files listed in `scripts/lib/atomm-site-only.mjs`. What the studio fetches at runtime stays: `data/lake-depth-directory.json` for place search, icons and licence texts. `verify-atomm-dist.mjs --require-sdk-entry` fails if any other page or site-only file is packaged, and CI builds and verifies the package on every run rather than only on `main`.
 
 ## Tests
 

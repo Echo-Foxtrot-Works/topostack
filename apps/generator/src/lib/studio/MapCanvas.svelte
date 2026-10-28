@@ -2,7 +2,7 @@
   import { getEmbedded } from "$lib/studio/embed-context";
   import type { FeatureCollection } from "geojson";
   import { onMount, untrack } from "svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { LocateFixed, MapPin, Spline } from "@lucide/svelte";
   import * as maplibregl from "maplibre-gl";
   import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -45,6 +45,7 @@
     onStopPlacing?: () => void;
   } = $props();
   import AtommZoom from "$lib/atomm/AtommZoom.svelte";
+  const base = basePath();
   const isEmbedded = getEmbedded();
   let zoomScale = $state(1);
   let initialZoom = 10;

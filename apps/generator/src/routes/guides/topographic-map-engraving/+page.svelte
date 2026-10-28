@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Create a topographic map SVG for laser engraving" intro="Draw a landscape with contour lines on one surface. TopoStack's flat engraving workflow exports one SVG at your chosen physical size, with optional roads, trails, water and labels.">

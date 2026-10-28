@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import LakeDepthDemo from "$lib/site/LakeDepthDemo.svelte";
   import type { PageData } from "./$types";
+  const base = basePath();
   let { data }: { data: PageData } = $props();
 </script>
 

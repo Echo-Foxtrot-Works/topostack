@@ -1,7 +1,8 @@
 <script lang="ts">
   import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Paint lakes with water paint templates" intro="Color the water on a layered relief without masking by hand. TopoStack cuts a paper stencil for each panel, open exactly where the lake stays visible once the stack is glued.">

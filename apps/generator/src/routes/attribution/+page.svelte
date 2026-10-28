@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { FONT_CATALOG } from "@topostack/core";
   import { REPOSITORY_URL } from "$lib/site/seo";
@@ -8,6 +8,7 @@
   import aviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
   import landsSources from "../../../../../scripts/data/public-lands-sources.json";
   import type { PageData } from "./$types";
+  const base = basePath();
 
   let { data }: { data: PageData } = $props();
 

@@ -1,7 +1,7 @@
 /**
  * Remove the public site's static files from an Atomm build.
  *
- * The Atomm package is the studio alone (svelte.config.js prerenders only its
+ * The Atomm package is the studio alone (apps/generator/sveltekit.config.ts prerenders only its
  * pages), but SvelteKit still copies every file in `static/`. The marketing and
  * guide images and the example project files (SITE_ONLY_PATHS) are only
  * reached from site pages, so they are dropped here. Everything the studio

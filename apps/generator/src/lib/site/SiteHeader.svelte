@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { ArrowRight, Star } from "@lucide/svelte";
   import { Brand, SkipLink, ThemeToggle, Topbar } from "@loidolt/theme-svelte";
   import { theme } from "$lib/site/theme";
   import { REPOSITORY_URL } from "$lib/site/site";
+  const base = basePath();
   // The homepage is the reference for this header; every other public page reuses it.
   // `home` keeps the section link on-page; `static` pages never hydrate, so they skip the theme toggle.
   let { meta = "Studio", content, home = false, static: plain = false }: { meta?: string; content: string; home?: boolean; static?: boolean } = $props();

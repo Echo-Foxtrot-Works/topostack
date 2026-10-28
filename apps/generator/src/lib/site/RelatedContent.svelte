@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { relatedContent } from "$lib/site/related-content";
+  const base = basePath();
   let { path }: { path: string } = $props();
   const links = $derived(relatedContent(path));
 </script>

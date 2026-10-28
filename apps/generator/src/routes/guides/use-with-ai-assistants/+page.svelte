@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 
   const endpoint = "https://topostack.app/mcp";
   const vscode = JSON.stringify({ servers: { topostack: { type: "http", url: endpoint } } }, null, 2);

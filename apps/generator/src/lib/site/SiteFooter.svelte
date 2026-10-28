@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { ArrowUpRight } from "@lucide/svelte";
   import FeedbackButton from "$lib/site/FeedbackButton.svelte";
   import { REPOSITORY_URL } from "$lib/site/site";
+  const base = basePath();
   // The homepage is the reference for this footer. Pages that never hydrate (static) leave out the feedback dialog.
   let { static: plain = false }: { static?: boolean } = $props();
 </script>

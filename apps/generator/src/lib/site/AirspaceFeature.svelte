@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { ArrowRight } from "@lucide/svelte";
+  const base = basePath();
 </script>
 
 <div class="airspace-feature">

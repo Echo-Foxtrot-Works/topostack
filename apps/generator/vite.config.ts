@@ -1,5 +1,6 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
+import { kitConfig } from "./sveltekit.config.ts";
 
 // Vite's own 5173 collides with just about every other JS dev server, so the
 // generator claims a quieter default. TOPOSTACK_WEB_PORT overrides it, and the
@@ -11,7 +12,7 @@ const requestedWebPort = Number(process.env.TOPOSTACK_WEB_PORT);
 const webPort = Number.isInteger(requestedWebPort) && requestedWebPort > 0 && requestedWebPort <= 65_535 ? requestedWebPort : DEFAULT_WEB_PORT;
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(kitConfig)],
   // Keep Vite and the post-build header policy on the same explicit environment.
   define: { "import.meta.env.VITE_SITE_ENV": JSON.stringify(siteEnvironment) },
   server: { port: webPort, strictPort: true },

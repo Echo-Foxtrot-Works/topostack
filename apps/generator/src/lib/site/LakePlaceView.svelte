@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import LakeDepthPreview from "$lib/site/LakeDepthPreview.svelte";
   import LakeLocator from "$lib/site/LakeLocator.svelte";
@@ -7,6 +7,7 @@
   import type { LocatorMap } from "$lib/site/lake-locator";
   import { depthKindLabel } from "$lib/site/lake-directory";
   import type { LakePlace } from "$lib/site/lake-places";
+  const base = basePath();
 
   let { page, locator, preview }: { page: LakePlace; locator?: LocatorMap; preview?: LakePreview } = $props();
 

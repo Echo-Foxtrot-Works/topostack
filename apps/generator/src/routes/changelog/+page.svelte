@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import ChangelogGroups from "$lib/site/ChangelogGroups.svelte";
   import type { PageProps } from "./$types";
+  const base = basePath();
   let { data }: PageProps = $props();
 </script>
 

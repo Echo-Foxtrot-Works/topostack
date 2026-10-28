@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Use a browser agent in the studio" intro="Agents that work inside your browser tab can read and change the design open in the TopoStack studio through WebMCP, generate it, and open the export dialog for you to download the files.">

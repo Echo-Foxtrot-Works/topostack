@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { depthKindLabel, lakeStudioLink } from "$lib/site/lake-directory";
   import { LAKES_HOME } from "$lib/site/site";
   import type { LakeListing, LakePage } from "$lib/site/lake-pages";
+  const base = basePath();
 
   let { page }: { page: LakePage } = $props();
 

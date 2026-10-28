@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Split a large map to fit your laser bed" intro="Build a layered relief bigger than your machine. TopoStack splits every layer into pieces that fit your work area, staggers the seams between layers and keys hidden joints with puzzle tabs.">

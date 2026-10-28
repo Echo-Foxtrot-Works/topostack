@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { lakeStudioLink } from "$lib/site/lake-directory";
+  const base = basePath();
 
   let { data } = $props();
   const total = $derived(data.regions.reduce((sum, region) => sum + region.count, 0));

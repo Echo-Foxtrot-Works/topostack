@@ -1,10 +1,11 @@
 <script lang="ts">
   import { Droplets, LayoutGrid, Shapes, StopCircle, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { DEFAULT_SHEET_NESTING, SHEET_NEST_LIMITS, displayLength, type SheetNestRotation, type SheetNestSettingsV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  const base = basePath();
 
   let { disabled = false, material = "wood" }: { disabled?: boolean; material?: "wood" | "acrylic" } = $props();
 
