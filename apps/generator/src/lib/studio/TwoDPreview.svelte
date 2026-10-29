@@ -1,7 +1,7 @@
 <script lang="ts">
   import AirspaceCutPreview from "$lib/studio/AirspaceCutPreview.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
-  import { displayElevation, elevationUnit, paintStencil, type GeometryIRV1 } from "@topostack/core";
+  import { displayElevation, elevationUnit, PAINT_REGION_LABELS, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
   import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { PAINT_COLORS } from "$lib/studio/paint-colors";
@@ -19,8 +19,13 @@
   // Lays the paper stencil over the sheet as it is cut: the piece less its
   // windows as one outline, so the paint shows only where the paper is gone.
   let showTemplate = $state(false);
+  // Each kind is its own paper, covering every other kind's windows, so the
+  // overlay lays one kind at a time; a sheet with several picks which.
+  let templateKind = $state<PaintRegionKind>();
+  const paintKinds = $derived([...new Set(paint.map((region) => region.kind))]);
+  const shownKind = $derived(templateKind && paintKinds.includes(templateKind) ? templateKind : paintKinds[0]);
   const ringPath = (ring: { x: number; y: number }[]) => `${pointsToPath(ring)} Z`;
-  const templates = $derived(paint.flatMap((region) => {
+  const templates = $derived(paint.filter((region) => region.kind === shownKind).flatMap((region) => {
     const polygon = layer?.polygons[region.polygonIndex];
     if (!polygon) return [];
     // IR from before stencils were merged carries windows only: cut the paper here, bridges and all.
@@ -86,6 +91,11 @@
     {#if (geometry.paintRegions ?? []).length}
       <div class="axis paint-template-toggle">
         <Switch checked={showTemplate} disabled={!paint.length} onCheckedChange={(checked) => { showTemplate = checked; }} aria-label="Show paint template">{paint.length ? "Paint template" : "No paint template on this layer"}</Switch>
+        {#if showTemplate && paintKinds.length > 1}
+          <select aria-label="Paint template kind" value={shownKind} onchange={(event) => { templateKind = event.currentTarget.value as PaintRegionKind; }}>
+            {#each paintKinds as kind (kind)}<option value={kind}>{PAINT_REGION_LABELS[kind]}</option>{/each}
+          </select>
+        {/if}
       </div>
     {/if}
   </div>
