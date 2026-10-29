@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { exampleStudioPath } from "$lib/site/site";
+  const base = basePath();
 
   /** `download` is the published project file; Crater Lake has none because it is the studio's starting project. */
   let { slug, download = false }: { slug: string; download?: boolean } = $props();

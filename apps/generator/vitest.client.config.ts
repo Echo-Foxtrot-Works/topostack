@@ -1,8 +1,9 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vitest/config";
+import { kitConfig } from "./sveltekit.config.ts";
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(kitConfig)],
   resolve: { conditions: ["browser"] },
   test: {
     environment: "jsdom",

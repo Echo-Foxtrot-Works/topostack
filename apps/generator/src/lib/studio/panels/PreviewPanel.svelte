@@ -1,6 +1,6 @@
 <script lang="ts">
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { Box, FileOutput, Layers3, Map as MapIcon, PenTool, Scan, Waves, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { displayElevation } from "@topostack/core";
@@ -12,6 +12,7 @@
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { getStudio, type PreviewMode } from "$lib/studio/studio-context";
   import PlaceGraphicsButton from "$lib/studio/customdata/PlaceGraphicsButton.svelte";
+  const base = basePath();
 
   let { openLakeDepthHelp }: { openLakeDepthHelp?: (trigger: HTMLButtonElement) => void } = $props();
   const studio = getStudio();

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { REPOSITORY_URL } from "$lib/site/site";
+  const base = basePath();
 </script>
 
 <Article title="How terrain generation works" intro="TopoStack turns elevation samples into shapes you can cut and assemble. The geometry is calculated in your browser, where cached terrain, faster boundary searches, and parallel workers help keep large projects practical.">

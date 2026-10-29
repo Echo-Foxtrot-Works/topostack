@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import ExampleActions from "$lib/site/ExampleActions.svelte";
   import { EXAMPLES_HOME, exampleStudioPath } from "$lib/site/site";
+  const base = basePath();
 
   let { data } = $props();
   const example = $derived(data.example);

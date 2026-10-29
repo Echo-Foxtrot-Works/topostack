@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import ExampleActions from "$lib/site/ExampleActions.svelte";
   import { exampleStudioPath } from "$lib/site/site";
+  const base = basePath();
 </script>
 
 <Article title="Explore a Crater Lake topographic map" intro="Start with the landscape already waiting in TopoStack. The Crater Lake preview shows how real elevation and map details become a layered terrain project.">

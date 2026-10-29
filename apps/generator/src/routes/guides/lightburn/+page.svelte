@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Use TopoStack SVG files in LightBurn" intro="Import a terrain project, check its dimensions, assign each operation and preview the job before cutting or engraving.">

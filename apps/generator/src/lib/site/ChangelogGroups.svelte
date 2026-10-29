@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import type { ChangeGroup } from "$lib/site/changelog.server";
   import { REPOSITORY_URL } from "$lib/site/site";
+  const base = basePath();
   let { groups }: { groups: ChangeGroup[] } = $props();
 </script>
 

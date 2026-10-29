@@ -1,7 +1,8 @@
 <script lang="ts">
   import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="How to make a custom lake depth map" intro="A layered lake map steps down layer by layer from the shoreline to the deepest hole, so the bays, drop-offs and islands people know from the water show up in wood. Here is how to make one of a real lake with TopoStack.">

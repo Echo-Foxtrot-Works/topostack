@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import type { StarterId } from "$lib/site/starters";
   import { starterById } from "$lib/site/starters";
+  const base = basePath();
   let { id, ready, busy, exported, onGenerate, onExport, onDismiss }: {
     id: StarterId; ready: boolean; busy: boolean; exported: boolean;
     onGenerate: () => void; onExport: () => void; onDismiss: () => void;

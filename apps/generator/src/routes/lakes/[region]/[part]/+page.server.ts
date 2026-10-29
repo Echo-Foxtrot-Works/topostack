@@ -7,7 +7,7 @@ import type { EntryGenerator, PageServerLoad } from "./$types";
 // bootstrap script they share the site CSP instead of needing _headers rules.
 export const csr = false;
 
-// The Atomm package is the studio alone (see svelte.config.js), so it prerenders none of these pages.
+// The Atomm package is the studio alone (see sveltekit.config.ts), so it prerenders none of these pages.
 export const entries: EntryGenerator = () => import.meta.env.VITE_SITE_ENV === "atomm" ? [] : [...LAKE_PAGES.keys()].map((path) => path.split("/")).filter((parts) => parts.length === 4).map(([, , region, part]) => ({ region: region!, part: part! }));
 
 export const load: PageServerLoad = ({ params }) => {

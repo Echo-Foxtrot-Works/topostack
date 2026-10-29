@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Make an airspace model in 3D" intro="Show the sky above a place as acrylic over a wooden terrain relief. Choose airspace classes, compare the ways to build them, and inspect the pieces before you cut.">
