@@ -14,10 +14,10 @@
   },
   "devDependencies": {
     "@cfworker/json-schema": "^4.1.1",
-    "@cloudflare/vitest-pool-workers": "^0.22.0",
-    "@cloudflare/workers-types": "^5.20261005.1",
-    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@cloudflare/vitest-plugin": "^1.4.9",
+    "@cloudflare/workers-types": "^5.20261024.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@vitest/coverage-istanbul": "^4.1.11",
-    "wrangler": "^4.147.0"
+    "wrangler": "^4.154.0"
   }
 }
