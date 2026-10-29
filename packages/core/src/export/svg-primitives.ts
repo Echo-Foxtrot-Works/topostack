@@ -3,7 +3,8 @@ import { clipPolyline, preparePolygons, type PreparedPolygons } from "../primiti
 import { labelSvgPaths, roundText } from "../annotate/labels.js";
 import { offsetClosedRing } from "../primitives/offset.js";
 import { aviationStroke } from "../pipeline/aviation.js";
-import type { AviationClass, LayerIR, LineStyleV1, Point2D } from "../types.js";
+import { landStroke } from "../pipeline/lands.js";
+import { LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type LineStyleV1, type Point2D } from "../types.js";
 
 
 export const CUT = "#FE0002";
@@ -20,7 +21,8 @@ export const ENGRAVE_LINE = `fill="none" stroke="${ENGRAVE}"`;
 export const ASSEMBLY = "#00A651";
 export const MAX_EXPORT_PACKAGE_BYTES = 100_000_000;
 /** Engraving groups in output order; `engravingCategory` maps each marking to one. */
-const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "transport-labels", "water", "boundaries", "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
+const LAND_CATEGORIES = LAND_CLASSES.map((landClass) => `land-${landClass}` as const);
+const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "transport-labels", "water", "boundaries", ...LAND_CATEGORIES, "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
 type EngravingCategory = (typeof ENGRAVING_CATEGORIES)[number];
 /** Assembly ids ride in their own top-level group, so the artwork categories exclude them. */
 export const ARTWORK_CATEGORIES = ENGRAVING_CATEGORIES.filter((category) => category !== "assembly-labels");
@@ -65,6 +67,7 @@ export function engravingCategory(mark: LayerIR["markings"][number]): EngravingC
   if (mark.id.startsWith("transport-label-")) return "transport-labels";
   if (mark.id.startsWith("aviation-label-")) return "aviation-labels";
   if (mark.kind === "aviation" && mark.aviationClass) return AVIATION_CATEGORIES[mark.aviationClass];
+  if (mark.kind === "land" && mark.landClass) return `land-${mark.landClass}`;
   if (mark.transportationClass === "major-road") return "major-roads";
   if (mark.transportationClass === "local-road") return "local-roads";
   if (mark.transportationClass === "trail") return "trails";
@@ -83,6 +86,10 @@ export function categoryStrokeAttributes(category: EngravingCategory, style: Lin
     category === "boundaries" ? style.boundaryMm :
     category === "coordinate-grid" ? style.coordinateGridMm : style.annotationMm;
   if (category === "assembly-labels") return ` stroke-width="${format(width)}"`;
+  if (category.startsWith("land-")) {
+    const stroke = landStroke(category.slice("land-".length) as LandClass, style);
+    return ` stroke-width="${format(stroke.widthMm)}"${stroke.dash ? ` stroke-dasharray="${stroke.dash.map(format).join(" ")}" stroke-linecap="round"` : ""} stroke-linejoin="round"`;
+  }
   const aviationClass = CATEGORY_AVIATION_CLASS[category];
   if (aviationClass) {
     const stroke = aviationStroke(aviationClass, style);

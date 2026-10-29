@@ -23,7 +23,7 @@
    * matching `hiddenPrefixes` are left out while their drafts are drawn above.
    */
   let { geometry, exploded, placement, onUnavailable, rememberCamera = true }: {
-    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial" | "airspaceStack"> & Partial<Pick<GeometryIRV1, "sourceKind">>;
+    geometry: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers" | "waterSurfaces" | "lineStyle" | "waterInserts" | "waterInsertMaterial" | "airspaceStack"> & Partial<Pick<GeometryIRV1, "sourceKind" | "paintRegions">>;
     /** Isolated representative previews must not replace the project camera. */
     rememberCamera?: boolean;
     exploded: number;
@@ -35,7 +35,8 @@
   import { MARKING_COLORS, markingStyleKey, type MarkingStyleKey } from "$lib/studio/marking-style";
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
-  import { airspaceBody, airspaceBodyKey, airspaceRods, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
+  import { PAINT_COLORS } from "$lib/studio/paint-colors";
+  import { airspaceBody, airspaceBodyKey, airspaceRods, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, landPaintStains, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
   const isEmbedded = getEmbedded();
   let zoom = $state(1);
   /**
@@ -348,6 +349,7 @@
   const waterSurfaces = $derived(geometry.waterSurfaces);
   const waterInserts = $derived(geometry.waterInserts);
   const waterInsertMaterial = $derived(geometry.waterInsertMaterial);
+  const paintRegions = $derived(geometry.paintRegions);
   const airspaceStack = $derived(geometry.airspaceStack);
   const lineStyle = $derived(geometry.lineStyle);
   const widthMm = $derived(geometry.widthMm);
@@ -358,7 +360,7 @@
   const hideMarkings = $derived(placement?.hideMarkings ?? false);
   $effect(() => {
     const omitMarkings = hideMarkings;
-    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, airspaceStack, lineStyle, widthMm, heightMm, sourceKind };
+    const activeGeometry = { layers, waterSurfaces, waterInserts, waterInsertMaterial, paintRegions, airspaceStack, lineStyle, widthMm, heightMm, sourceKind };
     const showAirspace = !placement;
     const hiddenPrefixes = hiddenKey ? hiddenKey.split("|") : [];
     const timeout = window.setTimeout(() => {
@@ -400,10 +402,12 @@
       const aviationDashedMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["aviation-dashed"], linewidth: aviationStroke("class-d", style).widthMm, dashSize: classDDash, gapSize: classDGap });
       // Special use airspace is solid; its inside hatching arrives as geometry.
       const specialUseMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm });
+      // Public land boundaries share one solid line here; the cut and engraving previews dash each class.
+      const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial,
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
-        "special-use": specialUseMaterial, engrave: engraveMaterial,
+        "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,
       };
       const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
@@ -415,7 +419,7 @@
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
+      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, landMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
@@ -565,6 +569,29 @@
         runtime.sceneResources.push(mask, stain);
         const reach = polygonBounds(band.polygons);
         for (const layer of activeGeometry.layers.slice(band.fromLayer, band.toLayer + 1)) {
+          const top = layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.1;
+          for (const polygon of layer.polygons) {
+            if (!boundsOverlap(polygonBounds([polygon]), reach)) continue;
+            const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon(polygon), 8), stain);
+            mesh.renderOrder = 1;
+            addStacked(runtime!.content, mesh, layer.index, top);
+          }
+        }
+      }
+
+      // Painted land is a tint the same way, one per kind, on the sheets where
+      // that kind shows; kinds never overlap, since each gives way to the higher ones.
+      for (const stainKind of landPaintStains(activeGeometry.paintRegions ?? [])) {
+        const mask = waterStainMask(stainKind.polygons, PAINT_COLORS[stainKind.kind]);
+        if (!mask) continue;
+        const stain = new THREE.MeshBasicMaterial({
+          map: mask, toneMapped: false, transparent: true, depthWrite: false,
+          blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor,
+        });
+        runtime.sceneResources.push(mask, stain);
+        const reach = polygonBounds(stainKind.polygons);
+        for (const layer of activeGeometry.layers) {
+          if (!stainKind.layers.has(layer.index)) continue;
           const top = layer.index * layer.materialThicknessMm + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.1;
           for (const polygon of layer.polygons) {
             if (!boundsOverlap(polygonBounds([polygon]), reach)) continue;

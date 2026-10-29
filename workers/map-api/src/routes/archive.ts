@@ -1,7 +1,9 @@
 import rawSurveyCatalog from "../../../../scripts/data/lake-bathymetry.json";
 import rawTerrainCatalog from "../../../../scripts/data/terrain-sources.json";
 import rawAviationSources from "../../../../scripts/data/faa-aviation-sources.json";
+import rawLandsSources from "../../../../scripts/data/public-lands-sources.json";
 import { validateAviationSources } from "@topostack/data-contracts/aviation-tiles";
+import { validateLandsSources } from "@topostack/data-contracts/land-tiles";
 import { validateSurveyCatalog, validateTerrainCatalog } from "@topostack/data-contracts/source-catalog";
 import { cachedArchiveHead, evictArchiveHead } from "../archive-head";
 import { edgeCacheKey, matchEdge, teeToEdge } from "../edge-cache";
@@ -22,6 +24,8 @@ export const LAKE_ARCHIVE_KEY = "lakes/current.pmtiles";
 // Optional: studios request it only when a project turns aviation detail on,
 // so /ready does not depend on it.
 const AVIATION_ARCHIVE_KEY = "aviation/current.pmtiles";
+// Optional too: requested only when a project paints or draws public lands.
+const LANDS_ARCHIVE_KEY = "lands/current.pmtiles";
 
 export interface ArchiveRoute { key: string; label: string }
 
@@ -31,6 +35,8 @@ const bathymetryCatalog = validateSurveyCatalog(rawSurveyCatalog);
 export const terrainArchives = terrainCatalog.sources.map((source) => ({ source, path: `/v1/terrain-sources/${source.id}.pmtiles`, key: `terrain-sources/${source.id}.pmtiles` }));
 /** The pinned FAA build this deployment advertises; the archive metadata must match it. */
 export const aviationSources = validateAviationSources(rawAviationSources);
+/** The pinned PAD-US build this deployment advertises; the archive metadata must match it. */
+export const landsSources = validateLandsSources(rawLandsSources);
 
 export const bathymetryArchives = bathymetryCatalog.sources.map((source) => ({ source, path: `/v1/bathymetry/${source.id}.pmtiles`, key: `bathymetry/${source.id}.pmtiles` }));
 
@@ -39,6 +45,7 @@ export const ARCHIVE_ROUTES: ReadonlyMap<string, ArchiveRoute> = new Map<string,
   ["/v1/osm.pmtiles", { key: VECTOR_ARCHIVE_KEY, label: "OSM" }],
   ["/v1/lakes.pmtiles", { key: LAKE_ARCHIVE_KEY, label: "Lake bathymetry" }],
   ["/v1/aviation.pmtiles", { key: AVIATION_ARCHIVE_KEY, label: "FAA aviation" }],
+  ["/v1/lands.pmtiles", { key: LANDS_ARCHIVE_KEY, label: "Public lands" }],
   ...terrainArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "High-resolution terrain" }]),
   ...bathymetryArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "Lake survey bathymetry" }]),
 ]);

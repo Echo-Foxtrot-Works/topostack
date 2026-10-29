@@ -1,7 +1,8 @@
 import type { GeoBounds } from "@topostack/core/project";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
 import { aviationCovers, type AviationSources } from "@topostack/data-contracts/aviation-tiles";
-import { aviationSources, bathymetryArchives, terrainArchives } from "../routes/archive";
+import { landSourcesCovering, type LandsSources } from "@topostack/data-contracts/land-tiles";
+import { aviationSources, bathymetryArchives, landsSources, terrainArchives } from "../routes/archive";
 
 /** Which of TopoStack's data sources reach a crop, so an agent can say what detail to expect. */
 export interface AreaCoverage {
@@ -14,6 +15,12 @@ export interface AreaCoverage {
   roadsAndWater: string;
   /** FAA airspace, airports, navaids and obstacles, when the crop touches US coverage. */
   aviation: { name: string; nasrCycle: string; license: string } | null;
+  /**
+   * Public land outlines for paint templates and engraved boundaries: USGS
+   * PAD-US where the crop touches the United States, CPCAD where it touches
+   * Canada. Empty elsewhere, where OpenStreetMap's protected areas stand in.
+   */
+  publicLands: Array<{ name: string; version: string; license: string }>;
   notes: string[];
 }
 
@@ -41,6 +48,7 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   terrain?: ReadonlyArray<{ source: TerrainSource }>;
   surveys?: ReadonlyArray<{ source: SurveySource }>;
   aviation?: AviationSources;
+  lands?: LandsSources;
 } = {}): AreaCoverage {
   const copies = worldCopies(bounds);
   const terrain = (sources.terrain ?? terrainArchives).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
@@ -49,6 +57,12 @@ export function areaCoverage(bounds: GeoBounds, sources: {
     .map(({ source }) => ({ id: source.id, name: source.name, license: source.license }));
   const faa = sources.aviation ?? aviationSources;
   const aviation = copies.some((copy) => aviationCovers(faa, copy)) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;
+  const registration = sources.lands ?? landsSources;
+  const touched = new Set(copies.flatMap((copy) => landSourcesCovering(registration, copy)));
+  const publicLands = [
+    ...(touched.has("padus") ? [{ name: registration.name, version: registration.padusVersion, license: registration.license }] : []),
+    ...(touched.has("cpcad") && registration.canada ? [{ name: registration.canada.name, version: registration.canada.date, license: registration.canada.license }] : []),
+  ];
   const notes = [
     "Terrain is land elevation; open sea is flat at sea level and lakes use survey or modeled depths.",
     ...(terrain.length ? ["High-resolution terrain is used where it covers the area."] : []),
@@ -59,6 +73,7 @@ export function areaCoverage(bounds: GeoBounds, sources: {
     lakeSurveys: surveys,
     roadsAndWater: "OpenStreetMap via Protomaps, worldwide",
     aviation,
+    publicLands,
     notes,
   };
 }

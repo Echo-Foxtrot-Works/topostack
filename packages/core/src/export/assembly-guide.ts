@@ -5,7 +5,7 @@ import { pointInPolygon, ringBounds, simplifyClosedRing } from "../primitives/ge
 import { displayElevation, displayLength, elevationUnit, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
 import { airspaceFact, airspaceNeeds, airspaceSection, type GuideAirspace } from "./assembly-guide-airspace.js";
-import type { GeometryIRV1, LayerIR, PaintRegionKind, Point2D, Polygon2D, ProjectConfigV1, WaterInsertIR } from "../types.js";
+import { PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type PaintRegionKind, type Point2D, type Polygon2D, type ProjectConfigV1, type WaterInsertIR } from "../types.js";
 
 /**
  * A web font to embed in the guide, as WOFF2 bytes in base64. The core cannot
@@ -119,6 +119,11 @@ function tone(index: number, count: number): string {
   return `rgb(${mix(245, 170)} ${mix(242, 160)} ${mix(233, 134)})`;
 }
 
+/** "a", "a and b", "a, b and c". */
+function listed(items: string[]): string {
+  return items.length < 3 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
 function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -159,7 +164,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   const templates = sheets.flatMap((sheet) => (sheet.paintTemplates ?? []).map((template) => ({ ...template, sheet })));
   const painted = templates.length > 0;
   const paintKinds = [...new Set(templates.map((template) => template.kind))];
-  const paintWhat = paintKinds.join(" and ");
+  const paintWhat = listed(paintKinds.map((kind) => PAINT_REGION_LABELS[kind]));
   /** Templates holding a stencil for one of this layer's pieces, grouped by kind. */
   const templatesFor = (layerIndex: number) => paintKinds.flatMap((kind) => {
     const polygons = new Set((ir.paintRegions ?? []).filter((region) => region.kind === kind && region.layerIndex === layerIndex).map((region) => region.polygonIndex));
@@ -218,7 +223,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     if (index === 0) notes.push("<strong>Base layer.</strong> Lay it on a flat board, engraved side up. No glue under this one.");
     if (nestedIn(index).length) notes.push(`<strong>Keep its cutouts.</strong> The pieces that drop out of it belong to layer ${nestedIn(index).map((nested) => layers[nested]).filter((entry): entry is LayerIR => Boolean(entry)).map(layerNumber).join(" and ")}.`);
     if (donors.length) notes.push(`<strong>Nested.</strong> ${pieces === 1 ? "This piece was" : "These pieces were"} cut from inside layer ${donors.map(layerNumber).join(" and ")}; look among that sheet's cutouts.`);
-    for (const { kind, files } of templatesFor(index)) notes.push(`<strong>Paint the ${kind} first</strong> with ${files.map(({ filename }) => `<code>${escapeXml(filename)}</code>`).join(", ")}.`);
+    for (const { kind, files } of templatesFor(index)) notes.push(`<strong>Paint the ${PAINT_REGION_LABELS[kind]} first</strong> with ${files.map(({ filename }) => `<code>${escapeXml(filename)}</code>`).join(", ")}.`);
     const covering = insertsOn(index + 1);
     if (covering.length) notes.push(`<strong>Under the water.</strong> Its lake bed shows through acrylic ${covering.length === 1 ? "insert" : "inserts"} ${covering.map(insertName).join(", ")}, set in at step ${index + 2}. The ${length(acrylic!.ledgeMm)} rim just inside the opening above is the ledge ${covering.length === 1 ? "it rests" : "they rest"} on${painted ? "" : "; tint the bed now if you want coloured water"}. Keep glue off the bed: it shows.`);
     for (const insert of insertsOn(index)) {

@@ -382,6 +382,8 @@ export interface ProjectConfigV1 {
   outputMode: OutputMode;
   widthMm: number;
   heightMm: number;
+  /** Draws elevation contours in a flat engraving; off leaves only the map details. */
+  showEngravingContours: boolean;
   /** Number of elevation contour lines in a flat engraving. */
   engravingContourCount: number;
   /** Every nth contour is emitted as a heavier index contour. */
@@ -405,6 +407,18 @@ export interface ProjectConfigV1 {
    * that never turned it on, which keeps their fingerprints.
    */
   aviation?: AviationDetailsV1;
+  /**
+   * Public land drawn as engraved lines (US only), in either output mode and
+   * independent of the paint templates. Absent in every project that never
+   * turned it on, which keeps their fingerprints.
+   */
+  lands?: LandsDetailsV1;
+  /**
+   * Public land units left out of paint templates and engraved boundaries,
+   * by unit id (`LandAreaV1.unit`), such as a forest around the park being
+   * modelled. Absent in every project that never left one out.
+   */
+  landExclusions?: string[];
   showCoordinateGrid: boolean;
   showWaterDepth: boolean;
   /** Depth multiplier relative to the terrain's vertical scale; 1 matches it. */
@@ -609,12 +623,14 @@ export interface SourceAttribution {
 
 export interface MarkingFeature {
   id: string;
-  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation";
+  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
   operation: Exclude<Operation, "cut">;
   points: Point2D[];
   label?: string;
   transportationClass?: TransportationClass;
   aviationClass?: AviationClass;
+  /** Public land boundaries, hatching and names: the class that sets the dash. */
+  landClass?: LandClass;
   /** Aviation points only: one point, drawn as this symbol at a fixed size. */
   aviationSymbol?: AviationSymbol;
   aviationDetail?: AviationSymbolDetail;
@@ -677,9 +693,56 @@ export interface WaterAreaV1 {
   };
 }
 
+/**
+ * Classes of public and protected land, as the lands archive
+ * (`@topostack/data-contracts/land-tiles`) writes them. Each is one paint
+ * stencil kind.
+ */
+export const LAND_CLASSES = [
+  "national-park", "national-monument", "national-forest", "wilderness", "blm",
+  "wildlife-refuge", "state-park", "preserve", "tribal", "military",
+] as const;
+export type LandClass = (typeof LAND_CLASSES)[number];
+
 /** Region kinds a paint stencil can be windowed to. Extend here and in the paint-regions source registry. */
-export const PAINT_REGION_KINDS = ["water"] as const;
+export const PAINT_REGION_KINDS = ["water", ...LAND_CLASSES] as const;
 export type PaintRegionKind = (typeof PAINT_REGION_KINDS)[number];
+
+/** What each kind is called in instructions: "Paint the national park first". */
+export const PAINT_REGION_LABELS: Record<PaintRegionKind, string> = {
+  water: "water", "national-park": "national park", "national-monument": "national monument", "national-forest": "national forest",
+  wilderness: "wilderness", blm: "BLM land", "wildlife-refuge": "wildlife refuge", "state-park": "state park", preserve: "preserve",
+  tribal: "tribal land", military: "military land",
+};
+
+/** Public land engraved on the model, apart from any paint template. */
+export interface LandsDetailsV1 {
+  /** Classes whose boundaries are engraved, each in its own dash; each listed at most once. */
+  boundaries: LandClass[];
+  /** Flat engravings only: short ticks just inside each boundary, so the land side reads at a glance. */
+  hatched: boolean;
+  /** The names of the largest named units, where one fits inside its unit. */
+  labels: boolean;
+}
+
+/** Most land units a project may leave out. */
+export const MAX_LAND_EXCLUSIONS = 200;
+
+/** One unit of public land clipped to the crop, in crop millimetres. */
+export interface LandAreaV1 {
+  /** Unique within the archive, e.g. `national-park:Rocky Mountain National Park`. */
+  unit: string;
+  landClass: LandClass;
+  name?: string;
+  /** Where the outline comes from; absent means PAD-US. */
+  source?: LandsSource;
+  polygons: Polygon2D[];
+}
+
+export type LandsSource = "padus" | "cpcad" | "openstreetmap";
+
+/** `not-covered` is an area neither PAD-US nor OpenStreetMap has public land for, where `landAreas` is empty. */
+export type LandsStatus = "available" | "partial" | "unavailable" | "not-covered";
 
 /**
  * One piece polygon's paint windows for a region kind: the part of the region
@@ -799,6 +862,16 @@ export interface SourceBundleV1 {
   airspaceStatus?: "available" | "partial" | "unavailable" | "not-covered";
   /** Effective date of the FAA NASR cycle the airspace volumes come from. */
   airspaceCycle?: string;
+  /** Public land units for paint stencils, kept apart from `markings` like aviation. Absent when never loaded. */
+  landAreas?: LandAreaV1[];
+  /** Absent means public lands were never requested. */
+  landsStatus?: LandsStatus;
+  /** PAD-US version the land areas come from. */
+  landsVersion?: string;
+  /** Where the land areas came from: PAD-US and CPCAD units from the lands archive; outside its coverage, OpenStreetMap's protected areas, unnamed. */
+  landsSources?: LandsSource[];
+  /** Credit for the lands archive, added to the geometry's attribution only while the project uses public lands. */
+  landsAttribution?: SourceAttribution[];
   /** Status of the optional HydroLAKES/GLOBathy depth archive. */
   lakeDataStatus: "available" | "unavailable" | "not-requested";
   /** Survey failures retain modeled lake depths and generate a warning. */
@@ -839,6 +912,7 @@ export interface OperationPath {
   textStyle?: TextStyleV1;
   transportationClass?: TransportationClass;
   aviationClass?: AviationClass;
+  landClass?: LandClass;
   /** Closed engraving paths that should render as solid marker artwork. */
   filled?: boolean;
   /** Interior voids in a filled marking, including areas covered by upper sheets. */
@@ -1172,6 +1246,10 @@ export type GeometryWarningCode =
   | "AVIATION_DATA_UNAVAILABLE"
   | "AVIATION_NOT_COVERED"
   | "AVIATION_SYMBOLS_FILLED"
+  | "LANDS_DATA_PARTIAL"
+  | "LANDS_DATA_UNAVAILABLE"
+  | "LANDS_NOT_COVERED"
+  | "LANDS_FROM_OPENSTREETMAP"
   | "WATER_INSERT_SKIPPED"
   | "WATER_INSERT_PROUD"
   | "WATER_INSERT_OVERSIZE"
@@ -1206,6 +1284,10 @@ export interface GeometryIRV1 {
   aviationCycle?: string;
   /** Status of the volume source used for this layered airspace model. */
   airspaceStatus?: SourceBundleV1["airspaceStatus"];
+  /** Status of the public lands source; present only when the project uses public lands. */
+  landsStatus?: LandsStatus;
+  landsVersion?: string;
+  landsSources?: LandsSource[];
   lakeDataStatus: SourceBundleV1["lakeDataStatus"];
   datasetVersion: string;
   bounds: GeoBounds;
@@ -1271,6 +1353,7 @@ export const DEFAULT_PROJECT: ProjectConfigV1 = {
   outputMode: "stack",
   widthMm: 300,
   heightMm: 200,
+  showEngravingContours: true,
   engravingContourCount: 12,
   engravingIndexInterval: 5,
   showEngravingBorder: true,

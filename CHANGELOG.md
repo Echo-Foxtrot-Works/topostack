@@ -4,6 +4,20 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.11.0 (2026-10-27)
+
+### New
+
+- **Flat engravings without contour lines**: Flat engravings can now leave the contour lines out. Turn off **Contour lines** in the Contour design panel and the engraving keeps only the roads, trails, water, boundaries and marks you choose: a clean line map, or a base to colour or trace afterwards. Turn it back on and your contour density comes back unchanged. ([#240](https://github.com/Echo-Foxtrot-Works/topostack/pull/240))
+- **Paint templates for national parks, forests, BLM land and other public lands**: Layered models in the United States can now get a paper paint template for each kind of public land: national parks and monuments, national forests, wilderness, BLM land, wildlife refuges, state parks, preserves, tribal and military land. Turn them on under **Public land paint** in Map features. Where kinds overlap, the more specific one paints, so templates never overlap. Outlines come from the USGS PAD-US database. ([#242](https://github.com/Echo-Foxtrot-Works/topostack/pull/242))
+- **Engrave public land boundaries and names on any US model**: Turn on **Public land boundaries** in Map features to engrave national parks, forests, wilderness, BLM land and other public lands, each kind in its own dash, on layered models and flat engravings alike. Add the names of the largest units, and on a flat engraving hatch the inside edge so the land side reads at a glance. ([#243](https://github.com/Echo-Foxtrot-Works/topostack/pull/243))
+- **Leave single parks out, and paint protected areas outside the US**: Under **Public land in this area** in Map features, turn off any unit, such as the forest around the park you are modelling, to leave it out of the paint templates and boundaries. Outside the United States, national parks, nature reserves and military land now come from OpenStreetMap where they are mapped, without names. ([#245](https://github.com/Echo-Foxtrot-Works/topostack/pull/245))
+- **Public lands in Canada**: Paint templates and engraved boundaries now cover Canada: national parks, provincial and territorial parks, wilderness areas, national wildlife areas and bird sanctuaries, and ecological and private conservation land, from Environment and Climate Change Canada's protected areas database. ([#246](https://github.com/Echo-Foxtrot-Works/topostack/pull/246))
+
+### Improved
+
+- **AI assistants can paint and engrave public lands**: Assistants connected to TopoStack can now ask for paint templates (`paintTemplates`) and engraved public land boundaries (`publicLands`) when they plan a model or edit one in the studio, and check_coverage says whether an area has PAD-US public land outlines. See the [project request reference](https://topostack.app/guides/agent-api). ([#244](https://github.com/Echo-Foxtrot-Works/topostack/pull/244))
+
 ## 0.10.1 (2026-10-11)
 
 ### Fixed

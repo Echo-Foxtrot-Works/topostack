@@ -10,12 +10,15 @@ import type { GeometryIRV1, ProjectConfigV1 } from "../types.js";
 export function exportBlockReason(geometry: GeometryIRV1, project: ProjectConfigV1, fingerprint?: string): string | undefined {
   if (geometry.sourceKind !== "real") return `Generate real terrain data before exporting ${project.outputMode === "engraving" ? "engraving" : "fabrication"} files.`;
   if (geometry.configFingerprint !== (fingerprint ?? projectFingerprint(project))) return "Project settings changed. Regenerate the terrain before exporting.";
-  const { vectors: needsVectors, lakes: needsLakes, aviation: needsAviation } = sourceRequirements(project);
+  const { vectors: needsVectors, lakes: needsLakes, aviation: needsAviation, lands: needsLands } = sourceRequirements(project);
   if (geometry.vectorStatus === "partial" && needsVectors) return "Map detail data exceeded the safe feature limit. Narrow the map area or disable some map details, then regenerate.";
   if (geometry.vectorStatus !== "available" && needsVectors) return "Map detail data is unavailable. Disable those map details or regenerate after the service is restored.";
   // Outside FAA coverage there is simply nothing to draw, which never blocks export.
   if (needsAviation && geometry.aviationStatus === "partial") return "Aviation data exceeded the safe feature limit. Narrow the map area or turn off some aviation details, then regenerate.";
   if (needsAviation && geometry.aviationStatus !== "available" && geometry.aviationStatus !== "not-covered") return "FAA aviation data is unavailable. Turn off aviation details or regenerate after the service is restored.";
+  // A stencil missing part of a park would leave it unpainted, so incomplete land data blocks export; outside PAD-US there is simply none.
+  if (needsLands && geometry.landsStatus === "partial") return "Public lands data exceeded the safe feature limit. Narrow the map area or turn off some land kinds, then regenerate.";
+  if (needsLands && geometry.landsStatus !== "available" && geometry.landsStatus !== "not-covered") return "Public lands data is unavailable. Turn off public land paint and boundaries, or regenerate after the service is restored.";
   // A project that asks for airspace never exports without it; an area with none simply has no pieces.
   if (project.outputMode === "stack" && project.airspaceStack) {
     if (geometry.airspaceStatus === "partial") return "Airspace data exceeded the safe feature limit. Narrow the map area or turn off some airspace classes, then regenerate.";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSyntheticSource, DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type AirspaceVolumeV1, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { createSyntheticSource, DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type AirspaceVolumeV1, type LandAreaV1, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { dataZoom } from "$lib/domain/tile-math";
 import { markStaleSourceData, refreshRequiredMapData, resizeSource, SourcePreparationCache, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
 
@@ -60,6 +60,7 @@ describe("refreshing map data", () => {
       assembleWater: (source) => source,
       loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
       loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
+      loadLands: vi.fn(async () => ({ landAreas: [], landsStatus: "not-covered" as const })),
       dataZoom,
     };
     const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, showWater: true, showWaterDepth: true, location: { ...DEFAULT_PROJECT.location, zoom: 11.6 } };
@@ -81,6 +82,7 @@ describe("refreshing map data", () => {
       assembleWater: (source) => source,
       loadAviation: vi.fn(async () => ({ aviationMarkings: [airport], aviationStatus: "available" as const, aviationCycle: "2026-09-03" })),
       loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
+      loadLands: vi.fn(async () => ({ landAreas: [], landsStatus: "not-covered" as const })),
       dataZoom,
     };
     const config: ProjectConfigV1 = { ...DEFAULT_PROJECT, aviation: { airspace: false, specialUse: false, runways: false, airports: true, navaids: false, obstacles: false, labels: false } };
@@ -109,6 +111,55 @@ describe("stale aviation data", () => {
     expect(markStaleSourceData(source, { aviation: none }, withAirspace, { ...withAirspace, aviation: none })).toBe(source);
     const labelled = { ...withAirspace, aviation: { ...none, airspace: true, labels: true } };
     expect(markStaleSourceData(source, { aviation: labelled.aviation }, withAirspace, labelled)).toBe(source);
+  });
+});
+
+describe("public land areas", () => {
+  const park: LandAreaV1 = { unit: "national-park:Test", landClass: "national-park", name: "Test", polygons: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 0 }], holes: [] }] };
+  const painting = (...kinds: ProjectConfigV1["paintTemplates"]): ProjectConfigV1 => ({ ...DEFAULT_PROJECT, paintTemplates: kinds });
+
+  it("loads only when the project paints land, and keeps a loaded list, empty or not", async () => {
+    const deps = dependencies({ loadLands: vi.fn(async () => ({ landAreas: [park], landsStatus: "available" as const, landsVersion: "4.1" })) });
+    await refreshRequiredMapData(loaded(), painting("water"), new AbortController().signal, deps);
+    expect(deps.loadLands).not.toHaveBeenCalled();
+    const refreshed = await refreshRequiredMapData(loaded(), painting("national-park"), new AbortController().signal, deps);
+    expect(refreshed).toMatchObject({ landAreas: [park], landsStatus: "available", landsVersion: "4.1" });
+    await refreshRequiredMapData(refreshed, painting("national-park"), new AbortController().signal, deps);
+    await refreshRequiredMapData(loaded({ landAreas: [], landsStatus: "not-covered" }), painting("national-park"), new AbortController().signal, deps);
+    expect(deps.loadLands).toHaveBeenCalledTimes(1);
+    // A failed load leaves no list, so the next refresh tries again.
+    await refreshRequiredMapData(loaded({ landsStatus: "unavailable" }), painting("national-park"), new AbortController().signal, deps);
+    expect(deps.loadLands).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads when a newly painted class was not loaded, and only filters otherwise", () => {
+    const source = loaded({ landAreas: [park], landsStatus: "available" });
+    const parks = painting("national-park");
+    const parksAndForests = painting("national-park", "national-forest");
+    expect(markStaleSourceData(source, { paintTemplates: parksAndForests.paintTemplates }, parks, parksAndForests).landAreas).toBeUndefined();
+    expect(markStaleSourceData(source, { paintTemplates: parks.paintTemplates }, parksAndForests, parks)).toBe(source);
+    expect(markStaleSourceData(source, { paintTemplates: ["national-park", "water"] }, parks, painting("national-park", "water"))).toBe(source);
+    // A partial load may fit everything once a class is dropped.
+    const partial = loaded({ landAreas: [park], landsStatus: "partial" });
+    expect(markStaleSourceData(partial, { paintTemplates: parks.paintTemplates }, parksAndForests, parks).landsStatus).toBeUndefined();
+  });
+
+  it("loads the classes a project engraves as well as those it paints, in either mode", () => {
+    const source = loaded({ landAreas: [park], landsStatus: "available" });
+    const parks = painting("national-park");
+    const engraving: ProjectConfigV1 = { ...parks, outputMode: "engraving", lands: { boundaries: ["national-park"], hatched: false, labels: false } };
+    // Engraving the class already loaded for paint reuses it; a new class reloads.
+    expect(markStaleSourceData(source, { lands: engraving.lands }, parks, { ...parks, lands: engraving.lands })).toBe(source);
+    const withBlm = { ...parks, lands: { boundaries: ["blm" as const], hatched: false, labels: false } };
+    expect(markStaleSourceData(source, { lands: withBlm.lands }, parks, withBlm).landAreas).toBeUndefined();
+    // Names and hatching only change how loaded land is drawn.
+    const named = { ...engraving, lands: { ...engraving.lands!, labels: true } };
+    expect(markStaleSourceData(source, { lands: named.lands }, engraving, named)).toBe(source);
+  });
+
+  it("scales land areas with the model", () => {
+    const resized = resizeSource(loaded({ landAreas: [park] }), DEFAULT_PROJECT, { ...DEFAULT_PROJECT, widthMm: DEFAULT_PROJECT.widthMm * 2 });
+    expect(resized.landAreas![0]!.polygons[0]!.outer[1]).toEqual({ x: 20, y: 0 });
   });
 });
 
@@ -176,6 +227,7 @@ function dependencies(overrides: Partial<SourceRefreshDependencies> = {}): Sourc
     assembleWater: vi.fn((source, lakes) => ({ ...source, waterAreas: lakes })),
     loadAviation: vi.fn(async () => ({ aviationMarkings: [], aviationStatus: "not-covered" as const })),
     loadAirspace: vi.fn(async () => ({ airspaceVolumes: [], airspaceStatus: "not-covered" as const })),
+    loadLands: vi.fn(async () => ({ landAreas: [], landsStatus: "not-covered" as const })),
     dataZoom,
     ...overrides,
   };

@@ -63,6 +63,13 @@ describe("project requests", () => {
     });
   });
 
+  it("treats a contour count of 0 as a flat engraving without contours", () => {
+    const project = expandProjectRequest(parsed({ ...rainier, output: "flat", contourCount: 0 }));
+    expect(project).toMatchObject({ outputMode: "engraving", showEngravingContours: false, engravingContourCount: DEFAULT_PROJECT.engravingContourCount });
+    expect(describeProject(project).contourCount).toBe(0);
+    expect(requestPatch(project, { contourCount: 18 })).toMatchObject({ showEngravingContours: true, engravingContourCount: 18 });
+  });
+
   it("keeps the north arrow within what a small model allows", () => {
     const project = expandProjectRequest(parsed({ ...rainier, widthMm: 40, heightMm: 30 }));
     expect(project.northArrowSizeMm).toBe(northArrowMaximumMm(40, 30));
@@ -181,6 +188,32 @@ describe("request patches", () => {
     expect(notObject.ok || notObject.errors).toEqual([{ path: "airspaceStack", message: "Must be false, or an object of airspace settings." }]);
   });
 
+  it("sets paint templates as a list, and public land lines field by field, dropping them with their last kind", () => {
+    const on = parseProjectRequestPatch({ paintTemplates: ["water", "national-park"], publicLands: { boundaries: ["blm", "wilderness"], names: true } });
+    expect(on.ok).toBe(true);
+    if (!on.ok) return;
+    const patch = requestPatch(DEFAULT_PROJECT, on.value);
+    expect(patch.paintTemplates).toEqual(["water", "national-park"]);
+    expect(patch.lands).toEqual({ boundaries: ["blm", "wilderness"], hatched: false, labels: true });
+    const withLands: ProjectConfigV1 = { ...DEFAULT_PROJECT, ...patch };
+    expect(requestPatch(withLands, { publicLands: { hatched: true } }).lands).toEqual({ boundaries: ["blm", "wilderness"], hatched: true, labels: true });
+    expect(requestPatch(withLands, { publicLands: { boundaries: [] } })).toEqual({ lands: undefined });
+    expect(requestPatch(withLands, { publicLands: false })).toEqual({ lands: undefined });
+    expect(requestPatch(withLands, { paintTemplates: [] })).toEqual({ paintTemplates: [] });
+    // Names alone on a design with no kinds turn nothing on.
+    expect(requestPatch(DEFAULT_PROJECT, { publicLands: { names: true } })).toEqual({ lands: undefined });
+    expect(expandProjectRequest(parsed({ ...rainier, paintTemplates: ["blm"], publicLands: { boundaries: ["national-forest"] } }))).toMatchObject({ paintTemplates: ["blm"], lands: { boundaries: ["national-forest"], hatched: false, labels: false } });
+  });
+
+  it("checks paint and public land kinds", () => {
+    const invalid = parseProjectRequestPatch({ paintTemplates: ["water", "lava", "water"], publicLands: { boundaries: ["blm", "blm"], names: "yes", colour: "green" } });
+    expect(invalid.ok || invalid.errors.map(({ path }) => path).sort()).toEqual(["paintTemplates[1]", "publicLands.boundaries", "publicLands.colour", "publicLands.names"]);
+    const notList = parseProjectRequestPatch({ paintTemplates: "water", publicLands: true });
+    expect(notList.ok || notList.errors.map(({ path }) => path).sort()).toEqual(["paintTemplates", "publicLands"]);
+    const repeated = parseProjectRequestPatch({ paintTemplates: ["water", "water"] });
+    expect(repeated.ok || repeated.errors).toEqual([{ path: "paintTemplates", message: "List each kind at most once." }]);
+  });
+
   it("rejects unknown fields and a version, which only a new request carries", () => {
     const result = parseProjectRequestPatch({ requestVersion: 1, thickness: 3 });
     expect(result.ok || result.errors.map(({ path }) => path)).toEqual(["requestVersion", "thickness"]);
@@ -189,7 +222,7 @@ describe("request patches", () => {
 
 describe("describing a project", () => {
   it("round-trips through a request to the same design", () => {
-    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", aviation: { airspace: true, airports: true }, airspaceStack: { form: "volumes", thicknessMm: 2, rod: { shape: "square" } }, markers: [{ lat: 46.85, lon: -121.76 }] }));
+    const original = expandProjectRequest(parsed({ ...rainier, output: "flat", title: "Rainier", paintTemplates: ["water", "national-park"], publicLands: { boundaries: ["wilderness"], names: true, hatched: true }, aviation: { airspace: true, airports: true }, airspaceStack: { form: "volumes", thicknessMm: 2, rod: { shape: "square" } }, markers: [{ lat: 46.85, lon: -121.76 }] }));
     const described = describeProject(original);
     const again = expandProjectRequest(parsed(described));
     // A box's point is its middle latitude, a hair from the Mercator center the request named.
@@ -241,6 +274,8 @@ describe("request schema", () => {
     ["unknown field", { ...rainier, colour: "red" }],
     ["thin material", { ...rainier, materialThicknessMm: 0.2 }],
     ["fractional contours", { ...rainier, contourCount: 12.5 }],
+    ["no contours", { ...rainier, output: "flat", contourCount: 0 }],
+    ["too few contours", { ...rainier, contourCount: 2 }],
     ["tiny work area", { ...rainier, laser: { workAreaWidthMm: 5 } }],
     ["bad symbol", { ...rainier, markers: [{ lat: 1, lon: 1, symbol: "flag" }] }],
     ["too many markers", { ...rainier, markers: Array.from({ length: 21 }, () => ({ lat: 1, lon: 1 })) }],
@@ -251,6 +286,13 @@ describe("request schema", () => {
     ["airspace rod", { ...rainier, airspaceStack: { rod: { sizeMm: 1 } } }],
     ["airspace tint", { ...rainier, airspaceStack: { tint: "amber" } }],
     ["airspace field", { ...rainier, airspaceStack: { colour: "blue" } }],
+    ["paint and lands", { ...rainier, paintTemplates: ["water", "blm"], publicLands: { boundaries: ["national-park", "tribal"], names: true, hatched: false } }],
+    ["lands off", { ...rainier, publicLands: false }],
+    ["lands on", { ...rainier, publicLands: true }],
+    ["paint kind", { ...rainier, paintTemplates: ["lava"] }],
+    ["paint repeated", { ...rainier, paintTemplates: ["water", "water"] }],
+    ["lands kind", { ...rainier, publicLands: { boundaries: ["city-park"] } }],
+    ["lands field", { ...rainier, publicLands: { colour: "green" } }],
   ];
 
   it.each(cases)("agrees with the parser on %s", (_label, value) => {

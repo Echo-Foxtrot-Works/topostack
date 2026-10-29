@@ -64,7 +64,7 @@ export function planFromRelief(config: ProjectConfigV1, relief: ReliefSample): M
     heightOfModelMm: flat ? config.materialThicknessMm : stack.stackHeightMm,
     requestedVerticalExaggeration: config.verticalExaggeration,
     fittedVerticalExaggeration: flat ? config.verticalExaggeration : stack.verticalExaggeration,
-    metersPerStep: flat ? reliefM / config.engravingContourCount : stack.metersPerLayer,
+    metersPerStep: flat ? config.showEngravingContours ? reliefM / config.engravingContourCount : 0 : stack.metersPerLayer,
     scaleDenominator: groundWidthM > 0 ? Math.round(groundWidthM * 1000 / config.widthMm) : 0,
     groundWidthKm: groundWidthM / 1000,
     groundHeightKm: groundHeightM / 1000,

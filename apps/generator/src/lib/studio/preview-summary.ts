@@ -37,6 +37,7 @@ export function layerForEnabledDetail(result: GeometryIRV1, patch: Partial<Proje
     patch.showNorthArrow ? (id: string) => id.startsWith("north-") :
     patch.showScaleBar ? (id: string) => id.startsWith("scale-") :
     patch.aviation && AVIATION_DATA_DETAILS.some((detail) => patch.aviation![detail]) ? (id: string, kind: string) => kind === "aviation" :
+    patch.lands?.boundaries.length ? (id: string, kind: string) => kind === "land" :
     patch.plaque?.enabled ? (id: string) => id.startsWith("plaque-") : undefined;
   if (!matcher) return undefined;
   return result.layers.find((layer) => layer.markings.some((marking) => matcher(marking.id, marking.kind)))?.index;
@@ -45,12 +46,12 @@ export function layerForEnabledDetail(result: GeometryIRV1, patch: Partial<Proje
 export interface DetailCounts {
   road: number; trail: number; transportationLabel: number; water: number; contour: number; alignment: number;
   elevation: number; north: number; scale: number; plaque: number; marker: number; customLine: number; piece: number;
-  aviation: number; aviationLabel: number;
+  aviation: number; aviationLabel: number; land: number; landLabel: number;
 }
 
 /** Marking counts per detail, exposed on the preview stage for tests and diagnostics. */
 export function countDetailMarkings(layers: readonly LayerIR[], outputMode: ProjectConfigV1["outputMode"]): DetailCounts {
-  const counts: DetailCounts = { road: 0, trail: 0, transportationLabel: 0, water: 0, contour: outputMode === "engraving" ? Math.max(0, layers.length - 1) : 0, alignment: 0, elevation: 0, north: 0, scale: 0, plaque: 0, marker: 0, customLine: 0, piece: 0, aviation: 0, aviationLabel: 0 };
+  const counts: DetailCounts = { road: 0, trail: 0, transportationLabel: 0, water: 0, contour: outputMode === "engraving" ? Math.max(0, layers.length - 1) : 0, alignment: 0, elevation: 0, north: 0, scale: 0, plaque: 0, marker: 0, customLine: 0, piece: 0, aviation: 0, aviationLabel: 0, land: 0, landLabel: 0 };
   for (const layer of layers) {
     for (const marking of layer.markings) {
       if (marking.kind === "road") counts.road += 1;
@@ -58,11 +59,13 @@ export function countDetailMarkings(layers: readonly LayerIR[], outputMode: Proj
       else if (marking.kind === "water") counts.water += 1;
       else if (marking.kind === "contour") counts.contour += 1;
       else if (marking.kind === "aviation") counts.aviation += 1;
+      else if (marking.kind === "land") counts.land += 1;
       if (marking.id.startsWith("custom-data-line-")) counts.customLine += 1;
       else if (marking.id.startsWith("alignment-")) counts.alignment += 1;
       else if (marking.id.startsWith("piece-")) counts.piece += 1;
       else if (marking.id.startsWith("transport-label-")) counts.transportationLabel += 1;
       else if (marking.id.startsWith("aviation-label-")) counts.aviationLabel += 1;
+      else if (marking.id.startsWith("land-label-")) counts.landLabel += 1;
       else if (marking.id.startsWith("elevation-")) counts.elevation += 1;
       else if (marking.id.startsWith("north-")) counts.north += 1;
       else if (marking.id.startsWith("scale-")) counts.scale += 1;
@@ -163,6 +166,7 @@ export function activeDetailCount(project: ProjectConfigV1): number {
     project.showScaleBar,
     project.plaque?.enabled === true,
     ...AVIATION_DATA_DETAILS.map((detail) => project.aviation?.[detail] === true),
+    Boolean(project.lands?.boundaries.length),
     project.outputMode === "stack" && project.showWaterDepth,
     project.outputMode === "stack" && project.showAlignmentGuides,
     project.outputMode === "engraving" && project.showEngravingBorder,
@@ -188,9 +192,9 @@ export function panelSummary(panel: DisclosureId, project: ProjectConfigV1, stac
   switch (panel) {
     case "setup": return `${stack ? "Layered relief" : "Flat engraving"} · ${project.location.label.split(",")[0]}`;
     case "place": return `${project.cropShape === "circle" ? "Circle" : "Rectangle"} · ${shownLength(project.widthMm, project.units)} × ${shownLength(project.heightMm, project.units)} ${unit}`;
-    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}`;
+    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : project.showEngravingContours ? `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}` : "Contours off";
     case "features": {
-      const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder].filter(Boolean).length;
+      const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder, Boolean(project.lands?.boundaries.length), stack && project.paintTemplates.some((kind) => kind !== "water")].filter(Boolean).length;
       const preset = activeLinePreset(project.lineStyle);
       return `${plural(count, "feature")} on · ${preset ? `${LINE_PRESETS.find((option) => option.value === preset)?.label ?? preset} lines` : "Custom lines"}`;
     }

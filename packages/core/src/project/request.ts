@@ -1,4 +1,4 @@
-import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS, DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AirspaceRodSettingsV1, type AirspaceStackForm, type AirspaceStackSettingsV1, type AirspaceStackTint, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1, type UnitSystem } from "../types.js";
+import { AIRSPACE_STACK_FORMS, AIRSPACE_STACK_LIMITS, AIRSPACE_STACK_TINTS, DEFAULT_PLAQUE_SIZE_MM, DEFAULT_PROJECT, LAND_CLASSES, PAINT_REGION_KINDS, MAP_MARKER_SIZE_MM, MARKER_SYMBOLS, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_PROJECT_DIMENSION_MM, MAX_PROJECT_NAME_LENGTH, MAX_VERTICAL_EXAGGERATION, MIN_VERTICAL_EXAGGERATION, MIN_WORK_AREA_MM, northArrowMaximumMm, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, type AirspaceRodSettingsV1, type AirspaceStackForm, type AirspaceStackSettingsV1, type AirspaceStackTint, type AviationDetailsV1, type BuiltInMarkerSymbol, type CropShape, type GeoBounds, type GeoPoint, type LandClass, type LandsDetailsV1, type MapMarkerV1, type PaintRegionKind, type ProjectConfigV1, type UnitSystem } from "../types.js";
 import { fnv1aHex, stableStringify } from "../primitives/hash.js";
 import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { boundsAround, boundsForProject, coverBounds, isMercatorBounds, MERCATOR_MAX_LATITUDE, wrapLongitude, zoomForBounds } from "./bounds.js";
@@ -47,6 +47,20 @@ export interface ProjectRequestAirspaceStack {
   rod?: Partial<AirspaceRodSettingsV1>;
 }
 
+/**
+ * Public land engraved as lines (US only, either output). On a design without
+ * it, unset fields are off; on one with it, only the fields given change.
+ * `false` in its place, or no kinds left, turns it off.
+ */
+export interface ProjectRequestPublicLands {
+  /** Kinds whose boundaries are engraved, each in its own dash. Replaces the design's list. */
+  boundaries?: LandClass[];
+  /** The names of the largest units, where they fit inside them. */
+  names?: boolean;
+  /** Flat output only: short ticks just inside each boundary. */
+  hatched?: boolean;
+}
+
 export interface ProjectRequestMarker {
   lat: number;
   lon: number;
@@ -73,11 +87,18 @@ export interface ProjectRequestSettings {
   output?: "layered" | "flat";
   materialThicknessMm?: number;
   verticalExaggeration?: number;
-  /** Flat output only: how many contour lines to engrave. */
+  /** Flat output only: how many contour lines to engrave; 0 engraves none. */
   contourCount?: number;
   details?: ProjectRequestDetails;
   aviation?: ProjectRequestAviation;
   airspaceStack?: ProjectRequestAirspaceStack | false;
+  /**
+   * Layered output only: a paper paint stencil per panel for each kind listed,
+   * `water` or a kind of public land (US only). Replaces the design's list; an
+   * empty list removes them.
+   */
+  paintTemplates?: PaintRegionKind[];
+  publicLands?: ProjectRequestPublicLands | false;
   /** Up to three lines engraved as a title; an empty string removes it. */
   title?: string;
   laser?: ProjectRequestLaser;
@@ -128,7 +149,7 @@ const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> 
   scaleBar: "showScaleBar",
 };
 
-const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "airspaceStack", "title", "laser", "markers"] as const;
+const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "airspaceStack", "paintTemplates", "publicLands", "title", "laser", "markers"] as const;
 const DEFAULT_PLACE_LABEL = "Custom coordinates";
 const DEFAULT_NAME = "Terrain model";
 
@@ -257,6 +278,30 @@ function airspaceStackValue(value: unknown, issues: Issues): ProjectRequestAirsp
   return defined(stack);
 }
 
+/** A list of distinct values from `allowed`. */
+function kindList<T extends string>(value: unknown, path: string, allowed: readonly T[], issues: Issues): T[] | undefined {
+  if (!Array.isArray(value)) return issues.add(path, `Must be a list of: ${allowed.join(", ")}.`);
+  const kinds = value.map((item, index) => oneOf(item, `${path}[${index}]`, allowed, issues));
+  if (kinds.some((kind) => kind === undefined)) return undefined;
+  if (new Set(kinds).size !== kinds.length) return issues.add(path, "List each kind at most once.");
+  return kinds as T[];
+}
+
+function publicLandsValue(value: unknown, issues: Issues): ProjectRequestPublicLands | false | undefined {
+  if (value === false) return false;
+  if (!isRecord(value)) return issues.add("publicLands", "Must be false, or an object with boundaries, names and hatched.");
+  unknownKeys(value, ["boundaries", "names", "hatched"], "publicLands", issues);
+  const flag = (key: "names" | "hatched") => {
+    if (value[key] === undefined) return undefined;
+    return typeof value[key] === "boolean" ? value[key] : issues.add(`publicLands.${key}`, "Must be true or false.");
+  };
+  return defined({
+    boundaries: value.boundaries === undefined ? undefined : kindList(value.boundaries, "publicLands.boundaries", LAND_CLASSES, issues),
+    names: flag("names"),
+    hatched: flag("hatched"),
+  });
+}
+
 function laserValue(value: unknown, issues: Issues): ProjectRequestLaser | undefined {
   if (!isRecord(value)) return issues.add("laser", "Must be an object.");
   unknownKeys(value, ["kerfMm", "workAreaWidthMm", "workAreaHeightMm"], "laser", issues);
@@ -305,10 +350,12 @@ function settingsValue(record: Record<string, unknown>, issues: Issues): Project
   if (record.output !== undefined) settings.output = oneOf(record.output, "output", ["layered", "flat"] as const, issues);
   if (record.materialThicknessMm !== undefined) settings.materialThicknessMm = numberIn(record.materialThicknessMm, "materialThicknessMm", limits.materialThicknessMm, issues);
   if (record.verticalExaggeration !== undefined) settings.verticalExaggeration = numberIn(record.verticalExaggeration, "verticalExaggeration", limits.verticalExaggeration, issues);
-  if (record.contourCount !== undefined) settings.contourCount = numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
+  if (record.contourCount !== undefined) settings.contourCount = record.contourCount === 0 ? 0 : numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
   if (record.details !== undefined) settings.details = switches(record.details, PROJECT_REQUEST_DETAIL_KEYS, "details", issues);
   if (record.aviation !== undefined) settings.aviation = switches(record.aviation, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
   if (record.airspaceStack !== undefined) settings.airspaceStack = airspaceStackValue(record.airspaceStack, issues);
+  if (record.paintTemplates !== undefined) settings.paintTemplates = kindList(record.paintTemplates, "paintTemplates", PAINT_REGION_KINDS, issues);
+  if (record.publicLands !== undefined) settings.publicLands = publicLandsValue(record.publicLands, issues);
   if (record.title !== undefined) settings.title = titleValue(record.title, issues);
   if (record.laser !== undefined) settings.laser = laserValue(record.laser, issues);
   if (record.markers !== undefined) settings.markers = markersValue(record.markers, issues);
@@ -383,7 +430,8 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
   if (change.output) patch.outputMode = change.output === "flat" ? "engraving" : "stack";
   if (change.materialThicknessMm !== undefined) patch.materialThicknessMm = change.materialThicknessMm;
   if (change.verticalExaggeration !== undefined) patch.verticalExaggeration = change.verticalExaggeration;
-  if (change.contourCount !== undefined) patch.engravingContourCount = change.contourCount;
+  if (change.contourCount === 0) patch.showEngravingContours = false;
+  else if (change.contourCount !== undefined) Object.assign(patch, { showEngravingContours: true, engravingContourCount: change.contourCount });
   for (const key of PROJECT_REQUEST_DETAIL_KEYS) {
     const enabled = change.details?.[key];
     if (enabled !== undefined) (patch as Record<string, unknown>)[DETAIL_FIELDS[key]] = enabled;
@@ -394,6 +442,8 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
     patch.aviation = PROJECT_REQUEST_AVIATION_KEYS.some((key) => aviation[key]) ? aviation : undefined;
   }
   if (change.airspaceStack !== undefined) patch.airspaceStack = airspaceStackPatch(project.airspaceStack, change.airspaceStack);
+  if (change.paintTemplates) patch.paintTemplates = [...change.paintTemplates];
+  if (change.publicLands !== undefined) patch.lands = landsPatch(project.lands, change.publicLands);
   if (change.title !== undefined) {
     patch.plaque = change.title
       ? { enabled: true, text: change.title, sizeMm: project.plaque?.sizeMm ?? DEFAULT_PLAQUE_SIZE_MM, placement: project.plaque?.placement ?? { anchor: "bottom-left", offset: { x: 0, y: 0 } }, ...(project.plaque?.font ? { font: project.plaque.font } : {}) }
@@ -419,6 +469,17 @@ function airspaceStackPatch(current: AirspaceStackSettingsV1 | undefined, change
   const merged: AirspaceStackSettingsV1 = { ...base, ...rest, classes: { ...base.classes, ...classes }, rod: { ...base.rod, ...rod } };
   // Every kind off drops the setting, as for aviation detail, so the design reads exactly as one without airspace.
   return PROJECT_REQUEST_AIRSPACE_CLASS_KEYS.some((key) => merged.classes[key]) ? merged : undefined;
+}
+
+/** The public land setting a change leaves: its fields over the design's own; no kinds left drops it. */
+function landsPatch(current: LandsDetailsV1 | undefined, change: ProjectRequestPublicLands | false): LandsDetailsV1 | undefined {
+  if (change === false) return undefined;
+  const merged: LandsDetailsV1 = {
+    boundaries: change.boundaries ? [...change.boundaries] : current?.boundaries ?? [],
+    hatched: change.hatched ?? current?.hatched ?? false,
+    labels: change.names ?? current?.labels ?? false,
+  };
+  return merged.boundaries.length ? merged : undefined;
 }
 
 /**
@@ -465,10 +526,12 @@ export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
     output: project.outputMode === "engraving" ? "flat" : "layered",
     materialThicknessMm: project.materialThicknessMm,
     verticalExaggeration: project.verticalExaggeration,
-    contourCount: project.engravingContourCount,
+    contourCount: project.showEngravingContours ? project.engravingContourCount : 0,
     details,
     ...(project.aviation ? { aviation: { ...project.aviation } } : {}),
     ...(project.airspaceStack ? { airspaceStack: { ...project.airspaceStack, classes: { ...project.airspaceStack.classes }, rod: { ...project.airspaceStack.rod } } } : {}),
+    ...(project.paintTemplates.length ? { paintTemplates: [...project.paintTemplates] } : {}),
+    ...(project.lands ? { publicLands: { boundaries: [...project.lands.boundaries], names: project.lands.labels, hatched: project.lands.hatched } } : {}),
     ...(project.plaque?.enabled ? { title: project.plaque.text } : {}),
     laser: { kerfMm: project.laserKerfMm, workAreaWidthMm: project.workAreaWidthMm, workAreaHeightMm: project.workAreaHeightMm },
     markers: project.markers.filter((marker) => marker.symbol !== "custom").map((marker) => ({ lat: marker.lat, lon: marker.lon, symbol: marker.symbol as BuiltInMarkerSymbol, ...(marker.name ? { name: marker.name } : {}) })),

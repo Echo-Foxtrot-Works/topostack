@@ -1,5 +1,6 @@
 /** State shared by the generation stages in generate.ts and its sibling stage modules. */
 import type { AviationAltitudeCandidate, AviationLabelCandidate, AviationSymbolBox } from "./aviation.js";
+import type { LandLabelCandidate } from "./lands.js";
 import type { CarvedWater } from "../water/water.js";
 import type { ElevationGrid, GeometryWarning, MarkingFeature, Point2D, ProjectConfigV1, SourceBundleV1, TerrainStackPlan } from "../types.js";
 
@@ -15,6 +16,8 @@ export interface GenerationContext {
   warnings: GeometryWarning[];
   /** Enabled aviation detail as line features, and the identifier labels placed after routing. */
   aviation: { lines: MarkingFeature[]; labels: AviationLabelCandidate[]; altitudes: AviationAltitudeCandidate[]; symbols: AviationSymbolBox[] };
+  /** Public land boundaries (and hatching) as line features, and the unit names placed after routing. */
+  lands: { lines: MarkingFeature[]; labels: LandLabelCandidate[] };
 }
 
 /** The elevation ladder every layer is contoured from, plus the grid it is cut from. */

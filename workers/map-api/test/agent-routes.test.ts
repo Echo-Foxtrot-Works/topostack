@@ -170,6 +170,36 @@ describe("GET /v1/coverage", () => {
     expect(body.attribution.sources.length).toBeGreaterThan(4);
   });
 
+  it("credits PAD-US and notes its limits when a design paints or engraves public land", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng((column) => 1600 + column), { headers: { "content-type": "image/png" } })));
+    const request = { ...rainier, area: { center: { lat: 40.34, lon: -105.68 }, widthKm: 30 }, paintTemplates: ["water", "national-park"], publicLands: { boundaries: ["wilderness"], names: true } };
+    const body = await (await worker.fetch(post("/v1/projects/plan", request), env, context)).json<{ notes: string[]; attribution: { sources: Array<{ name: string }> } }>();
+    expect(body.attribution.sources.some(({ name }) => name.includes("PAD-US"))).toBe(true);
+    expect(body.notes.some((note) => /can lag changes on the ground/.test(note))).toBe(true);
+    // Water paint alone uses no public land data.
+    const water = await (await worker.fetch(post("/v1/projects/plan", { ...request, paintTemplates: ["water"], publicLands: undefined }), env, context)).json<{ attribution: { sources: Array<{ name: string }> } }>();
+    expect(water.attribution.sources.some(({ name }) => name.includes("PAD-US"))).toBe(false);
+    // Flat output keeps the lines but has no paint templates, and says so.
+    const flat = await (await worker.fetch(post("/v1/projects/plan", { ...request, output: "flat" }), env, context)).json<{ notes: string[] }>();
+    expect(flat.notes).toContain("Paint templates are made for layered models only, so flat output leaves them out.");
+    // Outside the US there is nothing to draw.
+    const alps = await (await worker.fetch(post("/v1/projects/plan", { ...request, area: { center: { lat: 46.55, lon: 7.9 }, widthKm: 20 } }), env, context)).json<{ notes: string[]; attribution: { sources: Array<{ name: string }> } }>();
+    expect(alps.notes.some((note) => /comes from OpenStreetMap/.test(note) && /public land/.test(note))).toBe(true);
+    expect(alps.attribution.sources.some(({ name }) => name.includes("PAD-US"))).toBe(false);
+  });
+
+  it("reports the public land databases reaching an area: PAD-US, CPCAD, both or neither", async () => {
+    type Coverage = { publicLands: Array<{ name: string; version: string }> };
+    const estes = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=40.34&lon=-105.68&widthKm=20"), env, context)).json<Coverage>();
+    expect(estes.publicLands).toEqual([expect.objectContaining({ version: "4.1" })]);
+    const algonquin = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?bbox=-78.96,46.45,-78.92,46.48"), env, context)).json<Coverage>();
+    expect(algonquin.publicLands).toEqual([expect.objectContaining({ name: expect.stringContaining("CPCAD"), version: "2025-12-31" })]);
+    const border = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=49.0&lon=-114.0&widthKm=30"), env, context)).json<Coverage>();
+    expect(border.publicLands).toHaveLength(2);
+    const alps = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=46.55&lon=7.9&widthKm=20"), env, context)).json<Coverage>();
+    expect(alps.publicLands).toEqual([]);
+  });
+
   it("reports FAA aviation data only inside US coverage", async () => {
     const denver = await (await worker.fetch(new Request("https://api.topostack.test/v1/coverage?lat=39.86&lon=-104.67&widthKm=20"), env, context)).json<{ aviation: { nasrCycle: string } | null }>();
     expect(denver.aviation?.nasrCycle).toMatch(/^\d{4}-\d{2}-\d{2}$/);

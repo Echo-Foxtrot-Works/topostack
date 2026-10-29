@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { withPaintKind } from "$lib/studio/paint-colors";
   import { Droplets, SprayCan, Waves } from "@lucide/svelte";
   import { Field } from "@loidolt/theme-svelte";
   import { DEFAULT_WATER_INSERT_CLEARANCE_MM, displayElevation, MAX_WATER_DEPTH_EXAGGERATION, MIN_WATER_DEPTH_EXAGGERATION, type WaterInsertSettingsV1 } from "@topostack/core";
@@ -125,7 +126,7 @@
     <p class="subgroup-heading">Inserts and paint</p>
     <div class="toggle-stack">
       <Switch checked={Boolean(inserts)} disabled={!studio.project.showWaterDepth && !inserts} onCheckedChange={(on) => void updateFabrication({ waterInserts: on ? { fitClearanceMm: DEFAULT_WATER_INSERT_CLEARANCE_MM, excludedLakeIds: [] } : undefined })} aria-label="Acrylic water inserts"><span class="toggle-label"><Droplets size={16} />Acrylic water inserts</span></Switch>
-      <Switch checked={studio.project.paintTemplates.includes("water")} onCheckedChange={(on) => void updateFabrication({ paintTemplates: on ? ["water"] : [] })} aria-label="Water paint templates"><span class="toggle-label"><SprayCan size={16} />Water paint templates</span></Switch>
+      <Switch checked={studio.project.paintTemplates.includes("water")} onCheckedChange={(on) => void updateFabrication({ paintTemplates: withPaintKind(studio.project.paintTemplates, "water", on) })} aria-label="Water paint templates"><span class="toggle-label"><SprayCan size={16} />Water paint templates</span></Switch>
     </div>
     {#if !studio.project.showWaterDepth}<small class="depth-note insert-note">Acrylic water inserts need <strong>Water depth</strong> on: they replace each lake on the sheet that carries its waterline.</small>{/if}
     {#if inserts}

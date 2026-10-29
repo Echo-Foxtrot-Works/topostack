@@ -44,6 +44,8 @@
 - [Depth charts traced into bathymetry](depth-chart-tracing.md) — chart record contract, how traced charts carve, and the staged rollout. The first-release plan (shipped in 0.5.0) is [plans/depth-chart-first-release.md](plans/depth-chart-first-release.md).
 - [NRCan HRDEM terrain](hrdem-terrain.md)
 - [FAA aviation data](faa-aviation.md) — airspace, airports, runways, navaids, special use airspace and obstacles: sources, archive, and the per-cycle refresh. The phased plan is [plans/aviation-layer.md](plans/aviation-layer.md).
+- [Public lands data](public-lands.md) — PAD-US classes, the refuge and tribal rules, the archive, and how to build and provision it.
+- [Public and protected lands](plans/public-lands.md) — plan: paint stencils and boundary lines for national parks and forests, wilderness, BLM, state parks, refuges, preserves, tribal and military land, built from PAD-US 4.1 into our own archive. The feasibility spike is [reports/public-lands-spike-2026-10-13.md](reports/public-lands-spike-2026-10-13.md).
 - [Airspace in acrylic](plans/airspace-acrylic.md) — plan: Class B, C and special use airspace as translucent acrylic at true height over the stack (plates, tier pieces or solid volumes) styled after the FAA sectional, optional Class D lids, held on cut-to-length rods (glued segments or through-rods) with terrain sockets and a cut list. The feasibility spike is [reports/airspace-acrylic-spike-2026-10-09.md](reports/airspace-acrylic-spike-2026-10-09.md).
 - [Curated terrain coverage](terrain-coverage.md)
 - [Release acceptance and rollback](release-acceptance.md)

@@ -8,10 +8,11 @@ import { formatNumber as format } from "../primitives/format.js";
 import { ringBounds } from "../primitives/geometry2d.js";
 import { horizontalScaleFor } from "../pipeline/stack-plan.js";
 import { displayLength, lengthUnit } from "../primitives/units.js";
-import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
+import { landStroke } from "../pipeline/lands.js";
+import { PAINT_BLEED_MM, PAINT_PRIORITY } from "../pipeline/paint-regions.js";
 import { alignmentOutlineInsetMm } from "../pipeline/hidden-marks.js";
 import { aviationRequested, aviationStroke } from "../pipeline/aviation.js";
-import type { ExportFile, FabricationPackageV1, GeometryIRV1, LineStyleV1, Point2D, ProjectConfigV1, SheetNestPlanV1 } from "../types.js";
+import { PAINT_REGION_LABELS, type ExportFile, type FabricationPackageV1, type GeometryIRV1, type LineStyleV1, type Point2D, type ProjectConfigV1, type SheetNestPlanV1 } from "../types.js";
 import { nestableParts, polygonLabel } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings, type SheetNestSettingsResult } from "./sheet-nest/resolve.js";
 import { acrylicGeometry, acrylicPanels, acrylicWoodLayers, resolveAcrylicNestSettings } from "./water-inserts.js";
@@ -64,6 +65,31 @@ function aviationSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
     ? " Symbols follow the FAA VFR sectional legend in one colour, so towered airports, which the chart shows in blue, look like the rest."
     : "";
   return `Aviation detail: ${drawn.join(", ")}.${symbols} ${source} NOT FOR NAVIGATION: aeronautical data is replaced every 28 days and this piece is never updated.\n`;
+}
+
+/**
+ * README paragraph for engraved public land: each class and the dash it was
+ * drawn with, and the PAD-US version. Empty when the project has none.
+ */
+function landsSummary(ir: GeometryIRV1, config: ProjectConfigV1): string {
+  const lands = config.lands;
+  if (!lands?.boundaries.length) return "";
+  const drawn = lands.boundaries.map((landClass) => {
+    const stroke = landStroke(landClass, config.lineStyle);
+    return `${PAINT_REGION_LABELS[landClass]} ${format(stroke.widthMm)} mm (${stroke.dash ? `dashes ${stroke.dash.map(format).join("/")} mm` : "solid"})`;
+  });
+  const extras = [lands.labels ? "names inside the largest units" : "", lands.hatched && config.outputMode === "engraving" ? "short ticks just inside each boundary" : ""].filter(Boolean);
+  const named: Record<"padus" | "cpcad", string> = {
+    padus: `the USGS Protected Areas Database of the United States${ir.landsVersion ? ` (PAD-US) ${ir.landsVersion}` : ""}`,
+    cpcad: "the Canadian Protected and Conserved Areas Database (CPCAD; contains information licensed under the Open Government Licence – Canada)",
+  };
+  const sources = ir.landsSources ?? ["padus"];
+  const source = ir.landsStatus === "not-covered"
+    ? "Neither the public land databases nor OpenStreetMap have land of these kinds here, so this area has none."
+    : sources.includes("openstreetmap")
+      ? "Source: OpenStreetMap protected areas (national parks, nature reserves and military land, unnamed), as completely as they are mapped."
+      : `Source: ${sources.filter((entry): entry is "padus" | "cpcad" => entry !== "openstreetmap").map((entry) => named[entry]).join(" and ")}. Boundaries are as published and can lag changes on the ground.`;
+  return `Public land boundaries: ${drawn.join(", ")}${extras.length ? `, with ${extras.join(" and ")}` : ""}. ${source}\n`;
 }
 
 function attributionText(ir: GeometryIRV1): string {
@@ -460,7 +486,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   const fittedDepths = ir.waterSurfaces.filter((surface) => surface.depthFitScale !== undefined)
     .map((surface) => `${surface.name ?? "Lake"}: fitted to ${(surface.depthFitScale! * 100).toFixed(1)}% of requested depth; ${surface.appliedDepthExaggeration!.toFixed(3)}x terrain depth scale.\n`).join("");
   const vertical = `Vertical exaggeration: ${ir.verticalExaggeration.toFixed(1)}x${scale}\n`;
-  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config);
+  const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config) + landsSummary(ir, config);
   const seams = ir.splitPlan ? (() => {
     const pieces = ir.layers.reduce((total, layer) => total + layer.pieces.length, 0);
     const perLayer = `${ir.splitPlan!.columns} x ${ir.splitPlan!.rows}`;
@@ -471,9 +497,10 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
     return `This model is larger than the ${shownLength(config.workAreaWidthMm || config.widthMm)} x ${shownLength(config.workAreaHeightMm || config.heightMm)} work area, so each layer is cut as ${perLayer} pieces (${pieces} in total) that butt together. Every panel SVG holds one work-area cell and fits the machine; a piece kept whole across a seam ships on its own sheet (cell name with a numeric suffix) when it would not fit beside its cell.\n\n${seamOffset > 0 ? `Seams shift ${shownLength(seamOffset)} on alternating layers, so a seam in one layer sits over solid material in the layers above and below - glue the stack in layer order and the joints overlap instead of stacking into one crack.` : "Seams line up on every layer (seam offset 0), so the joints stack straight through the model - back them with a glue strip or a sub-base."} Seam edges get the same outward kerf compensation as every other cut edge, so pieces butt together at their nominal size.\n\n${config.seamTabs ? "Wherever a seam runs under the next layer up, it is cut as interlocking jigsaw tabs. Each piece only fits its true neighbour and locks into line with it; press the tabs home before gluing. Where a seam stays visible - on the top layer or an exposed slope - it is left straight.\n\n" : ""}${ids}\n`;
   })() : "";
   const paintCount = panelFiles.reduce((total, { paintFiles }) => total + paintFiles.length, 0);
+  const paintWhat = config.paintTemplates.map((kind) => PAINT_REGION_LABELS[kind]).join("/");
   const paint = config.paintTemplates.length ? (paintCount
-    ? `Paint templates: ${paintCount} panel${paintCount === 1 ? " has" : "s have"} a registered -paint-<kind>.svg companion (${config.paintTemplates.join(", ")}). Cut each one from paper or stencil film with kerf compensation turned off: each path is the piece at nominal size with the ${config.paintTemplates.join("/")} that stays visible after assembly cut away, extended ${shownLength(PAINT_BLEED_MM)} under the layer above so a slightly misplaced stencil leaves no bare edge at the foot of the step. Where the ${config.paintTemplates.join("/")} reaches the piece edge the stencil simply stops short of that edge, so register it on the edges and key tabs it keeps. Lay the stencil flush to the cut piece, spray, and remove it before gluing; the bleed lands on covered glue land, so wipe or lightly sand a thick paint film there. Every template path is a red CUT path. A panel with no visible ${config.paintTemplates.join("/")} has no template, and a piece painted edge to edge needs none, so it leaves no paper on the template.\n\n`
-    : `Paint templates are enabled, but no panel has visible ${config.paintTemplates.join("/")}, so none were written.\n\n`) : "";
+    ? `Paint templates: ${paintCount} panel${paintCount === 1 ? " has" : "s have"} a registered -paint-<kind>.svg companion (${config.paintTemplates.join(", ")}). Cut each one from paper or stencil film with kerf compensation turned off: each path is the piece at nominal size with the ${paintWhat} that stays visible after assembly cut away, extended ${shownLength(PAINT_BLEED_MM)} under the layer above so a slightly misplaced stencil leaves no bare edge at the foot of the step. Where the ${paintWhat} reaches the piece edge the stencil simply stops short of that edge, so register it on the edges and key tabs it keeps. Lay the stencil flush to the cut piece, spray, and remove it before gluing; the bleed lands on covered glue land, so wipe or lightly sand a thick paint film there. Every template path is a red CUT path. A panel with no visible ${paintWhat} has no template, and a piece painted edge to edge needs none, so it leaves no paper on the template.${config.paintTemplates.length > 1 ? ` Where two kinds overlap, the spot belongs to one template only, so the windows of one piece never overlap: ${PAINT_PRIORITY.filter((kind) => config.paintTemplates.includes(kind)).map((kind) => PAINT_REGION_LABELS[kind]).join(", then ")}.` : ""}\n\n`
+    : `Paint templates are enabled, but no panel has visible ${paintWhat}, so none were written.\n\n`) : "";
   const nesting = ir.fabricationNests.length ? `Material nesting reduced ${ir.layers.length} layer panels to ${panels.length} fabrication panels. Smaller layers share cut lines inside lower layers while preserving at least ${shownLength(config.glueMarginMm)} of covered glue land. Keep every loose cutout: nested pieces belong to the layer IDs listed in each panel filename and SVG data-layers attribute.\n\n` : config.optimizeMaterialUse ? (ir.splitPlan
     ? `No safe material nests fit the requested ${shownLength(config.glueMarginMm)} glue margin. A nested piece has to sit wholly inside one donor piece, and a work-area seam usually cuts through that room, so splitting a model normally costs its nesting.\n\n`
     : `No safe material nests fit the requested ${shownLength(config.glueMarginMm)} glue margin, so every layer remains on its own panel.\n\n`) : "Material-saving nesting is disabled.\n\n";
@@ -521,7 +548,7 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
       projectId: ir.projectId,
       generatedAt: ir.generatedAt,
       outputMode: "engraving",
-      contourCount: config.engravingContourCount,
+      contourCount: config.showEngravingContours ? config.engravingContourCount : 0,
       indexInterval: config.engravingIndexInterval,
       minElevationM: ir.minElevationM,
       maxElevationM: ir.maxElevationM,
@@ -550,8 +577,8 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
   ].filter(Boolean);
   const linework = lineworkSummary(config.lineStyle, "Line widths",
     [`minor contours ${format(config.lineStyle.contourMm)} mm`, `index contours ${format(config.lineStyle.indexContourMm)} mm`],
-    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]) + aviationSummary(ir, config);
-  const readme = `${ir.projectName}\n\nFlat topographic engraving\nArtwork size: ${size}\nContour lines: ${config.engravingContourCount}\nIndex contour: every ${config.engravingIndexInterval} lines\nWater fill: ${config.showWater ? config.waterFillPattern : "none"}\n${linework}Map details: ${details.length ? details.join(", ") : "none"}\nBorder: ${config.showEngravingBorder ? "engraved" : "none"}\n\nThe SVG contains one blue ENGRAVE operation group and no CUT or SCORE paths. In xTool Studio, choose Score for blue linework. Engrave fills closed shapes; reserve it for intentionally filled markers. Marker clearances are gaps in the line geometry; there is no white engraving operation. Minor and index contours are separated into named subgroups so their line weights can be assigned independently. Verify physical dimensions, focus, power, speed, and material settings with a small test engraving before processing the final item. Terrain data is decorative and is not survey, navigation, or engineering data.\n\n${EXPORT_CREDIT}\n`;
+    [`annotations ${format(config.lineStyle.annotationMm)} mm`, `border ${format(config.lineStyle.borderMm)} mm`]) + aviationSummary(ir, config) + landsSummary(ir, config);
+  const readme = `${ir.projectName}\n\nFlat topographic engraving\nArtwork size: ${size}\n${config.showEngravingContours ? `Contour lines: ${config.engravingContourCount}\nIndex contour: every ${config.engravingIndexInterval} lines\n` : "Contour lines: none\n"}Water fill: ${config.showWater ? config.waterFillPattern : "none"}\n${linework}Map details: ${details.length ? details.join(", ") : "none"}\nBorder: ${config.showEngravingBorder ? "engraved" : "none"}\n\nThe SVG contains one blue ENGRAVE operation group and no CUT or SCORE paths. In xTool Studio, choose Score for blue linework. Engrave fills closed shapes; reserve it for intentionally filled markers. Marker clearances are gaps in the line geometry; there is no white engraving operation. Minor and index contours are separated into named subgroups so their line weights can be assigned independently. Verify physical dimensions, focus, power, speed, and material settings with a small test engraving before processing the final item. Terrain data is decorative and is not survey, navigation, or engineering data.\n\n${EXPORT_CREDIT}\n`;
   const files: ExportFile[] = [
     master,
     { filename: `${base}-project.json`, blob: new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }) },

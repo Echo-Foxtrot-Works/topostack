@@ -34,6 +34,7 @@ const COVERAGE_SCHEMA: Schema = {
     lakeSurveys: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, license: { type: "string" } } } },
     roadsAndWater: { type: "string" },
     aviation: { type: ["object", "null"], description: "FAA aeronautical data (US only; not for navigation), or null outside FAA coverage.", properties: { name: { type: "string" }, nasrCycle: { type: "string" }, license: { type: "string" } } },
+    publicLands: { type: "array", description: "Public land outline databases reaching the area, for paint templates and engraved boundaries: USGS PAD-US (United States) and CPCAD (Canada). Empty elsewhere, where OpenStreetMap's protected areas stand in.", items: { type: "object", properties: { name: { type: "string" }, version: { type: "string" }, license: { type: "string" } } } },
     notes: { type: "array", items: { type: "string" } },
   },
 };

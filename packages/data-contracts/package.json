@@ -1,6 +1,6 @@
 {
   "name": "@topostack/data-contracts",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "Data-layer contracts shared by the browser, the map-api Worker, and the provisioning scripts: catalog validation, archive release parsing, terrain PNG decoding, usage events, feedback submissions, traced depth charts, share-link encoding, and the changelog. Source-only; every consumer compiles TypeScript itself.",
@@ -10,6 +10,7 @@
     "./changelog": "./src/changelog.ts",
     "./chart-bathymetry": "./src/chart-bathymetry.ts",
     "./feedback": "./src/feedback.ts",
+    "./land-tiles": "./src/land-tiles.ts",
     "./share-link": "./src/share-link.ts",
     "./source-catalog": "./src/source-catalog.ts",
     "./terrain-png": "./src/terrain-png.ts",

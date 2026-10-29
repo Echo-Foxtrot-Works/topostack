@@ -193,6 +193,24 @@
   color: var(--loidolt-text-muted);
 }
 
+/* The dash each public land boundary is engraved with, beside its switch. */
+.dash-sample {
+  flex: none;
+  width: 28px;
+  height: 6px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* The suggested paint beside each public land kind. */
+.paint-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: var(--loidolt-border-width) solid var(--loidolt-border-control);
+  border-radius: 3px;
+}
+
 /* Per-lake acrylic switches: the lake's name, then which insert it became. */
 .insert-lakes .toggle-label small {
   margin-left: auto;

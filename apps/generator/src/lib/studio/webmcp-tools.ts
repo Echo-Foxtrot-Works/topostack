@@ -80,7 +80,7 @@ function summary(host: WebMcpHost): string {
   const state = designState(host);
   const design = state.design;
   return [
-    `${design.name} (${design.placeLabel}): ${design.output}, ${design.widthMm} × ${design.heightMm} mm${design.output === "layered" ? `, ${design.materialThicknessMm} mm sheets, ${design.verticalExaggeration}× exaggeration` : `, ${design.contourCount} contours`}.`,
+    `${design.name} (${design.placeLabel}): ${design.output}, ${design.widthMm} × ${design.heightMm} mm${design.output === "layered" ? `, ${design.materialThicknessMm} mm sheets, ${design.verticalExaggeration}× exaggeration` : design.contourCount ? `, ${design.contourCount} contours` : ", no contours"}.`,
     state.sheets ? `${state.sheets} sheets generated.` : "",
     state.airspace ? `Airspace: ${state.airspace.pieces} acrylic pieces on ${state.airspace.levels} levels (${state.airspace.form}), ${state.airspace.heightMm} mm tall, on ${state.airspace.rods} rods totalling ${state.airspace.rodLengthMm} mm.` : "",
     `Studio: ${state.status}.`,
@@ -138,7 +138,7 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
     {
       name: "topostack_update_design",
       title: "Change design settings",
-      description: "Change settings of the open design: size, shape, layered or flat output, material thickness, vertical exaggeration, contour count, map details, aviation detail, airspace in acrylic, title and laser settings. Anything left out stays as it is. Each change is one undo step.",
+      description: "Change settings of the open design: size, shape, layered or flat output, material thickness, vertical exaggeration, contour count, map details, aviation detail, airspace in acrylic, paint templates, public land boundaries, title and laser settings. Anything left out stays as it is. Each change is one undo step.",
       inputSchema: { type: "object", additionalProperties: false, properties: editableProperties },
       annotations: { readOnlyHint: false, destructiveHint: false },
       execute: async (input) => {

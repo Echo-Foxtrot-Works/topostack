@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { AVIATION_DATA_DETAILS, landClassesNeeded, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import type { SurveyResult } from "$lib/domain/bathymetry";
 import type { VectorData } from "$lib/domain/vector-loader";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
@@ -18,6 +18,8 @@ export interface SourceRefreshDependencies {
   loadAviation: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "aviationMarkings" | "aviationStatus" | "aviationCycle" | "aviationAttribution">>;
   /** Never throws: a failed load comes back without volumes, as status "unavailable". */
   loadAirspace: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "airspaceVolumes" | "airspaceStatus" | "airspaceCycle">>;
+  /** Never throws: a failed load comes back without areas, as status "unavailable". */
+  loadLands: (bounds: SourceBundleV1["bounds"], zoom: number, config: ProjectConfigV1, signal?: AbortSignal) => Promise<Pick<SourceBundleV1, "landAreas" | "landsStatus" | "landsVersion" | "landsSources" | "landsAttribution">>;
   /** The whole zoom `loadTerrain` gives the same loaders. */
   dataZoom: (zoom: number) => number;
 }
@@ -32,6 +34,7 @@ export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: 
     markings: source.markings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })),
     ...(source.aviationMarkings ? { aviationMarkings: source.aviationMarkings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })) } : {}),
     ...(source.airspaceVolumes ? { airspaceVolumes: source.airspaceVolumes.map((volume) => ({ ...volume, polygons: volume.polygons.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) })) } : {}),
+    ...(source.landAreas ? { landAreas: source.landAreas.map((area) => ({ ...area, polygons: area.polygons.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) })) } : {}),
     ...(source.waterAreas ? { waterAreas: source.waterAreas.map((area) => ({ ...area, polygon: { outer: scalePoints(area.polygon.outer), holes: area.polygon.holes.map(scalePoints) } })) } : {}),
     ...(source.inlandWaterAreas ? { inlandWaterAreas: source.inlandWaterAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
     ...(source.waterPatternAreas ? { waterPatternAreas: source.waterPatternAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
@@ -67,6 +70,15 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
     const changesPartial = source.airspaceStatus === "partial" && JSON.stringify(had) !== JSON.stringify(needs);
     if (enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
   }
+  // Loaded land holds only the classes painted or engraved then, filtered before
+  // the unit limit. Another class reloads; a partial load may fit more now.
+  if (("paintTemplates" in patch || "lands" in patch || "outputMode" in patch) && sourceRequirements(nextProject).lands) {
+    const had = new Set(source.landAreas ? landClassesNeeded(sourceProject) : []);
+    const needs = landClassesNeeded(nextProject);
+    if (needs.some((landClass) => !had.has(landClass)) || (source.landsStatus === "partial" && needs.length !== had.size)) {
+      next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsSources: undefined, landsAttribution: undefined };
+    }
+  }
   // Using or dropping a depth chart changes which depths a lake carves, so the
   // lake depths are loaded again rather than reused from before the change.
   if ("userDepthCharts" in patch) next = { ...next, bathymetryStatus: undefined };
@@ -77,7 +89,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   if (source.sourceKind !== "real") return source;
   const { loadVectorMarkings, loadLakeAreas, loadSurveyedLakeDepths, applySurveyProvenance, resolveLakeOutlines, assembleWater } = deps;
   const zoom = deps.dataZoom(config.location.zoom);
-  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas, aviation: needsAviation, airspace: needsAirspace } = sourceRequirements(config);
+  const { lakes: usesWaterDepth, vectors: needsVectors, water: usesWaterAreas, aviation: needsAviation, airspace: needsAirspace, lands: needsLands } = sourceRequirements(config);
   let next = source;
   let inland = source.inlandWaterAreas ?? [];
   let ocean = (source.waterAreas ?? []).filter((area) => area.kind === "ocean").map((area) => area.polygon);
@@ -120,6 +132,13 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     const airspace = await deps.loadAirspace(source.bounds, zoom, config, signal);
     signal.throwIfAborted();
     next = { ...next, ...airspace };
+  }
+
+  // Outside PAD-US the areas are an empty list; only a missing list loads again.
+  if (needsLands && !source.landAreas) {
+    const lands = await deps.loadLands(source.bounds, zoom, config, signal);
+    signal.throwIfAborted();
+    next = { ...next, ...lands };
   }
 
   if (usesWaterAreas && source.lakeDataStatus !== "available") {

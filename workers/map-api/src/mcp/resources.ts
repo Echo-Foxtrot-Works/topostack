@@ -1,6 +1,6 @@
 import { PROJECT_REQUEST_LIMITS, PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
 import { buildManifest } from "../manifest";
-import { aviationSources, bathymetryArchives, terrainArchives } from "../routes/archive";
+import { aviationSources, bathymetryArchives, landsSources, terrainArchives } from "../routes/archive";
 import { PREVIEW_URI, previewListing, readPreview } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -25,7 +25,7 @@ TopoStack turns real terrain into laser-cutter files. Files are generated and ex
 ## Layered or flat
 
 - **layered** (default): a stack of cut sheets that rebuilds the terrain in 3D. Each sheet covers one band of elevation; lakes can be carved below the shoreline. Good for plywood, MDF, acrylic, cardboard.
-- **flat**: one sheet engraved with contour lines, roads, water and labels. Nothing is stacked; set how many contours with \`contourCount\` (${PROJECT_REQUEST_LIMITS.contourCount.min}–${PROJECT_REQUEST_LIMITS.contourCount.max}).
+- **flat**: one sheet engraved with contour lines, roads, water and labels. Nothing is stacked; set how many contours with \`contourCount\` (${PROJECT_REQUEST_LIMITS.contourCount.min}–${PROJECT_REQUEST_LIMITS.contourCount.max}), or 0 for a clean map of roads, water and labels with no contours.
 
 ## What decides the number of sheets
 
@@ -54,6 +54,8 @@ Water, water depth, roads, trails, elevation labels, a north arrow and a scale b
 
 \`airspaceStack\` builds the Class B, C and special use airspace (and optionally Class D lids) over a layered US model in acrylic, at true height on the model's own vertical scale, held on rods the maker cuts to length; like the aviation detail, it is decorative and never for navigation. Choose \`form\`: \`plates\` (each level cut to all the airspace at that height; sturdy), \`tiers\` (only the shelves, the wedding cake; least acrylic) or \`volumes\` (solid, and acrylic-hungry); plates and tiers differ most where special use areas span several levels. \`tint\` is \`clear\` or \`chart\` (blue and magenta acrylic); by default plates are clear and the others chart. A whole Class B needs a 100–160 km area and about 10× \`verticalExaggeration\` before its shelves separate; plan_model estimates the height, and \`ceilingCapFt\` keeps it practical. \`false\` turns it off.
 
+Public land comes from USGS PAD-US in the United States and from CPCAD in Canada (which has no national forests, BLM or military land). \`paintTemplates\` lists the kinds that get a paper paint stencil per panel on a layered model: \`water\`, or \`national-park\`, \`national-monument\`, \`national-forest\`, \`wilderness\`, \`blm\`, \`wildlife-refuge\`, \`state-park\`, \`preserve\`, \`tribal\` and \`military\`. Where kinds overlap, the more specific one paints, so a park inside a forest gets the park's stencil. \`publicLands\` engraves boundaries on either output: \`boundaries\` lists the kinds (each in its own dash), \`names\` prints the largest units' names, and \`hatched\` adds ticks inside each boundary on flat output; \`false\` turns it off. check_coverage lists the databases reaching an area; elsewhere OpenStreetMap's national parks, nature reserves (as \`preserve\`) and military land are used where mapped, without names.
+
 ## Handing over
 
 Share the studio link. Opening it generates the model; the user checks the 3D preview, then chooses Export for per-sheet SVG files, a master layout, an assembly guide, and ATTRIBUTION.txt. Output is decorative, not survey-grade.
@@ -78,7 +80,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "TopoStack data sources and licenses",
     description: "Every terrain, lake and map source TopoStack draws from, with its license and coverage.",
     mimeType: "application/json",
-    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives, aviationSources), null, 2),
+    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives, aviationSources, landsSources), null, 2),
   },
   {
     uri: "topostack://schema/project-request-v1",

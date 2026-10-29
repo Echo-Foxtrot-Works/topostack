@@ -13,6 +13,28 @@ for (const status of [404, 429, 503]) {
   });
 }
 
+for (const error of [new DOMException("The operation was aborted due to timeout", "TimeoutError"), new TypeError("fetch failed")]) {
+  test(`deployment SEO retries a request that fails with ${error.name}`, async (t) => {
+    const outcomes = [error, new Response("ready")];
+    const fetch = t.mock.method(globalThis, "fetch", async () => {
+      const next = outcomes.shift();
+      if (next instanceof Error) throw next;
+      return next;
+    });
+    const response = await fetchSeoResponse("https://ci.invalid/guide", { deadline: Date.now() + 1_000, retryDelayMs: 0 });
+    assert.equal(response.status, 200);
+    assert.equal(fetch.mock.callCount(), 2);
+  });
+}
+
+test("a failing request is reported once the window expires, and monitors fail at once", async (t) => {
+  const error = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  const fetch = t.mock.method(globalThis, "fetch", async () => { throw error; });
+  await assert.rejects(fetchSeoResponse("https://ci.invalid/guide", { deadline: Date.now() - 1, retryDelayMs: 0 }), error);
+  await assert.rejects(fetchSeoResponse("https://ci.invalid/guide"), error);
+  assert.equal(fetch.mock.callCount(), 2);
+});
+
 for (const [name, status, options] of [
   ["ordinary verification remains immediate", 404, {}],
   ["persistent missing pages fail when the window expires", 404, { deadline: Date.now() - 1 }],
