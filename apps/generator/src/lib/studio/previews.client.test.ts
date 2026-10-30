@@ -158,6 +158,34 @@ describe("preview resource cleanup", () => {
     }
   });
 
+  it("lays one kind's paint stencil at a time on a sheet with several", async () => {
+    const geometry = generateGeometry(DEFAULT_PROJECT, createSamplePreviewSource());
+    const square = (r: number, x = 0) => [{x:x-r,y:-r},{x:x+r,y:-r},{x:x+r,y:r},{x:x-r,y:r},{x:x-r,y:-r}];
+    geometry.layers = [{ ...geometry.layers[0]!, polygons: [{ outer: square(40), holes: [] }], markings: [] }];
+    geometry.paintRegions = [
+      { kind: "national-park", layerIndex: 0, polygonIndex: 0, polygons: [{ outer: square(5, -20), holes: [] }] },
+      { kind: "water", layerIndex: 0, polygonIndex: 0, polygons: [{ outer: square(5, 20), holes: [] }] },
+    ];
+    const target = document.createElement("div");
+    component = mount(TwoDPreview, { target, props: { geometry, selectedLayer: 0 } });
+    flushSync();
+    expect(target.querySelector('select[aria-label="Paint template kind"]')).toBeNull();
+    target.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Show paint template"]')!.click();
+    flushSync();
+    // Two papers stacked would each cover the other's window; only the chosen kind's is laid.
+    const windowAt = () => target.querySelector("[data-paint-template] path")!.getAttribute("d")!.split("M").slice(2).join("M");
+    expect(target.querySelectorAll("[data-paint-template]")).toHaveLength(1);
+    expect(windowAt()).toContain("-25");
+    const picker = target.querySelector<HTMLSelectElement>('select[aria-label="Paint template kind"]')!;
+    expect([...picker.options].map((option) => option.textContent)).toEqual(["national park", "water"]);
+    picker.value = "water";
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(target.querySelectorAll("[data-paint-template]")).toHaveLength(1);
+    expect(windowAt()).not.toContain("-25");
+    expect(windowAt()).toContain("25");
+  });
+
   it("keeps covered marker areas empty in the 3D mesh", async () => {
     const geometry = generateGeometry(DEFAULT_PROJECT, createSamplePreviewSource());
     const square = (r: number) => [{x:-r,y:-r},{x:r,y:-r},{x:r,y:r},{x:-r,y:r},{x:-r,y:-r}];

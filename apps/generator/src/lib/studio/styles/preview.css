@@ -222,7 +222,16 @@
 .paint-template-toggle {
   right: 18px;
   bottom: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 9px;
+}
+
+.paint-template-toggle select {
+  font: 9px var(--loidolt-font-utility);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .paint-template-toggle .ldt-switch {
