@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { Download } from "@lucide/svelte";
   import { AppShell, Brand, Button, ContextBar, Sidebar, Topbar, Workspace, readRoleColor } from "@loidolt/theme-svelte";
   import { sourceRequirements, DEFAULT_PROJECT, FEET_PER_METER, planSeamGrid, displayElevation, displayLength, elevationUnit, generateGeometry, labelPathData, lengthUnit, MAX_PROJECT_NAME_LENGTH, millimetersFromDisplay, planTerrainStack, projectFingerprint, type GeometryIRV1, type LineStyleV1, type OperationPath, type ProjectConfigV1, type SourceBundleV1 } from "@topostack/core";
@@ -63,6 +63,7 @@
   import PreviewPanel from "$lib/studio/panels/PreviewPanel.svelte";
   import StarterSteps from "$lib/studio/panels/StarterSteps.svelte";
   import type { StarterId } from "$lib/site/starters";
+  const base = basePath();
 
   let { initialPreview, initialSource, takeWarmWorker }: {
     initialPreview?: GeometryIRV1;

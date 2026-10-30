@@ -27,6 +27,10 @@ const LIBRARY_HOSTS = [
   // MapLibre parses attribution URLs against this base to inspect their protocol.
   // The base is never requested or copied into the sanitized markup.
   { host: "maplibre.invalid", marker: "setRTLTextPlugin" },
+  // SvelteKit 3 parses redirect and link targets against this base when the
+  // page origin is unknown, to tell external URLs from internal ones. Its
+  // client chunk reads the origin from window.location beside it. Never requested.
+  { host: "sveltekit-redirect.invalid", marker: "window.location.origin" },
 ];
 
 /** The forbidden hosts named in one built file, less those a bundled library only writes. */

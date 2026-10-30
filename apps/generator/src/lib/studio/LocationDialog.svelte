@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { lakeStudioLink, searchLakes, type IndexedLake } from "$lib/site/lake-directory";
   import { uniqueOtherPlaces } from "$lib/site/location-results";
   import { lakeLocationFromSearch } from "$lib/site/lake-location";
@@ -11,6 +11,7 @@
   import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
   import { clampLatitude, clampLongitude, isSupportedCoordinate, MAX_LATITUDE, MAX_LONGITUDE } from "$lib/domain/coordinates";
   import { loadLocationLakes } from "$lib/studio/lake-directory-cache";
+  const base = basePath();
 
   let { project, presets, onChoose, onCoordinates, onClose }: { project: ProjectConfigV1; presets: PlaceResult[]; onChoose: (place: PlaceResult) => void; onCoordinates: (lat: number, lon: number) => void; onClose: () => void } = $props();
   let query = $state("");

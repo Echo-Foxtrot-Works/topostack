@@ -1,5 +1,5 @@
 {
-  "extends": "./.svelte-kit/tsconfig.json",
+  "extends": "$app/tsconfig",
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
@@ -10,7 +10,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client", "@webgpu/types"]
+    "types": ["$app/types", "vite/client", "@webgpu/types"]
   },
-  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "vite.config.ts", "vite.mcp-app.config.ts"]
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "vite.config.ts", "vite.mcp-app.config.ts", "sveltekit.config.ts"]
 }

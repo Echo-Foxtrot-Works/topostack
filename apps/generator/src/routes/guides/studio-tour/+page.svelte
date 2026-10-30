@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="A tour of the TopoStack studio" intro="Where everything lives in the studio, what updates instantly and what needs fresh terrain, and how your work is saved.">

@@ -117,7 +117,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -215,7 +215,7 @@ jobs:
       # Named by run only: re-running just the failed shards skips this job,
       # and those shards must still find the build an earlier attempt made.
       - name: Upload the build for the browser shards
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-build-${{ github.run_id }}
           overwrite: true
@@ -305,7 +305,7 @@ jobs:
           echo "Cached $(find ~/system-packages -name '*.deb' | wc -l) packages ($(du -sh ~/system-packages | cut -f1))."
 
       - name: Download the E2E build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: e2e-build-${{ github.run_id }}
           path: apps/generator
@@ -317,7 +317,7 @@ jobs:
 
       - name: Upload browser diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-diagnostics-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results
@@ -419,7 +419,7 @@ jobs:
 
       - name: Retain FAA activation and rollback receipt
         if: always() && github.ref_name == 'main'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: aviation-activation-${{ github.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/aviation-activation.json
@@ -519,7 +519,7 @@ jobs:
           JS
 
       - name: Upload production Atomm release
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: topostack-atomm-${{ github.sha }}
           path: |

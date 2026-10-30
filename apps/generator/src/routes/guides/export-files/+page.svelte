@@ -1,7 +1,8 @@
 <script lang="ts">
   import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Export files and SVG structure" intro="What each TopoStack download contains, how the SVG files are organized, and which files to use in your laser software.">

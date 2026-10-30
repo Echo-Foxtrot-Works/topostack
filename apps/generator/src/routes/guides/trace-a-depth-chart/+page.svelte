@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Carve a lake from a depth chart" intro="Turn a published lake chart into a floor for your layered map. Prepare its contour lines, correct them against the source, align them with known coordinates, then inspect the generated layers before saving.">

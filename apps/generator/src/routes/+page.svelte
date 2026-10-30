@@ -3,13 +3,14 @@
   import WaterFinishComparison from "$lib/site/WaterFinishComparison.svelte";
   import SiteHeader from "$lib/site/SiteHeader.svelte";
   import SiteFooter from "$lib/site/SiteFooter.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { ArrowRight, ArrowUpRight, Heart, Star } from "@lucide/svelte";
   import { donationUrl } from "$lib/site/support";
   import { REPOSITORY_URL } from "$lib/site/site";
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import TerrainIllustration from "$lib/studio/TerrainIllustration.svelte";
   import { STARTERS } from "$lib/site/starters";
+  const base = basePath();
 
   const atommBuild = import.meta.env.VITE_SITE_ENV === "atomm";
 

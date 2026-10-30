@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="Add your own graphics to a topographic map" intro="Put a logo, a club badge or a decoration on the piece itself. Upload an SVG once, then place, size and turn it on the preview, and choose whether the laser engraves it, scores its outline or cuts it out.">

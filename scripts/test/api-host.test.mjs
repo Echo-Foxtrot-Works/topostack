@@ -33,4 +33,8 @@ test("allows MapLibre's protocol-check base only in its library chunk", () => {
   assert.deepEqual(forbiddenHostsIn(`${maplibre};fetch("https://ci.invalid")`), ["ci.invalid"]);
   assert.deepEqual(forbiddenHostsIn(`${maplibre};fetch("http://localhost:8787")`), ["localhost"]);
   assert.equal(isForbiddenApiHost("maplibre.invalid"), true);
+  const kit = 'function o(){return window.location.origin}var s=`https://sveltekit-redirect.invalid`;';
+  assert.deepEqual(forbiddenHostsIn(kit), []);
+  assert.deepEqual(forbiddenHostsIn('var s=`https://sveltekit-redirect.invalid`'), ["sveltekit-redirect.invalid"]);
+  assert.deepEqual(forbiddenHostsIn(`${kit};fetch("https://ci.invalid")`), ["ci.invalid"]);
 });

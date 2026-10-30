@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { onMount } from "svelte";
   import { Ellipsis } from "@lucide/svelte";
   import type { ThemePreference } from "@loidolt/theme-svelte";
@@ -7,6 +7,7 @@
   import { theme } from "$lib/site/theme";
   import HeaderMenu from "$lib/studio/panels/HeaderMenu.svelte";
   import { LATEST_VERSION as version, hasUnseenRelease, markReleaseSeen } from "$lib/studio/whats-new";
+  const base = basePath();
 
   // The Atomm build has no public changelog page to link to.
   const showWhatsNew = import.meta.env.VITE_SITE_ENV !== "atomm";

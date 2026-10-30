@@ -28,7 +28,9 @@ const budgets = {
   // 440,324 when set (the old measure counted every route and read 505,789).
   // 488,122 when raised 2026-09-29: FAA aviation routing, symbols and styling
   // live in core, which ships in both the studio and the geometry worker.
-  startupJavaScriptGzip: 537_000,
+  // 538,176 when raised 2026-10-28 (from 533,470): SvelteKit 3's client
+  // runtime adds about 4.5 kB gzip to every entry.
+  startupJavaScriptGzip: 592_000,
   // Any single chunk; catches an accidental vendor merge. 275,299 when set.
   largestJavaScriptGzip: 300_000,
   studioHtmlBytes: 10_000,

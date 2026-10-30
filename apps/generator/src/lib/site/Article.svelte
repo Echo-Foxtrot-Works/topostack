@@ -2,12 +2,13 @@
   import SiteHeader from "$lib/site/SiteHeader.svelte";
   import SiteFooter from "$lib/site/SiteFooter.svelte";
   import RelatedContent from "$lib/site/RelatedContent.svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
   import type { Snippet } from "svelte";
   import { PUBLIC_PAGES } from "$lib/site/seo";
   import { DOCS_HOME, DOCS_NAV, docsNeighbours, docsSection, headingId } from "$lib/site/docs";
+  const base = basePath();
   // Pages outside the guides (the generated lake pages) pass their own breadcrumb trail.
   // Pages that never hydrate (static) leave out controls that only work with JavaScript.
   // The Atomm package holds only the studio and its credits page, so an

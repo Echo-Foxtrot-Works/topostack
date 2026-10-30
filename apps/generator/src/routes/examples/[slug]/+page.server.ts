@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit";
 import { PUBLISHED_EXAMPLES } from "$lib/site/examples.server";
 import type { EntryGenerator, PageServerLoad } from "./$types";
 
-// The Atomm package is the studio alone (see svelte.config.js), so it prerenders none of these pages.
+// The Atomm package is the studio alone (see sveltekit.config.ts), so it prerenders none of these pages.
 export const entries: EntryGenerator = () => import.meta.env.VITE_SITE_ENV === "atomm" ? [] : PUBLISHED_EXAMPLES.map((example) => ({ slug: example.slug }));
 
 export const load: PageServerLoad = ({ params }) => {

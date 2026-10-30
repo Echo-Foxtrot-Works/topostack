@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
   import { depthKindLabel, indexLakeDirectory, lakeStudioLink, searchLakes, type LakeDirectory } from "$lib/site/lake-directory";
+  const base = basePath();
 
   let directory = $state.raw<LakeDirectory>();
   /** Lake id → slug of its own page. Optional: without it, results still open in the studio. */

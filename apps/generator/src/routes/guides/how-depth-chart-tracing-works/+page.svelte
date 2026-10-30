@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
   import Article from "$lib/site/Article.svelte";
+  const base = basePath();
 </script>
 
 <Article title="How depth-chart tracing works" intro="A contour chart records some of a lake's shape, but leaves the spaces between its lines unknown. TopoStack turns reviewed contours into a continuous lake floor, then turns that floor into layers. Each step makes choices that affect the finished piece.">

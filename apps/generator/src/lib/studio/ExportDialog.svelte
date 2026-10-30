@@ -5,7 +5,8 @@
   import type { Snippet } from "svelte";
   import type { DownloadOption } from "$lib/studio/native-export";
   import { donationUrl } from "$lib/site/support";
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
+  const base = basePath();
 
   let { open, project, summary, panelCount, nested = false, acrylicCount = 0, acrylicNested = false, airspaceCount = 0, blockedReason, preparing, phase, title, detail, onDownload, onClose, sheetLayout, onSavePreview, onCopyLink, onShare, previewImageBusy = false, previewImageStatus = "" }: {
     open: boolean;

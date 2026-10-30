@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { base } from "$app/paths";
+  import { basePath } from "$lib/site/paths";
+  const base = basePath();
   let { links = false, linework = false }: { links?: boolean; linework?: boolean } = $props();
 </script>
 
