@@ -2,6 +2,18 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.11.1",
+      "date": "2026-10-30",
+      "entries": [
+        {
+          "type": "fix",
+          "title": "See each paint template on layers with several kinds of land",
+          "body": "Turning on **Paint template** in Cut layers on a sheet with water and public land, or several kinds of public land, used to stack every stencil at once, so the paper hid all the windows. The overlay now shows one stencil at a time, matching the files you export, and lets you pick which kind to show.",
+          "pr": 266
+        }
+      ]
+    },
+    {
       "version": "0.11.0",
       "date": "2026-10-27",
       "entries": [
