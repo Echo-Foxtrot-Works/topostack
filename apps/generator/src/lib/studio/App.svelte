@@ -966,6 +966,8 @@
     get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
     get activePanel() { return panels.active; },
     set activePanel(value) { panels.active = value; },
+    get settingsSheet() { return panels.sheet; },
+    set settingsSheet(value) { panels.sheet = value; },
     get openPanels() { return panels.open; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },

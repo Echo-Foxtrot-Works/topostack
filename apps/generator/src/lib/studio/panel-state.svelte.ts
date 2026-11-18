@@ -2,6 +2,9 @@ import { PANEL_IDS, type DisclosureId, type PanelId } from "$lib/studio/preview-
 
 const PANEL_STATE_KEY = "topostack-studio-panels-v1";
 
+/** How much of a phone screen the settings sheet covers; wider layouts always show the active panel. */
+export type SettingsSheet = "closed" | "half" | "full";
+
 const DISCLOSURE_IDS: DisclosureId[] = ["setup", ...PANEL_IDS, "customData"];
 
 /**
@@ -12,6 +15,8 @@ const DISCLOSURE_IDS: DisclosureId[] = ["setup", ...PANEL_IDS, "customData"];
  */
 export class PanelState {
   active = $state<PanelId>("place");
+  /** Not remembered: a phone opens on the model, with the panels a tap away. */
+  sheet = $state<SettingsSheet>("closed");
   open = $state<Record<DisclosureId, boolean>>({
     setup: true,
     place: false,

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showPanel } from "./studio-panels";
 
 test("annotation placement preserves live edits and previews title knockouts", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
@@ -125,6 +126,8 @@ test("placement controls leave default annotations reachable at desktop and narr
   await expect(scale).toHaveCount(0);
 
   await page.getByRole("radio", { name: "Flat engraving", exact: true }).click();
+  // At phone width the panels sit in a sheet that has stepped aside for placement.
+  await showPanel(page, "Labels");
   await page.locator(".placement-start").first().click();
   const done = page.locator(".placement-toolbar").getByRole("button", { name: "Done", exact: true });
   await expect.poll(() => done.evaluate(element => {
@@ -137,6 +140,7 @@ test("placement controls leave default annotations reachable at desktop and narr
   await done.click();
   await expect(scale).toHaveCount(0);
   await page.reload();
+  await showPanel(page, "Labels");
   await page.locator(".placement-start").first().click();
   await expect(scale).toHaveAttribute("d", committedScale!);
 });

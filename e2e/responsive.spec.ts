@@ -204,3 +204,50 @@ test("phone studio fits its header, view switcher and layer dock above the setti
   await expect(page.getByRole("dialog", { name: "Help improve TopoStack" })).toBeVisible();
   await context.close();
 });
+
+test("phone settings open in a sheet that leaves the model in view", async ({ browser, browserName, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, ...(browserName !== "firefox" ? { isMobile: true } : {}) });
+  const page = await context.newPage();
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort());
+  await page.goto("/studio");
+  const rail = page.locator(".settings-rail");
+  const stage = page.locator(".preview-stage");
+  const generate = page.getByRole("button", { name: /Generate terrain/ });
+  await expect(rail).toHaveAttribute("data-sheet", "closed", { timeout: 30_000 });
+  // The studio fills the screen without scrolling: the model, Generate and the panel tabs are all in view.
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
+  await expect(generate).toBeInViewport({ ratio: 1 });
+  expect((await stage.boundingBox())!.height).toBeGreaterThan(400);
+  const terrain = page.getByRole("tab", { name: "Terrain", exact: true });
+  await expect(terrain).toBeInViewport({ ratio: 1 });
+
+  // A tab opens its panel over the lower part of the screen; the model stays above it.
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "half");
+  await expect(terrain).toHaveAttribute("aria-expanded", "true");
+  const panel = page.getByRole("tabpanel", { name: "Terrain" });
+  await expect(panel).toBeVisible();
+  expect((await stage.boundingBox())!.height).toBeGreaterThan(150);
+
+  // The handle steps the sheet up; Generate and the tabs stay put.
+  await page.getByRole("button", { name: "Expand settings" }).tap();
+  await expect(rail).toHaveAttribute("data-sheet", "full");
+  await expect(generate).toBeInViewport({ ratio: 1 });
+  await expect(terrain).toBeInViewport({ ratio: 1 });
+
+  // Escape from a control in the panel closes the sheet and returns focus to its tab.
+  await panel.getByRole("spinbutton").first().focus();
+  await page.keyboard.press("Escape");
+  await expect(rail).toHaveAttribute("data-sheet", "closed");
+  await expect(terrain).toBeFocused();
+  await expect(terrain).toHaveAttribute("aria-expanded", "false");
+  await expect(panel).toBeHidden();
+
+  // Tapping the open tab closes its panel again.
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "half");
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "closed");
+  await expect(page.getByRole("button", { name: "Hide settings" })).toBeHidden();
+  await context.close();
+});
