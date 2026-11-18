@@ -2,7 +2,7 @@ import { zip, type AsyncZippable } from "fflate";
 import type { FabricationPackageV1, ProjectConfigV1 } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 
-export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "project";
+export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "lightburn" | "project";
 
 export interface PreparedDownload {
   blob: Blob;
@@ -93,6 +93,8 @@ export async function prepareSelectedDownload(output: FabricationPackageV1, opti
   if (option === "all") return prepareProjectDownload(output);
   if (option === "master") return { ...output.master, fileCount: 1 };
   const files = output.files.filter((file) => {
+    // LightBurn projects are added to the package by `withLightBurnProjects` before selection.
+    if (option === "lightburn") return file.filename.endsWith(".lbrn2");
     if (option === "assembly") return file.filename.endsWith("-assembly-guide.html");
     if (option === "engravings") return ENGRAVING_FILE.test(file.filename);
     if (option === "paint") return PAINT_FILE.test(file.filename);
@@ -107,11 +109,13 @@ export async function prepareSelectedDownload(output: FabricationPackageV1, opti
   const [first] = files;
   if (!first) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."
     : option === "acrylic" ? "No lake became an acrylic insert, so there are no acrylic files."
-    : option === "airspace" ? "No airspace was built for this area, so there are no airspace files." : "This export is not available for the current output type.");
-  if (option === "assembly") return { ...first, fileCount: 1 };
+    : option === "airspace" ? "No airspace was built for this area, so there are no airspace files."
+    : option === "lightburn" ? "There is no artwork to convert into a LightBurn project." : "This export is not available for the current output type.");
+  // A single project (a flat engraving) opens straight from the download.
+  if (option === "assembly" || (option === "lightburn" && files.length === 1)) return { ...first, fileCount: 1 };
   // Keep fabrication instructions and source credits with panel bundles.
   files.push(...output.files.filter((file) => file.filename === "README.txt" || file.filename === "ATTRIBUTION.txt"));
   const download = await prepareProjectDownload({ ...output, files });
-  const suffix = { panels: "cut-panels", engravings: "engraving-panels", paint: "paint-templates", acrylic: "acrylic-inserts", airspace: "airspace" }[option];
+  const suffix = { panels: "cut-panels", engravings: "engraving-panels", paint: "paint-templates", acrylic: "acrylic-inserts", airspace: "airspace", lightburn: "lightburn" }[option];
   return { ...download, filename: download.blob.type === "application/zip" ? archiveFilename(output.master.filename, suffix) : download.filename };
 }
