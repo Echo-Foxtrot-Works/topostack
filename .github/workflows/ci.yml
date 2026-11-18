@@ -46,8 +46,9 @@ jobs:
 
       # Deploys are gated only on high-severity advisories in runtime
       # dependencies; the full audit runs non-blocking in dependency-audit.
+      # Reviewed exceptions, each with a review date, live in check-audit.mjs.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm run audit:prod
 
       - name: Verify generated Worker types
         run: npm run types:check -w @topostack/map-api
