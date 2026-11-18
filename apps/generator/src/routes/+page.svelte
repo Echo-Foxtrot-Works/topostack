@@ -208,7 +208,9 @@
   p { font-size: 15px; line-height: 1.75; color: var(--loidolt-text-muted); }
   .intro { max-width: 480px; font-size: 17px; margin-bottom: 30px; }
   .primary-link { background: var(--loidolt-accent); color: var(--loidolt-on-accent); min-height: 50px; padding: 15px 24px; border-radius: var(--loidolt-border-radius); font-size: 15px; font-weight: 600; }
-  .primary-link:hover { background: var(--loidolt-accent-hover); color: var(--loidolt-on-accent); }
+  @media (hover: hover) {
+    .primary-link:hover { background: var(--loidolt-accent-hover); color: var(--loidolt-on-accent); }
+  }
   .terrain-art { margin: 0; color: var(--loidolt-text-accent); }
   figcaption { text-align: center; font: 11px var(--loidolt-font-utility); color: var(--loidolt-text-muted); margin-top: 20px; }
   .section { padding: 56px 0; border-top: 1px solid var(--loidolt-border); }

@@ -49,14 +49,20 @@
 .export-hero:disabled, .export-row:disabled { opacity: 0.5; }
 
 .export-hero { gap: 16px; padding: 20px; background: color-mix(in srgb, var(--loidolt-accent) 7%, var(--loidolt-surface)); border-color: color-mix(in srgb, var(--loidolt-accent) 45%, var(--loidolt-border)); }
-.export-hero:hover:enabled { border-color: var(--loidolt-accent); background: color-mix(in srgb, var(--loidolt-accent) 12%, var(--loidolt-surface)); }
+@media (hover: hover) {
+  .export-hero:hover:enabled { border-color: var(--loidolt-accent); background: color-mix(in srgb, var(--loidolt-accent) 12%, var(--loidolt-surface)); }
+}
 .export-hero-kicker { font: 10px var(--loidolt-font-utility); letter-spacing: 0.08em; text-transform: uppercase; color: var(--loidolt-accent); }
 .export-hero strong { font-size: 17px; font-weight: 600; }
 .export-hero-description { color: var(--loidolt-text-muted); font-size: 12px; line-height: 1.55; }
 .export-hero-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: var(--loidolt-border-radius); background: var(--loidolt-accent); color: var(--loidolt-on-accent); font-size: 13px; font-weight: 600; white-space: nowrap; transition: background 120ms; }
-.export-hero:hover:enabled .export-hero-action { background: var(--loidolt-accent-hover); }
+@media (hover: hover) {
+  .export-hero:hover:enabled .export-hero-action { background: var(--loidolt-accent-hover); }
+}
 
-.export-row:hover:enabled { border-color: var(--loidolt-accent); background: color-mix(in srgb, var(--loidolt-accent) 8%, var(--loidolt-surface)); }
+@media (hover: hover) {
+  .export-row:hover:enabled { border-color: var(--loidolt-accent); background: color-mix(in srgb, var(--loidolt-accent) 8%, var(--loidolt-surface)); }
+}
 .export-row-copy strong { font-size: 13px; font-weight: 600; }
 .export-row-copy span { color: var(--loidolt-text-muted); font-size: 12px; line-height: 1.5; }
 .export-row-format { display: inline-flex; align-items: center; gap: 6px; font: 10px var(--loidolt-font-utility); letter-spacing: 0.08em; color: var(--loidolt-accent); white-space: nowrap; }
@@ -97,7 +103,9 @@
   font-weight: 600;
   transition: border-color 120ms, color 120ms;
 }
-.export-donate:hover { border-color: var(--loidolt-accent); color: var(--loidolt-accent); }
+@media (hover: hover) {
+  .export-donate:hover { border-color: var(--loidolt-accent); color: var(--loidolt-accent); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .export-donate, .export-hero, .export-row, .export-more summary::before { transition: none; }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "@loidolt/theme-svelte";
   import { basePath } from "$lib/site/paths";
   import type { StarterId } from "$lib/site/starters";
   import { starterById } from "$lib/site/starters";
@@ -17,7 +18,7 @@
     <li>{ready ? "Terrain generated. Check the preview and any warnings." : "Generate fresh terrain after reviewing your settings."}</li>
     <li>{exported ? "Files prepared. Open the download in your laser software." : "Export the complete project, then check its SVG dimensions in your laser software."}</li>
   </ol>
-  <button type="button" class="btn btn-primary" disabled={busy} onclick={ready ? onExport : onGenerate}>{busy ? "Updating terrain…" : ready ? "Open export" : "Generate starter terrain"}</button>
+  <Button variant="primary" class="btn btn-primary" disabled={busy} onclick={ready ? onExport : onGenerate}>{busy ? "Updating terrain…" : ready ? "Open export" : "Generate starter terrain"}</Button>
   <a href={`${base}${starter.guide}`} target="_blank" rel="noopener noreferrer">Follow the {id === "engraving" ? "engraving" : id === "lake" ? "lake map" : "layered map"} guide<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
 </section>
 

@@ -30,7 +30,9 @@
   .detail { font-size: 14px; }
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; margin-top: 26px; }
   .primary-link { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 18px; background: var(--loidolt-accent); color: var(--loidolt-on-accent); border-radius: var(--loidolt-border-radius); font-size: 14px; font-weight: 600; text-decoration: none; }
-  .primary-link:hover { background: var(--loidolt-accent-hover); }
+  @media (hover: hover) {
+    .primary-link:hover { background: var(--loidolt-accent-hover); }
+  }
   .guide-link { min-height: 44px; display: inline-flex; align-items: center; color: var(--loidolt-text); font-size: 13px; text-underline-offset: 4px; }
   a:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: 5px; }
   .coverage { font-size: 11px; margin-top: 20px; }

@@ -173,9 +173,11 @@ body:has(.app-shell) {
   outline-offset: -2px;
 }
 
-.header-menu__list .ldt-menu__item:disabled:hover {
-  color: var(--loidolt-text);
-  background: transparent;
+@media (hover: hover) {
+  .header-menu__list .ldt-menu__item:disabled:hover {
+    color: var(--loidolt-text);
+    background: transparent;
+  }
 }
 
 .header-menu__list .ldt-menu__item > svg {

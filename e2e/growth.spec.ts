@@ -55,7 +55,7 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
     expect(image.material).toBeGreaterThan(10_000);
     await expect(dialog).toContainText("Preview image prepared");
     await dialog.getByRole("button", { name: "Copy design link" }).click();
-    await expect(dialog.locator('.export-share [role="status"]')).toContainText(/Share link copied|Could not copy the share link/);
+    await expect(dialog.locator('.export-share > [role="status"]')).toContainText(/Share link copied|Could not copy the share link/);
     await expect.poll(() => events.filter((event) => event.event === "share_preview_prepared").length).toBe(1);
     expect(events.filter((event) => event.event === "export_prepared")).toHaveLength(1);
     expect(events.every((event) => event.channel === "lightburn-forum")).toBe(true);

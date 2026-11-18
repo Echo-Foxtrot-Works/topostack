@@ -74,8 +74,10 @@
   text-align: left;
 }
 
-.section-disclosure:hover {
-  background: var(--loidolt-surface-alt);
+@media (hover: hover) {
+  .section-disclosure:hover {
+    background: var(--loidolt-surface-alt);
+  }
 }
 
 .section-number {

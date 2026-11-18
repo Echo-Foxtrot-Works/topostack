@@ -130,7 +130,9 @@
   .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
   .suggestions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; }
   button { min-height: 44px; border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); background: var(--loidolt-surface); color: var(--loidolt-text); padding: 8px 14px; font: inherit; cursor: pointer; }
-  button:hover:not(:disabled) { border-color: var(--loidolt-accent); }
+  @media (hover: hover) {
+    button:hover:not(:disabled) { border-color: var(--loidolt-accent); }
+  }
   button:disabled { opacity: 0.45; cursor: default; }
   .result-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; padding-block: 24px 12px; font-size: 14px; }
   .result-summary span, .lake-meta, .catalog-date { color: var(--loidolt-text-muted); }

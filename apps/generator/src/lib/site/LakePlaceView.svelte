@@ -70,7 +70,9 @@
 <style>
   .open { margin-top: 8px; }
   .start { display: inline-flex; align-items: center; min-height: 44px; background: var(--loidolt-accent); color: var(--loidolt-on-accent) !important; padding: 10px 18px; border-radius: var(--loidolt-border-radius); text-decoration: none; font-size: 15px; font-weight: 600; }
-  .start:hover { background: var(--loidolt-accent-hover); }
+  @media (hover: hover) {
+    .start:hover { background: var(--loidolt-accent-hover); }
+  }
   /* Fixed layout and anywhere-wrapping keep long licence URLs inside a phone-width column. */
   table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 8px 0 16px; font-size: 15px; }
   td { overflow-wrap: anywhere; }

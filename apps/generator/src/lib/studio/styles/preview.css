@@ -320,8 +320,10 @@
   text-transform: none;
 }
 
-.preview-warning .warning-action:hover:not(:disabled) {
-  background: var(--loidolt-surface-alt);
+@media (hover: hover) {
+  .preview-warning .warning-action:hover:not(:disabled) {
+    background: var(--loidolt-surface-alt);
+  }
 }
 
 .warning-dismiss {
@@ -337,8 +339,10 @@
   cursor: pointer;
 }
 
-.warning-dismiss:hover {
-  background: color-mix(in srgb, var(--loidolt-warning) 18%, transparent);
+@media (hover: hover) {
+  .warning-dismiss:hover {
+    background: color-mix(in srgb, var(--loidolt-warning) 18%, transparent);
+  }
 }
 
 .warning-dismiss:focus-visible {
