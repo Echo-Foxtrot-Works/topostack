@@ -137,7 +137,7 @@ test("compact layouts keep the preview and controls reachable", async ({ page })
   await page.setViewportSize({ width: 320, height: 700 });
   const topbarBox = await page.locator(".topbar").boundingBox();
   expect(topbarBox).not.toBeNull();
-  // Mobile uses two rows so the project name and history remain available.
+  // Mobile fits the header in one row: the name, its history, then export and the studio menu.
   const exportButton = page.getByRole("button", { name: "Export", exact: true });
   const projectName = page.getByRole("textbox", { name: "Project name", exact: true });
   const historyActions = page.locator(".history-actions");
@@ -147,8 +147,9 @@ test("compact layouts keep the preview and controls reachable", async ({ page })
   const exportBox = (await exportButton.boundingBox())!;
   const projectBox = (await projectName.boundingBox())!;
   const historyBox = (await historyActions.boundingBox())!;
-  expect(projectBox.y).toBeGreaterThanOrEqual(exportBox.y + exportBox.height);
   expect(projectBox.x + projectBox.width).toBeLessThanOrEqual(historyBox.x);
+  expect(historyBox.x + historyBox.width).toBeLessThanOrEqual(exportBox.x);
+  expect(projectBox.width).toBeGreaterThanOrEqual(60);
   expect(Math.max(projectBox.y + projectBox.height, historyBox.y + historyBox.height)).toBeLessThanOrEqual(topbarBox!.y + topbarBox!.height);
   await expect(page.locator(".preview-toolbar")).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole("radiogroup", { name: "Output type" })).toBeVisible();

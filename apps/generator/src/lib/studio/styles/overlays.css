@@ -299,3 +299,25 @@
   border: 0;
   padding: 0;
 }
+
+/* Folds the scale and stack spacing on phones (responsive.css); hidden elsewhere. */
+.layer-dock__toggle {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--loidolt-text-muted);
+  cursor: pointer;
+}
+
+.layer-dock__toggle[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+
+.layer-dock__toggle:focus-visible {
+  outline: 2px solid var(--loidolt-focus-ring, var(--loidolt-accent));
+  outline-offset: -2px;
+}

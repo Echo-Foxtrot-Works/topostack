@@ -5,7 +5,9 @@
   import type { ThemePreference } from "@loidolt/theme-svelte";
   import { DOCS_HOME } from "$lib/site/site";
   import { theme } from "$lib/site/theme";
+  import FeedbackButton from "$lib/site/FeedbackButton.svelte";
   import HeaderMenu from "$lib/studio/panels/HeaderMenu.svelte";
+  import { getStudio } from "$lib/studio/studio-context";
   import { LATEST_VERSION as version, hasUnseenRelease, markReleaseSeen } from "$lib/studio/whats-new";
   const base = basePath();
 
@@ -22,6 +24,12 @@
   let unseen = $state(false);
   onMount(() => { if (showWhatsNew) unseen = hasUnseenRelease(localStorage, version); });
   const menuLabel = $derived(`Studio menu${unseen ? " (new release)" : ""}`);
+  // Phones hide the preview's Feedback edge tab, which would cover the model; this row reaches the same dialog.
+  const studio = getStudio();
+  let feedback = $state<FeedbackButton>();
+  function openFeedback(event: MouseEvent & { currentTarget: HTMLElement }): void {
+    void feedback?.show(event.currentTarget.closest(".header-menu")?.querySelector<HTMLElement>(".studio-menu-trigger") ?? undefined);
+  }
 </script>
 
 <HeaderMenu label={menuLabel} title="Color scheme, guides and what's new" triggerClass="ldt-button ldt-icon-button ldt-button--ghost studio-menu-trigger">
@@ -37,7 +45,9 @@
     </a>
   {/if}
   <a class="ldt-menu__item" role="menuitem" href={`${base}${DOCS_HOME}`} target="_blank" rel="noopener noreferrer">Guides<span class="ldt-menu__hint" aria-hidden="true">↗</span><span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
+  <button type="button" class="ldt-menu__item" role="menuitem" aria-haspopup="dialog" onclick={openFeedback}>Send feedback</button>
   <a class="ldt-menu__item" role="menuitem" href={`${base}/`} target="_blank" rel="noopener noreferrer">TopoStack home<span class="ldt-menu__hint" aria-hidden="true">↗</span><span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
   <hr class="ldt-menu__separator" />
   <div class="studio-menu__version" role="presentation">TopoStack v{version}</div>
 </HeaderMenu>
+<FeedbackButton bind:this={feedback} triggerless getContext={studio.getFeedbackContext} />

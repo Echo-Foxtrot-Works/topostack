@@ -1,7 +1,7 @@
 <script lang="ts">
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import { basePath } from "$lib/site/paths";
-  import { Box, FileOutput, Layers3, Map as MapIcon, PenTool, Scan, Waves, X } from "@lucide/svelte";
+  import { Box, ChevronDown, FileOutput, Layers3, Map as MapIcon, PenTool, Scan, TriangleAlert, Waves, X } from "@lucide/svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { displayElevation } from "@topostack/core";
   import FeedbackButton from "$lib/site/FeedbackButton.svelte";
@@ -43,6 +43,10 @@
   }
   /** While placing over the 3D preview, what it hides and how it frames the model. */
   const threePlacement = $derived(studio.placementBackdrop === "3d" ? { hiddenPrefixes: studio.placementPhase === "closing" ? [] : studio.placementHiddenPrefixes, marginMm: studio.placementMargin, hideMarkings: studio.placementPhase !== "closing", toolbarRows: studio.project.customGraphics?.length ? 2 : 1 } : undefined);
+  // Phones show each view by a short name (the radio keeps its full name) so four views fit one row.
+  const SHORT_VIEW_LABELS: Record<string, string> = { "2d": "Cut", "3d": "3D", custom: "Data" };
+  // On a phone-width preview the warnings fold behind one chip so they do not cover the model; wider previews ignore this.
+  let warningsOpen = $state(false);
   const OSM_ATTRIBUTION = MAP_DATA_ATTRIBUTION.find((entry) => entry.name === "OpenStreetMap contributors") ?? { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright" };
 </script>
 
@@ -50,11 +54,11 @@
   <div class="preview-toolbar">
     <div class="ldt-toggle-group mode-switch" role="radiogroup" aria-label="Preview mode">
       {#each studio.previewModeOptions as option}
-        <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={studio.mode === option.value} data-state={studio.mode === option.value ? "on" : "off"} tabindex={keyboardView === option.value ? 0 : -1} onclick={() => choosePreviewMode(option.value)} onkeydown={navigateChoice}>{#if option.value === "map"}<MapIcon size={15} />{:else if option.value === "engraving"}<PenTool size={15} />{:else if option.value === "2d"}<Layers3 size={15} />{:else if option.value === "custom"}<Waves size={15} />{:else if option.value === "export"}<FileOutput size={15} />{:else}<Box size={15} />{/if}{option.label}</button>
+        <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={studio.mode === option.value} data-state={studio.mode === option.value ? "on" : "off"} tabindex={keyboardView === option.value ? 0 : -1} onclick={() => choosePreviewMode(option.value)} aria-label={!studio.embeddedInPlatform && SHORT_VIEW_LABELS[option.value] ? option.label : undefined} onkeydown={navigateChoice}>{#if option.value === "map"}<MapIcon size={15} />{:else if option.value === "engraving"}<PenTool size={15} />{:else if option.value === "2d"}<Layers3 size={15} />{:else if option.value === "custom"}<Waves size={15} />{:else if option.value === "export"}<FileOutput size={15} />{:else}<Box size={15} />{/if}{#if !studio.embeddedInPlatform && SHORT_VIEW_LABELS[option.value]}<span class="mode-label">{option.label}</span><span class="mode-label mode-label--short" aria-hidden="true">{SHORT_VIEW_LABELS[option.value]}</span>{:else}{option.label}{/if}</button>
       {/each}
     </div>
     {#if studio.mode === "3d" && !studio.embeddedInPlatform && !studio.placementBackdrop}
-      <Button variant="ghost" size="sm" disabled={studio.previewBusy || !threePreview} onclick={() => threePreview?.fitView()}><Scan size={15} />Fit view</Button>
+      <Button class="fit-view" variant="ghost" size="sm" aria-label="Fit view" title="Fit view" disabled={studio.previewBusy || !threePreview} onclick={() => threePreview?.fitView()}><Scan size={15} aria-hidden="true" /><span class="fit-view__label">Fit view</span></Button>
     {/if}
     <div class="preview-readout">
       <span>{shownLength(studio.project.widthMm)} × {shownLength(studio.project.heightMm)} {studio.shownLengthUnit}</span>
@@ -100,7 +104,10 @@
       <GenerationProgress compact={studio.detailsUpdating && studio.generationState !== "loading" && (!studio.terrainRefreshing || studio.mode === "map")} passive={studio.detailsUpdating && studio.generationState !== "loading"} title={studio.previewBusyLabel} detail={studio.status} step={studio.generationState === "loading" ? studio.generationStep : undefined} onCancel={studio.embeddedInPlatform && (studio.generationState === "loading" || (studio.terrainRefreshing && studio.mode !== "map")) ? cancelGeneration : undefined} cancelLabel={studio.generationState === "loading" ? "Cancel generation" : "Cancel"} />
     {/if}
     {#if studio.mode !== "custom" && studio.mode !== "export" && (studio.visibleWarnings.length || studio.previewNotice || studio.lakeDepthFittingOn)}
-      <div class="warning-stack">
+      <div class="warning-stack" data-collapsed={!studio.embeddedInPlatform && studio.visibleWarnings.length && !warningsOpen ? "" : undefined}>
+        {#if !studio.embeddedInPlatform && studio.visibleWarnings.length}
+          <button type="button" class="warning-toggle" aria-expanded={warningsOpen} aria-controls="preview-warnings" onclick={() => { warningsOpen = !warningsOpen; }}><TriangleAlert size={14} aria-hidden="true" /><span>{studio.visibleWarnings.length === 1 ? "1 notice" : `${studio.visibleWarnings.length} notices`}</span><ChevronDown size={14} aria-hidden="true" /></button>
+        {/if}
         {#if studio.lakeDepthFittingOn}
           <div class="preview-warning preview-notice" role="status">
             <span class="warning-icon" aria-hidden="true"><Waves size={12} /></span>
@@ -114,6 +121,7 @@
             <button type="button" class="warning-dismiss" aria-label={`Dismiss notice: ${studio.previewNotice}`} title="Dismiss notice" onclick={(event) => dismissPreviewWarning(event)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/if}
+        <div id="preview-warnings" class="warning-list">
         {#each studio.visibleWarnings as warning (`${warning.code}-${warning.message}`)}
           <div class="preview-warning">
             <span class="warning-icon" aria-hidden="true">!</span>
@@ -121,6 +129,7 @@
             <button type="button" class="warning-dismiss" aria-label={`Dismiss warning: ${warning.message}`} title="Dismiss warning" onclick={(event) => dismissPreviewWarning(event, `${warning.code}-${warning.message}`)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/each}
+        </div>
       </div>
     {/if}</div>
   {#if !studio.embeddedInPlatform && studio.mode !== "custom"}<LayerDock />{/if}
