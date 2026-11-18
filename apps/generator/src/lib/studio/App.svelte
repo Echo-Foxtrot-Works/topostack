@@ -1008,7 +1008,7 @@
   <meta name="theme-color" content={themeColor} />
 </svelte:head>
 
-{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
+{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <Button class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</Button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
 
 {#snippet locationSearch()}
   <!-- One dialog for both shells: the embedded and standalone branches rendered

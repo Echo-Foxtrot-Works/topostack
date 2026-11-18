@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Archive, ArrowUpRight, Download, Droplets, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, Plane, SprayCan, X } from "@lucide/svelte";
-  import { IconButton } from "@loidolt/theme-svelte";
+  import { Button, IconButton } from "@loidolt/theme-svelte";
   import { PAINT_REGION_LABELS, type ProjectConfigV1 } from "@topostack/core";
   import type { Snippet } from "svelte";
   import type { DownloadOption } from "$lib/studio/native-export";
@@ -120,9 +120,9 @@
         <h3 id="export-share-title">Share your design</h3>
         <p>Save a top-down software preview for a post, and include a design link so others can open your settings.</p>
         <div class="export-share-actions">
-          <button type="button" class="btn btn-secondary" disabled={artworkDisabled || previewImageBusy} onclick={onSavePreview}>{previewImageBusy ? "Preparing image…" : "Save preview image"}</button>
-          {#if onCopyLink}<button type="button" class="btn btn-secondary" onclick={onCopyLink}>Copy design link</button>{/if}
-          {#if onShare}<button type="button" class="btn btn-secondary" onclick={onShare}>Share design</button>{/if}
+          <Button class="btn btn-secondary" disabled={artworkDisabled || previewImageBusy} onclick={onSavePreview}>{previewImageBusy ? "Preparing image…" : "Save preview image"}</Button>
+          {#if onCopyLink}<Button class="btn btn-secondary" onclick={onCopyLink}>Copy design link</Button>{/if}
+          {#if onShare}<Button class="btn btn-secondary" onclick={onShare}>Share design</Button>{/if}
         </div>
         {#if previewImageStatus}<p role="status" aria-live="polite">{previewImageStatus}</p>{/if}
       </section>

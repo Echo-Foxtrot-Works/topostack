@@ -87,11 +87,11 @@ describe("ExportDialog", () => {
   it("blocks stale preview images while allowing design links and announces sharing feedback inside the dialog", async () => {
     const { target, onSavePreview, onCopyLink } = await render({}, { blockedReason: "Generate real terrain first.", sharing: true, previewImageStatus: "Share link copied" });
     const buttons = [...target.querySelectorAll<HTMLButtonElement>("button")];
-    expect(buttons.find((button) => button.textContent === "Save preview image")!.disabled).toBe(true);
-    buttons.find((button) => button.textContent === "Copy design link")!.click();
+    expect(buttons.find((button) => button.textContent?.trim() === "Save preview image")!.disabled).toBe(true);
+    buttons.find((button) => button.textContent?.trim() === "Copy design link")!.click();
     expect(onCopyLink).toHaveBeenCalledOnce();
     expect(onSavePreview).not.toHaveBeenCalled();
-    expect(target.querySelector('.export-share [role="status"]')?.textContent).toBe("Share link copied");
+    expect(target.querySelector('.export-share > [role="status"]')?.textContent).toBe("Share link copied");
     expect(target.querySelector('.export-guide a')?.getAttribute("target")).toBe("_blank");
   });
 });

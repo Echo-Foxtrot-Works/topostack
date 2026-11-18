@@ -25,7 +25,9 @@
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; list-style: none; padding: 0; }
   .cards li { margin: 0; padding: 0; }
   .cards a { display: flex; flex-direction: column; gap: 6px; height: 100%; box-sizing: border-box; padding: 16px 18px; border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); text-decoration: none; }
-  .cards a:hover { border-color: var(--loidolt-accent); }
+  @media (hover: hover) {
+    .cards a:hover { border-color: var(--loidolt-accent); }
+  }
   .cards strong { font-size: 16px; }
   .cards span { font-size: 14px; line-height: 1.6; color: var(--loidolt-text-muted); }
   .note { margin-top: 48px; }

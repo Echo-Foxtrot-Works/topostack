@@ -213,8 +213,10 @@
   cursor: pointer;
 }
 
-.location-option:hover {
-  background: var(--loidolt-surface-sunken);
+@media (hover: hover) {
+  .location-option:hover {
+    background: var(--loidolt-surface-sunken);
+  }
 }
 
 .location-option__icon {
@@ -276,8 +278,10 @@
   background: var(--loidolt-surface);
 }
 
-.preset-grid .location-option:hover {
-  background: var(--loidolt-surface-sunken);
+@media (hover: hover) {
+  .preset-grid .location-option:hover {
+    background: var(--loidolt-surface-sunken);
+  }
 }
 
 .provider-attribution {

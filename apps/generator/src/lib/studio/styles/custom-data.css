@@ -142,8 +142,10 @@
   letter-spacing: 0.08em;
 }
 
-.custom-data-name:hover {
-  border-bottom-color: var(--loidolt-border);
+@media (hover: hover) {
+  .custom-data-name:hover {
+    border-bottom-color: var(--loidolt-border);
+  }
 }
 
 .custom-data-name:focus {
@@ -163,8 +165,10 @@
   cursor: pointer;
 }
 
-.marker-card__header button:hover {
-  color: var(--loidolt-text-danger);
+@media (hover: hover) {
+  .marker-card__header button:hover {
+    color: var(--loidolt-text-danger);
+  }
 }
 
 .marker-coordinate-fields {
@@ -225,8 +229,10 @@
   cursor: pointer;
 }
 
-.marker-icon-upload:hover:not(:disabled) {
-  color: var(--loidolt-text);
+@media (hover: hover) {
+  .marker-icon-upload:hover:not(:disabled) {
+    color: var(--loidolt-text);
+  }
 }
 
 .marker-icon-upload:disabled {
@@ -291,8 +297,10 @@
   cursor: pointer;
 }
 
-.marker-icon-remove:hover {
-  color: var(--loidolt-text-danger);
+@media (hover: hover) {
+  .marker-icon-remove:hover {
+    color: var(--loidolt-text-danger);
+  }
 }
 
 .marker-icon-upload:focus-visible,
@@ -441,10 +449,12 @@
   color: var(--loidolt-on-accent);
 }
 
-.subgroup-heading--action .marker-add-button:hover:not(:disabled),
-.custom-data-import__button:hover:not(:disabled),
-.custom-point-expand:hover {
-  background: var(--loidolt-surface-alt);
+@media (hover: hover) {
+  .subgroup-heading--action .marker-add-button:hover:not(:disabled),
+  .custom-data-import__button:hover:not(:disabled),
+  .custom-point-expand:hover {
+    background: var(--loidolt-surface-alt);
+  }
 }
 
 .marker-empty,
@@ -494,8 +504,10 @@
   cursor: pointer;
 }
 
-.graphic-place:hover:not(:disabled) {
-  border-color: var(--loidolt-accent);
+@media (hover: hover) {
+  .graphic-place:hover:not(:disabled) {
+    border-color: var(--loidolt-accent);
+  }
 }
 
 .graphic-place:disabled,
@@ -562,7 +574,9 @@
   cursor: pointer;
 }
 
-.preview-place-graphics:hover {
-  background: var(--loidolt-accent);
-  color: var(--loidolt-on-accent);
+@media (hover: hover) {
+  .preview-place-graphics:hover {
+    background: var(--loidolt-accent);
+    color: var(--loidolt-on-accent);
+  }
 }
