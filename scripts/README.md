@@ -114,6 +114,7 @@ Check deployed services, SEO output, and data quality. CI and the production mon
 | `generation-pool.mjs`, `generation-task-worker.mjs` | Adapt the production browser task pool to Node threads for the generation benchmark | Imported by `benchmark-generation.mjs`; not standalone commands |
 | `parallel-browser.mjs` | Check production parallel workers, custom fonts, cancellation, and fallback in Chromium/Firefox/WebKit | Build core and generator, then `node scripts/verify/parallel-browser.mjs` (optional browser names) |
 | `benchmark-data-layer.mjs` | Measure data-layer latency for representative projects (build core first) | `npm run data:benchmark` |
+| `check-audit.mjs` | The deployment gate on runtime dependencies: `npm audit --omit=dev` at high severity, minus the reviewed exceptions listed in the script, each with a reason and a review date after which it fails again; `check-audit.test.mjs` covers the filtering | `npm run audit:prod` (CI `Lint and typecheck`) |
 | `verify-atomm-dist.mjs` | Check the Atomm build output for forbidden endpoints and required files | CI/workflows |
 | `verify-lake-directory.mjs` | Browser check of the lake directory and studio place links | `npm run data:verify-lake-directory` |
 | `verify-lake-outlines.mjs` | Compare provider outlines against real survey archives in a browser | manual: [lake-bathymetry.md](../docs/lake-bathymetry.md) |
