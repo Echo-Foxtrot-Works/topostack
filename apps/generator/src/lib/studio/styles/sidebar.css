@@ -358,3 +358,8 @@
     animation: none;
   }
 }
+
+/* The phone settings sheet's handle and close button; responsive.css shows them. */
+.settings-sheet-bar {
+  display: none;
+}
