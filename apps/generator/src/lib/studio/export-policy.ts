@@ -65,6 +65,19 @@ export async function buildAtommPackage(geometry: GeometryIRV1, project: Project
   return { ...output, files, master: files.find(file => file.filename === output.master.filename)! };
 }
 
+/**
+ * What Open in Studio leaves out. Studio opens one file, the wood master;
+ * acrylic water inserts and acrylic airspace are another material and another
+ * job, so they travel only in the download. Empty when nothing is left out.
+ */
+export function acrylicOutsideStudio(geometry: GeometryIRV1): string {
+  const inserts = Boolean(geometry.waterInserts?.length);
+  const airspace = Boolean(geometry.airspaceStack?.levels.length);
+  if (!inserts && !airspace) return "";
+  const what = inserts && airspace ? "water inserts and airspace are" : inserts ? "water inserts are" : "airspace is";
+  return `The acrylic ${what} not in it: download the project files for their own SVGs.`;
+}
+
 export async function createAtommExport(geometry: GeometryIRV1, project: ProjectConfigV1, intent: ExportIntent, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1) {
   const reason = exportBlockReason(geometry, project);
   if (reason) throw new Error(reason);

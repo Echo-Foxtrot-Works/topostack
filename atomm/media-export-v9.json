@@ -21,6 +21,7 @@
     "outputMode": "stack",
     "widthMm": 406.4,
     "heightMm": 270.933,
+    "showEngravingContours": true,
     "engravingContourCount": 12,
     "engravingIndexInterval": 5,
     "showEngravingBorder": true,
@@ -87,7 +88,7 @@
     "showScaleBar": true,
     "markers": [
       {
-        "id": "55be46f0-1333-4c5a-869b-13e7b7cd24ce",
+        "id": "1fbba9de-1e8f-4187-8f0b-b89afe4af568",
         "lat": 42.9446,
         "lon": -122.109,
         "symbol": "pin",
@@ -97,7 +98,7 @@
     ],
     "customLines": [
       {
-        "id": "40680279-2a55-4512-88fd-809ee0af6dec",
+        "id": "85adc3c2-d703-43d7-837a-00d962bd2b5c",
         "kind": "trail",
         "points": [
           {
@@ -129,7 +130,7 @@
   },
   "result": {
     "projectId": "topostack-crater-automatic-depth",
-    "generatedAt": "2026-09-29T15:23:19.341Z",
+    "generatedAt": "2026-11-18T22:01:44.893Z",
     "minElevationM": 843.6714477539062,
     "maxElevationM": 2713.155029296875,
     "layers": [
@@ -389,9 +390,9 @@
       {
         "id": "layer-26",
         "elevationM": 1979.6044734074521,
-        "filename": "crater-lake-sheet-01.svg",
+        "filename": "crater-lake-sheet-02.svg",
         "filenames": [
-          "crater-lake-sheet-01.svg",
+          "crater-lake-sheet-02.svg",
           "crater-lake-sheet-05.svg",
           "crater-lake-sheet-13.svg"
         ],
@@ -410,11 +411,11 @@
       {
         "id": "layer-28",
         "elevationM": 2071.29829289363,
-        "filename": "crater-lake-sheet-03.svg",
+        "filename": "crater-lake-sheet-01.svg",
         "filenames": [
+          "crater-lake-sheet-01.svg",
           "crater-lake-sheet-03.svg",
-          "crater-lake-sheet-04.svg",
-          "crater-lake-sheet-05.svg"
+          "crater-lake-sheet-04.svg"
         ],
         "pieces": []
       },
@@ -852,13 +853,13 @@
         },
         "sheetCount": 14,
         "partCount": 116,
-        "utilization": 0.5555741116023224,
-        "elapsedMs": 5433
+        "utilization": 0.5555743125697071,
+        "elapsedMs": 5287
       },
       "panels": [
         {
           "sheet": 1,
-          "usedWidthMm": 551.403,
+          "usedWidthMm": 551.40295,
           "filename": "crater-lake-sheet-01.svg",
           "engravingFilename": "crater-lake-sheet-01-engrave.svg",
           "paintTemplateFilenames": [],
@@ -868,8 +869,8 @@
             "layer-01",
             "layer-21",
             "layer-24",
-            "layer-26",
             "layer-27",
+            "layer-28",
             "layer-31",
             "layer-32"
           ],
@@ -892,7 +893,7 @@
                 "layer-21"
               ],
               "rotationDeg": 90,
-              "xMm": 412.46106,
+              "xMm": 412.461,
               "yMm": 207.35416
             },
             {
@@ -902,7 +903,7 @@
                 "layer-31"
               ],
               "rotationDeg": 0,
-              "xMm": 532.1817,
+              "xMm": 532.18164,
               "yMm": 479.84595
             },
             {
@@ -912,8 +913,8 @@
                 "layer-24"
               ],
               "rotationDeg": 90,
-              "xMm": 24.488552,
-              "yMm": 480.27527
+              "xMm": 24.52438,
+              "yMm": 480.25143
             },
             {
               "partId": "layer-27:1",
@@ -922,24 +923,24 @@
                 "layer-27"
               ],
               "rotationDeg": 90,
-              "xMm": 17.527579,
-              "yMm": 493.02673
+              "xMm": 17.528163,
+              "yMm": 492.8893
             },
             {
-              "partId": "layer-26:2",
-              "label": "L26-3",
+              "partId": "layer-28:8",
+              "label": "L28-9",
               "layerIds": [
-                "layer-26"
+                "layer-28"
               ],
-              "rotationDeg": 90,
-              "xMm": -95.290955,
-              "yMm": 534.66766
+              "rotationDeg": 0,
+              "xMm": -111.02841,
+              "yMm": 481.2015
             }
           ]
         },
         {
           "sheet": 2,
-          "usedWidthMm": 681.4754,
+          "usedWidthMm": 681.476,
           "filename": "crater-lake-sheet-02.svg",
           "engravingFilename": "crater-lake-sheet-02-engrave.svg",
           "paintTemplateFilenames": [],
@@ -949,6 +950,7 @@
             "layer-02",
             "layer-21",
             "layer-22",
+            "layer-26",
             "layer-29",
             "layer-31",
             "layer-39"
@@ -972,7 +974,7 @@
                 "layer-22"
               ],
               "rotationDeg": 90,
-              "xMm": 412.19742,
+              "xMm": 412.19788,
               "yMm": 179.15508
             },
             {
@@ -982,7 +984,7 @@
                 "layer-29"
               ],
               "rotationDeg": 90,
-              "xMm": 596.1229,
+              "xMm": 596.12354,
               "yMm": 373.20682
             },
             {
@@ -992,7 +994,7 @@
                 "layer-31"
               ],
               "rotationDeg": 180,
-              "xMm": 59.58189,
+              "xMm": 59.581944,
               "yMm": 547.6407
             },
             {
@@ -1002,7 +1004,7 @@
                 "layer-29"
               ],
               "rotationDeg": 90,
-              "xMm": -54.239155,
+              "xMm": -54.239124,
               "yMm": 439.4762
             },
             {
@@ -1012,18 +1014,18 @@
                 "layer-21"
               ],
               "rotationDeg": 180,
-              "xMm": 150.23453,
+              "xMm": 150.23454,
               "yMm": 385.58044
             },
             {
-              "partId": "layer-21:3",
-              "label": "L21-4",
+              "partId": "layer-26:2",
+              "label": "L26-3",
               "layerIds": [
-                "layer-21"
+                "layer-26"
               ],
               "rotationDeg": 90,
-              "xMm": -118.14865,
-              "yMm": 683.98566
+              "xMm": -87.10055,
+              "yMm": 583.79706
             }
           ]
         },
@@ -1397,14 +1399,14 @@
               "yMm": 442.0056
             },
             {
-              "partId": "layer-23:2",
-              "label": "L23-3",
+              "partId": "layer-21:3",
+              "label": "L21-4",
               "layerIds": [
-                "layer-23"
+                "layer-21"
               ],
-              "rotationDeg": 0,
-              "xMm": 169.49258,
-              "yMm": 489.92828
+              "rotationDeg": 270,
+              "xMm": 158.84978,
+              "yMm": 308.74774
             }
           ]
         },
@@ -1434,7 +1436,6 @@
             "layer-24",
             "layer-25",
             "layer-26",
-            "layer-28",
             "layer-29",
             "layer-30",
             "layer-31"
@@ -1871,6 +1872,16 @@
               "yMm": 427.79019999999997
             },
             {
+              "partId": "layer-23:2",
+              "label": "L23-3",
+              "layerIds": [
+                "layer-23"
+              ],
+              "rotationDeg": 90,
+              "xMm": -23.363499999999966,
+              "yMm": 598.193
+            },
+            {
               "partId": "layer-21:4",
               "label": "L21-5",
               "layerIds": [
@@ -1888,7 +1899,7 @@
               ],
               "rotationDeg": 90,
               "xMm": -80.916,
-              "yMm": 625.6391
+              "yMm": 630.1905
             },
             {
               "partId": "layer-23:4",
@@ -1896,9 +1907,9 @@
               "layerIds": [
                 "layer-23"
               ],
-              "rotationDeg": 0,
-              "xMm": 198.0464,
-              "yMm": 335.00440000000003
+              "rotationDeg": 90,
+              "xMm": 184.4273,
+              "yMm": 611.8859
             },
             {
               "partId": "layer-20:1",
@@ -1907,18 +1918,8 @@
                 "layer-20"
               ],
               "rotationDeg": 0,
-              "xMm": 242.6201,
-              "yMm": 550.9342
-            },
-            {
-              "partId": "layer-28:8",
-              "label": "L28-9",
-              "layerIds": [
-                "layer-28"
-              ],
-              "rotationDeg": 0,
-              "xMm": -61.011600000000016,
-              "yMm": 511.5605999999999
+              "xMm": 243.0296,
+              "yMm": 579.1904
             },
             {
               "partId": "layer-26:1",
@@ -1928,7 +1929,7 @@
               ],
               "rotationDeg": 0,
               "xMm": 174.071,
-              "yMm": 533.4940999999999
+              "yMm": 533.8205999999999
             },
             {
               "partId": "layer-25:2",
@@ -1937,8 +1938,8 @@
                 "layer-25"
               ],
               "rotationDeg": 90,
-              "xMm": 117.5591,
-              "yMm": 586.2869000000001
+              "xMm": 118.19749999999999,
+              "yMm": 594.7511999999999
             },
             {
               "partId": "layer-25:6",
@@ -1947,8 +1948,8 @@
                 "layer-25"
               ],
               "rotationDeg": 0,
-              "xMm": -103.67170000000002,
-              "yMm": 557.9118
+              "xMm": -103.66260000000003,
+              "yMm": 487.4942
             },
             {
               "partId": "layer-06:2",
@@ -1956,9 +1957,9 @@
               "layerIds": [
                 "layer-06"
               ],
-              "rotationDeg": 90,
-              "xMm": 87.95930000000001,
-              "yMm": 422.20950000000005
+              "rotationDeg": 0,
+              "xMm": 37.273699999999984,
+              "yMm": 381.8276
             },
             {
               "partId": "layer-22:7",
@@ -1966,9 +1967,9 @@
               "layerIds": [
                 "layer-22"
               ],
-              "rotationDeg": 0,
-              "xMm": -84.15730000000002,
-              "yMm": 514.9202
+              "rotationDeg": 90,
+              "xMm": -42.39500000000001,
+              "yMm": 321.9657
             }
           ]
         },

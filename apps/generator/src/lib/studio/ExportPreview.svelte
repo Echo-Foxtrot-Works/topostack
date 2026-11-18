@@ -3,7 +3,7 @@
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
   import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
-  import { buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
+  import { acrylicOutsideStudio, buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
 
   /**
@@ -83,6 +83,8 @@
     };
   });
 
+  // Open in Studio sends the wood master alone; acrylic pieces are only in the download.
+  const woodOnly = $derived(Boolean(acrylicOutsideStudio(geometry)));
   const totalBytes = $derived(built?.files.reduce((total, file) => total + file.bytes, 0) ?? 0);
 </script>
 
@@ -97,7 +99,7 @@
     <section class="export-manifest" aria-label="Export contents">
       <h2>Export contents</h2>
       {#if built.layoutNote}<p class="export-layout-note">{built.layoutNote}</p><p class="export-layout-credit">Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noreferrer">sparrow</a></p>{/if}
-      <p class="export-manifest-row"><span>Open in Studio</span><strong>1 editable SVG</strong><small>Entire layout · {formatBytes(built.bytes)}</small></p>
+      <p class="export-manifest-row"><span>Open in Studio</span><strong>1 editable SVG</strong><small>{woodOnly ? "Wood layout · acrylic is in Download" : "Entire layout"} · {formatBytes(built.bytes)}</small></p>
       <details>
         <summary><span>Download</span><strong>Complete project bundle</strong><small>{built.files.length} files · {formatBytes(totalBytes)} total</small><span class="export-files-toggle">View included files <span aria-hidden="true">⌄</span></span></summary>
         <ul>{#each built.files as file (file.filename)}<li><span title={file.filename}>{file.filename}</span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>

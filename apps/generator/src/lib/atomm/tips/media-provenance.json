@@ -1,50 +1,50 @@
 {
-  "capturedAt": "2026-09-28T14:01:00.478Z",
-  "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
-  "origin": "http://127.0.0.1:5284",
+  "capturedAt": "2026-11-18T21:39:17.259Z",
+  "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
+  "origin": "http://localhost:5273",
   "method": "Real-data embedded studio captures; no fixtures. Artwork crops, resized to the Tips media band. Files replaced only after every capture completes.",
   "images": [
     {
       "file": "place.webp",
       "width": 960,
       "height": 534,
-      "sha256": "f23318193cca71fa12e6632c474cc7cb92adf7d52da8189627fb3d815f62d01a"
+      "sha256": "a2c16bcdbf70dd4cab754a3709dd78f6ca37ffad9d7c46f1324c29b995db3668"
     },
     {
       "file": "layers.webp",
       "width": 960,
       "height": 534,
-      "sha256": "ae4507d8b57273aa921497f1ebb773a63cff295c95682e545312ea4d86abafc0"
+      "sha256": "2608c07a751ac68e8180061afed40077bb2c038b9d095c26902f6d008cfab2b3"
     },
     {
       "file": "size.webp",
       "width": 960,
       "height": 534,
-      "sha256": "9dcfe5127acbcda0bbbe0f1fa78e4ed049deafb1d6738f86a7abb9457102169b"
+      "sha256": "e9f13b30eb00ed479316bdc3d6ddfe3840e8c50b34e8f50954f3286cf4d2a459"
     },
     {
       "file": "lakes.webp",
       "width": 960,
       "height": 534,
-      "sha256": "d124065aa6e075f46515402f5d0173d64255d5e3100b4d69dfa8030ea9ec027a"
+      "sha256": "9f4ba5f2164d66287d56e3a48cfe811e9ff242db7278b3e075bfcd9d92fb02a9"
     },
     {
       "file": "export.webp",
       "width": 960,
       "height": 534,
-      "sha256": "8dd2f32527300388047b75b851ce045a4af6218ee59ba2c5c998c6a50e5a3d43"
+      "sha256": "d97e79dffeaa774e5972bd81b0c1a9a2509d77bd2d73832200845fadabd2c35f"
     },
     {
       "file": "processing.webp",
       "width": 960,
       "height": 534,
-      "sha256": "71497643c16b8cca2f74ae5e7f9193bb38d021b882915ce15f6fec8c944bdd86"
+      "sha256": "efec37a6b4b36822cad558e92d34ef40261a5cbb0051336b9a49beb9a7ea3995"
     },
     {
       "file": "assembly.webp",
       "width": 960,
       "height": 534,
-      "sha256": "ea4911e65b37c39468166da4e0feb162c9babf044679921dbaf5bbcdb660f61a"
+      "sha256": "952fcd11de869e3998fe68628248f53641179bf93256e5c396b2a2696f239b4f"
     }
   ]
 }
