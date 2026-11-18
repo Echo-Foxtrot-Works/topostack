@@ -10,17 +10,7 @@ import { isMainModule } from "../lib/main-module.mjs";
  * Advisories the gate skips. Keep this list short: an entry belongs here only
  * when no patched release exists and the package cannot reach shipped code.
  */
-export const AUDIT_EXCEPTIONS = [
-  {
-    id: "GHSA-fc5q-39xc-vjpf",
-    package: "picomatch",
-    reason:
-      "ReDoS in picomatch <= 4.0.7, every published release (no patched version yet). It reaches the tree only through vite, " +
-      "a build tool: npm marks that chain devOptional, which --omit=dev still counts, but no runtime dependency requires it. " +
-      "Remove this entry once picomatch publishes a fix and the lockfile takes it.",
-    reviewBy: "2026-12-18",
-  },
-];
+export const AUDIT_EXCEPTIONS = [];
 
 const SEVERITY = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
 
