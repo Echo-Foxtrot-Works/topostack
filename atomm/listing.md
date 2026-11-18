@@ -19,40 +19,34 @@ For layered projects, set your material width and height and let automatic nesti
 
 Open in Studio sends one editable SVG containing the entire layout. Download provides the complete project bundle, including artwork, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
 
-Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated Crater Lake terrain prepared for the 0.12.0 review, including real survey data where available. Images and videos are software previews, not physical builds or machine runs.
+Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated terrain for Crater Lake and five other places, including real survey data where available. Images are software renders and screenshots, not photographs of physical builds or machine runs.
 
 ## Upload media
 
-Use `assets/topostack-cover-loop-v9.mp4` as the silent cover video and `assets/topostack-cover-v9.png` as its still fallback. The movie renders every frame from the actual 3D scene as the camera orbits and the stack separates and reassembles. Use `assets/topostack-showcase-v9.mp4` for a feature tour with native 3D motion, gently moving interface scenes and short fades. Videos are H.264, 60 fps, with fast-start playback and no audio.
+Use `assets/topostack-cover-v10.png` as the cover. It is a still image made for the 272 × 204 grid card: Crater Lake fills the frame on its own engraving artwork, with no text, since Atomm prints the title below the card. Upload no cover video. A video card shows only its first frame in the grid.
 
-All seventeen PNGs are 3200 × 2400; both videos are 1920 × 1440. The sixteen gallery cards use app screenshots captured at twice the display resolution or native 3D renders, with captions outside the app imagery. Warning notifications are dismissed for the promotional captures; source limitations remain explained here and in the provenance.
+All ten PNGs are 3200 × 2400. Models are TopoStack's own 3D renders of live terrain, and interface images are screenshots of the embedded studio at twice the display resolution. Each card's background is the place's flat-engraving artwork, shown as faint lines. Warning notifications are dismissed before the screenshots; source limitations are explained here and in the provenance.
 
 | Order | File | Caption / alt text |
 | --- | --- | --- |
-| 1 | `assets/topostack-gallery-01-workbench-v9.png` | Crater Lake in the current Atomm workbench. |
-| 2 | `assets/topostack-gallery-02-layers-v9.png` | Separate the actual terrain stack to inspect the layers. |
-| 3 | `assets/topostack-gallery-03-cut-layer-v9.png` | Inspect a cut layer before fabrication. |
-| 4 | `assets/topostack-gallery-04-flat-v9.png` | Flat surface contour artwork. |
-| 5 | `assets/topostack-gallery-05-depth-v9.png` | Lake-floor relief and water depth controls. |
-| 6 | `assets/topostack-gallery-06-nesting-v9.png` | Live sheet layouts while automatic nesting solves. |
-| 7 | `assets/topostack-gallery-07-export-v9.png` | Actual export artwork and clear Studio/download contents. |
-| 8 | `assets/topostack-gallery-08-material-v9.png` | Layout updated for 700 × 500 mm material, with aligned controls. |
-| 9 | `assets/topostack-gallery-09-location-v9.png` | Place search, surveyed lakes and coordinate entry. |
-| 10 | `assets/topostack-gallery-10-size-v9.png` | Crop shape, physical size and units. |
-| 11 | `assets/topostack-gallery-11-terrain-v9.png` | Material thickness and vertical exaggeration. |
-| 12 | `assets/topostack-gallery-12-annotations-v9.png` | Map details, compass and scale controls. |
-| 13 | `assets/topostack-gallery-13-linework-v9.png` | Linework presets and customization. |
-| 14 | `assets/topostack-gallery-14-fabrication-v9.png` | Fabrication and work-area settings. |
-| 15 | `assets/topostack-gallery-15-markers-v9.png` | Imported geographic marker and symbol controls. |
-| 16 | `assets/topostack-gallery-16-paths-v9.png` | Imported illustrative path and point controls. |
+| Cover | `assets/topostack-cover-v10.png` | Software render of a layered Crater Lake relief on its own contour lines. |
+| 1 | `assets/topostack-gallery-01-places-v10.png` | Any place on Earth: Crater Lake, Grand Canyon, Mount Rainier, Grand Teton, Mount Fuji and the Matterhorn as layered reliefs (software renders). |
+| 2 | `assets/topostack-gallery-02-layers-v10.png` | The Crater Lake stack separated into its layers (software render). |
+| 3 | `assets/topostack-gallery-03-relief-engraving-v10.png` | The same place as a layered relief and as flat engraving artwork. |
+| 4 | `assets/topostack-gallery-04-acrylic-v10.png` | Crater Lake with its water cut as an acrylic insert (software render). |
+| 5 | `assets/topostack-gallery-05-public-lands-v10.png` | Public-land paint templates around Grand Teton (software render). |
+| 6 | `assets/topostack-gallery-06-airspace-v10.png` | FAA airspace over Colorado Springs built in acrylic tiers (software render; not for navigation). |
+| 7 | `assets/topostack-gallery-07-three-steps-v10.png` | Pick a place, set the size, open in xTool Studio (screenshots). |
+| 8 | `assets/topostack-gallery-08-ready-to-cut-v10.png` | The Export view: nested sheets, red cuts and blue scores (screenshot). |
+| 9 | `assets/topostack-gallery-09-make-it-yours-v10.png` | Labels, compass and scale bar controls on a flat engraving (screenshot). |
 
-Import `media-project-v9.json` to reproduce the starting project: Crater Lake, 406.4 × 270.933 mm, 3.175 mm material, 4× terrain exaggeration, 1.75× depth exaggeration, and 600 × 400 mm sheets. `media-export-v9.json` records the final export after changing sheets to 700 × 500 mm and importing the illustrative marker/path from `media-annotations-v9.json`. Survey coverage is incomplete; terrain or modeled depths fill gaps. Flat artwork shows surface contours, not submerged 3D relief.
+`media-projects-v10.json` holds every project rendered, keyed by card. Crater Lake is the reviewed media project used since v6: 406.4 × 270.933 mm, 3.175 mm material, 4× terrain exaggeration and 1.75× depth exaggeration. The other places and the three feature projects are built through the agent request contract (`expandProjectRequest`) at the same physical size, by `scripts/dev/atomm-listing-places.mjs`. Survey coverage is incomplete, and terrain or modeled depths fill the gaps.
 
-`media-provenance.json` records the capture source commit, development base, source attribution and file hashes. Capture uses the actual embedded UI with an SDK mount/export stand-in; these images do not claim a native Studio import. Real platform validation is performed separately through Atomm Local Debug. The provenance records the source commit and a SHA-256 of the application/capture source diff. The release receipt records whether the packaged working tree is dirty. See `review-readiness.md` for this revision’s checks and remaining platform validation.
+`media-provenance.json` records the capture source commit, development base, source attribution and file hashes. Capture uses the embedded UI with an SDK mount/export stand-in, so these images do not claim a native Studio import. Real platform validation is done separately through Atomm Local Debug. See `review-readiness.md` for this revision's checks and the platform validation still to do.
 
-The current upload bundle contains 19 media files. `media-provenance-v5.json` and `media-provenance-v7.json` remain in the repository as records of earlier captures; the v8 files were replaced one for one by v9 (git history keeps them), and none of them is part of this upload set.
+The upload bundle contains 10 media files. The provenance of earlier captures is kept as `media-provenance-v5.json`, `-v7.json` and `-v9.json`. The v9 images and videos stay in the repository because `docs/launch/media.md` and the README animation use them for launch posts, but none of them is part of this upload set.
 
-Credits: USGS Crater Lake multibeam bathymetry (public domain); Mapzen Terrain Tiles and contributing elevation sources; HydroLAKES / GLOBathy; map data © OpenStreetMap contributors, via Protomaps. Full attribution is retained in the provenance and project export.
+Credits: USGS Crater Lake multibeam bathymetry (public domain); Mapzen Terrain Tiles and contributing elevation sources; HydroLAKES / GLOBathy; USGS Protected Areas Database of the United States (PAD-US) 4.1; FAA Aeronautical Information Services, NASR (airspace shown is not for navigation); map data © OpenStreetMap contributors, via Protomaps. Full attribution is retained in the provenance and project export.
 
 ## Craft selection notes
 

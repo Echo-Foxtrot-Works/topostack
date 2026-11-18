@@ -26,7 +26,7 @@ Not part of the Atomm package: the standalone site's phone layout (bottom settin
 
 ## Media
 
-Use only the v9 media named in `listing.md` and `media-provenance.json`. These are fresh captures of this revision's embedded UI with live Crater Lake terrain and survey data, replacing the 0.7.1 (v8) set one for one. Media includes 17 PNGs and two silent H.264 videos. The SDK mount/export hook used for capture is a stand-in; media is not a claim of native Studio validation.
+Use only the v10 media named in `listing.md` and `media-provenance.json`. There is a still cover built for the 272 × 204 grid card and nine gallery cards. They show Crater Lake and five other places, plus acrylic water inserts, public-land paint and acrylic airspace. All of it is rendered by this revision's embedded studio from live terrain and survey data, and the backdrops are each place's own engraving artwork. The cover is a still image; no cover video is uploaded. The SDK mount/export hook used for capture is a stand-in, so the media does not claim native Studio validation.
 
 ## Platform handoff
 
@@ -40,4 +40,4 @@ Run on the candidate branch (`dev` at `5bce26f` plus this revision's changes), 2
 - A frame audit of the embed made 48 checks across three browsers and seven frame sizes, from 1600 × 1000 down to 320 × 640 and phone landscape, with every section expanded. It found no horizontal overflow, no control outside the parameter rail, no standalone rail or sheet, no LightBurn text and no page errors. See [the report](../docs/reports/atomm-0.12.0-review/README.md).
 - Workspace typecheck, zero-warning lint, every workspace's unit tests and the script tests passed. So did the production build, the web and Worker bundle budgets, `version:check` and `changelog:verify`.
 - Production Atomm packaging against `https://topostack.app` passed environment, SDK and endpoint verification, and the listing packager verified all 19 media hashes, sizes and dimensions. This was a pre-release build still numbered 0.11.1. The 0.12.0 ZIP, checksum and receipt come from production CI after promotion, and its SHA-256 is recorded with the release.
-- All 17 listing PNGs were visually reviewed and are 3200 × 2400. Both silent H.264 videos are 1920 × 1440 at 60 fps: the cover loop is 6 s and 7,498,383 bytes, the showcase 76 s and 37,036,822 bytes.
+- All 10 v10 listing PNGs (the cover and nine gallery cards) were visually reviewed (scaled to 1000 × 750, and the cover also at the 272 × 204 grid size) and are 3200 × 2400. The listing packager verified their hashes, sizes and dimensions.

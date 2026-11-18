@@ -1,214 +1,171 @@
 import { chromium } from "playwright";
-import { readVersions } from "../release/versions.mjs";
-import { installNativeCapture, nativeFrame } from "./atomm-native-capture.mjs";
-import { readFile, writeFile, mkdir, mkdtemp, copyFile, access } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { sha256Hex } from "../lib/hash.mjs";
+import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readVersions } from "../release/versions.mjs";
+import { sha256Hex } from "../lib/hash.mjs";
 import { appUrl } from "../lib/app-url.mjs";
+import { featureProjects, listingPlaces } from "./atomm-listing-places.mjs";
+import { engravingSvg, matte, openStudio } from "./atomm-listing-render.mjs";
+import { backdrop, card, contourLines, cutout, engravingArtwork, escapeHtml, model, renderCard, screenshot } from "./atomm-listing-compose.mjs";
 
-// Reproducible listing cards: genuine embedded UI and model pixels, with captions.
-// Run against the current generator and deployed data API; no E2E fixture build.
+// Atomm listing media, v10: a cover built for the 272 × 204 grid card and nine
+// gallery cards. Every model is the studio's own render of live terrain; every
+// interface image is a screenshot of the embedded studio. Backdrops are the
+// place's flat-engraving artwork. Run against `npm run dev` (or
+// TOPOSTACK_CAPTURE_URL) with @topostack/core built.
+const VERSION = "v10";
 const { atommVersion } = await readVersions();
 const origin = appUrl("TOPOSTACK_CAPTURE_URL");
-const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
 const root = new URL("../../atomm/", import.meta.url);
-const scratch = await mkdtemp(join(tmpdir(), "topostack-listing-"));
 const assets = new URL("assets/", root);
 await mkdir(assets, { recursive: true });
-const sourceDiffSha256 = sha256Hex(execFileSync("git", ["diff", "HEAD", "--", "apps/generator/src", "scripts/dev"]));
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-const project = JSON.parse(await readFile(new URL("media-project-v6.json", root), "utf8"));
-project.name = "Crater Lake";
-project.sheetNesting = { sheetWidthMm: 600, sheetHeightMm: 400, marginMm: 3, spacingMm: 2, rotation: "quarter", timeBudgetS: 5, seed: 1 };
-const media = [], surveyResponses = new Set(), errors = [];
+const sourceDiffSha256 = sha256Hex(execFileSync("git", ["diff", "HEAD", "--", "apps/generator/src", "scripts/dev"]));
+const media = [], projects = {}, attribution = new Map(), surveyResponses = new Set();
+const errors = [];
+// TOPOSTACK_LISTING_REUSE=1 recomposes from the last capture's renders (layout work only; never for a release set).
+const cacheFile = join(tmpdir(), "topostack-listing-renders.json");
+const reuse = process.env.TOPOSTACK_LISTING_REUSE === "1";
+
 const browser = await chromium.launch({ headless: true, ...(process.env.TOPOSTACK_CAPTURE_GPU === "1" ? { channel: "chrome", args: ["--use-angle=metal", "--enable-gpu"] } : { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }) });
 try {
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2, colorScheme: "light", reducedMotion: "reduce" });
-  page.setDefaultTimeout(60_000);
-  await installNativeCapture(page);
-  page.on("pageerror", error => errors.push(error.message));
-  page.on("response", response => { if (response.ok() && /usgs-crater-lake/.test(response.url())) surveyResponses.add(response.url()); });
-  await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: `window.atomm = { lifecycle: { on(event, hook) { if(event === 'export') window.captureExport = hook; } }, app: { getLocale: async () => 'en', getSupportedLocales: async () => [] }, ui: { toast: async () => '', closeToast: async () => {} } };` }));
-  await page.route("https://topostack.app/v1/**", async route => {
-    const headers = { ...route.request().headers() }; delete headers.origin; delete headers.referer;
-    await route.fulfill({ response: await route.fetch({ headers, timeout: 180_000 }) });
-  });
-  await page.route(`${origin}/atomm-media-frame`, route => route.fulfill({ contentType: "text/html", body: '<body style="margin:0"><iframe src="/studio" style="width:100vw;height:100vh;border:0;display:block"></iframe></body>' }));
-  await page.goto(origin);
-  await page.evaluate(async value => {
-    await new Promise((resolve, reject) => {
-      const request = indexedDB.open("keyval-store", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("keyval");
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const db = request.result, tx = db.transaction("keyval", "readwrite");
-        tx.objectStore("keyval").put(value, "topostack:project:v1");
-        tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
-      };
-    });
-  }, project);
-  await page.goto(`${origin}/atomm-media-frame`);
-  const studio = page.frameLocator("iframe");
-  const frame = () => page.frames().find(candidate => candidate !== page.mainFrame());
-  const settled = async () => { await studio.locator('.preview-stage[aria-busy="false"]').waitFor(); await page.waitForTimeout(1000); };
-  await studio.locator(".status-line", { hasText: "Real terrain ready" }).waitFor({ timeout: 180_000 });
-  await settled();
-  if (!surveyResponses.size) throw new Error("No successful Crater Lake survey request; refusing to label fixture or modeled-only media as surveyed.");
-  console.log("Real terrain ready", await studio.locator(".status-line").innerText());
-  const cardPage = await browser.newPage({ viewport: { width: 1600, height: 1200 }, deviceScaleFactor: 2 });
-  const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
-  async function card(id, title, subtitle, png, caption = "Crater Lake · Software preview · Review material and machine settings before fabrication") {
-    const name = `topostack-${id}-v9.png`;
-    await cardPage.setContent(`<html><head><style>*{box-sizing:border-box}body{margin:0;background:#e7e8e9;color:#1d302e;font-family:Arial,sans-serif;padding:48px 64px}header{display:flex;justify-content:space-between;font-size:22px;font-weight:700;letter-spacing:-.5px}header span{font-size:16px;font-weight:400;letter-spacing:2px}h1{font-size:62px;letter-spacing:-2.5px;line-height:1.08;margin:30px 0 12px}p{font-size:26px;margin:0 0 30px;color:#405451}main{height:840px;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain;border-radius:16px;box-shadow:0 10px 35px #00000012}footer{position:absolute;bottom:35px;left:64px;right:64px;display:flex;justify-content:space-between;color:#52625f;font-size:15px}</style></head><body><header>TopoStack<span>MAP · LAYER · MAKE</span></header><h1>${escape(title)}</h1><p>${escape(subtitle)}</p><main><img src="data:image/png;base64,${png.toString("base64")}"></main><footer><span>${escape(caption)}</span><span>topostack.app</span></footer></body></html>`);
-    await cardPage.locator("img").evaluate(img => img.decode());
-    const buffer = await cardPage.screenshot({ path: new URL(name, assets).pathname });
-    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: sha256Hex(buffer), width: 3200, height: 2400, sourceCommit, title, subtitle });
-    console.log("Saved", name);
+  const composer = await browser.newPage({ viewport: { width: 1600, height: 1200 }, deviceScaleFactor: 2 });
+
+  /** Open a project, show it in 3D, and collect what every card needs from it. */
+  async function capture(id, project, work) {
+    console.log("Loading", id);
+    const session = await openStudio(browser, origin, project, { onResponse: response => { if (response.ok() && /usgs-crater-lake/.test(response.url())) surveyResponses.add(response.url()); } });
+    try {
+      const view = async name => { await session.studio.getByRole("radio", { name, exact: true }).click(); await session.settled(); };
+      await view("3D");
+      const result = await work({ ...session, view });
+      // The download's own manifest is the record of what each render used.
+      const manifest = await session.frame.evaluate(async () => { const files = await window.captureExport({ intent: "download" }); return JSON.parse(await files.find(file => file.filename.endsWith("-project.json")).blob.text()); });
+      for (const source of manifest.attribution ?? []) attribution.set(source.name, source);
+      projects[id] = project;
+      errors.push(...session.errors.map(message => `${id}: ${message}`));
+      return result;
+    } finally { await session.page.close(); }
   }
-  const view = async name => { await studio.getByRole("radio", { name, exact: true }).click(); await settled(); };
-  const dismissWarnings = async () => {
+
+  const dismissWarnings = async ({ studio, page }) => {
     const buttons = studio.getByRole("button", { name: /^Dismiss (warning|notice):/ });
     for (let n = 0; n < 12 && await buttons.count(); n++) { await buttons.first().click(); await page.waitForTimeout(100); }
-    await page.waitForTimeout(200);
-    const remaining = await studio.locator(".warning-stack").textContent({ timeout: 500 }).catch(() => "");
-    if (remaining?.trim()) throw new Error(`A warning banner remains in the promotional capture: ${remaining}`);
   };
-  const shot = async () => {
-    await studio.locator(".generation-overlay:not(.nesting-progress)").waitFor({ state: "hidden", timeout: 180_000 });
-    await dismissWarnings();
-    await page.waitForTimeout(350);
-    return page.screenshot({ animations: "disabled" });
-  };
-  const model = amount => nativeFrame(frame(), { amount, azimuth: -76, elevation: 49, width: 2944, height: 1680 });
-  await view("3D");
-  await studio.getByRole("button", { name: "Fit to canvas", exact: true }).click();
-  await studio.locator(".three-stage").press("+");
-  await studio.locator(".three-stage").press("+");
-  await page.waitForTimeout(1000);
-  await card("cover", "A place, made personal.", "Real terrain. Layered reliefs. Ready-to-make artwork.", await model(0));
-  await card("gallery-01-workbench", "Your landscape, your way.", "Shape the terrain and preview every change in Atomm.", await shot());
-  await studio.getByRole("slider", { name: "Stack separation", exact: true }).fill("0.7");
-  await studio.getByRole("button", { name: "Fit to canvas", exact: true }).click();
-  await studio.locator(".three-stage").press("+");
-  await studio.locator(".three-stage").press("+");
-  await page.waitForTimeout(1500);
-  await card("gallery-02-layers", "See how the layers fit.", "Explore the assembled relief or separate the stack before cutting.", await model(0.7));
-  // One independently rendered frame per output frame, with continuous layer
-  // offsets and camera movement, matching the earlier native-render approach.
-  for (let n = 0; n < 360; n++) {
-    const t = n / 360, phase = 2 * Math.PI * t;
-    const png = await nativeFrame(frame(), { amount: 0.75 * (1 - Math.cos(phase)) / 2,
-      azimuth: -76 + 20 * Math.sin(phase), elevation: 49 + 5 * Math.sin(phase), width: 1920, height: 1440 });
-    await writeFile(join(scratch, `motion-${String(n).padStart(3, "0")}.png`), png);
-    if (n % 60 === 0) console.log(`Native motion: ${n}/360 frames`);
-  }
-  await studio.getByRole("slider", { name: "Stack separation", exact: true }).fill("0");
-  await view("2D");
-  await card("gallery-03-cut-layer", "Inspect every layer.", "Review cut outlines, score lines and alignment before fabrication.", await shot());
-  await studio.getByRole("radio", { name: "Flat engraving", exact: true }).click();
-  await settled();
-  await view("Engraving");
-  await card("gallery-04-flat", "One landscape. Two ways to make.", "Choose flat topographic engraving or a layered relief.", await shot(), "Surface contour artwork · Software preview · Physical dimensions preserved in SVG");
-  await studio.getByRole("radio", { name: "Layered relief", exact: true }).click();
-  await settled();
-  await view("3D");
-  await studio.getByRole("button", { name: "Water", exact: true }).click();
-  await studio.getByRole("spinbutton", { name: "Water depth exaggeration", exact: true }).scrollIntoViewIfNeeded();
-  await card("gallery-05-depth", "Explore below the shoreline.", "Surveyed lake floors where available, with adjustable depth relief.", await shot(), "USGS survey where available · Terrain or modeled depths fill gaps · Depth exaggerated");
-  await studio.getByRole("radio", { name: "Export", exact: true }).click();
-  await studio.locator(".atomm-nesting-drafts svg").first().waitFor();
-  await card("gallery-06-nesting", "Watch the sheets take shape.", "Automatic nesting, live layouts and a choice to finish early.", await shot());
-  await studio.locator('.export-preview[aria-busy="false"] .export-layout-note').waitFor();
-  await card("gallery-07-export", "Know what you are exporting.", "See the actual artwork, file contents and cut/score colors.", await shot());
-  await studio.getByRole("spinbutton", { name: "Material width", exact: true }).fill("700");
-  await studio.getByRole("spinbutton", { name: "Material height", exact: true }).fill("500");
-  await studio.locator(".export-layout-note", { hasText: "700 × 500 mm" }).waitFor();
-  await card("gallery-08-material", "Fit the material you have.", "Set sheet width and height. The layout updates automatically.", await shot());
-  await view("3D");
-  const openSection = async (name) => {
+  const ui = async session => { await session.studio.locator(".generation-overlay:not(.nesting-progress)").waitFor({ state: "hidden", timeout: 180_000 }); await dismissWarnings(session); await session.page.waitForTimeout(400); return session.page.screenshot({ animations: "disabled" }); };
+  const openSection = async ({ studio }, name) => {
+    for (const open of await studio.locator('.gen-rail-params .section-disclosure[aria-expanded="true"]').all()) await open.click();
     const control = studio.getByRole("button", { name, exact: true });
-    const openControls = studio.locator('.gen-rail-params .section-disclosure[aria-expanded="true"]');
-    for (const other of await openControls.all()) {
-      if (await other.getAttribute("id") !== await control.getAttribute("id")) await other.click();
-    }
     if (await control.getAttribute("aria-expanded") !== "true") await control.click();
     await control.scrollIntoViewIfNeeded();
   };
-  await studio.getByRole("button", { name: /Choose location/ }).click();
-  await studio.getByRole("textbox", { name: "Search places", exact: true }).waitFor();
-  await card("gallery-09-location", "Start with a place you love.", "Search places and surveyed lakes, or enter coordinates.", await shot());
-  await page.keyboard.press("Escape");
-  await studio.getByRole("dialog").waitFor({ state: "hidden" });
-  await settled();
-  await openSection("Cut size");
-  await card("gallery-10-size", "Choose the shape and scale.", "Rectangle or circle, physical dimensions, metric or imperial units.", await shot());
-  await openSection("Terrain layers");
-  await card("gallery-11-terrain", "Shape the relief.", "Set material thickness and vertical exaggeration before fabrication.", await shot());
-  await studio.getByRole("radio", { name: "Flat engraving", exact: true }).click();
-  await settled();
-  await view("Engraving");
-  await openSection("Labels and marks");
-  await studio.getByRole("checkbox", { name: "North arrow", exact: true }).scrollIntoViewIfNeeded();
-  await card("gallery-12-annotations", "Make the map readable.", "Roads, trails, water, elevation labels, compass and scale bar.", await shot());
-  await openSection("Map features");
-  await card("gallery-13-linework", "Give every line a purpose.", "Choose a preset or customize widths, road styles and trail patterns.", await shot());
-  await studio.getByRole("radio", { name: "Layered relief", exact: true }).click();
-  await settled();
-  await view("3D");
-  await openSection("Fabrication");
-  await card("gallery-14-fabrication", "Prepare for your process.", "Review kerf, minimum features, work area and assembly guides.", await shot());
-  await studio.getByRole("radio", { name: "Flat engraving", exact: true }).click();
-  await settled();
-  await view("Engraving");
-  await openSection("Markers & paths");
-  const annotations = { type: "FeatureCollection", features: [
-    { type: "Feature", properties: { name: "My Crater Lake marker" }, geometry: { type: "Point", coordinates: [-122.109, 42.9446] } },
-    { type: "Feature", properties: { name: "Illustrative custom path" }, geometry: { type: "LineString", coordinates: [[-122.16,42.92],[-122.14,42.94],[-122.12,42.95]] } }
-  ] };
-  await writeFile(new URL("media-annotations-v9.json", root), JSON.stringify(annotations, null, 2) + "\n");
-  await studio.locator("[data-custom-import]").setInputFiles({ name: "annotations.geojson", mimeType: "application/geo+json", buffer: Buffer.from(JSON.stringify(annotations)) });
-  await studio.getByRole("textbox", { name: "Name for marker 1", exact: true }).waitFor();
-  await settled();
-  await studio.getByRole("textbox", { name: "Name for marker 1", exact: true }).fill("My Crater Lake marker");
-  await studio.getByRole("textbox", { name: "Name for path 1", exact: true }).fill("Illustrative custom path");
-  await settled();
-  await studio.locator(".marker-editor").scrollIntoViewIfNeeded();
-  await card("gallery-15-markers", "Mark your own places.", "Import GPX, KML or GeoJSON, then edit marker coordinates and symbols.", await shot(), "Illustrative user-added marker and path · Software preview · Not navigation guidance");
-  await settled();
-  await studio.locator(".custom-line-editor").scrollIntoViewIfNeeded();
-  await card("gallery-16-paths", "Bring your own paths.", "Draw or import trails and boundaries; edit their points and line style.", await shot(), "Illustrative user-added marker and path · Software preview · Not navigation guidance");
-  await studio.getByRole("radio", { name: "Layered relief", exact: true }).click();
-  await settled();
-  await view("Export");
-  await studio.locator('.export-preview[aria-busy="false"] .export-layout-note').waitFor();
-  const manifest = await frame().evaluate(async () => { const files = await window.captureExport({ intent: "download" }); return JSON.parse(await files.find(file => file.filename.endsWith("-project.json")).blob.text()); });
+
+  // Places: one hero-angle render each; Crater Lake also supplies the backdrop,
+  // the exploded stack, the flat artwork and the interface screenshots.
+  const places = await listingPlaces();
+  let renders = {};
+  if (reuse) {
+    const cached = JSON.parse(await readFile(cacheFile, "utf8"));
+    const revive = value => value && typeof value === "object" ? (value.$buffer ? Buffer.from(value.$buffer, "base64") : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, revive(v)]))) : value;
+    renders = revive(cached.renders); Object.assign(projects, cached.projects); cached.attribution.forEach(source => attribution.set(source.name, source)); cached.surveyResponses.forEach(url => surveyResponses.add(url));
+  } else {
+    for (const place of places) {
+      renders[place.id] = await capture(place.id, place.project, async session => {
+        const hero = await matte(session.frame, { fill: place.id === "crater-lake" ? 0.95 : 1.02 });
+        if (place.id !== "crater-lake") return { hero };
+        const exploded = await matte(session.frame, { explode: 0.45, azimuth: -76, elevation: 32, fill: 1.12 });
+        const svg = await engravingSvg(session);
+        await session.studio.getByRole("button", { name: /Choose location/ }).click();
+        await session.studio.getByRole("textbox", { name: "Search places", exact: true }).waitFor();
+        const location = await session.studio.getByRole("dialog").screenshot();
+        await session.page.keyboard.press("Escape");
+        await session.settled();
+        await openSection(session, "Cut size");
+        const sizeTop = await session.studio.getByRole("button", { name: "Cut size", exact: true }).boundingBox(), sizeBottom = await session.studio.locator("#panel-place").boundingBox();
+        const size = await session.page.screenshot({ clip: { x: sizeTop.x - 8, y: sizeTop.y - 8, width: sizeTop.width + 16, height: sizeBottom.y + sizeBottom.height - sizeTop.y + 16 } });
+        await session.view("Export");
+        await session.studio.locator('.export-preview[aria-busy="false"] .export-layout-note').waitFor({ timeout: 180_000 });
+        const exported = await ui(session);
+        const exportPreview = await session.studio.locator(".export-preview").screenshot();
+        await session.studio.getByRole("radio", { name: "Flat engraving", exact: true }).click();
+        await session.settled();
+        await session.view("Engraving");
+        await openSection(session, "Labels and marks");
+        const labels = await ui(session);
+        await session.studio.getByRole("radio", { name: "Layered relief", exact: true }).click();
+        await session.settled();
+        await session.view("3D");
+        return { hero, exploded, svg, location, size, exported, exportPreview, labels };
+      });
+    }
+    const features = await featureProjects();
+    for (const [id, project] of Object.entries(features)) {
+      renders[id] = await capture(id, project, async session => ({ hero: await matte(session.frame, { fill: 1.0, elevation: id === "airspace" ? 38 : 50 }) }));
+    }
+    const pack = value => Buffer.isBuffer(value) ? { $buffer: value.toString("base64") } : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, pack(v)])) : value;
+    await writeFile(cacheFile, JSON.stringify({ renders: pack(renders), projects, attribution: [...attribution.values()], surveyResponses: [...surveyResponses] }));
+  }
+  const crater = renders["crater-lake"];
+  if (!surveyResponses.size) throw new Error("No successful Crater Lake survey request; refusing to label modeled-only media as surveyed.");
+
+  const cut = {};
+  for (const [id, value] of Object.entries(renders)) {
+    cut[id] = await cutout(composer, value.hero);
+    if (value.exploded) cut[`${id}-exploded`] = await cutout(composer, value.exploded);
+  }
+  const lines = contourLines(crater.svg);
+
+  async function save(id, html, meta) {
+    const name = `topostack-${id}-${VERSION}.png`;
+    const buffer = await renderCard(composer, html, new URL(name, assets).pathname);
+    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: sha256Hex(buffer), width: 3200, height: 2400, sourceCommit, ...meta });
+    console.log("Saved", name);
+  }
+  const caption = place => `Software render · ${place} · Live terrain data`;
+
+  await save("cover", backdrop(lines, 0.5) + model(cut["crater-lake"], { width: 94, top: 54 }), { title: "Crater Lake", subtitle: "Cover: software render on its own engraving artwork", place: "Crater Lake" });
+
+  const grid = places.map((place, i) => {
+    const col = i % 3, row = Math.floor(i / 3), left = 19 + col * 31, top = 46 + row * 29;
+    return model(cut[place.id], { left, top, width: 25 }) + `<div style="position:absolute;left:${left}%;top:${top + 10}%;transform:translateX(-50%);z-index:5;text-align:center;color:#e9dcc6;font:600 22px/1.2 'Helvetica Neue',Arial;letter-spacing:2px;white-space:nowrap">${escapeHtml(place.label.toUpperCase())}<div style="font-weight:400;font-size:16px;opacity:.7;letter-spacing:1px">${escapeHtml(place.where)}</div></div>`;
+  }).join("");
+  await save("gallery-01-places", card({ lines, headline: "Any place on Earth.", subtitle: "Mountains, canyons, volcanoes and lakes from real elevation data.", body: grid, caption: "Software renders · Six places at the same size · Live terrain data" }), { title: "Any place on Earth.", places: places.map(place => place.label) });
+
+  await save("gallery-02-layers", card({ lines, headline: "Built layer by layer.", subtitle: "Every contour becomes a sheet. Separate the stack to see how it fits.", body: model(cut["crater-lake-exploded"], { height: 66, top: 62 }), caption: caption("Crater Lake") }), { title: "Built layer by layer." });
+
+  await save("gallery-03-relief-engraving", card({ lines, headline: "Relief or engraving.", subtitle: "Stack it in layers, or engrave the same map on a single sheet.", body:
+    model(cut["crater-lake"], { left: 30, top: 63, width: 52 }) +
+    `<div style="position:absolute;left:73%;top:63%;width:42%;transform:translate(-50%,-50%) rotate(2deg);z-index:2;background:#e2c497;border-radius:6px;padding:2.2%;box-shadow:0 26px 40px rgba(0,0,0,.5)"><img src="${engravingArtwork(crater.svg)}" style="width:100%;display:block"></div>`,
+    caption: "Software render and actual engraving artwork · Crater Lake" }), { title: "Relief or engraving." });
+
+  await save("gallery-04-acrylic", card({ lines, headline: "Cut lakes from acrylic.", subtitle: "Each lake becomes a fitted acrylic insert in the sheet at its waterline.", body: model(cut.acrylic, { width: 82, top: 63 }), caption: caption("Crater Lake · Acrylic water inserts") }), { title: "Cut lakes from acrylic." });
+
+  await save("gallery-05-public-lands", card({ lines, headline: "Paint the parks.", subtitle: "Paint templates for national parks, forests and wilderness, in the US and Canada.", body: model(cut.lands, { width: 82, top: 63 }), caption: caption("Grand Teton · PAD-US public lands") }), { title: "Paint the parks." });
+
+  await save("gallery-06-airspace", card({ lines, headline: "Airspace you can hold.", subtitle: "FAA Class C and D airspace in acrylic tiers above US terrain.", body: model(cut.airspace, { width: 82, top: 63 }), caption: caption("Colorado Springs · FAA airspace, not for navigation") }), { title: "Airspace you can hold." });
+
+  const step = (n, label, x) => `<div style="position:absolute;left:${x}%;top:31%;transform:translateX(-50%);z-index:5;color:#e9dcc6;font:700 26px 'Helvetica Neue',Arial;white-space:nowrap"><span style="display:inline-block;width:42px;height:42px;border-radius:50%;background:#e9dcc6;color:#1a2a34;text-align:center;line-height:42px;margin-right:12px">${n}</span>${escapeHtml(label)}</div>`;
+  await save("gallery-07-three-steps", card({ lines, headline: "Three steps to a cut file.", subtitle: "Pick a place, set its size, then open it in xTool Studio.", body:
+    step(1, "Pick a place", 18) + step(2, "Set the size", 50) + step(3, "Open in Studio", 82) +
+    screenshot(crater.location, { left: 18, top: 37, width: 27, anchor: "top" }) + screenshot(crater.size, { left: 50, top: 37, width: 24, anchor: "top" }) + screenshot(crater.exportPreview, { left: 82, top: 37, width: 28, anchor: "top" }),
+    caption: "Screenshots of the TopoStack generator in Atomm · Crater Lake" }), { title: "Three steps to a cut file." });
+
+  await save("gallery-08-ready-to-cut", card({ lines, headline: "Ready to cut.", subtitle: "Pieces nested on your material, cuts in red and scores in blue.", body: screenshot(crater.exported, { top: 61, width: 74 }), caption: "Screenshot of the Export view in Atomm · Crater Lake" }), { title: "Ready to cut." });
+
+  await save("gallery-09-make-it-yours", card({ lines, headline: "Make it yours.", subtitle: "Titles, labels, compass, scale bar, and your own markers and paths.", body: screenshot(crater.labels, { top: 61, width: 74 }), caption: "Screenshot of the TopoStack generator in Atomm · Flat engraving" }), { title: "Make it yours." });
+
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
-  await writeFile(new URL("media-project-v9.json", root), JSON.stringify(project, null, 2) + "\n");
-  await writeFile(new URL("media-export-v9.json", root), JSON.stringify(manifest, null, 2) + "\n");
-  const movie = new URL("topostack-cover-loop-v9.mp4", assets).pathname;
-  execFileSync(ffmpeg, ["-y", "-framerate", "60", "-i", join(scratch, "motion-%03d.png"), "-vf", "fps=60", "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", movie], { stdio: "ignore" });
-  // Dynamic opening and closing, with gentle pan/zoom on crisp gallery cards.
-  const segments = [];
-  for (const [i, item] of media.filter(item => item.file.includes("gallery")).entries()) {
-    const segment = join(scratch, `scene-${i}.mp4`);
-    execFileSync(ffmpeg, ["-y", "-i", new URL(item.file, root).pathname, "-vf",
-      "zoompan=z='1+0.025*on/239':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=240:s=1920x1440:fps=60,fade=t=in:st=0:d=0.15:color=0xe7e8e9,fade=t=out:st=3.85:d=0.15:color=0xe7e8e9",
-      "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p", "-an", segment], { stdio: "ignore" });
-    segments.push(segment);
-  }
-  const list = join(scratch, "showcase.txt");
-  await writeFile(list, [movie, ...segments, movie].map(file => `file '${file}'`).join("\n"));
-  const showcase = new URL("topostack-showcase-v9.mp4", assets).pathname;
-  execFileSync(ffmpeg, ["-y", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", showcase], { stdio: "ignore" });
-  for (const file of ["topostack-cover-loop-v9.mp4", "topostack-showcase-v9.mp4"]) {
-    execFileSync(ffmpeg, ["-v", "error", "-i", new URL(file, assets).pathname, "-f", "null", "-"], { stdio: "pipe" });
-    const bytes = await readFile(new URL(file, assets));
-    media.push({ file: `assets/${file}`, bytes: bytes.length, sha256: sha256Hex(bytes), width: 1920, height: 1440, sourceCommit, fullDecodePassed: true, codec: "H.264", fps: 60, audio: false });
-  }
-  const archive = new URL("media-provenance-v7.json", root);
+  await writeFile(new URL(`media-projects-${VERSION}.json`, root), JSON.stringify(projects, null, 2) + "\n");
+  const archive = new URL("media-provenance-v9.json", root);
   try { await access(archive); } catch { await copyFile(new URL("media-provenance.json", root), archive); }
-  await writeFile(new URL("media-provenance.json", root), JSON.stringify({ schemaVersion: 7, sourceDiffSha256, annotationsFile: "media-annotations-v9.json", capturedAt: new Date().toISOString(), sourceCommit, developmentBase: execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim(), version: atommVersion, origin, projectFile: "media-project-v9.json", exportFile: "media-export-v9.json", method: "Current embedded studio with genuine live terrain/survey data. Native UI/model screenshots with typography around unchanged app pixels. SDK mount/export stand-in only; no fixture terrain, AI imagery or fabricated UI. Screenshots captured at 2x device scale, with native model renders at their presentation resolution; warning notifications dismissed before promotional captures. Cover movie contains 360 distinct native renders at 60 fps using the unchanged Three.js meshes/materials, continuous layer offsets and an orbiting camera. Capture-only module interception exposes the renderer without changing shipped code. Showcase combines native motion with gently moving high-resolution feature cards; no optical-flow interpolation. Historical v5–v8 media remains on disk but is excluded from this upload set.", surveyResponses: [...surveyResponses], source: manifest.result, attribution: manifest.attribution, media }, null, 2) + "\n");
-  console.log("Completed", media.length, "media files", scratch);
+  await writeFile(new URL("media-provenance.json", root), JSON.stringify({
+    schemaVersion: 8, capturedAt: new Date().toISOString(), reusedRenders: reuse, sourceCommit, sourceDiffSha256,
+    developmentBase: execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim(), version: atommVersion, origin,
+    projectFile: `media-projects-${VERSION}.json`,
+    method: "Embedded studio with live terrain and survey data, through an SDK stand-in. Models are the studio's own Three.js meshes and materials, rendered twice (over white and over black) so their alpha can be recovered; only the camera and the key light's angle and colour are set for capture. Backdrops are each card's flat-engraving SVG from the same studio, restyled as faint lines. Interface images are unedited screenshots of the embedded studio at 2x. Cards are composed in HTML; no AI imagery, photo compositing or fabricated interface. Historical media remains on disk and is excluded from this upload set.",
+    surveyResponses: [...surveyResponses], attribution: [...attribution.values()], media,
+  }, null, 2) + "\n");
+  console.log("Completed", media.length, "media files");
 } finally { await browser.close(); }
