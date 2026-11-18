@@ -36,4 +36,6 @@ The stock size is a layout default, not a detected machine bed: Atomm selects th
 
 Assembly ids use Atomm blue in embedded SVGs and accompanying guide text so they join the standard engraving group without a manual extra color assignment. Standalone packages retain their separate green assembly group. This follows the [SVG color specification](https://dev.atomm.com/docs/export/svg-color-spec).
 
+Open in Studio sends the wood master alone. Acrylic water inserts and acrylic airspace are another material and another job, so they travel only in Download; `acrylicOutsideStudio()` in `export-policy.ts` words the ready note that says so, and the Export view labels the Studio file "Wood layout" when anything is left out.
+
 Sheet arrangement and terrain generation share the `GenerationProgress` component and platform styling. During arrangement, Export displays actual draft sheet outlines, sheet counts, material utilization and layout updates from the worker. “Use current layout” stops with a complete draft; step 2 then builds the final export package. No estimated completion percentage or looping animation is used.

@@ -60,7 +60,7 @@ try {
   const cardPage = await browser.newPage({ viewport: { width: 1600, height: 1200 }, deviceScaleFactor: 2 });
   const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
   async function card(id, title, subtitle, png, caption = "Crater Lake · Software preview · Review material and machine settings before fabrication") {
-    const name = `topostack-${id}-v8.png`;
+    const name = `topostack-${id}-v9.png`;
     await cardPage.setContent(`<html><head><style>*{box-sizing:border-box}body{margin:0;background:#e7e8e9;color:#1d302e;font-family:Arial,sans-serif;padding:48px 64px}header{display:flex;justify-content:space-between;font-size:22px;font-weight:700;letter-spacing:-.5px}header span{font-size:16px;font-weight:400;letter-spacing:2px}h1{font-size:62px;letter-spacing:-2.5px;line-height:1.08;margin:30px 0 12px}p{font-size:26px;margin:0 0 30px;color:#405451}main{height:840px;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain;border-radius:16px;box-shadow:0 10px 35px #00000012}footer{position:absolute;bottom:35px;left:64px;right:64px;display:flex;justify-content:space-between;color:#52625f;font-size:15px}</style></head><body><header>TopoStack<span>MAP · LAYER · MAKE</span></header><h1>${escape(title)}</h1><p>${escape(subtitle)}</p><main><img src="data:image/png;base64,${png.toString("base64")}"></main><footer><span>${escape(caption)}</span><span>topostack.app</span></footer></body></html>`);
     await cardPage.locator("img").evaluate(img => img.decode());
     const buffer = await cardPage.screenshot({ path: new URL(name, assets).pathname });
@@ -167,7 +167,7 @@ try {
     { type: "Feature", properties: { name: "My Crater Lake marker" }, geometry: { type: "Point", coordinates: [-122.109, 42.9446] } },
     { type: "Feature", properties: { name: "Illustrative custom path" }, geometry: { type: "LineString", coordinates: [[-122.16,42.92],[-122.14,42.94],[-122.12,42.95]] } }
   ] };
-  await writeFile(new URL("media-annotations-v8.json", root), JSON.stringify(annotations, null, 2) + "\n");
+  await writeFile(new URL("media-annotations-v9.json", root), JSON.stringify(annotations, null, 2) + "\n");
   await studio.locator("[data-custom-import]").setInputFiles({ name: "annotations.geojson", mimeType: "application/geo+json", buffer: Buffer.from(JSON.stringify(annotations)) });
   await studio.getByRole("textbox", { name: "Name for marker 1", exact: true }).waitFor();
   await settled();
@@ -185,9 +185,9 @@ try {
   await studio.locator('.export-preview[aria-busy="false"] .export-layout-note').waitFor();
   const manifest = await frame().evaluate(async () => { const files = await window.captureExport({ intent: "download" }); return JSON.parse(await files.find(file => file.filename.endsWith("-project.json")).blob.text()); });
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
-  await writeFile(new URL("media-project-v8.json", root), JSON.stringify(project, null, 2) + "\n");
-  await writeFile(new URL("media-export-v8.json", root), JSON.stringify(manifest, null, 2) + "\n");
-  const movie = new URL("topostack-cover-loop-v8.mp4", assets).pathname;
+  await writeFile(new URL("media-project-v9.json", root), JSON.stringify(project, null, 2) + "\n");
+  await writeFile(new URL("media-export-v9.json", root), JSON.stringify(manifest, null, 2) + "\n");
+  const movie = new URL("topostack-cover-loop-v9.mp4", assets).pathname;
   execFileSync(ffmpeg, ["-y", "-framerate", "60", "-i", join(scratch, "motion-%03d.png"), "-vf", "fps=60", "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", movie], { stdio: "ignore" });
   // Dynamic opening and closing, with gentle pan/zoom on crisp gallery cards.
   const segments = [];
@@ -200,15 +200,15 @@ try {
   }
   const list = join(scratch, "showcase.txt");
   await writeFile(list, [movie, ...segments, movie].map(file => `file '${file}'`).join("\n"));
-  const showcase = new URL("topostack-showcase-v8.mp4", assets).pathname;
+  const showcase = new URL("topostack-showcase-v9.mp4", assets).pathname;
   execFileSync(ffmpeg, ["-y", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", showcase], { stdio: "ignore" });
-  for (const file of ["topostack-cover-loop-v8.mp4", "topostack-showcase-v8.mp4"]) {
+  for (const file of ["topostack-cover-loop-v9.mp4", "topostack-showcase-v9.mp4"]) {
     execFileSync(ffmpeg, ["-v", "error", "-i", new URL(file, assets).pathname, "-f", "null", "-"], { stdio: "pipe" });
     const bytes = await readFile(new URL(file, assets));
     media.push({ file: `assets/${file}`, bytes: bytes.length, sha256: sha256Hex(bytes), width: 1920, height: 1440, sourceCommit, fullDecodePassed: true, codec: "H.264", fps: 60, audio: false });
   }
   const archive = new URL("media-provenance-v7.json", root);
   try { await access(archive); } catch { await copyFile(new URL("media-provenance.json", root), archive); }
-  await writeFile(new URL("media-provenance.json", root), JSON.stringify({ schemaVersion: 7, sourceDiffSha256, annotationsFile: "media-annotations-v8.json", capturedAt: new Date().toISOString(), sourceCommit, developmentBase: execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim(), version: atommVersion, origin, projectFile: "media-project-v8.json", exportFile: "media-export-v8.json", method: "Current embedded studio with genuine live terrain/survey data. Native UI/model screenshots with typography around unchanged app pixels. SDK mount/export stand-in only; no fixture terrain, AI imagery or fabricated UI. Screenshots captured at 2x device scale, with native model renders at their presentation resolution; warning notifications dismissed before promotional captures. Cover movie contains 360 distinct native renders at 60 fps using the unchanged Three.js meshes/materials, continuous layer offsets and an orbiting camera. Capture-only module interception exposes the renderer without changing shipped code. Showcase combines native motion with gently moving high-resolution feature cards; no optical-flow interpolation. Historical v5/v6/v7 media remains on disk but is excluded from this upload set.", surveyResponses: [...surveyResponses], source: manifest.result, attribution: manifest.attribution, media }, null, 2) + "\n");
+  await writeFile(new URL("media-provenance.json", root), JSON.stringify({ schemaVersion: 7, sourceDiffSha256, annotationsFile: "media-annotations-v9.json", capturedAt: new Date().toISOString(), sourceCommit, developmentBase: execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim(), version: atommVersion, origin, projectFile: "media-project-v9.json", exportFile: "media-export-v9.json", method: "Current embedded studio with genuine live terrain/survey data. Native UI/model screenshots with typography around unchanged app pixels. SDK mount/export stand-in only; no fixture terrain, AI imagery or fabricated UI. Screenshots captured at 2x device scale, with native model renders at their presentation resolution; warning notifications dismissed before promotional captures. Cover movie contains 360 distinct native renders at 60 fps using the unchanged Three.js meshes/materials, continuous layer offsets and an orbiting camera. Capture-only module interception exposes the renderer without changing shipped code. Showcase combines native motion with gently moving high-resolution feature cards; no optical-flow interpolation. Historical v5–v8 media remains on disk but is excluded from this upload set.", surveyResponses: [...surveyResponses], source: manifest.result, attribution: manifest.attribution, media }, null, 2) + "\n");
   console.log("Completed", media.length, "media files", scratch);
 } finally { await browser.close(); }

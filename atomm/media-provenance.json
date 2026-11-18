@@ -1,21 +1,21 @@
 {
   "schemaVersion": 7,
-  "sourceDiffSha256": "9904ec770c4e86b33495259c062a43c07d6e3c5de5f2a0ede45593c669ae2b18",
-  "annotationsFile": "media-annotations-v8.json",
-  "capturedAt": "2026-09-29T15:27:45.752Z",
-  "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
-  "developmentBase": "20504d160b03fa3ca030972d08fb0995d562bce1",
-  "version": "0.7.1",
-  "origin": "http://127.0.0.1:5286",
-  "projectFile": "media-project-v8.json",
-  "exportFile": "media-export-v8.json",
-  "method": "Current embedded studio with genuine live terrain/survey data. Native UI/model screenshots with typography around unchanged app pixels. SDK mount/export stand-in only; no fixture terrain, AI imagery or fabricated UI. Screenshots captured at 2x device scale, with native model renders at their presentation resolution; warning notifications dismissed before promotional captures. Cover movie contains 360 distinct native renders at 60 fps using the unchanged Three.js meshes/materials, continuous layer offsets and an orbiting camera. Capture-only module interception exposes the renderer without changing shipped code. Showcase combines native motion with gently moving high-resolution feature cards; no optical-flow interpolation. Historical v5/v6/v7 media remains on disk but is excluded from this upload set.",
+  "sourceDiffSha256": "240afe7b93e9cc8fd03d7915ef69f1b6acb7bf44adfe103996428f158fb66896",
+  "annotationsFile": "media-annotations-v9.json",
+  "capturedAt": "2026-11-18T22:06:02.971Z",
+  "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
+  "developmentBase": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
+  "version": "0.11.1",
+  "origin": "http://localhost:5273",
+  "projectFile": "media-project-v9.json",
+  "exportFile": "media-export-v9.json",
+  "method": "Current embedded studio with genuine live terrain/survey data. Native UI/model screenshots with typography around unchanged app pixels. SDK mount/export stand-in only; no fixture terrain, AI imagery or fabricated UI. Screenshots captured at 2x device scale, with native model renders at their presentation resolution; warning notifications dismissed before promotional captures. Cover movie contains 360 distinct native renders at 60 fps using the unchanged Three.js meshes/materials, continuous layer offsets and an orbiting camera. Capture-only module interception exposes the renderer without changing shipped code. Showcase combines native motion with gently moving high-resolution feature cards; no optical-flow interpolation. Historical v5–v8 media remains on disk but is excluded from this upload set.",
   "surveyResponses": [
     "https://topostack.app/v1/bathymetry/usgs-crater-lake-v1.pmtiles"
   ],
   "source": {
     "projectId": "topostack-crater-automatic-depth",
-    "generatedAt": "2026-09-29T15:23:19.341Z",
+    "generatedAt": "2026-11-18T22:01:44.893Z",
     "minElevationM": 843.6714477539062,
     "maxElevationM": 2713.155029296875,
     "layers": [
@@ -275,9 +275,9 @@
       {
         "id": "layer-26",
         "elevationM": 1979.6044734074521,
-        "filename": "crater-lake-sheet-01.svg",
+        "filename": "crater-lake-sheet-02.svg",
         "filenames": [
-          "crater-lake-sheet-01.svg",
+          "crater-lake-sheet-02.svg",
           "crater-lake-sheet-05.svg",
           "crater-lake-sheet-13.svg"
         ],
@@ -296,11 +296,11 @@
       {
         "id": "layer-28",
         "elevationM": 2071.29829289363,
-        "filename": "crater-lake-sheet-03.svg",
+        "filename": "crater-lake-sheet-01.svg",
         "filenames": [
+          "crater-lake-sheet-01.svg",
           "crater-lake-sheet-03.svg",
-          "crater-lake-sheet-04.svg",
-          "crater-lake-sheet-05.svg"
+          "crater-lake-sheet-04.svg"
         ],
         "pieces": []
       },
@@ -738,13 +738,13 @@
         },
         "sheetCount": 14,
         "partCount": 116,
-        "utilization": 0.5555741116023224,
-        "elapsedMs": 5433
+        "utilization": 0.5555743125697071,
+        "elapsedMs": 5287
       },
       "panels": [
         {
           "sheet": 1,
-          "usedWidthMm": 551.403,
+          "usedWidthMm": 551.40295,
           "filename": "crater-lake-sheet-01.svg",
           "engravingFilename": "crater-lake-sheet-01-engrave.svg",
           "paintTemplateFilenames": [],
@@ -754,8 +754,8 @@
             "layer-01",
             "layer-21",
             "layer-24",
-            "layer-26",
             "layer-27",
+            "layer-28",
             "layer-31",
             "layer-32"
           ],
@@ -778,7 +778,7 @@
                 "layer-21"
               ],
               "rotationDeg": 90,
-              "xMm": 412.46106,
+              "xMm": 412.461,
               "yMm": 207.35416
             },
             {
@@ -788,7 +788,7 @@
                 "layer-31"
               ],
               "rotationDeg": 0,
-              "xMm": 532.1817,
+              "xMm": 532.18164,
               "yMm": 479.84595
             },
             {
@@ -798,8 +798,8 @@
                 "layer-24"
               ],
               "rotationDeg": 90,
-              "xMm": 24.488552,
-              "yMm": 480.27527
+              "xMm": 24.52438,
+              "yMm": 480.25143
             },
             {
               "partId": "layer-27:1",
@@ -808,24 +808,24 @@
                 "layer-27"
               ],
               "rotationDeg": 90,
-              "xMm": 17.527579,
-              "yMm": 493.02673
+              "xMm": 17.528163,
+              "yMm": 492.8893
             },
             {
-              "partId": "layer-26:2",
-              "label": "L26-3",
+              "partId": "layer-28:8",
+              "label": "L28-9",
               "layerIds": [
-                "layer-26"
+                "layer-28"
               ],
-              "rotationDeg": 90,
-              "xMm": -95.290955,
-              "yMm": 534.66766
+              "rotationDeg": 0,
+              "xMm": -111.02841,
+              "yMm": 481.2015
             }
           ]
         },
         {
           "sheet": 2,
-          "usedWidthMm": 681.4754,
+          "usedWidthMm": 681.476,
           "filename": "crater-lake-sheet-02.svg",
           "engravingFilename": "crater-lake-sheet-02-engrave.svg",
           "paintTemplateFilenames": [],
@@ -835,6 +835,7 @@
             "layer-02",
             "layer-21",
             "layer-22",
+            "layer-26",
             "layer-29",
             "layer-31",
             "layer-39"
@@ -858,7 +859,7 @@
                 "layer-22"
               ],
               "rotationDeg": 90,
-              "xMm": 412.19742,
+              "xMm": 412.19788,
               "yMm": 179.15508
             },
             {
@@ -868,7 +869,7 @@
                 "layer-29"
               ],
               "rotationDeg": 90,
-              "xMm": 596.1229,
+              "xMm": 596.12354,
               "yMm": 373.20682
             },
             {
@@ -878,7 +879,7 @@
                 "layer-31"
               ],
               "rotationDeg": 180,
-              "xMm": 59.58189,
+              "xMm": 59.581944,
               "yMm": 547.6407
             },
             {
@@ -888,7 +889,7 @@
                 "layer-29"
               ],
               "rotationDeg": 90,
-              "xMm": -54.239155,
+              "xMm": -54.239124,
               "yMm": 439.4762
             },
             {
@@ -898,18 +899,18 @@
                 "layer-21"
               ],
               "rotationDeg": 180,
-              "xMm": 150.23453,
+              "xMm": 150.23454,
               "yMm": 385.58044
             },
             {
-              "partId": "layer-21:3",
-              "label": "L21-4",
+              "partId": "layer-26:2",
+              "label": "L26-3",
               "layerIds": [
-                "layer-21"
+                "layer-26"
               ],
               "rotationDeg": 90,
-              "xMm": -118.14865,
-              "yMm": 683.98566
+              "xMm": -87.10055,
+              "yMm": 583.79706
             }
           ]
         },
@@ -1283,14 +1284,14 @@
               "yMm": 442.0056
             },
             {
-              "partId": "layer-23:2",
-              "label": "L23-3",
+              "partId": "layer-21:3",
+              "label": "L21-4",
               "layerIds": [
-                "layer-23"
+                "layer-21"
               ],
-              "rotationDeg": 0,
-              "xMm": 169.49258,
-              "yMm": 489.92828
+              "rotationDeg": 270,
+              "xMm": 158.84978,
+              "yMm": 308.74774
             }
           ]
         },
@@ -1320,7 +1321,6 @@
             "layer-24",
             "layer-25",
             "layer-26",
-            "layer-28",
             "layer-29",
             "layer-30",
             "layer-31"
@@ -1757,6 +1757,16 @@
               "yMm": 427.79019999999997
             },
             {
+              "partId": "layer-23:2",
+              "label": "L23-3",
+              "layerIds": [
+                "layer-23"
+              ],
+              "rotationDeg": 90,
+              "xMm": -23.363499999999966,
+              "yMm": 598.193
+            },
+            {
               "partId": "layer-21:4",
               "label": "L21-5",
               "layerIds": [
@@ -1774,7 +1784,7 @@
               ],
               "rotationDeg": 90,
               "xMm": -80.916,
-              "yMm": 625.6391
+              "yMm": 630.1905
             },
             {
               "partId": "layer-23:4",
@@ -1782,9 +1792,9 @@
               "layerIds": [
                 "layer-23"
               ],
-              "rotationDeg": 0,
-              "xMm": 198.0464,
-              "yMm": 335.00440000000003
+              "rotationDeg": 90,
+              "xMm": 184.4273,
+              "yMm": 611.8859
             },
             {
               "partId": "layer-20:1",
@@ -1793,18 +1803,8 @@
                 "layer-20"
               ],
               "rotationDeg": 0,
-              "xMm": 242.6201,
-              "yMm": 550.9342
-            },
-            {
-              "partId": "layer-28:8",
-              "label": "L28-9",
-              "layerIds": [
-                "layer-28"
-              ],
-              "rotationDeg": 0,
-              "xMm": -61.011600000000016,
-              "yMm": 511.5605999999999
+              "xMm": 243.0296,
+              "yMm": 579.1904
             },
             {
               "partId": "layer-26:1",
@@ -1814,7 +1814,7 @@
               ],
               "rotationDeg": 0,
               "xMm": 174.071,
-              "yMm": 533.4940999999999
+              "yMm": 533.8205999999999
             },
             {
               "partId": "layer-25:2",
@@ -1823,8 +1823,8 @@
                 "layer-25"
               ],
               "rotationDeg": 90,
-              "xMm": 117.5591,
-              "yMm": 586.2869000000001
+              "xMm": 118.19749999999999,
+              "yMm": 594.7511999999999
             },
             {
               "partId": "layer-25:6",
@@ -1833,8 +1833,8 @@
                 "layer-25"
               ],
               "rotationDeg": 0,
-              "xMm": -103.67170000000002,
-              "yMm": 557.9118
+              "xMm": -103.66260000000003,
+              "yMm": 487.4942
             },
             {
               "partId": "layer-06:2",
@@ -1842,9 +1842,9 @@
               "layerIds": [
                 "layer-06"
               ],
-              "rotationDeg": 90,
-              "xMm": 87.95930000000001,
-              "yMm": 422.20950000000005
+              "rotationDeg": 0,
+              "xMm": 37.273699999999984,
+              "yMm": 381.8276
             },
             {
               "partId": "layer-22:7",
@@ -1852,9 +1852,9 @@
               "layerIds": [
                 "layer-22"
               ],
-              "rotationDeg": 0,
-              "xMm": -84.15730000000002,
-              "yMm": 514.9202
+              "rotationDeg": 90,
+              "xMm": -42.39500000000001,
+              "yMm": 321.9657
             }
           ]
         },
@@ -2326,194 +2326,194 @@
   ],
   "media": [
     {
-      "file": "assets/topostack-cover-v8.png",
-      "bytes": 1608870,
-      "sha256": "ad4101ada1c38a143e0a15d7583341cd8ff4c837c34b72096e62bc596531faf1",
+      "file": "assets/topostack-cover-v9.png",
+      "bytes": 1667652,
+      "sha256": "60335996ee05a00303c89b9a115d7fb3e7d00377e7d7792532bba01c25a2b497",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "A place, made personal.",
       "subtitle": "Real terrain. Layered reliefs. Ready-to-make artwork."
     },
     {
-      "file": "assets/topostack-gallery-01-workbench-v8.png",
-      "bytes": 947504,
-      "sha256": "fe613fd5818f0ba06a31673d37b6c93d753e65511809a2ac02798cece38c61be",
+      "file": "assets/topostack-gallery-01-workbench-v9.png",
+      "bytes": 1874566,
+      "sha256": "12b4715abc4f974db203580e8c552211dd92566993dcb184d08ff388324e33de",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Your landscape, your way.",
       "subtitle": "Shape the terrain and preview every change in Atomm."
     },
     {
-      "file": "assets/topostack-gallery-02-layers-v8.png",
-      "bytes": 1043752,
-      "sha256": "e53233962d271f05581ebb54649502d5814512e82157d64bc6954c52eb424da4",
+      "file": "assets/topostack-gallery-02-layers-v9.png",
+      "bytes": 1091679,
+      "sha256": "815272368d747078fe2ab4119b2f6ac51183651c61346c1955f5da06e1544ba4",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "See how the layers fit.",
       "subtitle": "Explore the assembled relief or separate the stack before cutting."
     },
     {
-      "file": "assets/topostack-gallery-03-cut-layer-v8.png",
-      "bytes": 524963,
-      "sha256": "2027d8b183e126c5942bd736ddbc5a84e32cc60c1d2fa8c5b6ae66955836abd7",
+      "file": "assets/topostack-gallery-03-cut-layer-v9.png",
+      "bytes": 536480,
+      "sha256": "8c078877cac760a93296e82f2e370f64b23515cb94c223d8f65642a541a782bc",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Inspect every layer.",
       "subtitle": "Review cut outlines, score lines and alignment before fabrication."
     },
     {
-      "file": "assets/topostack-gallery-04-flat-v8.png",
-      "bytes": 716156,
-      "sha256": "532f14d175e4661fe3b0eb0c66e86816690c14bd709bfc96100997606460e772",
+      "file": "assets/topostack-gallery-04-flat-v9.png",
+      "bytes": 717011,
+      "sha256": "af5e358553b7517bf85c4f91c07e8ef59df680b5fdafe9e5754eaf8fc178c316",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "One landscape. Two ways to make.",
       "subtitle": "Choose flat topographic engraving or a layered relief."
     },
     {
-      "file": "assets/topostack-gallery-05-depth-v8.png",
-      "bytes": 1077156,
-      "sha256": "275d702ca5eeffac266b96c2df3b650cdf17b08d6d86f21fdeda22170a61b874",
+      "file": "assets/topostack-gallery-05-depth-v9.png",
+      "bytes": 1188106,
+      "sha256": "e47296fcd03cd2add07638a8820d75ac601f09d903428262c5bd014a98ad493c",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Explore below the shoreline.",
       "subtitle": "Surveyed lake floors where available, with adjustable depth relief."
     },
     {
-      "file": "assets/topostack-gallery-06-nesting-v8.png",
-      "bytes": 547019,
-      "sha256": "4f34656f179f1bf3c66184f79f623d5cdb06ce9ce987a3b8c22fea520630791c",
+      "file": "assets/topostack-gallery-06-nesting-v9.png",
+      "bytes": 548408,
+      "sha256": "17b84b0fd35561f979b245eb7afe0667e3469290fab92b61ce8d475a43be7190",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Watch the sheets take shape.",
       "subtitle": "Automatic nesting, live layouts and a choice to finish early."
     },
     {
-      "file": "assets/topostack-gallery-07-export-v8.png",
-      "bytes": 623449,
-      "sha256": "0b418957d6ffdd2ef01a4cbd76da87fc2a8144211b120d830380d95060261132",
+      "file": "assets/topostack-gallery-07-export-v9.png",
+      "bytes": 633538,
+      "sha256": "2b1d720e773663ff48a4d60d15114159c409d6bdf48b8c6c511a748208622981",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Know what you are exporting.",
       "subtitle": "See the actual artwork, file contents and cut/score colors."
     },
     {
-      "file": "assets/topostack-gallery-08-material-v8.png",
-      "bytes": 642378,
-      "sha256": "9fc146c9b764904c2129bd515bd0eb79557c6a94ee97521355f8794126d3db59",
+      "file": "assets/topostack-gallery-08-material-v9.png",
+      "bytes": 643956,
+      "sha256": "cc06cca23cdb7c0bb8cfc091ec86cbc39543d582a1c9881cb62fe07f3a0272b0",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Fit the material you have.",
       "subtitle": "Set sheet width and height. The layout updates automatically."
     },
     {
-      "file": "assets/topostack-gallery-09-location-v8.png",
-      "bytes": 555354,
-      "sha256": "0beea1e31e64b7fd75d6ba8ffad4d0779d67718a1cd9fd16c272af3264b87f7c",
+      "file": "assets/topostack-gallery-09-location-v9.png",
+      "bytes": 568465,
+      "sha256": "0436a3dda6da87776c9db22f9d96cd5b8464830792ef245f04d352850eeb8108",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Start with a place you love.",
       "subtitle": "Search places and surveyed lakes, or enter coordinates."
     },
     {
-      "file": "assets/topostack-gallery-10-size-v8.png",
-      "bytes": 964168,
-      "sha256": "13439287917546a80b1d8145f5a636e13000f4f88f8ebd4c3f40f4c12fabbd4d",
+      "file": "assets/topostack-gallery-10-size-v9.png",
+      "bytes": 1097882,
+      "sha256": "1b36fdf4c167e72664a66fb9340115a9861730bccc2f9ba4127731645bcab36c",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Choose the shape and scale.",
       "subtitle": "Rectangle or circle, physical dimensions, metric or imperial units."
     },
     {
-      "file": "assets/topostack-gallery-11-terrain-v8.png",
-      "bytes": 966389,
-      "sha256": "3845039fc30a7a0bb54ca0ddcbc33e40b3656ce464f8ccd096cf0477f88d47dd",
+      "file": "assets/topostack-gallery-11-terrain-v9.png",
+      "bytes": 1111972,
+      "sha256": "b5dbbeb341ee419a3f8f8acad5b71a34c4fed74e6dce9e809470b376d983ba1c",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Shape the relief.",
       "subtitle": "Set material thickness and vertical exaggeration before fabrication."
     },
     {
-      "file": "assets/topostack-gallery-12-annotations-v8.png",
-      "bytes": 803376,
-      "sha256": "9296136b5c2e9c24e10da5f58fa7fe6644c261b1050a3f9fb54a4c6aa15d5d42",
+      "file": "assets/topostack-gallery-12-annotations-v9.png",
+      "bytes": 769579,
+      "sha256": "bad4e12390b65f57d06a1d017beed3706a8c09d51ba5b233ce349d68c1ea61bd",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Make the map readable.",
       "subtitle": "Roads, trails, water, elevation labels, compass and scale bar."
     },
     {
-      "file": "assets/topostack-gallery-13-linework-v8.png",
-      "bytes": 778277,
-      "sha256": "fd180a43311b3ae47d44ac197236b0967700b62952758168874a92c6a57ea0f1",
+      "file": "assets/topostack-gallery-13-linework-v9.png",
+      "bytes": 795708,
+      "sha256": "05103a5c1d7a6453dc2d52f0126b83506366d2a19d377b4e08d538eb0ff7f139",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Give every line a purpose.",
       "subtitle": "Choose a preset or customize widths, road styles and trail patterns."
     },
     {
-      "file": "assets/topostack-gallery-14-fabrication-v8.png",
-      "bytes": 1001335,
-      "sha256": "84d2fb02ce30d4a66c6e2f3fa80a586c5ab9e1d90cecd29c492e169e1956383c",
+      "file": "assets/topostack-gallery-14-fabrication-v9.png",
+      "bytes": 1161265,
+      "sha256": "ea3a4acc006d9e90e1dbd248ac1615b5c8e005eb26481c90ef2521d4548596db",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Prepare for your process.",
-      "subtitle": "Review kerf, minimum features, work area and water paint templates."
+      "subtitle": "Review kerf, minimum features, work area and assembly guides."
     },
     {
-      "file": "assets/topostack-gallery-15-markers-v8.png",
-      "bytes": 783195,
-      "sha256": "eb8a5c90feef0256baa56d378c8ee7dd263fe8a65a33d66a1e8c4efcb1a2c26c",
+      "file": "assets/topostack-gallery-15-markers-v9.png",
+      "bytes": 783450,
+      "sha256": "3942aaa4dd83509ad02a566462b7c0291eec501195940a628dc02338e5c631cd",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Mark your own places.",
       "subtitle": "Import GPX, KML or GeoJSON, then edit marker coordinates and symbols."
     },
     {
-      "file": "assets/topostack-gallery-16-paths-v8.png",
-      "bytes": 721159,
-      "sha256": "e1d3062a992394bddd0426e8d3443803af28cc060fdcdd961374d14bb7a711a7",
+      "file": "assets/topostack-gallery-16-paths-v9.png",
+      "bytes": 722735,
+      "sha256": "30e6f84816a5119800aeb34514fc1bcc7f33ff03892d47d29b1d7d0767c67be0",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "title": "Bring your own paths.",
       "subtitle": "Draw or import trails and boundaries; edit their points and line style."
     },
     {
-      "file": "assets/topostack-cover-loop-v8.mp4",
-      "bytes": 7304387,
-      "sha256": "66629345573479137199c9abca643e35b4e5ec9b9a35a92094f6205dbc860aec",
+      "file": "assets/topostack-cover-loop-v9.mp4",
+      "bytes": 7498383,
+      "sha256": "8090afa6451d63472037b7d0d6ebde41a22185d920f1ac2eb13dc224b61b7721",
       "width": 1920,
       "height": 1440,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "fullDecodePassed": true,
       "codec": "H.264",
       "fps": 60,
       "audio": false
     },
     {
-      "file": "assets/topostack-showcase-v8.mp4",
-      "bytes": 35925959,
-      "sha256": "0ef747b05ff3742b8ddaf55e8cdb767ff61b1084bd3eb5b425a4a016bc51292b",
+      "file": "assets/topostack-showcase-v9.mp4",
+      "bytes": 37036822,
+      "sha256": "2364c182bb21d64a644080c2b5a78feff54ada1553ab89af0de978ee294072f9",
       "width": 1920,
       "height": 1440,
-      "sourceCommit": "4ae74ad931e60a096bad34526d2f25e9a3c58345",
+      "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
       "fullDecodePassed": true,
       "codec": "H.264",
       "fps": 60,

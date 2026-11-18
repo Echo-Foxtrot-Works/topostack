@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROJECT, createSyntheticSource, generateGeometry, type SheetNestPlanV1 } from "@topostack/core";
 import { createAtommExport } from "$lib/studio/export-policy";
 
-vi.mock("$lib/studio/export-policy", () => ({ createAtommExport: vi.fn(() => []), loadGuideFonts: vi.fn(async () => []) }));
+vi.mock("$lib/studio/export-policy", async (importOriginal) => {
+  const { acrylicOutsideStudio } = await importOriginal<typeof import("$lib/studio/export-policy")>();
+  return { acrylicOutsideStudio, createAtommExport: vi.fn(() => []), loadGuideFonts: vi.fn(async () => []) };
+});
 
 describe("Atomm bridge", () => {
   beforeEach(() => { vi.resetModules(); vi.mocked(createAtommExport).mockClear(); delete window.atomm; });
@@ -59,6 +62,15 @@ describe("Atomm bridge", () => {
     await rejection;
     expect(exportUpdate).toHaveBeenNthCalledWith(3, { phase: "preparing", intent: "download" });
     expect(exportUpdate).toHaveBeenNthCalledWith(4, { phase: "error", intent: "download", message: "Package could not be built" });
+
+    // Studio receives only the wood master, so the ready note says where the acrylic went.
+    const withAirspace = { ...geometry, airspaceStack: { levels: [{}] } } as unknown as typeof geometry;
+    const disconnectAirspace = connectAtomm(() => ({ geometry: withAirspace, project }), ready, exportUpdate);
+    const studioExport = handler?.({ intent: "openInStudio" });
+    await vi.advanceTimersByTimeAsync(20);
+    await studioExport;
+    expect(exportUpdate).toHaveBeenLastCalledWith({ phase: "ready", intent: "openInStudio", fileCount: 0, layoutNote: "The acrylic airspace is not in it: download the project files for their own SVGs." });
+    disconnectAirspace();
 
     const disconnectAgain = connectAtomm(() => ({ geometry, project }), ready);
     expect(on).toHaveBeenCalledTimes(1);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, type SourceBundleV1, buildProjectPackage, nestableParts, planSheets, rectangleEngine, resolveSheetNestSettings } from "@topostack/core";
-import { buildAtommPackage, createAtommExport, exportBlockReason, withLightBurnProjects } from "$lib/studio/export-policy";
+import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, type GeometryIRV1, type SourceBundleV1, buildProjectPackage, nestableParts, planSheets, rectangleEngine, resolveSheetNestSettings } from "@topostack/core";
+import { acrylicOutsideStudio, buildAtommPackage, createAtommExport, exportBlockReason, withLightBurnProjects } from "$lib/studio/export-policy";
 
 function geometry(kind: SourceBundleV1["sourceKind"] = "real") {
   return generateGeometry(DEFAULT_PROJECT, { ...createSyntheticSource(DEFAULT_PROJECT, 32), sourceKind: kind });
@@ -61,6 +61,18 @@ describe("Atomm export policy", () => {
     expect("filename" in studio && studio.filename.endsWith("-master.svg")).toBe(true);
     expect(Array.isArray(download)).toBe(true);
     expect(Array.isArray(download) && download.length).toBe((result.layers.length - result.fabricationNests.length) * 2 + 5);
+  });
+
+  it("names the acrylic Open in Studio leaves out", () => {
+    const wood = { waterInserts: undefined, airspaceStack: undefined } as unknown as GeometryIRV1;
+    const inserts = { waterInserts: [{}] } as unknown as GeometryIRV1;
+    const airspace = { airspaceStack: { levels: [{}] } } as unknown as GeometryIRV1;
+    const both = { waterInserts: [{}], airspaceStack: { levels: [{}] } } as unknown as GeometryIRV1;
+    expect(acrylicOutsideStudio(wood)).toBe("");
+    expect(acrylicOutsideStudio({ airspaceStack: { levels: [] } } as unknown as GeometryIRV1)).toBe("");
+    expect(acrylicOutsideStudio(inserts)).toBe("The acrylic water inserts are not in it: download the project files for their own SVGs.");
+    expect(acrylicOutsideStudio(airspace)).toBe("The acrylic airspace is not in it: download the project files for their own SVGs.");
+    expect(acrylicOutsideStudio(both)).toBe("The acrylic water inserts and airspace are not in it: download the project files for their own SVGs.");
   });
 
   it("returns the engrave-only artwork for a flat project", async () => {
