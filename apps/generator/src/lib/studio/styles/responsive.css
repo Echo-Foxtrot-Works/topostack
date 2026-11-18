@@ -309,6 +309,158 @@
   }
 }
 
+/* Phones: the studio fills the screen and stops scrolling. The preview takes
+   what the header leaves; below it sit the settings sheet (the active panel,
+   closed until a tab is tapped), the generation dock and the panel tabs. The
+   rail's own box is dissolved so those three can be ordered as one column.
+   SettingsRail.svelte sets data-sheet; keep the query in step with
+   rail-orientation.svelte.ts. A phone on its side, or one under 600px tall,
+   is too short for a fixed frame, so it keeps the scrolling stacked layout. */
+@media (max-width: 760px) and (min-height: 600px) {
+  html:has(.app-shell),
+  body:has(.app-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .app-shell {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-shell .workspace {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* The preview takes the space left over, but keeps its toolbar and at least
+     180px of model; an open sheet gives way instead. */
+  .app-shell .workspace > .ldt-workspace__main {
+    flex: 1 1 0;
+    min-height: 236px;
+  }
+
+  .app-shell .preview-panel {
+    height: 100%;
+  }
+
+  .app-shell .config-panel {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-shell .config-panel > .settings-rail {
+    display: contents;
+  }
+
+  .app-shell .config-panel .ldt-tabs__panels {
+    order: 1;
+    flex: 0 1 38dvh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .app-shell .config-panel > .starter-steps {
+    order: 1;
+  }
+
+  .app-shell .config-panel > .generate-dock {
+    order: 2;
+  }
+
+  .app-shell .config-panel .ldt-tabs__list {
+    order: 3;
+    flex: none;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: var(--loidolt-border-width) solid var(--loidolt-border);
+  }
+
+  .app-shell .settings-rail[data-sheet="full"] .ldt-tabs__panels {
+    flex-basis: 100dvh;
+  }
+
+  /* While a panel is open the layer slider gives its row to the model. */
+  .app-shell:has(.settings-rail:is([data-sheet="half"], [data-sheet="full"])) .layer-dock {
+    display: none;
+  }
+
+  /* Closed unless SettingsRail says otherwise, so the first paint before hydration
+     matches. The custom data view's rail has no sheet: tracing a chart needs its panel. */
+  .app-shell .settings-rail:not(.custom-data-rail, [data-sheet="half"], [data-sheet="full"]) .ldt-tabs__panels,
+  .app-shell .settings-rail:not(.custom-data-rail, [data-sheet="half"], [data-sheet="full"]) ~ .generate-dock .terrain-source-summary {
+    display: none;
+  }
+
+  .app-shell .settings-sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 32px;
+  }
+
+  .app-shell .settings-sheet-handle {
+    width: 96px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .app-shell .settings-sheet-handle > span {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--loidolt-border-strong, var(--loidolt-border));
+  }
+
+  .app-shell .settings-sheet-close {
+    position: absolute;
+    right: 4px;
+    top: 0;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--loidolt-text-muted);
+    cursor: pointer;
+  }
+
+  .app-shell .settings-sheet-handle:focus-visible,
+  .app-shell .settings-sheet-close:focus-visible {
+    outline: 2px solid var(--loidolt-accent);
+    outline-offset: -2px;
+  }
+
+  /* Generate and its status share one row above the tabs. */
+  .app-shell .generate-dock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 12px;
+    padding: 8px 12px;
+  }
+
+  .app-shell .generate-dock > .status-line {
+    margin: 0;
+    white-space: normal;
+  }
+
+  .app-shell .generate-dock .generate-button {
+    width: auto;
+  }
+}
+
 /* Custom controls need the same touch targets as the shared theme controls,
    including on tablets whose width exceeds the phone breakpoint. */
 @media (pointer: coarse), (max-width: 760px) {
