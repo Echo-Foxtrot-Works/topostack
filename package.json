@@ -42,6 +42,7 @@
     "typecheck": "tsc --project tsconfig.json && npm run typecheck -w @topostack/data-contracts && npm run typecheck -w @topostack/chart-trace && npm run typecheck -w @topostack/nest-wasm && npm run typecheck -w @topostack/core && npm run typecheck -w @topostack/generator && npm run typecheck -w @topostack/map-api",
     "lint": "eslint . --max-warnings=0",
     "lint:exports": "npm exec -w @topostack/generator -- svelte-kit sync && knip --include exports,types --no-progress",
+    "audit:prod": "node scripts/verify/check-audit.mjs",
     "budget:web": "node scripts/build/check-web-budget.mjs",
     "budget:worker": "node scripts/build/check-worker-bundle.mjs",
     "build:nest-wasm": "node packages/nest-wasm/scripts/build.mjs",
