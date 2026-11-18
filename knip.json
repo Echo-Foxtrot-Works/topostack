@@ -16,7 +16,8 @@
         "scripts/**/*.mjs",
         "e2e/**/*.ts",
         "e2e-live/**/*.ts"
-      ]
+      ],
+      "playwright": false
     },
     "workers/map-api": {
       "entry": [

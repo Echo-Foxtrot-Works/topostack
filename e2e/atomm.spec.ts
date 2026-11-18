@@ -429,11 +429,16 @@ test("Atomm linework and location search stay readable under light and dark them
       })).toBe(true);
       await page.screenshot({ path: testInfo.outputPath(`location-coordinates-${theme}-${width}.png`) });
       await dialog.locator(".preset-grid").scrollIntoViewIfNeeded();
-      expect(await dialog.locator(".preset-grid .location-option").evaluateAll(buttons => buttons.every(button => {
-        const style = getComputedStyle(button);
-        return Number.parseFloat(style.paddingTop) >= 8 && Number.parseFloat(style.paddingLeft) >= 8
-          && button.scrollWidth <= button.clientWidth;
-      }))).toBe(true);
+      // One evaluate on the grid rather than evaluateAll through the named dialog: Playwright 1.65's
+      // Firefox crashes its content process on evaluateAll resolved through this dialog's accessible name.
+      expect(await dialog.locator(".preset-grid").evaluate(grid => {
+        const buttons = [...grid.querySelectorAll<HTMLElement>(".location-option")];
+        return buttons.length > 0 && buttons.every(button => {
+          const style = getComputedStyle(button);
+          return Number.parseFloat(style.paddingTop) >= 8 && Number.parseFloat(style.paddingLeft) >= 8
+            && button.scrollWidth <= button.clientWidth;
+        });
+      })).toBe(true);
       expect(await dialog.locator(".preset-grid").evaluate(el => Number.parseFloat(getComputedStyle(el).gap))).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: testInfo.outputPath(`location-examples-${theme}-${width}.png`) });
     }
