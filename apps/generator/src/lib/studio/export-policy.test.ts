@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, type SourceBundleV1, buildProjectPackage, nestableParts, planSheets, rectangleEngine, resolveSheetNestSettings } from "@topostack/core";
-import { buildAtommPackage, createAtommExport, exportBlockReason } from "$lib/studio/export-policy";
+import { buildAtommPackage, createAtommExport, exportBlockReason, withLightBurnProjects } from "$lib/studio/export-policy";
 
 function geometry(kind: SourceBundleV1["sourceKind"] = "real") {
   return generateGeometry(DEFAULT_PROJECT, { ...createSyntheticSource(DEFAULT_PROJECT, 32), sourceKind: kind });
@@ -134,5 +134,26 @@ describe("assembly guide fonts", () => {
     if (!Array.isArray(files)) throw new Error("Download must receive the project files");
     const guide = await files.find((file) => file.filename.endsWith("-assembly-guide.html"))!.blob.text();
     expect(guide).toContain('font-family:"Jost";src:url(data:font/woff2;base64,d09GMg==)');
+  });
+});
+
+describe("LightBurn projects", () => {
+  it("adds a project beside every artwork SVG except the engraving-only companions", async () => {
+    const output = buildProjectPackage(geometry(), DEFAULT_PROJECT);
+    const withProjects = await withLightBurnProjects(output);
+    const artwork = output.files.filter((file) => file.filename.endsWith(".svg") && !file.filename.endsWith("-engrave.svg"));
+    const projects = withProjects.files.filter((file) => file.filename.endsWith(".lbrn2"));
+    expect(projects.map((file) => file.filename)).toEqual(artwork.map((file) => file.filename.replace(/\.svg$/, ".lbrn2")));
+    expect(withProjects.files.slice(0, output.files.length)).toEqual(output.files);
+    expect(withProjects.master).toBe(output.master);
+    const xml = await projects[0]!.blob.text();
+    expect(xml).toContain("<LightBurnProject ");
+    expect(xml).toContain('<name Value="Cut"/>');
+  });
+
+  it("leaves out an SVG with nothing to run", async () => {
+    const empty = { filename: "ridge-layer-01-paint-water.svg", blob: new Blob(['<svg width="10mm" height="10mm" viewBox="0 0 10 10"></svg>'], { type: "image/svg+xml" }) };
+    const result = await withLightBurnProjects({ schemaVersion: 1, master: empty, files: [empty] });
+    expect(result.files).toEqual([empty]);
   });
 });

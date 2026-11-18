@@ -19,6 +19,7 @@ export { scaleBarCenter, scaleBarFootprint, scaleBarMarkings, scaleBarPlacementA
 export { layerToSvg } from "./export/svg.js";
 export type { GuideFont } from "./export/assembly-guide.js";
 export { buildFabricationPackage, buildProjectPackage, type PackageOptions } from "./export/packages.js";
+export { LIGHTBURN_LAYERS, svgToLightBurn, type LightBurnLayer, type LightBurnLayerKey, type LightBurnOptions } from "./export/lightburn.js";
 export { DEFAULT_SHEET_NESTING, SHEET_NEST_LIMITS, resolveSheetNestSettings, type SheetNestSettingsResult } from "./export/sheet-nest/resolve.js";
 export type { StripEngine, StripEngineItem, StripEngineJob, StripEnginePlacement, StripEngineResult } from "./export/sheet-nest/engine.js";
 export { nestableParts } from "./export/sheet-nest/parts.js";

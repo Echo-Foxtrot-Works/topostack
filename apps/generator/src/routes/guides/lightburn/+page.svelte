@@ -4,10 +4,27 @@
   const base = basePath();
 </script>
 
-<Article title="Use TopoStack SVG files in LightBurn" intro="Import a terrain project, check its dimensions, assign each operation and preview the job before cutting or engraving.">
-  <p>Begin with the <a href={`${base}/studio?starter=relief`}>small layered relief</a> or <a href={`${base}/studio?starter=engraving`}>flat contour engraving</a>. Review the size and actual material thickness, generate fresh terrain, then use <strong>Complete project</strong> in Export. The download includes SVG artwork, project settings and source credits; a layered relief also includes its assembly booklet.</p>
+<Article title="Use TopoStack projects in LightBurn" intro="Open a LightBurn project with its layers already set up, or import the SVG, then check dimensions and preview the job before cutting or engraving.">
+  <p>Begin with the <a href={`${base}/studio?starter=relief`}>small layered relief</a> or <a href={`${base}/studio?starter=engraving`}>flat contour engraving</a>. Review the size and actual material thickness and generate fresh terrain. Then open Export.</p>
 
-  <h2>Choose the file for the job</h2>
+  <h2>Open the LightBurn project</h2>
+  <p>In Export, open <strong>Individual files</strong> and choose <strong>LightBurn projects</strong> for a layered relief or <strong>LightBurn project</strong> for a flat engraving. A layered relief downloads a ZIP with one <code>.lbrn2</code> project per panel or nested sheet, the master, the README and source credits. A flat engraving downloads one <code>.lbrn2</code> file. Open it with File → Open or by double-clicking it.</p>
+  <p>Each operation arrives on its own named layer, listed in the order LightBurn runs them, with the through cut last so pieces stay in place while they are marked:</p>
+  <table>
+    <thead><tr><th scope="col">LightBurn layer</th><th scope="col">Mode</th><th scope="col">What it holds</th></tr></thead>
+    <tbody>
+      <tr><td>Engrave fill</td><td>Fill</td><td>Filled lettering and intentionally filled symbols.</td></tr>
+      <tr><td>Engrave lines</td><td>Line</td><td>Contours, roads, trails, boundaries, labels and other linework.</td></tr>
+      <tr><td>Assembly ids</td><td>Line (Fill for filled lettering)</td><td>Piece ids that the layer above hides once glued.</td></tr>
+      <tr><td>Score</td><td>Line</td><td>Shorelines and other scored lines.</td></tr>
+      <tr><td>Cut</td><td>Line</td><td>Outlines and holes.</td></tr>
+    </tbody>
+  </table>
+  <p>Only the layers a file uses are included. The project sets no speed, power or passes: choose them for your machine and material on every layer before running. LightBurn shows a note with this reminder when the project opens. Kerf Offset is 0 on every layer, because TopoStack has already compensated the cut paths (see below).</p>
+  <p>Dashed and dotted lines, such as trails and boundaries, are drawn as separate short dashes, because LightBurn does not keep an SVG dash pattern. In a master project each panel or nested part is a group, so it can be moved or hidden as one piece.</p>
+  <p>If you prefer to start from the SVG, or use other laser software, import it as described below.</p>
+
+  <h2>Or import the SVG: choose the file for the job</h2>
   <ul>
     <li>For a layered relief, unzip the download and choose one wood panel or nested sheet SVG. The master SVG puts all panels together and may exceed your bed size.</li>
     <li>For a flat engraving, use the file ending in <code>-engraving.svg</code>.</li>
@@ -31,7 +48,7 @@
       <tr><td>Intentionally filled symbols or graphics</td><td>Put the filled shapes on a separate color layer and use Fill mode. Keep ordinary contour lines on their line layer.</td></tr>
     </tbody>
   </table>
-  <p>Import colors may map to LightBurn’s palette rather than preserve their exact hexadecimal values. Identify the actual shapes on each layer. Review speed, power, passes and output status for your machine and material; the SVG does not supply those settings. Mark detail before releasing pieces with the final cut.</p>
+  <p>Import colors may map to LightBurn’s palette rather than preserve their exact hexadecimal values. Identify the actual shapes on each layer. Review speed, power, passes and output status for your machine and material; the SVG does not supply those settings. Mark detail before releasing pieces with the final cut. The LightBurn project above avoids this step: it already separates score from engraving and puts each on its own layer.</p>
 
   <h2>Apply kerf compensation once</h2>
   <p>If TopoStack’s <strong>Laser kerf</strong> is nonzero, its wood cut paths already include compensation. Leave LightBurn’s Kerf Offset at zero for those paths. If you use a tested LightBurn offset instead, set TopoStack’s Laser kerf to zero and regenerate or refresh before exporting.</p>
@@ -40,5 +57,5 @@
   <h2>Preview, then follow the assembly guide</h2>
   <p>Open LightBurn’s Preview window and inspect the processing sequence, outlines, holes and marked detail. Confirm there are no duplicate companion engravings and that closed contours have not accidentally become filled areas. Preview includes the configured kerf offset; see <a href="https://docs.lightburnsoftware.com/latest/Reference/Preview/">LightBurn’s Preview reference</a>.</p>
   <p>Check the job fits your work area using your usual framing workflow and tested material settings. After cutting a layered project, open its <code>-assembly-guide.html</code> booklet and follow the numbered sheets and layers. If the map is too large for your bed, <a href={`${base}/guides/split-large-maps`}>split it in TopoStack</a> before exporting. If export is blocked, follow <a href={`${base}/guides/troubleshooting`}>troubleshooting</a>.</p>
-  <p class="note">This guide describes TopoStack’s exported artwork and LightBurn’s documented workflow, checked October 8, 2026. It is not a report of a physical test on a particular laser.</p>
+  <p class="note">This guide describes TopoStack’s exported artwork and LightBurn’s documented workflow, checked October 8, 2026; the LightBurn project section was added November 18, 2026. It is not a report of a physical test on a particular laser.</p>
 </Article>

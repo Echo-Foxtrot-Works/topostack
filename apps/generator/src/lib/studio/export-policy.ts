@@ -1,4 +1,4 @@
-import { buildProjectPackage, exportBlockReason, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { buildProjectPackage, exportBlockReason, svgToLightBurn, type ExportFile, type FabricationPackageV1, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
 import jostUrl from "@loidolt/theme-styles/fonts/Jost-Medium.woff2?url";
 import archivoUrl from "@loidolt/theme-styles/fonts/Archivo-Regular.woff2?url";
 import { networkSignal } from "$lib/domain/network";
@@ -34,6 +34,23 @@ export function loadGuideFonts(): Promise<GuideFont[]> {
     }
   })).then((fonts) => fonts.flat());
   return guideFonts;
+}
+
+/**
+ * The package with a LightBurn project (.lbrn2) beside every artwork SVG: each
+ * panel, nested sheet, stencil and master. Engraving-only companions are left
+ * out; the project's own Engrave layers can be run as a separate job instead.
+ * `master` still points at the master SVG, which names the download.
+ */
+export async function withLightBurnProjects(output: FabricationPackageV1): Promise<FabricationPackageV1> {
+  const sources = output.files.filter((file) => file.filename.endsWith(".svg") && !file.filename.endsWith("-engrave.svg"));
+  const projects: ExportFile[] = [];
+  for (const file of sources) {
+    const xml = svgToLightBurn(await file.blob.text());
+    if (!xml) continue; // Nothing to run, such as a stencil with no paint region.
+    projects.push({ filename: file.filename.replace(/\.svg$/, ".lbrn2"), blob: new Blob([xml], { type: "application/xml" }) });
+  }
+  return { ...output, files: [...output.files, ...projects] };
 }
 
 /** Keep assembly ids in Atomm's standard line-engraving group, including its guide. */

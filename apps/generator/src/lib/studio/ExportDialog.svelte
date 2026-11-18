@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Archive, ArrowUpRight, Download, Droplets, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, Plane, SprayCan, X } from "@lucide/svelte";
+  import { Archive, ArrowUpRight, Download, Droplets, FileJson, FileType, Heart, Layers3, ListOrdered, PenTool, Plane, SprayCan, X, Zap } from "@lucide/svelte";
   import { Button, IconButton } from "@loidolt/theme-svelte";
   import { PAINT_REGION_LABELS, type ProjectConfigV1 } from "@topostack/core";
   import type { Snippet } from "svelte";
@@ -58,6 +58,9 @@
       { id: "airspace", label: "Airspace", format: "ZIP", icon: Plane, unavailable: !airspaceCount, hint: airspaceCount ? "Airspace pieces to cut from acrylic, and the backing sheet the rods stand on." : project.airspaceStack ? "No airspace was built for this area." : "Turn on Airspace in 3D in the Aviation panel to add these." },
       { id: "assembly", label: "Assembly guide", format: "HTML", icon: ListOrdered, hint: "Step-by-step booklet to print or follow on screen." },
     ] : []),
+    layered
+      ? { id: "lightburn", label: "LightBurn projects", format: "ZIP", icon: Zap, hint: "One .lbrn2 per sheet plus the master, with Cut, Score and Engrave layers set up." }
+      : { id: "lightburn", label: "LightBurn project", format: "LBRN2", icon: Zap, hint: "The engraving with its layers set up. Opens straight in LightBurn." },
   ] as { id: DownloadOption; label: string; format: string; icon: typeof Archive; hint: string; unavailable?: boolean }[]);
   const artworkDisabled = $derived(preparing || Boolean(blockedReason));
   const blockedBy = $derived(blockedReason ? "export-blocked-reason" : undefined);
@@ -114,7 +117,7 @@
       <span class="export-row-copy"><strong>Project settings</strong><span>Continue later; works before generating. Regenerate terrain after importing.</span></span>
       <span class="export-row-format">JSON <Download size={14} aria-hidden="true" /></span>
     </button>
-    <p class="export-guide">Using LightBurn? <a href={`${base}/guides/lightburn`} target="_blank" rel="noopener noreferrer">Check size and processing layers<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>.</p>
+    <p class="export-guide">Laser software guides: <a href={`${base}/guides/lightburn`} target="_blank" rel="noopener noreferrer">LightBurn<span class="ldt-visually-hidden"> (opens in a new tab)</span></a> · <a href={`${base}/guides/xtool-studio`} target="_blank" rel="noopener noreferrer">xTool Studio<span class="ldt-visually-hidden"> (opens in a new tab)</span></a>.</p>
     {#if onSavePreview}
       <section class="export-share" aria-labelledby="export-share-title">
         <h3 id="export-share-title">Share your design</h3>

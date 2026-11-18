@@ -60,18 +60,19 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels");
     expect(target.textContent).toContain("Crater Lake · 12 layers · 9 cut panels");
     expect(target.querySelector<HTMLDetailsElement>(".export-more")?.open).toBe(false);
-    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Airspace", "Assembly guide"]);
+    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Airspace", "Assembly guide", "LightBurn projects"]);
     expect(button("Paint templates")?.disabled).toBe(true);
     expect(button("Acrylic inserts")?.disabled).toBe(true);
     expect(button("Airspace")?.disabled).toBe(true);
     button("Complete project")!.click();
     button("Cut panels")!.click();
-    expect(onDownload.mock.calls).toEqual([["all"], ["panels"]]);
+    button("LightBurn projects")!.click();
+    expect(onDownload.mock.calls).toEqual([["all"], ["panels"], ["lightburn"]]);
   });
 
   it("offers only the engraving artwork for flat engravings", async () => {
     const { target, rows } = await render({ outputMode: "engraving" });
-    expect(rows()).toEqual(["Engraving SVG"]);
+    expect(rows()).toEqual(["Engraving SVG", "LightBurn project"]);
     expect(target.querySelector(".export-hero")?.textContent).toContain("engraving SVG");
   });
 
@@ -92,6 +93,6 @@ describe("ExportDialog", () => {
     expect(onCopyLink).toHaveBeenCalledOnce();
     expect(onSavePreview).not.toHaveBeenCalled();
     expect(target.querySelector('.export-share > [role="status"]')?.textContent).toBe("Share link copied");
-    expect(target.querySelector('.export-guide a')?.getAttribute("target")).toBe("_blank");
+    expect([...target.querySelectorAll('.export-guide a')].map((link) => [link.getAttribute("href")?.replace(/^.*\/guides\//, ""), link.getAttribute("target")])).toEqual([["lightburn", "_blank"], ["xtool-studio", "_blank"]]);
   });
 });

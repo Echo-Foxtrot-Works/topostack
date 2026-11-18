@@ -98,10 +98,11 @@ export async function downloadProject({ option, geometry, project, sheetPlan, ac
         return (await import("$lib/storage/user-charts")).chartsForProject(project);
       })())
       : await (async () => {
-        const { buildProjectPackage, loadGuideFonts } = await import("$lib/studio/export-policy");
+        const { buildProjectPackage, loadGuideFonts, withLightBurnProjects } = await import("$lib/studio/export-policy");
         // Only the booklet uses the fonts; skip fetching them for files without it.
         const guideFonts = option === "all" || option === "assembly" ? await loadGuideFonts() : [];
-        return prepareSelectedDownload(buildProjectPackage(geometry, project, { guideFonts, sheetPlan, acrylicSheetPlan }), option);
+        const output = buildProjectPackage(geometry, project, { guideFonts, sheetPlan, acrylicSheetPlan });
+        return prepareSelectedDownload(option === "lightburn" ? await withLightBurnProjects(output) : output, option);
       })();
     startBrowserDownload(download);
     if (tracked) track("export_prepared");
