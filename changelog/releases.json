@@ -2,6 +2,24 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.12.1",
+      "date": "2026-11-19",
+      "entries": [
+        {
+          "type": "improvement",
+          "title": "Each piece moves as one in xTool Studio and LightBurn",
+          "body": "Exported SVGs are now grouped piece by piece: every cut piece is one group holding its outline, holes, engraving, score lines and assembly id. Select a piece in xTool Studio or LightBurn and its engraving moves and rotates with it, while the pieces around it stay put. Colours and sizes are unchanged. If you relied on the old per-layer `CUT`, `SCORE` and `ENGRAVE` groups, select by colour instead.",
+          "pr": 289
+        },
+        {
+          "type": "fix",
+          "title": "Clearer airspace, lake and export messages",
+          "body": "Turning on **Airspace in 3D** where nothing gets built now says why, for example that only Class D airspace is nearby and **Class D lids** are off. Unnamed lakes are called \"Lake 1\", \"Lake 2\" in warnings as in the Water panel, instead of map ids. The rod settings use the same two-option buttons as **Road appearance**, the Export view keeps the end of each file name visible, and in Atomm the Open in Studio note reads as separate sentences and the settings cards match the platform's current style.",
+          "pr": 289
+        }
+      ]
+    },
+    {
       "version": "0.12.0",
       "date": "2026-11-19",
       "entries": [

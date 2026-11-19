@@ -22,6 +22,7 @@ import {
 import { masterToSvg } from "../export/svg.js";
 import { cellEdges, seamShift, splitLayersForWorkArea } from "./split.js";
 import { registerFixtureFonts } from "../test-support/fonts.js";
+import { hasOperation, operationGroups, rootGroups } from "../test-support/svg.js";
 
 const EARTH_RADIUS_M = 6_371_008.8;
 
@@ -627,15 +628,16 @@ describe("split fabrication package", () => {
     const withIds = [];
     for (const file of pkg.files.filter((entry) => entry.filename.endsWith(".svg"))) {
       const svg = await file.blob.text();
-      if (!svg.includes('id="ASSEMBLY"')) continue;
+      const groups = operationGroups(svg, "ASSEMBLY");
+      if (!groups.length) continue;
       withIds.push(file.filename);
-      const group = /<g id="ASSEMBLY"[\s\S]*?stroke="(#[0-9A-Fa-f]{6})"/.exec(svg)!;
-      // A separate colour is what makes it a separate process in the machine.
-      expect(group[1]).not.toBe("#2366FF");
-      const body = svg.slice(svg.indexOf('id="ASSEMBLY"'));
-      const ids = [...body.slice(0, body.indexOf('data-operation="SCORE"')).matchAll(/<path id="([^"]+)"/g)].map((match) => match[1]!);
-      expect(ids.length).toBeGreaterThan(0);
-      expect(ids.every((id) => id.startsWith("piece-"))).toBe(true);
+      for (const group of groups) {
+        // A separate colour is what makes it a separate process in the machine.
+        expect(/stroke="(#[0-9A-Fa-f]{6})"/.exec(group)![1]).not.toBe("#2366FF");
+        const ids = [...group.matchAll(/<path id="([^"]+)"/g)].map((match) => match[1]!);
+        expect(ids.length).toBeGreaterThan(0);
+        expect(ids.every((id) => id.startsWith("piece-"))).toBe(true);
+      }
     }
     expect(withIds.length).toBeGreaterThan(0);
   });
@@ -643,7 +645,7 @@ describe("split fabrication package", () => {
   it("carries no assembly group when assembly labels are off", async () => {
     const { pkg } = splitPackage({ showAssemblyLabels: false });
     for (const file of pkg.files.filter((entry) => entry.filename.endsWith(".svg"))) {
-      expect(await file.blob.text()).not.toContain('id="ASSEMBLY"');
+      expect(hasOperation(await file.blob.text(), "ASSEMBLY")).toBe(false);
     }
   });
 
@@ -715,18 +717,19 @@ describe("split fabrication package", () => {
     }
   });
 
-  it("leaves an unsplit package byte-identical apart from its manifest", async () => {
+  it("writes an unsplit package as one root-level group per piece, with no assembly ids", async () => {
     const [config, source] = conicalProject({ showAlignmentGuides: true, showNorthArrow: true, showScaleBar: true, optimizeMaterialUse: true });
     const ir = generateGeometry(config, source);
     const pkg = buildFabricationPackage(ir, config);
     for (const file of pkg.files.filter((entry) => entry.filename.endsWith(".svg") && !entry.filename.includes("assembly-guide"))) {
       const svg = await file.blob.text();
-      // The unsplit writer has always emitted a SCORE group per layer even when
-      // empty; machine software users key on those ids.
+      // Part ids are stable: machine software users key on them.
       for (const layerIndex of file.filename.includes("master") ? ir.layers.map((layer) => layer.index) : []) {
-        expect(svg).toContain(`<g id="${ir.layers[layerIndex]!.id}-SCORE">`);
+        const layer = ir.layers[layerIndex]!;
+        layer.polygons.forEach((_, index) => expect(svg).toContain(`<g id="${layer.id}-part-${index + 1}" data-name=`));
       }
-      expect(svg).not.toContain('id="ASSEMBLY"');
+      expect(rootGroups(svg).length).toBeGreaterThan(0);
+      expect(hasOperation(svg, "ASSEMBLY")).toBe(false);
     }
   });
 
@@ -751,9 +754,8 @@ describe("split fabrication package", () => {
     const master = masterToSvg(ir);
     const width = Number(/width="([\d.]+)mm"/.exec(master)![1]);
     expect(width).toBeGreaterThan(ir.widthMm);
-    expect((master.match(/data-cell="/g) ?? []).length).toBeGreaterThan(OPERATION_GROUPS);
+    // Every part of every seam cell says which cell it is from.
+    expect(rootGroups(master).every((part) => / data-cell="/.test(part.slice(0, part.indexOf(">"))))).toBe(true);
   });
 });
 
-/** ENGRAVE, ASSEMBLY, SCORE and CUT each repeat every panel group once. */
-const OPERATION_GROUPS = 4;

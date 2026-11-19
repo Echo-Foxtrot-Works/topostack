@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, generateGeometry, layerToSvg, placedGraphicPlacementAt, projectFingerprint, validateProject, type CustomGraphicV1, type PlacedGraphicV1, type Polygon2D, type ProjectConfigV1 } from "../index.js";
 import { gridSource } from "../test-support/sources.js";
+import { operationBody } from "../test-support/svg.js";
 
 // A square with a square window: the window becomes an island when cut.
 const graphic: CustomGraphicV1 = {
@@ -81,15 +82,15 @@ describe("placed graphics in generation", () => {
     expect(cut.warnings.some(({ code }) => code === "GRAPHIC_LOOSE_PIECES")).toBe(false);
     expect(cut.layers.flatMap(({ markings }) => markings).some(({ id }) => id.startsWith("graphic-"))).toBe(false);
     // The opening and its island are cut lines on that sheet's panel.
-    const cutPaths = (svg: string) => (svg.match(/<g id="CUT"[\s\S]*?<\/g><\/g>/)?.[0].match(/<path /g) ?? []).length;
+    const cutPaths = (svg: string) => (operationBody(svg, "CUT").match(/<path /g) ?? []).length;
     expect(cutPaths(layerToSvg(cut, cut.layers[topIndex]!))).toBeGreaterThan(cutPaths(layerToSvg(plain, plain.layers[topIndex]!)));
   });
 
   it("scores and engraves onto the SVG's own operation groups", () => {
     const scored = generateGeometry(withGraphic({ operation: "score" }), source);
-    expect(layerToSvg(scored, scored.layers[topIndex]!)).toMatch(/<g id="SCORE"[\s\S]*id="graphic-placed-0001-score-/);
+    expect(operationBody(layerToSvg(scored, scored.layers[topIndex]!), "SCORE")).toContain('id="graphic-placed-0001-score-');
     const engraved = generateGeometry(withGraphic(), source);
-    expect(layerToSvg(engraved, engraved.layers[topIndex]!)).toMatch(/<g id="ENGRAVE"[\s\S]*id="graphic-placed-0001-0-/);
+    expect(operationBody(layerToSvg(engraved, engraved.layers[topIndex]!), "ENGRAVE")).toContain('id="graphic-placed-0001-0-');
   });
 
   it("warns when a cut through the bottom sheet leaves islands with nothing under them", () => {

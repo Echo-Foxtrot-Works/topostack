@@ -5,6 +5,7 @@ import { buildEngravingPackage } from "./packages.js";
 import { masterToSvg } from "./svg.js";
 import { gridSource, realSource } from "../test-support/sources.js";
 import { EXPORT_CREDIT } from "./svg-primitives.js";
+import { hasOperation, operationBody, rootGroups } from "../test-support/svg.js";
 
 describe("SVG export", () => {
   it("exports 1:1 millimeter SVGs with machine operation groups", async () => {
@@ -161,10 +162,27 @@ describe("SVG export", () => {
     const svg = masterToSvg(result);
     const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
     expect(new Set(ids).size).toBe(ids.length);
-    const cutGroup = svg.slice(svg.indexOf('data-operation="CUT"'));
+    const cutGroup = operationBody(svg, "CUT");
     const cutPaths = [...cutGroup.matchAll(/<path[^>]* d="([^"]+)"/g)].map((path) => path[1] ?? "");
     expect(cutPaths.length).toBeGreaterThanOrEqual(result.layers.length);
     expect(cutPaths.every((data) => (data.match(/M/g) ?? []).length === 1)).toBe(true);
+  });
+
+  it("writes one root-level group per cut piece, holding its own cuts and engraving (Atomm SVG grouping spec)", () => {
+    const result = generateGeometry(DEFAULT_PROJECT, realSource());
+    const svg = masterToSvg(result);
+    const parts = rootGroups(svg);
+    const pieces = result.layers.reduce((count, layer) => count + layer.polygons.length, 0);
+    expect(parts).toHaveLength(pieces);
+    for (const part of parts) {
+      // A part never holds another part, and every part has its outline to cut.
+      expect(part.slice(1).match(/<g id="[^"]*-part-\d+"/)).toBeNull();
+      expect(hasOperation(part, "CUT")).toBe(true);
+      expect(part).toMatch(/^<g id="[^"]+" data-name="[^"]+"/);
+    }
+    // Nothing is lost by grouping: every marking path of every layer is in some part.
+    const markingIds = result.layers.flatMap((layer) => layer.markings.filter((mark) => mark.points.length > 1).map((mark) => mark.id));
+    for (const id of markingIds) expect(svg).toContain(` id="${id}"`);
   });
 
   it("credits TopoStack once, as a non-drawing description right after the title", async () => {

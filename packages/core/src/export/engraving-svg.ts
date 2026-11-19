@@ -1,4 +1,4 @@
-import { ARTWORK_CATEGORIES, ENGRAVE, ENGRAVE_LINE, type MarkerClearance, categoryStrokeAttributes, clearLineData, engravingCategory, markerClearance, markingPath, pathData, svgDocument } from "./svg-primitives.js";
+import { ARTWORK_CATEGORIES, ENGRAVE, ENGRAVE_LINE, type MarkerClearance, categoryStrokeAttributes, clearLineData, engravingCategory, markerClearance, markingPath, pathData, escapeXml, svgDocument } from "./svg-primitives.js";
 import { CIRCLE_CROP_SEGMENTS, cropRadiusMm } from "../primitives/crop.js";
 import { formatNumber as format } from "../primitives/format.js";
 import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "../pipeline/contours.js";
@@ -95,5 +95,7 @@ export function engravingToSvg(ir: GeometryIRV1, config: ProjectConfigV1): strin
   const index = flatContourPaths(ir, config, true, clearance);
   const style = ir.lineStyle;
   const body = `<g id="ENGRAVE" data-operation="ENGRAVE" fill="none" stroke="${ENGRAVE}" stroke-linecap="round" stroke-linejoin="round">${engravingWaterPatternPaths(ir, config, clearance)}<g id="ENGRAVE-contours-minor" stroke-width="${format(style.contourMm)}">${minor}</g><g id="ENGRAVE-contours-index" stroke-width="${format(style.indexContourMm)}">${index}</g><g id="ENGRAVE-map-details" stroke-width="${format(style.annotationMm)}">${flatMarkingPaths(ir, clearance)}</g><g id="ENGRAVE-border" stroke-width="${format(style.borderMm)}">${engravingBorder(config)}</g></g>`;
-  return svgDocument(config.widthMm, config.heightMm, body, `${ir.projectName} — flat topographic engraving`);
+  // The whole plate is one design unit, so it is one part (Atomm's grouping spec): it moves as one in Studio.
+  const part = `<g id="engraving" data-name="${escapeXml(ir.projectName)} engraving">${body}</g>`;
+  return svgDocument(config.widthMm, config.heightMm, part, `${ir.projectName} — flat topographic engraving`);
 }

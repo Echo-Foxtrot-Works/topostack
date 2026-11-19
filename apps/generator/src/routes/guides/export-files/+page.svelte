@@ -61,8 +61,8 @@
     </tbody>
   </table>
 
-  <h2>Colors and operation groups</h2>
-  <p>Every SVG sets its width and height in millimeters, so it should import at the finished size. Paths are grouped by the operation TopoStack intends:</p>
+  <h2>Pieces, colors and operation groups</h2>
+  <p>Every SVG sets its width and height in millimeters, so it should import at the finished size. Each cut piece is one group at the top of the file, named after its assembly id, holding its outline, holes, engraving, score lines and id. Select a piece in xTool Studio or LightBurn and everything on it moves and rotates together while its neighbors stay put. Inside each piece, paths are grouped by the operation TopoStack intends:</p>
   <table>
     <thead><tr><th scope="col">Group</th><th scope="col">Stroke</th><th scope="col">Used for</th></tr></thead>
     <tbody>
@@ -73,7 +73,7 @@
   </table>
   <p>Choose Score for blue linework in both SCORE and ENGRAVE groups, Cut for red outlines, and Engrave only for intentionally filled blue artwork. Group names organize the SVG; verify the processing type in Studio. Inside ENGRAVE, detail groups are named by feature so you can give them separate line weights or turn them off:</p>
   <ul>
-    <li><strong>Layered:</strong> each panel has a <code>fabrication-panel-N-ENGRAVE</code> group listing its layers in a <code>data-layers</code> attribute. Inside it, each layer has groups such as <code>layer-03-ENGRAVE-trails</code>, <code>-major-roads</code>, <code>-local-roads</code>, <code>-transport-labels</code>, <code>-water</code>, <code>-boundaries</code>, <code>-coordinate-grid</code>, <code>-annotations</code> and <code>-general</code>.</li>
+    <li><strong>Layered:</strong> each piece is a group such as <code>layer-03-part-2</code>, with <code>data-layer</code> and <code>data-piece</code> attributes (and <code>data-cell</code> on a split sheet). Its <code>layer-03-part-2-ENGRAVE</code> group holds detail groups such as <code>layer-03-ENGRAVE-trails</code>, <code>-major-roads</code>, <code>-local-roads</code>, <code>-transport-labels</code>, <code>-water</code>, <code>-boundaries</code>, <code>-coordinate-grid</code>, <code>-annotations</code> and <code>-general</code>.</li>
     <li><strong>Flat:</strong> <code>ENGRAVE-contours-minor</code>, <code>ENGRAVE-contours-index</code>, <code>ENGRAVE-water-fill</code>, <code>ENGRAVE-map-details</code> (with the same feature subgroups) and <code>ENGRAVE-border</code>.</li>
   </ul>
   <p>Marker clearances are gaps in the exported line geometry, not white fabrication objects. Solid marker symbols retain their blue fill with no duplicate outline stroke; use Engrave for those filled shapes.</p>

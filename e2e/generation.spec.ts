@@ -77,7 +77,8 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   // elevation labels exist rather than pinning one layer's.
   expect(svg).toMatch(/id="elevation-\d+"/);
   expect(svg).toContain('id="alignment-layer-01-to-02-');
-  expect(svg).toContain("data-layers=");
+  // One root-level group per cut piece (Atomm's SVG grouping spec), each saying its layer.
+  expect(svg).toMatch(/<g id="layer-01-part-1" data-name="[^"]+" data-layer="layer-01"/);
   expect(svg).not.toContain("<text");
   expect(svg).toContain("Crater Lake — master layout");
   expect(svg).toContain("Made with TopoStack");

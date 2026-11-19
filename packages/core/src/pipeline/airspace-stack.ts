@@ -43,6 +43,20 @@ function classEnabled(volume: AirspaceVolumeV1, classes: AirspaceStackSettingsV1
   }
 }
 
+const CLASS_SETTING_NAMES: Record<AirspaceVolumeV1["aviationClass"], string> = { "class-b": "Class B", "class-c": "Class C", "class-d": "Class D", "special-use": "Special use" };
+
+/**
+ * Why Airspace in 3D built nothing. Airspace loads for a box around the map,
+ * so a class can be nearby without reaching over it: name the switched-off
+ * classes that are nearby as the thing to try, else say none reaches the area.
+ */
+function emptyAirspaceWarning(all: readonly AirspaceVolumeV1[], classes: AirspaceStackSettingsV1["classes"]): GeometryWarning {
+  const off = [...new Set(all.filter((volume) => !classEnabled(volume, classes)).map((volume) => volume.aviationClass))].map((aviationClass) => CLASS_SETTING_NAMES[aviationClass]);
+  return off.length
+    ? { code: "AIRSPACE_EMPTY", message: `No airspace pieces were made over this map area. ${off.join(" and ")} airspace nearby is switched off: turn it on under Airspace in acrylic to build it.` }
+    : { code: "AIRSPACE_EMPTY", message: "No airspace pieces were made: no Class B, C, D or special use airspace reaches over this map area. Move the area over an airport or restricted area to build some." };
+}
+
 /** One prism of airspace after its limits are resolved: altitudes in metres MSL, a null floor standing on the ground. */
 interface Part {
   volume: AirspaceVolumeV1;
@@ -478,11 +492,13 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
     if (memo) memo.current = { ...entry, stack: structuredClone(stack), socketed: structuredClone(socketed) };
   }
   warnings.push(...entry.warnings.map((warning) => ({ ...warning })));
-  if (!entry.stack) return undefined;
+  // Say why nothing stands over the model, rather than leave an empty switch.
+  if (!entry.stack) { warnings.push(emptyAirspaceWarning(source.airspaceVolumes, settings.classes)); return undefined; }
   // Annotation writes into the pieces, so a reused stack is annotated as a copy.
   const stack = entry === previous ? structuredClone(entry.stack) : entry.stack;
   annotateAirspace(stack, volumes, config, warnings);
   const levels = stack.levels;
+  if (!levels.length) warnings.push(emptyAirspaceWarning(source.airspaceVolumes, settings.classes));
   const topMm = levels.length ? Math.max(...levels.map((level) => level.zMm + material.thicknessMm)) : 0;
   stack.topMm = topMm;
   if (topMm > AIRSPACE_TALL_MM) warnings.push({

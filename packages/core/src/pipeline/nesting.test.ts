@@ -27,9 +27,9 @@ describe("material nesting", () => {
     expect(panelFiles).toHaveLength(result.layers.length - result.fabricationNests.length);
     expect(engravingFiles).toHaveLength(panelFiles.length);
     expect(panelFiles.some((file) => file.filename.includes("-panel-") && file.filename.includes("-layers-"))).toBe(true);
-    expect(await fabrication.master.blob.text()).toContain("data-layers=");
+    expect(await fabrication.master.blob.text()).toContain("data-layer=");
     const engraving = await engravingFiles[0]!.blob.text();
-    expect(engraving).toContain('id="ENGRAVE" data-operation="ENGRAVE"');
+    expect(engraving).toContain('data-operation="ENGRAVE"');
     expect(engraving).not.toContain('data-operation="CUT"');
     expect(engraving).not.toContain('data-operation="SCORE"');
     const manifest = JSON.parse(await fabrication.files.find((file) => file.filename.endsWith("project.json"))!.blob.text());

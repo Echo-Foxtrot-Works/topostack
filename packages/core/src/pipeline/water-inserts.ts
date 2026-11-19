@@ -142,6 +142,26 @@ interface Skipped {
 }
 
 /**
+ * What to call each lake, by `waterInsertLakeKey`: its name, or "Lake N" for
+ * an unnamed one, numbered largest first. Warnings and the studio's lake
+ * lists share it, so a lake is never a map id in one place and "Lake 3" in
+ * another.
+ */
+export function lakeDisplayNames(waterSurfaces: readonly Pick<WaterSurfaceIR, "id" | "kind" | "name" | "hylakId" | "lakeKey" | "polygons">[]): Map<string, string> {
+  const lakes = new Map<string, { name?: string; areaMm2: number }>();
+  for (const surface of waterSurfaces) {
+    if (surface.kind !== "lake") continue;
+    const key = waterInsertLakeKey(surface);
+    const lake = lakes.get(key) ?? { areaMm2: 0 };
+    lake.name ??= surface.name;
+    lake.areaMm2 += surface.polygons.reduce((total, polygon) => total + Math.abs(signedArea(polygon.outer)), 0);
+    lakes.set(key, lake);
+  }
+  let unnamed = 0;
+  return new Map([...lakes.entries()].sort(([, left], [, right]) => right.areaMm2 - left.areaMm2).map(([key, lake]) => [key, lake.name || `Lake ${++unnamed}`]));
+}
+
+/**
  * Cuts every lake's opening out of the sheet that carries its waterline and
  * returns the acrylic pieces that fill them. Runs before the work-area split
  * and material nesting, so seams, nests and alignment guides all see the
@@ -160,11 +180,12 @@ export function cutWaterInserts(config: ProjectConfigV1, layers: LayerIR[], wate
   const excluded = new Set(config.waterInserts!.excludedLakeIds);
   const skipped: Skipped = { onBottom: [], tooSmall: [], failed: [], wholeSheet: [] };
   const bySheet = new Map<number, LakeCandidate[]>();
+  const names = lakeDisplayNames(waterSurfaces);
   for (const surface of waterSurfaces) {
     if (surface.kind !== "lake") continue;
     const lakeKey = waterInsertLakeKey(surface);
     if (excluded.has(lakeKey) || !layers[surface.layerIndex]) continue;
-    const name = surface.name ?? lakeKey;
+    const name = names.get(lakeKey) ?? lakeKey;
     if (!layers[surface.layerIndex - 1]) skipped.onBottom.push(name);
     else bySheet.set(surface.layerIndex, [...(bySheet.get(surface.layerIndex) ?? []), { surface, lakeKey, name }]);
   }

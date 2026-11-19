@@ -108,5 +108,5 @@ test("builds the airspace a browser agent asks for, on through rods", async ({ p
   // The studio shows what the agent chose.
   await page.getByRole("tab", { name: "Aviation", exact: true }).click();
   await expect(page.getByRole("switch", { name: "Airspace in 3D", exact: true })).toBeChecked();
-  await expect(page.getByRole("combobox", { name: "Rod joint" })).toHaveValue("through");
+  await expect(page.getByRole("radiogroup", { name: "Rod joint" }).getByRole("radio", { name: "Through holes" })).toHaveAttribute("aria-checked", "true");
 });
