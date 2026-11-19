@@ -875,8 +875,8 @@ describe("TopoStack Svelte shell", () => {
     await pick("Airspace form", "Layered");
     await vi.waitFor(() => expect(checked("Airspace levels")).toBe("Shelves only"));
     expect([...airspace.querySelectorAll('button[role="switch"]')].map((button) => button.getAttribute("aria-label"))).toEqual(["Class B airspace", "Class C airspace", "Special use airspace", "Class D lids"]);
-    expect(airspace.querySelector('select[aria-label="Rod shape"]')).not.toBeNull();
-    expect(airspace.querySelector<HTMLSelectElement>('select[aria-label="Rod joint"]')!.value).toBe("segments");
+    expect(airspace.querySelector('[role="radiogroup"][aria-label="Rod shape"]')).not.toBeNull();
+    expect(airspace.querySelector('[role="radiogroup"][aria-label="Rod joint"] [aria-checked="true"]')!.textContent).toBe("Glued segments");
     aviation.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Airspace in 3D"]')!.click();
     await tick();
 

@@ -1,5 +1,6 @@
 /* Adapted from https://dev.atomm.com/templates/layout-3-generate.skeleton.html
- * Design contract https://dev.atomm.com/design.md, fetched 2026-09-16. */
+ * Design contract https://dev.atomm.com/design.md, fetched 2026-09-16; property cards, tips hover and
+ * select list re-synced with the template on 2026-11-19 (platform v1.6.0 cards: 8px corners, shadow-100). */
 .atomm-workbench {
 
 /* atomm Generator UI — design.css
@@ -330,7 +331,7 @@ button:disabled, [aria-disabled="true"],
   background: var(--color-bg-default); color: var(--color-text-secondary); border: 1px solid var(--color-stroke-default);
   border-radius: var(--radius-circle); font: var(--font-14-medium);
 }
-.btn-tips:hover { border-color: var(--color-stroke-strong); background: var(--color-bg-surface); }
+.btn-tips:hover { border-color: var(--color-stroke-strong); background: var(--color-bg-hover); }
 
 /* input family: grey fill, no border; hover deepens the fill, focus draws a 1px stroke-active border */
 .input, .input-number, .select, .textarea {
@@ -377,6 +378,7 @@ select.select { appearance: none; -webkit-appearance: none; padding-inline-end: 
 /* the list: a floating surface, so it takes a border and a real shadow. Mounted on body with
  * position:fixed in an app (a scrolling rail would clip it), absolute inside a docs demo. */
 .select-list {
+  z-index: 3;
   min-width: var(--select-w); max-height: calc(var(--control-md) * 7 + var(--space-75) * 2);
   padding: var(--space-75); overflow-y: auto; scrollbar-width: thin;
   background: var(--color-bg-default); border: 1px solid var(--color-stroke-default);
@@ -450,11 +452,11 @@ select.select { appearance: none; -webkit-appearance: none; padding-inline-end: 
 .segmented > button[aria-pressed="true"] + button::before { display: none; }
 .segmented-tabs > button { min-width: 88px; }
 
-/* property card: white, hairline border, top two corners rounded and the bottom two square;
+/* property card: white, hairline border, 8px corners and a shadow-100 lift;
  * header row is a disclosure button.
  * The header's radius is 1px smaller than the card's: it sits inside the card's 1px border, so the hover fill hugs the inner edge. */
 .prop-card { background: var(--color-bg-default); border: 1px solid var(--color-stroke-divider);
-  border-radius: var(--radius-large) var(--radius-large) var(--radius-none) var(--radius-none); }
+  border-radius: var(--radius-large); box-shadow: var(--shadow-100); }
 .prop-card-header {
   display: flex; align-items: center; justify-content: space-between; width: 100%;
   padding: var(--space-100) var(--space-200); text-align: start;
@@ -463,7 +465,7 @@ select.select { appearance: none; -webkit-appearance: none; padding-inline-end: 
   border-radius: calc(var(--radius-large) - 1px) calc(var(--radius-large) - 1px) var(--radius-none) var(--radius-none);
 }
 .prop-card-header .icon { color: var(--color-text-tertiary); transition: transform var(--motion-fast) var(--motion-easing); }
-.prop-card-header[aria-expanded="false"] { border-bottom-color: transparent; }
+.prop-card-header[aria-expanded="false"] { border-bottom-color: transparent; border-radius: calc(var(--radius-large) - 1px); }
 .prop-card-header[aria-expanded="false"] .icon { transform: rotate(180deg); }
 .prop-card-header:hover { background: var(--color-bg-hover); }
 /* field row: label at the start, control at the end, 44px tall (28 control + 8/8 padding) */
@@ -759,9 +761,9 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .ldt-button.ldt-icon-button { min-width: 32px; width: 32px; height: 32px; padding: 0; border-radius: 8px; }
   .output-mode-switch { width: 100%; }
   .output-mode-switch__icon, .output-mode-switch .ldt-toggle-group__item[data-state="on"] .output-mode-switch__icon { color: currentColor; background: transparent; border: 0; }
-  .config-section { margin: 0; padding: 0; border: 1px solid var(--color-stroke-divider); border-radius: 8px; background: var(--color-bg-default); }
+  .config-section { margin: 0; padding: 0; border: 1px solid var(--color-stroke-divider); border-radius: 8px; background: var(--color-bg-default); box-shadow: var(--shadow-100); }
   .section-disclosure { height: 40px; min-height: 40px; padding: 8px 16px; gap: 8px; border-bottom: 1px solid var(--color-stroke-divider); border-radius: 8px 8px 0 0; text-align: start; font: var(--font-12-medium); }
-  .section-disclosure[aria-expanded="false"] { border-bottom-color: transparent; border-radius: 8px; }
+  .section-disclosure[aria-expanded="false"] { border-bottom-color: transparent; border-radius: 7px; }
   .section-number, .section-title small { display: none; }
   .section-title { font: var(--font-12-medium); }
   .section-content { padding: 8px 0; }
@@ -777,6 +779,8 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .toggle-settings .swatch-options { margin-inline: 0; }
   .depth-note { margin-inline: 16px; }
   .toggle-settings .depth-note { margin-inline: 0; }
+  /* A heading after a note starts a new group: give it the space a field row would have. */
+  .depth-note + .toggle-settings > .subgroup-heading:first-child { margin-block-start: var(--space-150); }
   .swatch-options button { min-width: 0; }
   .swatch-options button > span { margin: 0; font: var(--font-12-regular); text-transform: none; letter-spacing: normal; }
   .atomm-switch-row > span:first-child { min-width: 0; }
@@ -812,6 +816,10 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .ldt-button { height: 32px; min-height: 32px; padding: 0 12px; border-radius: 6px; font: var(--font-14-medium); }
   .atomm-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; min-height: 40px; cursor: pointer; }
   .atomm-switch-row .toggle-label { color: var(--color-text-primary); font: var(--font-12-regular); }
+  /* A switch's description sits under its label: side by side, a 320px rail wraps both into two cramped columns. */
+  .atomm-switch-row .toggle-label:has(> small) { flex-wrap: wrap; row-gap: 2px; }
+  .atomm-switch-row .toggle-label > small { flex-basis: 100%; color: var(--color-text-secondary); font: var(--font-12-regular); }
+  .insert-lakes .atomm-switch-row .toggle-label > small { flex-basis: auto; }
   .toggle-stack { gap: 0; }
   .toggle-stack > div { padding: 0; }
   .switch input { width: 36px; height: 24px; cursor: pointer; }
@@ -948,7 +956,7 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .export-preview-state { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: var(--space-300); color: var(--color-text-secondary); font: var(--font-12-regular); text-align: center; }
   .export-manifest { position: absolute; inset-block-start: 64px; inset-inline-start: var(--gutter); z-index: 2; display: flex; flex-direction: column; gap: var(--space-100); width: 260px; max-width: calc(100% - 32px); max-height: calc(100% - 128px); overflow-y: auto; padding: var(--space-150); border: 1px solid var(--color-stroke-divider); border-radius: var(--radius-large); background: var(--color-bg-default); box-shadow: var(--shadow-100); font: var(--font-12-regular); }
   .export-manifest h2 { margin: 0; font: var(--font-12-medium); color: var(--color-text-primary); }
-  .export-manifest-row, .export-manifest summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-50); margin: 0; padding-block: var(--space-50); min-height: var(--min-target); color: var(--color-text-tertiary); }
+  .export-manifest-row, .export-manifest summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-50); margin: 0; padding-block: var(--space-50); min-height: var(--min-target); color: var(--color-text-secondary); }
   .export-manifest summary { cursor: pointer; list-style: none; }
   .export-manifest summary::-webkit-details-marker { display: none; }
   .export-manifest strong { color: var(--color-text-primary); font-weight: 500; }
@@ -957,7 +965,11 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .export-manifest small { color: var(--color-text-secondary); font: var(--font-11-regular); font-variant-numeric: tabular-nums; }
   .export-manifest ul { display: flex; flex-direction: column; gap: 2px; margin: var(--space-50) 0 0; padding: 0; list-style: none; }
   .export-manifest li { display: flex; justify-content: space-between; gap: var(--space-100); color: var(--color-text-secondary); font: var(--font-11-regular); }
-  .export-manifest li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The shared project prefix shortens; the end that tells files apart stays whole. */
+  .export-manifest .export-file-name { display: flex; min-width: 0; white-space: nowrap; }
+  .export-manifest .export-file-stem { min-width: 1ch; overflow: hidden; text-overflow: ellipsis; }
+  .export-manifest .export-file-stem:empty { display: none; }
+  .export-manifest .export-file-end { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .export-manifest small { flex: none; white-space: nowrap; }
   .export-key { display: flex; align-items: center; gap: var(--space-50); margin: 0; padding-top: var(--space-100); border-top: 1px solid var(--color-stroke-divider); color: var(--color-text-secondary); }
   .export-key i { width: 12px; height: 2px; border-radius: 1px; }

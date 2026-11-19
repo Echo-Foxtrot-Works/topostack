@@ -4,6 +4,9 @@
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  const ROD_SHAPES: Array<{ value: AirspaceStackSettingsV1["rod"]["shape"]; label: string }> = [{ value: "round", label: "Round" }, { value: "square", label: "Square" }];
+  // Two options, so a segmented control (as Road appearance), not a dropdown that truncates them.
+  const ROD_JOINTS: Array<{ value: AirspaceStackSettingsV1["rod"]["joint"]; label: string }> = [{ value: "segments", label: "Glued segments" }, { value: "through", label: "Through holes" }];
 
   /**
    * Airspace in 3D (docs/plans/airspace-acrylic.md): how the airspace over the
@@ -53,6 +56,8 @@
   const choose = <T,>(value: T, current: T, apply: () => void) => () => { if (value !== current) apply(); };
 
   const stack = $derived(studio.geometry?.airspaceStack);
+  // Why nothing was built, beside the switch: the preview shows only its top two warnings.
+  const empty = $derived(studio.geometry?.warnings.find((warning) => warning.code === "AIRSPACE_EMPTY")?.message);
   const rods = $derived(stack?.columns.reduce((total, column) => total + column.segments.length, 0) ?? 0);
   const rodLengthMm = $derived(stack?.columns.reduce((total, column) => total + column.segments.reduce((sum, segment) => sum + segment.lengthMm, 0), 0) ?? 0);
   const pieces = $derived(stack?.levels.reduce((total, level) => total + level.pieces.length, 0) ?? 0);
@@ -131,18 +136,18 @@
   </div>
   {#if settings.ceilingCapFt !== undefined}<p class="depth-chart-row"><button type="button" onclick={() => update({ ceilingCapFt: undefined })}>Cap at the highest Class B or C ceiling</button></p>{/if}
   <p class="subgroup-heading">Rods</p>
-  <label class="field-row airspace-select">Rod shape
-    <select aria-label="Rod shape" value={settings.rod.shape} onchange={(event) => updateRod({ shape: event.currentTarget.value as AirspaceStackSettingsV1["rod"]["shape"] })}>
-      <option value="round">Round</option>
-      <option value="square">Square</option>
-    </select>
-  </label>
-  <label class="field-row airspace-select">Rods meet pieces
-    <select aria-label="Rod joint" value={settings.rod.joint} onchange={(event) => updateRod({ joint: event.currentTarget.value as AirspaceStackSettingsV1["rod"]["joint"] })}>
-      <option value="segments">Glued segments</option>
-      <option value="through">Through holes</option>
-    </select>
-  </label>
+  <div class="ldt-toggle-group trail-pattern-options" role="radiogroup" aria-label="Rod shape">
+    {#each ROD_SHAPES as option (option.value)}
+      {@const on = settings.rod.shape === option.value}
+      <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={on} data-state={on ? "on" : "off"} tabindex={on ? 0 : -1} onkeydown={studio.navigateChoice} onclick={() => { if (!on) updateRod({ shape: option.value }); }}>{option.label}</button>
+    {/each}
+  </div>
+  <div class="ldt-toggle-group trail-pattern-options" role="radiogroup" aria-label="Rod joint">
+    {#each ROD_JOINTS as option (option.value)}
+      {@const on = settings.rod.joint === option.value}
+      <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={on} data-state={on ? "on" : "off"} tabindex={on ? 0 : -1} onkeydown={studio.navigateChoice} onclick={() => { if (!on) updateRod({ joint: option.value }); }}>{option.label}</button>
+    {/each}
+  </div>
   <small class="depth-note">{settings.rod.joint === "through"
     ? "One rod per column stands in the terrain and rises through holes in the pieces; you glue each piece at the height the guide gives."
     : "A short rod between each level, glued on the outline engraved on the piece below. The guide lists every length."}</small>
@@ -153,6 +158,8 @@
   </div>
   {#if notCovered}
     <small class="depth-note">There is no airspace here: FAA data covers the US and its territories.</small>
+  {:else if empty}
+    <small class="depth-note">{empty}</small>
   {:else if stack}
     <small class="depth-note">{pieces} {pieces === 1 ? "piece" : "pieces"} on {stack.levels.length} {stack.levels.length === 1 ? "level" : "levels"}, {shownLength(stack.topMm)} {studio.shownLengthUnit} tall{rods ? `, held by ${rods} ${rods === 1 ? "rod" : "rods"} (${shownLength(rodLengthMm)} ${studio.shownLengthUnit} in all)` : ""}.{stack.backingSheet ? " Some rods go through the bottom layer onto a backing sheet, which exports with the airspace." : ""}</small>
   {/if}

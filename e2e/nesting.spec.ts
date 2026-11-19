@@ -47,7 +47,8 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   expect(manifest.result.fabrication.sheetNesting.engine).toMatchObject({ name: "sparrow", jaguaVersion: "0.8.3" });
   const sheet = Buffer.from(files["crater-lake-sheet-01.svg"]!).toString("utf8");
   expect(sheet).toContain('viewBox="0 0 400 300"');
-  expect(sheet).toMatch(/<g id="part-1-CUT" data-part="[^"]+" data-layers="[^"]+" transform="matrix\(/);
+  // Each placed piece is its own root-level group, moved onto the sheet by its own matrix.
+  expect(sheet).toMatch(/<g id="layer-\d+-part-\d+--p1" data-name="[^"]+"[^>]* data-part="[^"]+" data-layers="[^"]+" transform="matrix\(/);
   const readme = Buffer.from(files["README.txt"]!).toString("utf8");
   expect(readme).toContain("sparrow");
 

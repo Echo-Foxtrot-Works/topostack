@@ -1,4 +1,4 @@
-import { acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lakeDisplayNames, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -84,6 +84,7 @@ export interface ModeledLake { id: string; hylakId: number; name: string; maxDep
  * OSM name and then to a plain index.
  */
 export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefined, limit = 4): ModeledLake[] {
+  const names = lakeDisplayNames(waterSurfaces ?? []);
   return (waterSurfaces ?? [])
     // A maximum-depth override only affects modeled basins. Surveyed beds come
     // from the DEM or NOAA, so showing the same control for them would be a no-op.
@@ -91,7 +92,7 @@ export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefine
     .map((surface, index) => ({
       id: surface.id,
       hylakId: surface.hylakId!,
-      name: surface.name ?? `Lake ${index + 1}`,
+      name: names.get(waterInsertLakeKey(surface)) ?? surface.name ?? `Lake ${index + 1}`,
       maxDepthM: surface.maxDepthM ?? surface.surfaceElevationM - surface.bedElevationM,
       depthSource: surface.depthSource,
     }))
@@ -118,9 +119,9 @@ export function insertLakes(geometry: Pick<GeometryIRV1, "waterSurfaces" | "wate
     rows.set(key, row);
   }
   for (const insert of geometry.waterInserts ?? []) rows.get(insert.lakeKey)?.insertIds.push(insert.id);
-  // Unnamed lakes are numbered in the order they are listed.
-  let unnamed = 0;
-  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => ({ ...row, name: row.name || `Lake ${++unnamed}` }));
+  // Unnamed lakes take the numbers generation warnings use (largest first).
+  const names = lakeDisplayNames(geometry.waterSurfaces);
+  return [...rows.values()].sort((left, right) => right.areaMm2 - left.areaMm2).map(({ areaMm2: _area, ...row }) => ({ ...row, name: row.name || names.get(row.key) || row.key }));
 }
 
 /** How many unnested acrylic panels the export writes, by the grouping the export itself uses. */

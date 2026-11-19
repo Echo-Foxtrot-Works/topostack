@@ -40,7 +40,8 @@ export function connectAtomm(getCurrent: CurrentExport, onReady: () => void, onE
         if (currentExport !== getter) throw new Error("TopoStack disconnected while preparing the export.");
         const output = await createAtommExport(geometry, project, intent, fonts, sheetPlan, acrylicSheetPlan);
         const acrylicNote = intent === "openInStudio" ? acrylicOutsideStudio(geometry) : "";
-        const note = [layoutNote, acrylicNote].filter(Boolean).join(" ");
+        // The layout note is a label ("Automatic layout · 2 sheets · …"); end it as a sentence when another follows.
+        const note = [layoutNote, acrylicNote].filter((part): part is string => Boolean(part)).map((part, index, parts) => index < parts.length - 1 && !/[.!?]$/.test(part) ? `${part}.` : part).join(" ");
         currentExportUpdate?.({ phase: "ready", intent, fileCount: Array.isArray(output) ? output.length : 1, ...(note ? { layoutNote: note } : {}) });
         return output;
       } catch (error) {

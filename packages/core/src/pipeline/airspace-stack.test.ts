@@ -307,6 +307,17 @@ describe("airspace without data", () => {
     expect(result.warnings.map((warning) => warning.code)).toContain("AIRSPACE_NOT_LOADED");
   });
 
+  it("says why nothing was built when the area has only switched-off classes, or none", () => {
+    const onlyTower = build({ form: "plates" }, [tower]);
+    const message = onlyTower.warnings.find((warning) => warning.code === "AIRSPACE_EMPTY")?.message;
+    expect(message).toContain("Class D airspace nearby is switched off");
+    expect(build({ form: "plates", classes: { B: true, C: true, D: true, specialUse: true } }, [tower]).warnings.map((warning) => warning.code)).not.toContain("AIRSPACE_EMPTY");
+    // Loaded for the box around the map, but reaching nowhere over it: still nothing built, still said.
+    const far = volume("far", "class-b", square(5000, 5000, 5100, 5100), { ref: "sfc", ft: 0 }, { ref: "msl", ft: CEILING });
+    expect(build({ form: "plates" }, [far]).warnings.map((warning) => warning.code)).toContain("AIRSPACE_EMPTY");
+    expect(build({ form: "plates" }, []).warnings.find((warning) => warning.code === "AIRSPACE_EMPTY")?.message).toContain("no Class B, C, D or special use airspace reaches over this map area");
+  });
+
   it("is absent from geometry that never asked for it", () => {
     expect(plain.airspaceStack).toBeUndefined();
   });

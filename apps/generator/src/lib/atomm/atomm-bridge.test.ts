@@ -72,6 +72,14 @@ describe("Atomm bridge", () => {
     expect(exportUpdate).toHaveBeenLastCalledWith({ phase: "ready", intent: "openInStudio", fileCount: 0, layoutNote: "The acrylic airspace is not in it: download the project files for their own SVGs." });
     disconnectAirspace();
 
+    // With a sheet layout too, the layout label is ended as a sentence before the acrylic note.
+    const disconnectLaidOut = connectAtomm(() => ({ geometry: withAirspace, project, layoutNote: "Automatic layout · 3 sheets · 600 × 400 mm" }), ready, exportUpdate);
+    const laidOut = handler?.({ intent: "openInStudio" });
+    await vi.advanceTimersByTimeAsync(20);
+    await laidOut;
+    expect(exportUpdate).toHaveBeenLastCalledWith({ phase: "ready", intent: "openInStudio", fileCount: 0, layoutNote: "Automatic layout · 3 sheets · 600 × 400 mm. The acrylic airspace is not in it: download the project files for their own SVGs." });
+    disconnectLaidOut();
+
     const disconnectAgain = connectAtomm(() => ({ geometry, project }), ready);
     expect(on).toHaveBeenCalledTimes(1);
     disconnect();

@@ -65,10 +65,10 @@ describe("preview summaries", () => {
 
   it("lists modeled lakes deepest first, skipping surveyed basins", () => {
     const lakes = modeledLakes([
-      { id: "a", kind: "lake", hylakId: 1, maxDepthM: 10, depthSource: "predicted" },
-      { id: "b", kind: "lake", hylakId: 2, maxDepthM: 40, depthSource: "predicted", name: "Deep" },
-      { id: "c", kind: "lake", hylakId: 3, maxDepthM: 90, depthSource: "surveyed" },
-      { id: "d", kind: "river", hylakId: 4, maxDepthM: 90 },
+      { id: "a", kind: "lake", hylakId: 1, maxDepthM: 10, depthSource: "predicted", polygons: [] },
+      { id: "b", kind: "lake", hylakId: 2, maxDepthM: 40, depthSource: "predicted", name: "Deep", polygons: [] },
+      { id: "c", kind: "lake", hylakId: 3, maxDepthM: 90, depthSource: "surveyed", polygons: [] },
+      { id: "d", kind: "river", hylakId: 4, maxDepthM: 90, polygons: [] },
     ] as unknown as WaterSurfaceIR[]);
     expect(lakes.map((lake) => [lake.id, lake.name])).toEqual([["b", "Deep"], ["a", "Lake 1"]]);
     expect(modeledLakes(undefined)).toEqual([]);
