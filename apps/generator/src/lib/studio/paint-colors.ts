@@ -1,4 +1,5 @@
 import type { LAND_CLASSES, LandAreaV1, LandClass, PaintRegionKind } from "@topostack/core";
+import { hasMessage, t, type MessageKey } from "$lib/i18n/i18n.svelte";
 
 /**
  * Suggested paint per stencil kind: the swatch beside its switch, the window
@@ -46,7 +47,12 @@ export const LISTED_LAND_UNITS = 40;
 /** A unit as the panel lists it: its name, or its kind and state when it has none (BLM land, unnamed preserves). */
 export function landUnitLabel(area: Pick<LandAreaV1, "unit" | "landClass" | "name">): string {
   if (area.name) return area.name;
-  const kind = LAND_PAINT_OPTIONS.find((option) => option.value === area.landClass)?.label ?? area.landClass;
+  const kind = landKindLabel(area.landClass);
   const state = area.unit.split(":").at(-1);
-  return state && state.length === 2 ? `${kind}, ${state}` : kind;
+  return state && state.length === 2 ? t("features.landUnitInState", { kind, state }) : kind;
+}
+
+/** A land kind's switch label in the studio's language; `LAND_PAINT_OPTIONS` keeps the English one. */
+export function landKindLabel(landClass: LandClass): string {
+  return hasMessage(`features.landKind.${landClass}`) ? t(`features.landKind.${landClass}` as MessageKey) : landClass;
 }
