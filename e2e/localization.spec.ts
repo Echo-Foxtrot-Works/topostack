@@ -57,7 +57,8 @@ async function englishLeft(studio: FrameLocator): Promise<string[]> {
     return out;
   });
   const leftover = (text: string) => {
-    let rest = text.replace(/⟦[^⟧]*⟧/g, " ");
+    // Attribute entries are reported as "@name: value"; only the value is copy.
+    let rest = text.replace(/^@[\w-]+: /, "").replace(/⟦[^⟧]*⟧/g, " ");
     for (const pattern of ALLOWED) rest = rest.replace(pattern, " ");
     return /[A-Za-z]{3,}/.test(rest);
   };

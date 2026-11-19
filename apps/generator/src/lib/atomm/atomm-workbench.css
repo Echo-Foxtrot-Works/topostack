@@ -92,7 +92,9 @@
   --color-red-subtlest: var(--red-100);
 
   /* type — the export names a style by its metrics; the role each one carries is in design.md */
-  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Inter covers the Latin and Cyrillic locales; the platform's other scripts (Chinese, Japanese, Korean, Thai)
+   * fall through to each system's UI font rather than to a generic face. */
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'PingFang TC', 'Hiragino Sans', 'Apple SD Gothic Neo', 'Microsoft YaHei', 'Microsoft JhengHei', 'Yu Gothic UI', 'Malgun Gothic', 'Leelawadee UI', Thonburi, 'Noto Sans CJK SC', 'Noto Sans Thai', sans-serif;
   --font-16-semibold: 600 16px / 22px var(--font-sans);   /* dialog titles */
   --font-14-medium: 500 14px / 20px var(--font-sans);     /* buttons, rail headings */
   --font-14-regular: 400 14px / 20px var(--font-sans);   /* the register a generator moves up to */
