@@ -4,6 +4,7 @@
   import NumberField from "$lib/studio/StudioNumberField.svelte";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  import { warningText } from "$lib/i18n/warnings";
   const ROD_SHAPES: Array<{ value: AirspaceStackSettingsV1["rod"]["shape"]; label: string }> = [{ value: "round", label: "Round" }, { value: "square", label: "Square" }];
   // Two options, so a segmented control (as Road appearance), not a dropdown that truncates them.
   const ROD_JOINTS: Array<{ value: AirspaceStackSettingsV1["rod"]["joint"]; label: string }> = [{ value: "segments", label: "Glued segments" }, { value: "through", label: "Through holes" }];
@@ -57,7 +58,8 @@
 
   const stack = $derived(studio.geometry?.airspaceStack);
   // Why nothing was built, beside the switch: the preview shows only its top two warnings.
-  const empty = $derived(studio.geometry?.warnings.find((warning) => warning.code === "AIRSPACE_EMPTY")?.message);
+  const emptyWarning = $derived(studio.geometry?.warnings.find((warning) => warning.code === "AIRSPACE_EMPTY"));
+  const empty = $derived(emptyWarning && warningText(emptyWarning));
   const rods = $derived(stack?.columns.reduce((total, column) => total + column.segments.length, 0) ?? 0);
   const rodLengthMm = $derived(stack?.columns.reduce((total, column) => total + column.segments.reduce((sum, segment) => sum + segment.lengthMm, 0), 0) ?? 0);
   const pieces = $derived(stack?.levels.reduce((total, level) => total + level.pieces.length, 0) ?? 0);

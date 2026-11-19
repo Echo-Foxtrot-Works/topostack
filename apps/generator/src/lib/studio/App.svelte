@@ -27,6 +27,7 @@
   import SheetLayoutSection from "$lib/studio/panels/SheetLayoutSection.svelte";
   import ResetProjectDialog from "$lib/studio/ResetProjectDialog.svelte";
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
+  import { t } from "$lib/i18n/i18n.svelte";
   import { ProjectHistory } from "$lib/studio/history";
   import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
@@ -196,6 +197,8 @@
    * example download, shows the sample's preview meanwhile.
    */
   const STARTUP_PREVIEW_WAIT_MS = 1_000;
+  // How long the embed waits for the platform's language before showing English.
+  const ATOMM_LOCALE_WAIT_MS = 4_000;
   let startupSettled = $state(false);
   /** The view a project opens in: its engraving, or the stack in 3D unless 3D failed. */
   const defaultModeFor = (outputMode: ProjectConfigV1["outputMode"]): PreviewMode => outputMode === "engraving" ? "engraving" : threeUnavailable ? "2d" : "3d";
@@ -419,7 +422,12 @@
     const startupWait = window.setTimeout(settleStartup, STARTUP_PREVIEW_WAIT_MS);
     panels.restore();
     embeddedInPlatform = window.parent !== window;
-    if (embeddedInPlatform) void import("$lib/atomm/AtommWorkbench.svelte").then((module) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
+    // The workbench renders only once the platform language's copy is loaded,
+    // so no English flashes first; a host that never answers gets English.
+    let localeLoaded!: () => void;
+    const atommLocale = new Promise<void>((resolve) => { localeLoaded = resolve; });
+    const localeTimeout = window.setTimeout(() => localeLoaded(), ATOMM_LOCALE_WAIT_MS);
+    if (embeddedInPlatform) void Promise.all([import("$lib/atomm/AtommWorkbench.svelte"), atommLocale]).then(([module]) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
       if (!embeddedInPlatform) return { geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan };
       if (exportBlockedBy || previewBusy) throw new Error(exportBlockedBy || "Wait for the preview to finish updating.");
@@ -430,7 +438,8 @@
       });
     }, () => {
       atommReady = true;
-      if (embeddedInPlatform && window.atomm) void readAtommLocale(window.atomm).then((locale) => { if (!cancelled) document.documentElement.lang = locale; });
+      if (embeddedInPlatform && window.atomm) void readAtommLocale(window.atomm).then((locale) => { if (!cancelled) document.documentElement.lang = locale; }).finally(() => { window.clearTimeout(localeTimeout); localeLoaded(); });
+      else localeLoaded();
     }, (update) => {
       exportNotice.apply(update);
       if (update.phase === "ready") trackUsage("export_prepared", project.outputMode, "atomm");
@@ -1033,7 +1042,7 @@
     {#snippet parameters(openLakeDepthHelp)}<LayerDock /><div class="settings-panels"><SettingsPanels {openLakeDepthHelp} /></div>{/snippet}
     {#snippet preview(openLakeDepthHelp)}<PreviewPanel {openLakeDepthHelp} />{/snippet}
     {#snippet dialogs()}{@render locationSearch()}{/snippet}
-  </AtommWorkbench>{:else}<main role="status">{atommLayoutFailed ? "The platform layout could not load. Reload to try again." : "Preparing terrain studio…"}</main>{/if}
+  </AtommWorkbench>{:else}<main role="status" aria-busy={!atommLayoutFailed}>{#if atommLayoutFailed}{t("app.layoutFailed")}{/if}</main>{/if}
 {:else}
 <AppShell class="app-shell">
   {#snippet header()}

@@ -38,7 +38,7 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   await page.route("https://static-res.makextool.com/**", route => route.fulfill({ contentType: "application/javascript", body: `
     window.atomm = {
       lifecycle: { on(event, hook) { window.testExport = hook; } },
-      app: { getLocale: async () => 'ja', getSupportedLocales: async () => [{ code: 'en', name: 'English' }] },
+      app: { getLocale: async () => 'en', getSupportedLocales: async () => [{ code: 'en', name: 'English' }] },
       ui: { toast: async () => 'toast', closeToast: async () => {} }
     };
     const render = () => document.querySelectorAll('[data-atomm-export-button]').forEach(slot => {

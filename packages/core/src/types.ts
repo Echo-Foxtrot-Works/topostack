@@ -1269,7 +1269,15 @@ export type GeometryWarningCode =
 
 export interface GeometryWarning {
   code: GeometryWarningCode;
+  /** English, for agents, the REST/MCP API and logs. */
   message: string;
+  /**
+   * The studio's catalog key under `warnings.` (e.g. `waterInsertOnBottom`)
+   * and the values its message fills in, so the studio can show the warning
+   * in the user's language. Lists are arrays of names; counts are numbers.
+   */
+  messageKey?: string;
+  params?: Record<string, string | number | string[]>;
   action?: "fit-lake-depth";
 }
 

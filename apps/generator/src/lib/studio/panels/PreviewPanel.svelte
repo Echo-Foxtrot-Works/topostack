@@ -12,6 +12,7 @@
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { getStudio, type PreviewMode } from "$lib/studio/studio-context";
   import PlaceGraphicsButton from "$lib/studio/customdata/PlaceGraphicsButton.svelte";
+  import { warningText } from "$lib/i18n/warnings";
   const base = basePath();
 
   let { openLakeDepthHelp }: { openLakeDepthHelp?: (trigger: HTMLButtonElement) => void } = $props();
@@ -125,7 +126,7 @@
         {#each studio.visibleWarnings as warning (`${warning.code}-${warning.message}`)}
           <div class="preview-warning">
             <span class="warning-icon" aria-hidden="true">!</span>
-            <p>{warning.message}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>Fit depth</Button>{/if}</p>
+            <p>{warningText(warning)}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>Fit depth</Button>{/if}</p>
             <button type="button" class="warning-dismiss" aria-label={`Dismiss warning: ${warning.message}`} title="Dismiss warning" onclick={(event) => dismissPreviewWarning(event, `${warning.code}-${warning.message}`)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/each}
