@@ -3,12 +3,13 @@
   import { airspacePieceMarkings, type AirspaceLevelIR, type GeometryIRV1 } from "@topostack/core";
   import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
+  import { t } from "$lib/i18n/i18n.svelte";
   let { geometry, level }: { geometry: GeometryIRV1; level: AirspaceLevelIR } = $props();
   const colors = { clear: "#dcecf2", blue: "#81a9dc", magenta: "#cd8cb6" };
 </script>
 
 <div class="two-d-stage">
-  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="cut" svgLabel={`Airspace cut preview for level ${level.index + 1}`} controlsLabel="Airspace cut zoom controls" resetLabel="Reset airspace cut view">
+  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label={t("aviation.cutPreviewKind")} svgLabel={t("aviation.cutPreviewLabel", { level: level.index + 1 })} controlsLabel={t("aviation.cutZoomControls")} resetLabel={t("aviation.resetCutView")}>
     {#each level.pieces as piece (piece.id)}
       <g data-airspace-piece={piece.id} data-airspace-tint={piece.tint}>
         {#each piece.polygons as polygon}
@@ -27,5 +28,5 @@
       </g>
     {/each}
   </SvgViewport>
-  <div class="axis layer-elevation">{level.altitudeFt.toLocaleString()} ft MSL · {geometry.airspaceStack!.thicknessMm} mm acrylic</div>
+  <div class="axis layer-elevation">{t("aviation.levelCaption", { altitude: level.altitudeFt, thickness: geometry.airspaceStack!.thicknessMm })}</div>
 </div>
