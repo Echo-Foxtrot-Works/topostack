@@ -948,13 +948,28 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   /* Every view stands on the platform's canvas ground; the cut view's dark mat hid the overlays. */
   .two-d-stage { background: var(--color-bg-editor); }
   .export-preview { position: absolute; inset: 0; }
+  /* The contents card and the warnings sit this far down the canvas, under the view switch. */
+  .gen-canvas { --overlay-top: 64px; }
   .export-sheet { position: absolute; inset: 0; }
-  /* With room for it (a canvas of 760px or more beside the two 320px rails), the
-   * artwork starts after the contents card instead of under it. */
-  @container (min-width: 1400px) { .export-sheet { inset-inline-start: 292px; } }
-  .export-sheet .svg-viewer, .export-sheet .svg-viewport { width: 100%; height: 100%; }
+  /* The sheets are laid out beside the contents card, never under it: after the
+   * card on a canvas with room for both, below the folded card on a narrow one. */
+  .export-sheet .svg-viewer { position: relative; }
+  .export-sheet .svg-viewport { position: absolute; inset: 0; width: auto; height: auto; }
+  /* Only the drawing moves aside; the zoom cluster keeps the canvas corner every view uses. */
+  .export-preview:not([data-narrow]) .export-sheet .svg-viewport { inset-inline-start: calc(260px + 2 * var(--gutter)); }
+  .export-preview[data-narrow] .export-sheet .svg-viewport { inset-block-start: calc(var(--overlay-top) + 48px); inset-block-end: 56px; }
+  .export-preview[data-narrow] .export-manifest { inset-inline-end: var(--gutter); width: auto; max-width: none; }
+  .export-preview[data-narrow][data-manifest="folded"] .export-manifest { gap: 0; padding-block: var(--space-50); }
+  .export-manifest-head { display: flex; align-items: center; gap: var(--space-100); min-height: 28px; }
+  .export-manifest-head h2 { flex: none; }
+  .export-manifest-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); font: var(--font-12-regular); }
+  .export-manifest-toggle { flex: none; margin-inline-start: auto; transition: transform var(--motion-fast) var(--motion-easing); }
+  .export-preview[data-manifest="open"] .export-manifest-toggle { transform: rotate(180deg); }
+  .export-manifest-body { display: flex; flex-direction: column; gap: var(--space-100); }
+  .export-manifest-body[hidden] { display: none; }
+  .export-sheet .svg-viewer { width: 100%; height: 100%; }
   .export-preview-state { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: var(--space-300); color: var(--color-text-secondary); font: var(--font-12-regular); text-align: center; }
-  .export-manifest { position: absolute; inset-block-start: 64px; inset-inline-start: var(--gutter); z-index: 2; display: flex; flex-direction: column; gap: var(--space-100); width: 260px; max-width: calc(100% - 32px); max-height: calc(100% - 128px); overflow-y: auto; padding: var(--space-150); border: 1px solid var(--color-stroke-divider); border-radius: var(--radius-large); background: var(--color-bg-default); box-shadow: var(--shadow-100); font: var(--font-12-regular); }
+  .export-manifest { position: absolute; inset-block-start: var(--overlay-top); inset-inline-start: var(--gutter); z-index: 2; display: flex; flex-direction: column; gap: var(--space-100); width: 260px; max-width: calc(100% - 32px); max-height: calc(100% - 128px); overflow-y: auto; padding: var(--space-150); border: 1px solid var(--color-stroke-divider); border-radius: var(--radius-large); background: var(--color-bg-default); box-shadow: var(--shadow-100); font: var(--font-12-regular); }
   .export-manifest h2 { margin: 0; font: var(--font-12-medium); color: var(--color-text-primary); }
   .export-manifest-row, .export-manifest summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-50); margin: 0; padding-block: var(--space-50); min-height: var(--min-target); color: var(--color-text-secondary); }
   .export-manifest summary { cursor: pointer; list-style: none; }
@@ -1017,10 +1032,12 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   @container atomm-canvas (max-width: 400px) {
     .preview-toolbar { inset-block-start: 64px; }
     .warning-stack, .export-manifest { inset-block-start: 112px; }
+    .export-preview[data-narrow] .export-sheet .svg-viewport { inset-block-start: 160px; }
   }
   @container atomm-canvas (max-width: 760px) {
     .lead-collapsed .preview-toolbar { inset-block-start: 64px; }
     .lead-collapsed .warning-stack, .lead-collapsed .export-manifest { inset-block-start: 112px; }
+    .lead-collapsed .export-preview[data-narrow] .export-sheet .svg-viewport { inset-block-start: 160px; }
   }
 }
 

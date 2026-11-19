@@ -1855,6 +1855,14 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector(".export-manifest-row")?.textContent).toMatch(/Open in Studio.*1 editable SVG.*Entire layout/);
     expect(target.querySelector(".export-manifest summary")?.textContent).toMatch(/Download.*Complete project bundle.*\d+ files.*View included files/);
     expect(target.querySelector(".export-sheet image")?.getAttribute("href")).toBe("blob:export-preview");
+    // A canvas with no measured width (narrow) folds the contents card to one line; its toggle opens it.
+    const toggle = target.querySelector<HTMLButtonElement>(".export-manifest-toggle")!;
+    expect(target.querySelector(".export-manifest-summary")?.textContent).toMatch(/\d+ files/);
+    expect(target.querySelector<HTMLElement>(".export-manifest-body")!.hidden).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    toggle.click();
+    await vi.waitFor(() => expect(target.querySelector<HTMLElement>(".export-manifest-body")!.hidden).toBe(false));
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
 
     // Tips step through one slide at a time.
     [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Tips")!.click();
