@@ -175,7 +175,8 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   expect(await studio.locator(".status-line").evaluate(el => getComputedStyle(el).whiteSpace)).toBe("normal");
   const tipsControl = studio.getByRole("button", { name: "Tips", exact: true });
   await tipsControl.hover();
-  expect(await tipsControl.evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(246, 246, 247)");
+  // The template's hover fill (bg-hover), re-synced with layout 3 on 2026-11-19.
+  expect(await tipsControl.evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgba(61, 62, 66, 0.06)");
   const all = await invoke("download");
   expect(all.error).toBe("");
   expect(all.files.length).toBeGreaterThan(4);

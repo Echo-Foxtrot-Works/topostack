@@ -8,6 +8,7 @@ import { nestableParts, polygonLabel } from "./parts.js";
 import { planSheets } from "./plan-sheets.js";
 import { rectangleEngine } from "./rectangles.js";
 import { resolveSheetNestSettings } from "./resolve.js";
+import { hasOperation, operationBody, rootGroups } from "../../test-support/svg.js";
 
 const sheetNesting = { sheetWidthMm: 400, sheetHeightMm: 300, marginMm: 3, spacingMm: 2, rotation: "quarter" as const, timeBudgetS: 5, seed: 1 };
 
@@ -22,29 +23,29 @@ async function nestedProject(overrides: Partial<ProjectConfigV1> = {}): Promise<
 
 const text = (pkg: ReturnType<typeof buildFabricationPackage>, suffix: string) => pkg.files.find((file) => file.filename.endsWith(suffix))!.blob.text();
 
+/** Each root-level part of a sheet SVG with its placement matrix, label and CUT content. */
+function sheetParts(svg: string) {
+  return rootGroups(svg).map((part) => {
+    const open = part.slice(0, part.indexOf(">") + 1);
+    const matrix = /transform="matrix\(([^)]*)\)"/.exec(open)![1]!.split(" ").map(Number) as [number, number, number, number, number, number];
+    return { matrix, label: /data-part="([^"]*)"/.exec(open)?.[1] ?? "", cut: operationBody(part, "CUT") };
+  });
+}
+
 /** Every CUT point of a sheet SVG in sheet coordinates, found by applying each part group's matrix. */
 function sheetCutPoints(svg: string): Array<{ x: number; y: number; part: string }> {
-  const cut = svg.slice(svg.indexOf('<g id="CUT"'));
-  const groups = [...cut.matchAll(/<g id="part-(\d+)-CUT" data-part="([^"]*)"[^>]*transform="matrix\(([^)]*)\)">/g)];
-  return groups.flatMap((group, index) => {
-    const [a, b, c, d, e, f] = group[3]!.split(" ").map(Number) as [number, number, number, number, number, number];
-    const body = cut.slice(group.index!, groups[index + 1]?.index ?? cut.length);
-    return [...body.matchAll(/ d="([^"]*)"/g)].flatMap((path) => parsePathPoints(path[1]!).map(({ x, y }) => ({ x: a * x + c * y + e, y: b * x + d * y + f, part: group[2]! })));
-  });
+  return sheetParts(svg).flatMap(({ matrix: [a, b, c, d, e, f], label, cut }) =>
+    [...cut.matchAll(/ d="([^"]*)"/g)].flatMap((path) => parsePathPoints(path[1]!).map(({ x, y }) => ({ x: a * x + c * y + e, y: b * x + d * y + f, part: label }))));
 }
 
 /** Each piece's outer cut line in sheet coordinates, keyed `<layer id>:<polygon index>`. */
 function sheetCutRings(svg: string): Map<string, Array<{ x: number; y: number }>> {
-  const cut = svg.slice(svg.indexOf('<g id="CUT"'));
-  const groups = [...cut.matchAll(/<g id="part-(\d+)-CUT"[^>]*transform="matrix\(([^)]*)\)">/g)];
   const rings = new Map<string, Array<{ x: number; y: number }>>();
-  groups.forEach((group, index) => {
-    const [a, b, c, d, e, f] = group[2]!.split(" ").map(Number) as [number, number, number, number, number, number];
-    const body = cut.slice(group.index!, groups[index + 1]?.index ?? cut.length);
-    for (const path of body.matchAll(/ id="(layer-\d+)-cut-(\d+)-offset-1--p\d+" d="([^"]*)"/g)) {
+  for (const { matrix: [a, b, c, d, e, f], cut } of sheetParts(svg)) {
+    for (const path of cut.matchAll(/ id="(layer-\d+)-cut-(\d+)-offset-1--p\d+" d="([^"]*)"/g)) {
       rings.set(`${path[1]}:${Number(path[2]) - 1}`, parsePathPoints(path[3]!).map(({ x, y }) => ({ x: a * x + c * y + e, y: b * x + d * y + f })));
     }
-  });
+  }
   return rings;
 }
 
@@ -77,7 +78,12 @@ describe("nested fabrication package", { timeout: 30_000 }, () => {
     expect(sheet).toContain('viewBox="0 0 400 300"');
     const ids = [...sheet.matchAll(/ id="([^"]*)"/g)].map((match) => match[1]);
     expect(new Set(ids).size).toBe(ids.length);
-    expect((await pkg.master.blob.text())).toContain('id="fabrication-sheet-01-CUT"');
+    // The master shows every sheet's parts, each still its own root-level group.
+    const master = await pkg.master.blob.text();
+    const sheetTexts = await Promise.all(sheetFiles.map((file) => file.blob.text()));
+    expect(rootGroups(master).length).toBe(sheetTexts.reduce((count, entry) => count + rootGroups(entry).length, 0));
+    expect(rootGroups(master).length).toBeGreaterThanOrEqual(plan.sheets.reduce((count, entry) => count + entry.placements.length, 0));
+    expect(rootGroups(sheet).every((part) => hasOperation(part, "CUT"))).toBe(true);
   });
 
   it("keeps every cut line inside the sheet margin", async () => {
@@ -104,7 +110,7 @@ describe("nested fabrication package", { timeout: 30_000 }, () => {
     const sheets = await Promise.all(pkg.files.filter((file) => /-sheet-\d{2}\.svg$/.test(file.filename)).map((file) => file.blob.text()));
     const assembly = sheets.join("").match(/id="piece-L\d{2}(-\d+)?-label/g) ?? [];
     expect(assembly.length).toBeGreaterThan(0);
-    expect(sheets.join("")).toContain('id="ASSEMBLY"');
+    expect(sheets.some((sheet) => hasOperation(sheet, "ASSEMBLY"))).toBe(true);
     const unlabelled = await nestedProject({ workAreaWidthMm: 0, workAreaHeightMm: 0, showAssemblyLabels: false, sheetNesting: { ...sheetNesting, sheetWidthMm: 600, sheetHeightMm: 600 } });
     const off = buildFabricationPackage(unlabelled.ir, unlabelled.config, { sheetPlan: unlabelled.plan });
     expect((await Promise.all(off.files.filter((file) => /-sheet-\d{2}\.svg$/.test(file.filename)).map((file) => file.blob.text()))).join("")).not.toContain("piece-L");

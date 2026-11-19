@@ -4,7 +4,7 @@ import { bowlLake, circleRing, lakeArea as lake, scaledForLayers } from "../test
 
 const LAKE_RADIUS_MM = 40;
 import { pointInPolygon, signedArea } from "../primitives/geometry2d.js";
-import { cutWaterInserts, labelCoverings, WATER_INSERT_LEDGE_MM, waterInsertMaterial } from "./water-inserts.js";
+import { cutWaterInserts, labelCoverings, lakeDisplayNames, WATER_INSERT_LEDGE_MM, waterInsertMaterial } from "./water-inserts.js";
 import { elevationLabelOptions } from "../annotate/label-placement.js";
 import { acrylicPanelGroups, fitsWorkArea } from "./water-insert-panels.js";
 import { waterInsertLakeKey } from "../types.js";
@@ -324,5 +324,15 @@ describe("water inserts in a generated stack", () => {
     expect(off.waterInserts).toBeUndefined();
     expect(off.waterInsertMaterial).toBeUndefined();
     expect(off.layers.flatMap((layer) => layer.markings).some((marking) => marking.id.startsWith("water-area-0-shore-0"))).toBe(true);
+  });
+});
+
+describe("lake display names", () => {
+  const surface = (id: string, size: number, extra: Partial<WaterSurfaceIR> = {}) => ({ id, kind: "lake" as const, polygons: [{ outer: circleRing(0, 0, size), holes: [] }], ...extra });
+  it("keeps real names and numbers unnamed lakes largest first, never showing a map id", () => {
+    const names = lakeDisplayNames([surface("osm-110770", 2), surface("a", 9, { name: "Jackson Lake", hylakId: 7 }), surface("osm-1047658", 5), surface("osm-1047658", 1)]);
+    expect([...names.values()]).toEqual(["Jackson Lake", "Lake 1", "Lake 2"]);
+    expect(names.get("osm-1047658")).toBe("Lake 1");
+    expect(names.get("7")).toBe("Jackson Lake");
   });
 });

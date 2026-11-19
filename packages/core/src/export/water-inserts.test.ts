@@ -9,6 +9,7 @@ import { rectangleEngine } from "./sheet-nest/rectangles.js";
 import { nestableParts } from "./sheet-nest/parts.js";
 import { acrylicGeometry, acrylicNestableParts, resolveAcrylicNestSettings } from "./water-inserts.js";
 import { sheetNestJobKey } from "./sheet-nest/job-key.js";
+import { operationBody } from "../test-support/svg.js";
 
 const road: MarkingFeature = { id: "causeway", kind: "road", operation: "engrave", transportationClass: "local-road", points: [{ x: -90, y: 5 }, { x: 90, y: 5 }] };
 const settings: ProjectConfigV1 = {
@@ -23,7 +24,7 @@ const text = (pkg: FabricationPackageV1, suffix: string) => pkg.files.find((file
 
 /** Bounding box of every point of the CUT paths in an SVG. */
 function cutBounds(svg: string) {
-  const cut = svg.slice(svg.indexOf('<g id="CUT"'));
+  const cut = operationBody(svg, "CUT");
   return ringBounds([...cut.matchAll(/ d="([^"]*)"/g)].flatMap((path) => parsePathPoints(path[1]!)));
 }
 

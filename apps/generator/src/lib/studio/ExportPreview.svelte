@@ -1,4 +1,12 @@
 <script lang="ts">
+  /**
+   * A file name split so a narrow list shortens the shared project prefix, not
+   * the end that tells the files apart ("…-sheet-01-paint-national-park.svg").
+   */
+  function splitFilename(filename: string, master: string): [string, string] {
+    const prefix = master.replace(/master\.svg$/, "");
+    return prefix && filename.startsWith(prefix) && filename !== master ? [prefix, filename.slice(prefix.length)] : ["", filename];
+  }
   import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
@@ -102,7 +110,7 @@
       <p class="export-manifest-row"><span>Open in Studio</span><strong>1 editable SVG</strong><small>{woodOnly ? "Wood layout · acrylic is in Download" : "Entire layout"} · {formatBytes(built.bytes)}</small></p>
       <details>
         <summary><span>Download</span><strong>Complete project bundle</strong><small>{built.files.length} files · {formatBytes(totalBytes)} total</small><span class="export-files-toggle">View included files <span aria-hidden="true">⌄</span></span></summary>
-        <ul>{#each built.files as file (file.filename)}<li><span title={file.filename}>{file.filename}</span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>
+        <ul>{#each built.files as file (file.filename)}{@const [stem, end] = splitFilename(file.filename, built.filename)}<li><span class="export-file-name" title={file.filename}><span class="export-file-stem">{stem}</span><span class="export-file-end">{end}</span></span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>
       </details>
       <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>Red line · Cut</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>Blue line · Score</span>{/if}{#if built.fill}<span><i class="export-key-fill" aria-hidden="true"></i>Blue fill · Engrave</span>{/if}</div>
     </section>

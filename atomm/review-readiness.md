@@ -1,4 +1,15 @@
-# Atomm review revision — 0.12.0 — 2026-11-18
+# Atomm review revision — 0.12.1 — 2026-11-19
+
+0.12.1 replaces 0.12.0 for this review. 0.12.0 was tested inside the live platform (Developer Console › Local debug) before submission and two platform specs published after our design sync were found unmet; 0.12.1 meets them. Everything below about 0.12.0 still applies.
+
+## Platform spec updates met in 0.12.1
+
+- **SVG export grouping spec (platform v1.7.0, 2026-11-18).** Every SVG, for both Download and Open in Studio, is now written part by part: one root-level `<g>` per cut piece holding its outline, holes, engraving, score lines and assembly id, with a `data-name` for Studio's object list. Part groups are siblings; no group wraps a sheet or an operation across pieces. Inside a part, one container per operation carries the colour-spec stroke (`#FE0002` cut, `#2366FF` line engraving). The flat engraving is one part. Checked on a real Open in Studio export: 177 sibling part groups, every one with its own cut contour.
+- **Property cards (platform v1.6.0).** Settings cards have 8 px corners and the `shadow-100` lift; the Tips hover fill and the select list stacking match the current layout 3 template.
+- **Controls.** The two airspace rod settings are segmented controls like Road appearance, not native selects that truncated their options. Switch descriptions sit under their labels. Helper text meant to be read uses the secondary text colour (4.5:1).
+- **Messages.** Unnamed lakes are "Lake 1", "Lake 2" everywhere instead of map ids; Airspace in 3D says why nothing was built; the Open in Studio note ends the layout line as a sentence; the Export file list keeps the end of each file name visible.
+
+Localization: the platform now lists it as required and reviews 18 languages. The generator reads `atomm.app.getLocale()` and sets the document language, but its interface copy is English only, as in the accepted 0.7.1. Full translation is a separate project.
 
 ## What changed since 0.7.1
 
@@ -17,7 +28,7 @@ Not part of the Atomm package: the standalone site's phone layout (bottom settin
 
 ## Review exercises
 
-1. Open each parameter section in Layered relief and Flat engraving. Labels share one start edge and controls one end edge, including the new Water, public-land and Aviation rows; selects keep their 110 px width and numeric fields their 92 px width.
+1. Open each parameter section in Layered relief and Flat engraving. Labels share one start edge and controls one end edge, including the new Water, public-land and Aviation rows; numeric fields keep their 92 px width and two-option settings are segmented controls.
 2. In Water, turn on **Acrylic water inserts**. The 3D view shows the lake as acrylic. In Export, both Nesting material cards lay out sheets, and Open in Studio and Download include the acrylic pieces.
 3. Choose a US national park (for example Crater Lake). In Map features, turn on public land boundaries and paint; the 2D and Export views show the outlines and the paint-mask artwork.
 4. Choose a place near an airport (for example Colorado Springs). In Aviation (US), turn on airspace; then turn on **Airspace in 3D** and check the acrylic levels and rods in 3D and Export.
@@ -30,9 +41,13 @@ Use only the v10 media named in `listing.md` and `media-provenance.json`. There 
 
 ## Platform handoff
 
-Upload `topostack-atomm-v0.12.0.zip` from the `atomm-v0.12.0` GitHub release as the application and `topostack-listing-upload-v0.12.0.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
+Upload `topostack-atomm-v0.12.1.zip` from the `atomm-v0.12.1` GitHub release as the application and `topostack-listing-upload-v0.12.1.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
 
 ## Validation completed
+
+0.12.1, 2026-11-19: the build was loaded in the live platform through Developer Console › Local debug and exercised by hand (acrylic inserts, public-land boundaries, paint and leave-out, airspace in acrylic, Export view, Open in Studio dialog, keyboard focus). The Open in Studio SVG was checked against the grouping spec. Typecheck, lint, every workspace's tests, the build and both bundle budgets passed; see the pull request for the Atomm and airspace browser suites.
+
+0.12.0:
 
 Run on the candidate branch (`dev` at `5bce26f` plus this revision's changes), 2026-11-18, and the full gate again on `dev` at `8e9cc6f` (code and v10 media together), 2026-11-19:
 

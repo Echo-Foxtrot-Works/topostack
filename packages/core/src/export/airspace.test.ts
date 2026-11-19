@@ -8,6 +8,7 @@ import { buildFabricationPackage } from "./packages.js";
 import { exportBlockReason } from "./export-policy.js";
 import { airspaceSection, type GuideAirspace } from "./assembly-guide-airspace.js";
 import { airspaceGeometry, airspacePanels } from "./airspace.js";
+import { operationBody } from "../test-support/svg.js";
 
 const named = { name: "Cake", laserKerfMm: 0.15 };
 const text = (pkg: FabricationPackageV1, suffix: string) => pkg.files.find((file) => file.filename.endsWith(suffix))!.blob.text();
@@ -20,7 +21,7 @@ function packaged(ir: GeometryIRV1, settings: Partial<ProjectConfigV1["airspaceS
 }
 
 function cutBounds(svg: string) {
-  const cut = svg.slice(svg.indexOf('<g id="CUT"'));
+  const cut = operationBody(svg, "CUT");
   return ringBounds([...cut.matchAll(/ d="([^"]*)"/g)].flatMap((path) => parsePathPoints(path[1]!)));
 }
 
@@ -122,7 +123,7 @@ describe("airspace export", { timeout: 60_000 }, () => {
     // The piece the rod passes has its hole in the CUT path: an extra subpath around the rod.
     const holed = through.airspaceStack!.levels.findIndex((level) => level.pieces.some((piece) => piece.id === passing.segments[0]!.throughPieceIds![0]));
     const panel = await text(pkg, `-airspace-blue-${String(holed + 1).padStart(2, "0")}.svg`);
-    const cut = panel.slice(panel.indexOf('<g id="CUT"'));
+    const cut = operationBody(panel, "CUT");
     expect((cut.match(/M/g) ?? []).length).toBeGreaterThan(1);
   });
 

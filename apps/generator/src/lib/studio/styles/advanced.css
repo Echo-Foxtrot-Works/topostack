@@ -25,7 +25,7 @@
 }
 
 /* Airspace in 3D: the rod choices and the ceiling cap, laid out like the length fields beside them. */
-.airspace-select, .airspace-number { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.airspace-number { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
 /* The form and acrylic pickers wear the line-preset cards, two to a row, each drawn as the airspace seen from the side. */
 .airspace-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .airspace-choices svg { height: 28px; }
@@ -35,4 +35,3 @@
 .airspace-choice-solid { fill: currentColor; fill-opacity: 0.3; stroke-width: 1; stroke-linejoin: round; }
 .airspace-choice-glass { stroke-width: 2.6; stroke-opacity: 0.2; }
 .airspace-choice-engraving { stroke-width: 0.8; }
-.airspace-select select { min-height: 32px; padding: 4px 8px; font: inherit; color: var(--loidolt-text); background: var(--loidolt-surface-alt); border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); }
