@@ -11,6 +11,7 @@
   import { fontEntry, labelDimensions, labelPathData, type TextFont } from "@topostack/core";
   import { FONT_SAMPLES } from "$lib/studio/font-samples";
   import { FONT_GROUPS } from "$lib/studio/options";
+  import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
 
   let { label, value, inherited, onSelect }: {
     /** Accessible name of the picker. */
@@ -30,7 +31,8 @@
     ...FONT_GROUPS.flatMap((group) => group.fonts.map((entry) => ({ key: entry.id, font: entry.id, name: entry.name, shown: entry.id }))),
   ]);
   const selected = $derived(choices.find((choice) => choice.font === value) ?? choices[0]!);
-  const selectedHint = $derived(FONT_GROUPS.find((group) => group.kind === fontEntry(selected.shown).kind)?.hint ?? "");
+  const selectedKind = $derived(FONT_GROUPS.find((group) => group.kind === fontEntry(selected.shown).kind)?.kind);
+  const selectedHint = $derived(selectedKind ? t(`labels.fontGroupHint.${selectedKind}` as MessageKey) : "");
 
   let open = $state(false);
   let active = $state(0);
@@ -134,7 +136,7 @@
   <div class="field-row"><label for={`${id}-native`}>{label}</label>
     <select id={`${id}-native`} aria-describedby={`${id}-hint`} value={selected.key} onchange={(event) => onSelect(choices.find(choice => choice.key === event.currentTarget.value)!.font)}>
       {#if inherited}<option value={INHERITED}>{inherited.label}</option>{/if}
-      {#each FONT_GROUPS as group (group.kind)}<optgroup label={group.label}>{#each group.fonts as entry (entry.id)}<option value={entry.id}>{entry.name}</option>{/each}</optgroup>{/each}
+      {#each FONT_GROUPS as group (group.kind)}<optgroup label={t(`labels.fontGroup.${group.kind}` as MessageKey)}>{#each group.fonts as entry (entry.id)}<option value={entry.id} data-font>{entry.name}</option>{/each}</optgroup>{/each}
     </select>
   </div>
   <small id={`${id}-hint`}>{selectedHint}</small>
@@ -152,7 +154,7 @@
       {#if inherited}{@render option(choices[0]!, 0)}{/if}
       {#each FONT_GROUPS as group (group.kind)}
         <div class="font-picker__group" role="group" aria-labelledby={`${id}-group-${group.kind}`}>
-          <p id={`${id}-group-${group.kind}`} class="subgroup-heading">{group.label}</p>
+          <p id={`${id}-group-${group.kind}`} class="subgroup-heading">{t(`labels.fontGroup.${group.kind}` as MessageKey)}</p>
           {#each group.fonts as entry (entry.id)}
             {@const index = choices.findIndex((choice) => choice.font === entry.id)}
             {@render option(choices[index]!, index)}
