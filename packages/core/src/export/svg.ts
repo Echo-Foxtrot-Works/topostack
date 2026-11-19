@@ -37,7 +37,7 @@ export interface PartBody {
 export type PanelBodies = PartBody[];
 
 /** Extent of a marking, its text and stroke included, used only to skip markings far from a piece. */
-export function markingBounds(mark: LayerIR["markings"][number]): Bounds2D | undefined {
+function markingBounds(mark: LayerIR["markings"][number]): Bounds2D | undefined {
   const first = mark.points[0];
   if (!first) return undefined;
   if (mark.label) {
@@ -128,7 +128,7 @@ function markingBodies(layer: LayerIR, style: LineStyleV1, markings: LayerIR["ma
 }
 
 /** A layer's parts: one per cut piece (all, or those in `included`), each with the markings on it. */
-export function layerParts(ir: GeometryIRV1, layer: LayerIR, included?: Set<number>, omittedHoles = new Map<number, Set<number>>()): PartBody[] {
+function layerParts(ir: GeometryIRV1, layer: LayerIR, included?: Set<number>, omittedHoles = new Map<number, Set<number>>()): PartBody[] {
   const markings = panelMarkings(layer, included);
   const pieces = layer.polygons.map((_, index) => index).filter((index) => !included || included.has(index));
   if (!pieces.length) {
