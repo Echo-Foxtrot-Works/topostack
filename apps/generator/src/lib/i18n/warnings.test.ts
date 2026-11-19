@@ -135,6 +135,10 @@ describe("generation warnings in English", () => {
     ["lakePastEdgeUnnamed", {}, "A lake extends past the edge of this map, so its depth could not be modeled. Zoom out to include its shoreline."],
     ["exportBlockNotReal", { files: "engraving" }, "Generate real terrain data before exporting engraving files."],
     ["exportBlockNotReal", { files: "fabrication" }, "Generate real terrain data before exporting fabrication files."],
+    // Warnings the studio adds itself when loading terrain (App.svelte).
+    ["mapServiceFallbackBecause", { reason: "Terrain service returned 503." }, "The map service was unavailable, so this preview uses deterministic sample terrain. (Terrain service returned 503.)"],
+    ["waterOutlinesFailed", { reason: "Water outlines could not be assembled." }, "Water outlines could not be applied, so the terrain has no water adjustment. (Water outlines could not be assembled.)"],
+    ["depthChartMissing", { lake: "Lake Tahoe" }, "The depth chart for Lake Tahoe is unavailable or has not completed contour review, so it is carved without it. Import a reviewed project file or recreate the chart from its source."],
   ];
 
   it.each(cases)("formats %s as core writes it", (key, params, english) => {

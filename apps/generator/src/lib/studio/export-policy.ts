@@ -1,4 +1,5 @@
-import { buildProjectPackage, exportBlockReason, svgToLightBurn, type ExportFile, type FabricationPackageV1, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { buildProjectPackage, exportBlockMessage, svgToLightBurn, type ExportFile, type FabricationPackageV1, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { exportBlockText } from "$lib/i18n/warnings";
 import jostUrl from "@loidolt/theme-styles/fonts/Jost-Medium.woff2?url";
 import archivoUrl from "@loidolt/theme-styles/fonts/Archivo-Regular.woff2?url";
 import { networkSignal } from "$lib/domain/network";
@@ -79,7 +80,7 @@ export function acrylicOutsideStudio(geometry: GeometryIRV1): string {
 }
 
 export async function createAtommExport(geometry: GeometryIRV1, project: ProjectConfigV1, intent: ExportIntent, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1) {
-  const reason = exportBlockReason(geometry, project);
+  const reason = exportBlockText(exportBlockMessage(geometry, project));
   if (reason) throw new Error(reason);
   const output = await buildAtommPackage(geometry, project, fonts, sheetPlan, acrylicSheetPlan);
   return intent === "openInStudio" ? { filename: output.master.filename, blob: output.master.blob } : output.files;

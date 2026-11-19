@@ -3,6 +3,7 @@ import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bath
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
 import * as edits from "$lib/studio/project-edits";
 import { t } from "$lib/i18n/i18n.svelte";
+import { errorText } from "$lib/i18n/errors";
 
 /**
  * What the maker brings to a project, as edits: placing markers, drawing
@@ -73,7 +74,7 @@ export class CustomDataActions {
       const name = withIcon.markerIcons?.find(({ id }) => id === added.iconId)?.name ?? icon.name;
       this.host.setStatus([t("customdata.markerIconAdded", { name }), ...warnings].join(" · "));
     } catch (error) {
-      this.host.setStatus(error instanceof Error ? error.message : t("customdata.svgReadFailed"));
+      this.host.setStatus(errorText(error, t("customdata.svgReadFailed")));
     }
   }
 
@@ -94,7 +95,7 @@ export class CustomDataActions {
       const name = added.patch.customGraphics?.find(({ id }) => id === added.graphicId)?.name ?? graphic.name;
       this.host.setStatus([t("customdata.graphicAdded", { name }), ...warnings].join(" · "));
     } catch (error) {
-      this.host.setStatus(error instanceof Error ? error.message : t("customdata.svgReadFailed"));
+      this.host.setStatus(errorText(error, t("customdata.svgReadFailed")));
     }
   }
 

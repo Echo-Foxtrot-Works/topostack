@@ -1,8 +1,10 @@
-import { exportBlockReason, type GeometryIRV1, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { exportBlockMessage, type GeometryIRV1, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { exportBlockText } from "$lib/i18n/warnings";
 import { createSubscriber } from "svelte/reactivity";
 import type { ExportUpdate } from "$lib/atomm/atomm-bridge";
 import { t } from "$lib/i18n/i18n.svelte";
 import { prepareProjectSettings, prepareSelectedDownload, startBrowserDownload, type DownloadOption } from "$lib/studio/native-export";
+import { errorText } from "$lib/i18n/errors";
 
 export type ExportPhase = "idle" | "preparing" | "ready" | "error";
 
@@ -83,7 +85,7 @@ export interface DownloadRequest {
 export async function downloadProject({ option, geometry, project, sheetPlan, acrylicSheetPlan, notice, track, nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve())) }: DownloadRequest): Promise<void> {
   if (notice.phase === "preparing") return;
   const tracked = option !== "project" && option !== "assembly";
-  const reason = option === "project" ? undefined : exportBlockReason(geometry, project);
+  const reason = option === "project" ? undefined : exportBlockText(exportBlockMessage(geometry, project));
   if (reason) {
     notice.apply({ phase: "error", intent: "download", message: reason });
     track("export_failed");
@@ -109,6 +111,6 @@ export async function downloadProject({ option, geometry, project, sheetPlan, ac
     notice.apply({ phase: "ready", intent: "download", fileCount: download.fileCount });
   } catch (error) {
     if (tracked) track("export_failed");
-    notice.apply({ phase: "error", intent: "download", message: error instanceof Error ? error.message : t("status.exportDownloadFailed") });
+    notice.apply({ phase: "error", intent: "download", message: errorText(error, t("status.exportDownloadFailed")) });
   }
 }

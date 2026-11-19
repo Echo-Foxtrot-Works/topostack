@@ -74,5 +74,11 @@
   "waterInsertTooSmall": "{names, list, series}{more, plural, =0 {} other { and # more}} {count, plural, one {stays} other {stay}} wood: too small or narrow for an acrylic insert (under {minWidth} mm across).",
   "waterInsertWholeSheet": "{names, list, series}{more, plural, =0 {} other { and # more}} {count, plural, one {stays} other {stay}} wood: the water covers its whole sheet, which would leave no wood to hold the acrylic.",
   "workAreaOversize": "{count, plural, one {# piece} other {# pieces}} ({pieces, list, series}) remain larger than the work area. The seam grid stops at {divisions} divisions per axis; use a larger work area or a smaller model.",
-  "workAreaUnsplit": "This work area would cut the model into about {pieces, number, ::group-off} pieces, more than the {limit} this tool emits. Use a larger work area or a smaller model."
+  "workAreaUnsplit": "This work area would cut the model into about {pieces, number, ::group-off} pieces, more than the {limit} this tool emits. Use a larger work area or a smaller model.",
+  "bundledPreview": "Bundled real-data preview. Generate fresh terrain before exporting.",
+  "samplePreview": "Sample preview only. Generate real terrain before exporting.",
+  "mapServiceFallback": "The map service was unavailable, so this preview uses deterministic sample terrain.",
+  "mapServiceFallbackBecause": "The map service was unavailable, so this preview uses deterministic sample terrain. ({reason})",
+  "waterOutlinesFailed": "Water outlines could not be applied, so the terrain has no water adjustment. ({reason})",
+  "depthChartMissing": "The depth chart for {lake} is unavailable or has not completed contour review, so it is carved without it. Import a reviewed project file or recreate the chart from its source."
 }

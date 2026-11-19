@@ -57,6 +57,8 @@ describe("message catalogs", () => {
       }
       for (const match of text.matchAll(/\b(?:t|hasMessage)\(\s*`([a-z][\w-]*\.[\w.-]*)\$\{/g)) prefixes.push(match[1]!);
       for (const match of text.matchAll(/["'`]([a-z][\w-]*\.[\w.-]+)["'`]\s+as\s+MessageKey/g)) used.add(match[1]!);
+      // Keys held in tables (e.g. $lib/i18n/errors.ts) count as used wherever they appear as a literal.
+      for (const match of text.matchAll(/["']([a-z][\w-]*\.[\w.-]+)["']/g)) if (match[1]! in en) used.add(match[1]!);
     }
     const unused = Object.keys(en).filter((key) => !used.has(key) && !prefixes.some((prefix) => key.startsWith(prefix)));
     expect({ unknown, unused }).toEqual({ unknown: [], unused: [] });

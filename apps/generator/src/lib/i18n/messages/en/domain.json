@@ -23,5 +23,20 @@
   "svgClipping": "Clipping paths and masks are ignored; the whole shape is used.",
   "svgExternalReferences": "References to other files are ignored.",
   "svgIconTooLarge": "SVG icons must be {sizeMb} MB or smaller.",
-  "svgGraphicTooLarge": "SVG graphics must be {sizeMb} MB or smaller."
+  "svgGraphicTooLarge": "SVG graphics must be {sizeMb} MB or smaller.",
+  "terrainServiceStatus": "Terrain service returned {status}.",
+  "terrainTileVersionMissing": "Terrain tile is missing its dataset version.",
+  "terrainTileVersionsMixed": "Terrain tiles came from inconsistent dataset versions. Try again shortly.",
+  "terrainUnreachable": "The terrain service could not be reached.",
+  "waterOutlinesUnassembled": "Water outlines could not be assembled.",
+  "lakeOutlinesUnavailable": "Lake outlines could not be loaded.",
+  "lakeOutlineCoverageUnknown": "Lake outline coverage could not be checked.",
+  "fontLoadFailed": "Couldn't load the {font} font. Check your connection and try again.",
+  "savedProjectUnreadableBackup": "Saved project could not be read · a backup copy was kept",
+  "savedProjectUnreadablePaused": "Saved project could not be read · autosave paused to protect it",
+  "moduleLoadFailed": "{module} could not load · reload to update TopoStack",
+  "moduleGeometryEngine": "The geometry engine",
+  "networkFailed": "The connection dropped. Check your connection and try again.",
+  "moduleTerrainLoading": "Terrain loading",
+  "moduleMapDataRefresh": "Map data refresh"
 }

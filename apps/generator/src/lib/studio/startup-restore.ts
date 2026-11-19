@@ -2,6 +2,7 @@ import { DEFAULT_PROJECT, MAX_PROJECT_NAME_LENGTH, parseProject, type ProjectCon
 import { t } from "$lib/i18n/i18n.svelte";
 import { UnreadableSavedProjectError } from "$lib/storage/storage";
 import { starterById, type StarterId } from "$lib/site/starters";
+import { localMessage } from "$lib/i18n/errors";
 
 /** Example slugs are lowercase words joined by hyphens; anything else never reaches the network. */
 const EXAMPLE_SLUG = /^[a-z0-9-]+$/;
@@ -65,7 +66,7 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
       if (!(error instanceof UnreadableSavedProjectError)) throw error;
       if (host.isCancelled()) return { autosave };
       console.error("TopoStack could not restore the saved project.", error);
-      host.setStatus(t("status.savedProjectUnreadable", { reason: error.message }));
+      host.setStatus(t("status.savedProjectUnreadable", { reason: localMessage(error.message) }));
       autosave = error.backupKey !== undefined;
     }
     if (host.isCancelled()) return { autosave };

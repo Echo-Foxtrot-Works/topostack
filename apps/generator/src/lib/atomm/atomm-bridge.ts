@@ -1,6 +1,7 @@
 import type { GeometryIRV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
 import type { ExportIntent } from "$lib/studio/export-policy";
 import { t } from "$lib/i18n/i18n.svelte";
+import { errorText } from "$lib/i18n/errors";
 
 type ExportSnapshot = { geometry: GeometryIRV1; project: ProjectConfigV1; sheetPlan?: SheetNestPlanV1; acrylicSheetPlan?: SheetNestPlanV1; layoutNote?: string };
 type CurrentExport = () => ExportSnapshot | Promise<ExportSnapshot>;
@@ -46,7 +47,7 @@ export function connectAtomm(getCurrent: CurrentExport, onReady: () => void, onE
         currentExportUpdate?.({ phase: "ready", intent, fileCount: Array.isArray(output) ? output.length : 1, ...(note ? { layoutNote: note } : {}) });
         return output;
       } catch (error) {
-        const message = error instanceof Error ? error.message : t("workbench.exportFailed");
+        const message = errorText(error, t("workbench.exportFailed"));
         currentExportUpdate?.({ phase: "error", intent, message });
         throw error;
       }

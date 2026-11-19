@@ -55,5 +55,9 @@
   "loadingCustomDataTools": "Loading custom data tools…",
   "customCoordinates": "Custom coordinates",
   "exportAwaitsTerrain": "Export is available once the terrain for this area has loaded.",
-  "reset": "Reset"
+  "reset": "Reset",
+  "viewMode.2d": "2D",
+  "viewMode.3d": "3D",
+  "viewMode.export": "Export",
+  "viewMode.engraving": "Engraving"
 }

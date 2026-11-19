@@ -11,7 +11,9 @@
   import { trackUsage } from "$lib/site/usage";
   import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { boundsForProject, exportBlockReason } from "@topostack/core";
+  import { boundsForProject, exportBlockMessage, exportBlockReason } from "@topostack/core";
+  import { exportBlockText } from "$lib/i18n/warnings";
+  import { errorText, localMessage } from "$lib/i18n/errors";
   import { readProjectFile } from "$lib/studio/project-file";
   import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
   import { loadProject } from "$lib/storage/storage";
@@ -27,7 +29,7 @@
   import SheetLayoutSection from "$lib/studio/panels/SheetLayoutSection.svelte";
   import ResetProjectDialog from "$lib/studio/ResetProjectDialog.svelte";
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
-  import { formatNumber, t } from "$lib/i18n/i18n.svelte";
+  import { formatNumber, t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { ProjectHistory } from "$lib/studio/history";
   import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
@@ -300,8 +302,9 @@
   // Serializes the whole project, so it is computed once per edit and shared.
   const currentFingerprint = $derived(projectFingerprint(project));
   const stackLayerCount = $derived(geometry.configFingerprint === currentFingerprint ? geometry.layers.length : stackPlan.layerCount);
+  // The embed's view switch is shown in the platform's language; the standalone names stay English.
   const previewModeOptions = $derived(embeddedInPlatform
-    ? project.outputMode === "engraving" ? ATOMM_ENGRAVING_MODE_OPTIONS : ATOMM_STACK_MODE_OPTIONS
+    ? (project.outputMode === "engraving" ? ATOMM_ENGRAVING_MODE_OPTIONS : ATOMM_STACK_MODE_OPTIONS).map((option) => ({ ...option, label: t(`app.viewMode.${option.value}` as MessageKey) }))
     : project.outputMode === "engraving" ? ENGRAVING_MODE_OPTIONS : STACK_MODE_OPTIONS);
   const previewBusy = $derived(generationState === "loading" || detailsUpdating);
   const previewBusyLabel = $derived(generationState === "loading" ? t("status.busyBuilding") : terrainRefreshing ? t("status.busyLoadingArea") : t("status.busyRefreshing"));
@@ -313,7 +316,7 @@
   const terrainDataStale = $derived(!sameMapArea(sourceProject, project));
   const verticalExaggerationStale = $derived(project.outputMode === "stack" && sourceProject.verticalExaggeration !== project.verticalExaggeration);
   const terrainDataAction = $derived(embeddedInPlatform ? "load" : geometry.sourceKind === "real" ? "regenerate" : "generate");
-  const exportBlockedBy = $derived(exportBlockReason(geometry, project, currentFingerprint));
+  const exportBlockedBy = $derived(exportBlockText(exportBlockMessage(geometry, project, currentFingerprint)));
   const exportReady = $derived(!exportBlockedBy);
   const exportStatusLabel = $derived(exportPhase === "preparing" ? "Preparing files" : exportPhase === "ready" ? "Export ready" : exportPhase === "error" ? "Export failed" : exportReady ? "Ready to export" : "Generate before export");
   const exportStatusTone = $derived(exportPhase === "error" ? "error" : exportPhase === "preparing" ? "busy" : exportReady ? "ready" : "blocked");
@@ -537,7 +540,7 @@
       if (!pipeline.isCurrent(revision) || isAbortError(error)) return;
       detailsUpdating = false;
       generationState = "error";
-      status = error instanceof Error ? error.message : t("status.outputGeometryFailed");
+      status = errorText(error, t("status.outputGeometryFailed"));
     });
   }
 
@@ -671,10 +674,10 @@
   function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<TerrainLoadResult, "fallback" | "fallbackReason" | "waterWarning">): void {
     if (loaded.fallback) {
       next.warnings.push(loaded.fallbackReason
-        ? { code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain. (${loaded.fallbackReason})`, messageKey: "mapServiceFallbackBecause", params: { reason: loaded.fallbackReason } }
+        ? { code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain. (${loaded.fallbackReason})`, messageKey: "mapServiceFallbackBecause", params: { reason: localMessage(loaded.fallbackReason) } }
         : { code: "DATA_FALLBACK", message: "The map service was unavailable, so this preview uses deterministic sample terrain.", messageKey: "mapServiceFallback" });
     }
-    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})`, messageKey: "waterOutlinesFailed", params: { reason: loaded.waterWarning } });
+    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})`, messageKey: "waterOutlinesFailed", params: { reason: localMessage(loaded.waterWarning) } });
   }
 
   const styleOf = (config: ProjectConfigV1) => JSON.stringify([config.lineStyle, config.textStyle]);
@@ -720,7 +723,7 @@
       onError: (error) => {
         if (quiet) { console.error("TopoStack could not restyle the preview.", error); return; }
         generationState = "error";
-        status = error instanceof Error ? error.message : kind === "details" ? t("status.mapDetailsFailed") : t("status.outputGeometryFailed");
+        status = errorText(error, kind === "details" ? t("status.mapDetailsFailed") : t("status.outputGeometryFailed"));
       },
       onSettled: (current) => { if (current) { detailsUpdating = false; terrainRefreshing = false; } },
     }, delayMs);
@@ -848,7 +851,7 @@
       const canceled = controller.signal.aborted || isAbortError(error);
       trackUsage(canceled ? "generation_cancelled" : "generation_failed", generationProject.outputMode);
       if (canceled) { generationState = "idle"; status = t("status.generationCanceled"); }
-      else { generationState = "error"; status = error instanceof Error ? error.message : t("status.generationFailed"); void showToast({ type: "error", message: t("status.toastGenerationFailed") }); }
+      else { generationState = "error"; status = errorText(error, t("status.generationFailed")); void showToast({ type: "error", message: t("status.toastGenerationFailed") }); }
       // Style edits made during the run skipped their own refresh, expecting this
       // generation to render them. Apply them to the retained preview instead.
       if (styleOf(project) !== styleOf(sourceProject)) void refreshPreview("fabrication", 0, { quiet: true });
@@ -885,7 +888,7 @@
       loadRealTerrain();
     } catch (error) {
       // A rejected file leaves a running Generate alone: report it on the status line only.
-      status = error instanceof Error ? error.message : t("status.projectImportFailed");
+      status = errorText(error, t("status.projectImportFailed"));
       if (generationState !== "loading") generationState = "error";
     }
   }
@@ -925,7 +928,7 @@
       project = { ...project, ...edits.appendCustomData(project, patch, () => crypto.randomUUID()) };
       if (generationState !== "loading") void refreshPreview("customData", 0, { quiet: true });
     } catch (error) {
-      status = error instanceof Error ? error.message : t("status.customDataImportFailed");
+      status = errorText(error, t("status.customDataImportFailed"));
     }
   }
 
