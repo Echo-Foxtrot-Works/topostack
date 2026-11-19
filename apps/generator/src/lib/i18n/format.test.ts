@@ -30,6 +30,23 @@ describe("message format", () => {
     expect(formatMessage("It''s fine")).toBe("It's fine");
   });
 
+  it("fixes decimals and drops grouping by number skeleton", () => {
+    expect(formatMessage("{gap, number, ::.0} mm", { gap: 6 })).toBe("6.0 mm");
+    expect(formatMessage("{gap, number, ::.0} mm", { gap: 4.26 }, "de")).toBe("4,3 mm");
+    expect(formatMessage("{n, number, ::.0#}", { n: 1.256 })).toBe("1.26");
+    expect(formatMessage("{n, number, ::group-off} sheets", { n: 5432 })).toBe("5432 sheets");
+    expect(formatMessage("{n} sheets", { n: 5432 })).toBe("5,432 sheets");
+  });
+
+  it("joins lists with the locale's comma or its and", () => {
+    expect(formatMessage("{names, list, series}", { names: ["A", "B", "C"] })).toBe("A, B, C");
+    expect(formatMessage("{names, list, series}", { names: ["A", "B", "C"] }, "zh")).toBe("A、B、C");
+    expect(formatMessage("{names, list, and}", { names: ["A", "B", "C"] })).toBe("A and B and C");
+    expect(formatMessage("{names, list, and}", { names: ["A", "B"] }, "de")).toBe("A und B");
+    expect(formatMessage("{names, list}", { names: ["A", "B", "C"] })).toBe("A, B, and C");
+    expect(messageArguments("{names, list, series}{n, number, ::.0}")).toEqual(["n", "names"]);
+  });
+
   it("lists every argument a message uses", () => {
     expect(messageArguments("{a} and {count, plural, one {# {b}} other {# {c}}}")).toEqual(["a", "b", "c", "count"]);
   });

@@ -362,6 +362,11 @@ interface CarveRun {
 // Returned rather than stashed in a mutable: the basin fit and the survey-rim
 // bridge both need to know how these distances were measured, and reading that
 // back off a variable the measurement had set was only correct by call order.
+/** A named lake's name for its warning; an unnamed one has its own message ("A lake …"). */
+function lakeParam(area: WaterAreaV1): Record<string, string> {
+  return area.name ? { lake: area.name } : {};
+}
+
 function measureShore(run: CarveRun, area: WaterAreaV1): LakeShore {
   const { grid, config, cells } = run;
   const touchesEdge = cellsTouchGridEdge(cells, grid.width, grid.height);
@@ -421,12 +426,15 @@ function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32A
   const survey = area.bathymetry!;
   const chart = area.bathymetryOrigin === "chart";
   const surveyNoun = chart ? "depth chart" : "survey";
+  const surveySource = chart ? "chart" : "survey";
   // A misaligned survey cannot be placed, but it is one lake's data, not the
   // map's: model this lake instead of failing the whole generation.
   const aligned = survey.width === grid.width && survey.height === grid.height && survey.depthsM.length === values.length;
   if (!aligned) warnings.push({
     code: "BATHYMETRY_FALLBACK",
     message: `${area.name ?? "A lake"} has ${surveyNoun} data that does not match the terrain grid, so its floor uses existing terrain or a modeled basin instead.`,
+    messageKey: area.name ? "bathymetryGridMismatch" : "bathymetryGridMismatchUnnamed",
+    params: { ...lakeParam(area), source: surveySource },
   });
   let surveyedCount = 0;
   if (aligned) for (const index of cells) {
@@ -482,6 +490,8 @@ function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32A
   if (fallbackCount) warnings.push({
     code: "BATHYMETRY_FALLBACK",
     message: `${area.name ?? "A lake"} has incomplete ${surveyNoun} coverage. Uncovered cells use existing terrain, modeled depths, or estimates near surveyed shores; cells without enough information remain at the waterline.`,
+    messageKey: area.name ? "bathymetryIncomplete" : "bathymetryIncompleteUnnamed",
+    params: { ...lakeParam(area), source: surveySource },
   });
   return true;
 }
@@ -539,6 +549,8 @@ function carveModeledLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Ar
     warnings.push({
       code: "WATER_DEPTH_CLAMPED",
       message: `${area.name ?? "A lake"} extends past the edge of this map, so its depth could not be modeled. Zoom out to include its shoreline.`,
+      messageKey: area.name ? "lakePastEdge" : "lakePastEdgeUnnamed",
+      params: lakeParam(area),
     });
     return;
   }

@@ -68,7 +68,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
   const engravedContours = flatEngraving && config.showEngravingContours;
-  if (landRelief < LOW_RELIEF_M && (!flatEngraving || config.showEngravingContours)) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical." });
+  if (landRelief < LOW_RELIEF_M && (!flatEngraving || config.showEngravingContours)) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical.", messageKey: flatEngraving ? "lowReliefContours" : "lowReliefLayers" });
 
   const hasOcean = !flatEngraving && waterAreas.some((area) => area.kind === "ocean");
   const stack = planTerrainStack(config, landRelief, source.bounds, depthBelowLandM);
@@ -104,6 +104,8 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
     code: "WATER_DEPTH_CLAMPED",
     ...(!config.fitLakeDepth && carved.surfaces.some((surface) => surface.kind === "lake" && surface.bedElevationM < ladderBase && surface.surfaceElevationM > ladderBase) ? { action: "fit-lake-depth" as const } : {}),
     message: `Water here is deeper than the ${stack.depthLayerCount} sheet${stack.depthLayerCount === 1 ? "" : "s"} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.`,
+    messageKey: "waterDepthClamped",
+    params: { count: stack.depthLayerCount },
   });
   return { landMin, landMax, visibleMin, visibleMax, depthBelowLandM, stack, ladderBase, thresholds, water, modelGrid };
 }
@@ -159,12 +161,12 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
     if (omittedCaps) {
       thresholds.length = layers.length;
       const unit = flatEngraving ? "contour" : "sheet";
-      warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the circular crop retained no material meeting the minimum feature size.` });
+      warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the circular crop retained no material meeting the minimum feature size.`, messageKey: "capsOmitted", params: { count: omittedCaps, unit } });
     }
   }
 
   for (const layer of layers) {
-    if (!layer.polygons.length) warnings.push({ code: "EMPTY_LAYER", message: `Layer ${layer.index + 1} has no printable terrain at its elevation.` });
+    if (!layer.polygons.length) warnings.push({ code: "EMPTY_LAYER", message: `Layer ${layer.index + 1} has no printable terrain at its elevation.`, messageKey: "emptyLayer", params: { layer: layer.index + 1 } });
   }
   return layers;
 }

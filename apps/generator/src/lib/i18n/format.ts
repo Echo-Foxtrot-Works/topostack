@@ -3,11 +3,15 @@
  * `{count, plural, one {# piece} other {# pieces}}` /
  * `{kind, select, round {…} other {…}}` blocks, nestable. Numbers are
  * formatted for the locale; `#` inside a plural is the formatted count.
- * Strings are compiled once per message and cached.
+ * `{value, number, ::.0}` fixes the decimals (`.00`, `.0#` …) and
+ * `::group-off` drops thousands separators. A string array is a locale list
+ * ("A, B and C"); `{names, list, series}` joins every item with the locale's
+ * list comma ("A, B, C") and `{names, list, and}` with its "and"
+ * ("A and B and C"). Strings are compiled once per message and cached.
  */
 export type MessageParams = Record<string, string | number | readonly string[] | undefined>;
 
-type Part = string | { name: string } | { name: string; kind: "plural" | "select"; offset: number; options: Record<string, Part[]> } | { pound: true };
+type Part = string | { name: string; style?: { kind: "number" | "list"; value: string } } | { name: string; kind: "plural" | "select"; offset: number; options: Record<string, Part[]> } | { pound: true };
 
 const cache = new Map<string, Part[]>();
 
@@ -37,7 +41,8 @@ function parse(source: string, inPlural = false): Part[] {
     const name = body.slice(0, comma).trim();
     const rest = body.slice(comma + 1);
     const second = rest.indexOf(",");
-    const kind = rest.slice(0, second).trim();
+    const kind = (second === -1 ? rest : rest.slice(0, second)).trim();
+    if (kind === "number" || kind === "list") { parts.push({ name, style: { kind, value: second === -1 ? "" : rest.slice(second + 1).trim() } }); continue; }
     if (kind !== "plural" && kind !== "select") { parts.push({ name }); continue; }
     let optionsSource = rest.slice(second + 1).trim();
     let offset = 0;
@@ -85,6 +90,42 @@ export function formatList(values: readonly string[], locale: string): string {
   return format.format(values);
 }
 
+const DEFAULT_NUMBER: Intl.NumberFormatOptions = { maximumFractionDigits: 3 };
+
+/** Number options for an ICU skeleton: `::.0` / `::.00` / `::.0#` decimals, `::group-off`. */
+function skeletonOptions(skeleton: string): Intl.NumberFormatOptions {
+  const options: Intl.NumberFormatOptions = { ...DEFAULT_NUMBER };
+  for (const token of skeleton.replace(/^::/, "").split(/\s+/).filter(Boolean)) {
+    const fraction = /^\.(0*)(#*)$/.exec(token);
+    if (fraction) {
+      options.minimumFractionDigits = fraction[1]!.length;
+      options.maximumFractionDigits = fraction[1]!.length + fraction[2]!.length;
+    } else if (token === "group-off") options.useGrouping = false;
+  }
+  return options;
+}
+
+const listSeparators = new Map<string, { series: string; and: string }>();
+
+/** The locale's own list comma and "and", taken from its conjunction list pattern. */
+function separators(locale: string): { series: string; and: string } {
+  let found = listSeparators.get(locale);
+  if (!found) {
+    const format = new Intl.ListFormat(locale, { style: "long", type: "conjunction" });
+    const literal = (items: string[]) => format.formatToParts(items).find((part) => part.type === "literal")?.value ?? ", ";
+    listSeparators.set(locale, found = { series: literal(["a", "b", "c"]), and: literal(["a", "b"]) });
+  }
+  return found;
+}
+
+function formatValue(value: string | number | readonly string[], locale: string, style?: { kind: "number" | "list"; value: string }): string {
+  if (typeof value === "number") return formatNumber(value, locale, style?.kind === "number" ? skeletonOptions(style.value) : DEFAULT_NUMBER);
+  if (!Array.isArray(value)) return String(value);
+  const items = value as readonly string[];
+  if (style?.kind === "list" && (style.value === "series" || style.value === "and")) return items.join(separators(locale)[style.value]);
+  return formatList(items, locale);
+}
+
 function render(parts: Part[], params: MessageParams, locale: string, count?: number): string {
   let out = "";
   for (const part of parts) {
@@ -92,7 +133,7 @@ function render(parts: Part[], params: MessageParams, locale: string, count?: nu
     if ("pound" in part) { out += count === undefined ? "#" : formatNumber(count, locale); continue; }
     const value = params[part.name];
     if (!("kind" in part)) {
-      out += value === undefined ? `{${part.name}}` : typeof value === "number" ? formatNumber(value, locale) : Array.isArray(value) ? formatList(value, locale) : String(value);
+      out += value === undefined ? `{${part.name}}` : formatValue(value, locale, "style" in part ? part.style : undefined);
       continue;
     }
     if (part.kind === "select") {

@@ -22,7 +22,11 @@ files (README, assembly guide, SVG titles) stay English for now.
 - `$lib/i18n/format.ts` formats ICU-style messages: `{name}`,
   `{count, plural, one {# piece} other {# pieces}}`, `{kind, select, … other {…}}`.
   Numbers in params are formatted for the locale (`0,15` in German), and
-  string arrays are joined as a list ("A, B and C").
+  string arrays are joined as a list ("A, B and C"). `{gap, number, ::.0}`
+  fixes the decimals and `::group-off` drops thousands separators;
+  `{names, list, series}` joins with the locale's list comma ("A, B, C") and
+  `{names, list, and}` with its "and" ("A and B and C"), where core's English
+  joins that way.
 - `catalog.test.ts` fails when a locale misses a key, when a translation's
   placeholders differ from English, when code uses a key English lacks, or
   when an English key is unused.

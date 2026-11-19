@@ -171,7 +171,7 @@ describe("paint regions", () => {
     } finally {
       refuse.mockRestore();
     }
-    expect(warnings).toEqual([{ code: "PAINT_WINDOWS_OMITTED", message: expect.stringContaining("layer 2 could not be cut") }]);
+    expect(warnings).toEqual([{ code: "PAINT_WINDOWS_OMITTED", message: expect.stringContaining("layer 2 could not be cut"), messageKey: "paintWindowsOmitted", params: { count: 1, layers: ["2"] } }]);
   });
 
   it("retries a piece the clipper refuses with every coordinate snapped to a micron", () => {
