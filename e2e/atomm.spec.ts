@@ -91,6 +91,11 @@ test("Atomm uses the platform export hook and template layout across desktop, RT
   await expect(manifest).toContainText(master.files[0]!.filename, { timeout: PREVIEW_TIMEOUT_MS });
   await expect(manifest).toContainText("Red line · Cut");
   await expect(manifest).toContainText("Blue line · Score");
+  // The sheets are laid out beside the contents card, not under it, and the zoom keeps the canvas corner.
+  const manifestBox = (await manifest.boundingBox())!;
+  const sheetBox = (await studio.locator(".export-sheet .svg-viewport").boundingBox())!;
+  if (!(await studio.locator(".export-preview[data-narrow]").count())) expect(sheetBox.x).toBeGreaterThanOrEqual(manifestBox.x + manifestBox.width);
+  else expect(sheetBox.y).toBeGreaterThanOrEqual(manifestBox.y + manifestBox.height);
   // Credits share the zoom cluster's row, as light text without a plate.
   const zoomBox = await studio.locator(".atomm-zoom-cluster").boundingBox();
   const creditBox = await studio.locator(".preview-attribution").boundingBox();
