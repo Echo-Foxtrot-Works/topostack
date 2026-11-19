@@ -1,4 +1,5 @@
 import { activePlaque, GRAPHIC_MIN_SIZE_MM, groundWidthMFor, placedGraphicCenter, placedGraphicFootprint, placedGraphicMarkingPrefix, placedGraphicMarkings, placedGraphicPlacementAt, placedGraphicSource, type GraphicOperation, type PlacedGraphicV1, NORTH_ARROW_MIN_SIZE_MM, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, northArrowCenter, northArrowFootprint, northArrowMarkings, northArrowPlacementAt, plaqueBox, plaqueMarkings, plaquePlacementAt, scaleBarCenter, scaleBarFootprint, scaleBarMarkings, scaleBarPlacementAt, type PlaqueV1, MAX_PLACED_GRAPHICS, type GeometryIRV1, type OperationPath, type Point2D, type ProjectConfigV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import { graphicMaximumMm, newPlacedGraphic, northArrowMaximumMm, plaqueSettings } from "$lib/studio/project-edits";
 
 /**
@@ -67,7 +68,7 @@ const PLAQUE_HANDLE_PAD_MM = 3;
 export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
   north: {
     id: "north",
-    label: "North arrow",
+    get label() { return t("app.placeNorthArrow"); },
     available: (project) => project.showNorthArrow,
     center: northArrowCenter,
     outline: northArrowFootprint,
@@ -75,7 +76,7 @@ export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
     moveTo: (project, center) => ({ northArrowPlacement: northArrowPlacementAt(project, center) }),
     bakedMarkingPrefixes: ["north-"],
     resize: {
-      label: "Diameter",
+      get label() { return t("app.placeDiameter"); },
       value: (project) => project.northArrowSizeMm,
       range: (project) => ({ min: NORTH_ARROW_MIN_SIZE_MM, max: northArrowMaximumMm(project.widthMm, project.heightMm) }),
       step: 1,
@@ -84,7 +85,7 @@ export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
   },
   plaque: {
     id: "plaque",
-    label: "Title",
+    get label() { return t("app.placeTitle"); },
     available: (project) => activePlaque(project) !== undefined,
     center: (project) => plaqueBox(project)?.center ?? { x: 0, y: 0 },
     outline: (project) => {
@@ -104,7 +105,7 @@ export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
     },
     bakedMarkingPrefixes: ["plaque-"],
     resize: {
-      label: "Letter height",
+      get label() { return t("app.placeLetterHeight"); },
       value: (project) => project.plaque?.sizeMm ?? PLAQUE_MIN_SIZE_MM,
       range: () => ({ min: PLAQUE_MIN_SIZE_MM, max: PLAQUE_MAX_SIZE_MM }),
       step: 0.5,
@@ -113,7 +114,7 @@ export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
   },
   scale: {
     id: "scale",
-    label: "Scale bar",
+    get label() { return t("app.placeScaleBar"); },
     available: (project) => project.showScaleBar,
     center: (project, { groundWidthM }) => scaleBarCenter(project, groundWidthM),
     outline: (project, { groundWidthM }) => scaleBarFootprint(project, groundWidthM),
@@ -124,8 +125,6 @@ export const PLACEABLES: Record<FixedPlaceableId, Placeable> = {
 };
 
 export const PLACEABLE_ORDER: readonly FixedPlaceableId[] = ["north", "plaque", "scale"];
-
-const GRAPHIC_OPERATION_LABELS: Record<GraphicOperation, string> = { engrave: "engraved", score: "scored", cut: "cut out" };
 
 function withPlaced(project: ProjectConfigV1, placedId: string, change: (placed: PlacedGraphicV1) => PlacedGraphicV1): PlacementPatch {
   return { placedGraphics: (project.placedGraphics ?? []).map((placed) => placed.id === placedId ? change(placed) : placed) };
@@ -149,11 +148,11 @@ function graphicPlaceable(placedId: string): Placeable {
   };
   return {
     id: graphicPlaceableId(placedId),
-    label: "Graphic",
+    get label() { return t("app.placeGraphic"); },
     name: (project) => {
       const placed = find(project);
       const graphic = placed && placedGraphicSource(project, placed);
-      return graphic ? `${graphic.name}, ${GRAPHIC_OPERATION_LABELS[placed.operation]}` : "Graphic";
+      return graphic ? t("app.placedGraphicName", { name: graphic.name, operation: placed.operation }) : t("app.placeGraphic");
     },
     available: (project) => {
       const placed = find(project);
@@ -174,7 +173,7 @@ function graphicPlaceable(placedId: string): Placeable {
     moveTo: (project, center) => withPlaced(project, placedId, (placed) => ({ ...placed, placement: placedGraphicPlacementAt(project, placed, center) })),
     bakedMarkingPrefixes: [placedGraphicMarkingPrefix(placedId)],
     resize: {
-      label: "Size",
+      get label() { return t("app.placeSize"); },
       value: (project) => find(project)?.sizeMm ?? GRAPHIC_MIN_SIZE_MM,
       range: (project) => ({ min: GRAPHIC_MIN_SIZE_MM, max: graphicMaximumMm(project.widthMm, project.heightMm) }),
       step: 1,

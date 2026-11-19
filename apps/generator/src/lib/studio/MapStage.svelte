@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import { Button } from "@loidolt/theme-svelte";
   import type { GeoBounds } from "@topostack/core";
   import * as edits from "$lib/studio/project-edits";
@@ -37,7 +38,7 @@
 </script>
 
 {#if failed}
-  <div class="preview-loading" role="alert">{lakeSelection ? "The map is unavailable in this browser. Search and choose a lake from the list." : "The map is unavailable in this browser. Markers and paths can still be added by typing their coordinates."}</div>
+  <div class="preview-loading" role="alert">{lakeSelection ? t("preview.mapUnavailableLakes") : t("preview.mapUnavailableCustomData")}</div>
 {:else if MapCanvas}
   <MapCanvas
     {lakeSelection}
@@ -47,7 +48,7 @@
     bind:aspectLocked={studio.mapAspectLocked}
     placingMarker={studio.placingMarker}
     framing={studio.mode !== "custom"}
-    hint={lakeSelection ? "Click inside a lake to select it · drag to explore" : studio.mode === "custom" ? "Dashed outline is your map area · drag to look around" : undefined}
+    hint={lakeSelection ? t("preview.mapHintLakes") : studio.mode === "custom" ? t("preview.mapHintCustomData") : undefined}
     onPlaceMarker={(lat, lon) => {
       const patch = edits.addMarkerAt(studio.project, crypto.randomUUID(), { lat, lon });
       if (!patch) { studio.placingMarker = false; return; }
@@ -67,7 +68,7 @@
   />
 {:else if studio.mapCanvas.failed}
   <!-- Map view falls back elsewhere on its own; the custom data view has nowhere to go. -->
-  <div class="preview-loading preview-load-failed" role="alert">The map could not load<Button class="btn btn-secondary" onclick={() => studio.mapCanvas.load()}>Retry</Button></div>
+  <div class="preview-loading preview-load-failed" role="alert">{t("preview.mapCouldNotLoad")}<Button class="btn btn-secondary" onclick={() => studio.mapCanvas.load()}>{t("preview.retry")}</Button></div>
 {:else}
-  <div class="preview-loading">Loading map…</div>
+  <div class="preview-loading">{t("preview.loadingMap")}</div>
 {/if}
