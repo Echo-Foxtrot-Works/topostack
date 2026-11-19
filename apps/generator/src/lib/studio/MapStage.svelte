@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "@loidolt/theme-svelte";
   import type { GeoBounds } from "@topostack/core";
   import * as edits from "$lib/studio/project-edits";
   import { getStudio } from "$lib/studio/studio-context";
@@ -66,7 +67,7 @@
   />
 {:else if studio.mapCanvas.failed}
   <!-- Map view falls back elsewhere on its own; the custom data view has nowhere to go. -->
-  <div class="preview-loading preview-load-failed" role="alert">The map could not load<button type="button" class="btn btn-secondary" onclick={() => studio.mapCanvas.load()}>Retry</button></div>
+  <div class="preview-loading preview-load-failed" role="alert">The map could not load<Button class="btn btn-secondary" onclick={() => studio.mapCanvas.load()}>Retry</Button></div>
 {:else}
   <div class="preview-loading">Loading map…</div>
 {/if}

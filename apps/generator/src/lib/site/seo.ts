@@ -72,12 +72,20 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
     image: socialCard("guides-laser-cut-topographic-map", "Laser-cut topographic map guide card with an exploded stack of Crater Lake layers rendered in the studio."),
   },
   "/guides/lightburn": {
-    title: "Import Topographic Map SVGs into LightBurn | TopoStack",
-    description: "Use TopoStack SVGs in LightBurn: check size, assign cut and marking layers, avoid duplicate engraving, apply kerf once, and preview the job.",
+    title: "Open Topographic Map Projects in LightBurn | TopoStack",
+    description: "Open TopoStack's LightBurn projects with cut, score and engraving layers already set up, or import the SVG, check size, apply kerf once and preview the job.",
     label: "LightBurn workflow",
     published: "2026-10-08",
-    updated: "2026-10-08",
+    updated: "2026-11-18",
     image: socialCard("guides-lightburn", "LightBurn workflow guide card showing TopoStack’s export dialog, not a LightBurn screenshot."),
+  },
+  "/guides/xtool-studio": {
+    title: "Import Topographic Map SVGs into xTool Studio | TopoStack",
+    description: "Use TopoStack SVGs in xTool Studio: check size, set Cut, Score and Engrave for each color, apply kerf once, or open straight in Studio from Atomm.",
+    label: "xTool Studio workflow",
+    published: "2026-11-18",
+    updated: "2026-11-18",
+    image: socialCard("guides-xtool-studio", "xTool Studio workflow guide card showing TopoStack’s export dialog, not an xTool Studio screenshot."),
   },
   "/guides/topographic-map-engraving": {
     title: "Create a Topographic Map SVG for Laser Engraving | TopoStack",

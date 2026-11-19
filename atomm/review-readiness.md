@@ -1,37 +1,43 @@
-# Atomm review revision — 0.7.1 — 2026-09-29
+# Atomm review revision — 0.12.0 — 2026-11-18
 
-## Rejection and correction
+## What changed since 0.7.1
 
-The 0.7.0 review supplied only “Not aligned:” with no screenshot or category. We cannot identify the reviewer's specific target from that message. A rendered audit of the exact 0.7.0 archive found duplicated 16 px insets in three parameter groups:
+0.7.1 was the last revision prepared for review (it corrected the “Not aligned:” finding on 0.7.0). Releases 0.8.0 to 0.11.1 were published as packages without a review write-up. This revision covers everything an Atomm user sees since 0.7.1. The platform layout is unchanged: layout 3 with the lead rail, canvas and 320 px parameter rail, the three canvas views (2D, 3D, Export) and the pinned platform export button.
 
-- Map details → Water depth → Limit depth layers.
-- Map details → Text engraving → Engraving font.
-- Linework → Customize preset → numeric line widths.
+New parameter sections and controls, all in the disclosure and field styling the 0.7.1 alignment correction established:
 
-The 0.7.1 patch removes the second horizontal inset within these already-inset groups. Labels and control end edges now align with neighboring parameter rows. The correction also covers the additional minor/index contour and border widths in Flat engraving. The prior Nesting material card correction is retained.
+- **Water** is its own section. It holds shorelines, water fill, lake-floor depth, and a new **Inserts and paint** group. **Acrylic water inserts** cuts each lake out of the sheet at its waterline and exports a fitted acrylic insert, with acrylic thickness, kerf and clearance fields and a switch per lake. Export shows a second **Nesting material** card for the acrylic sheets.
+- **Map features** adds **Public land boundaries** (engraved outlines, names and an optional hatch) and **Public land paint** (paint-mask templates for national parks, forests, BLM land and other public lands, in the US and Canada).
+- **Aviation (US)** is new. It engraves FAA airspace, airports and runways in the VFR sectional style, and **Airspace in acrylic** builds the airspace as acrylic levels on rods above the terrain.
+- **Contour design** in Flat engraving can switch **Contour lines** off, for artwork that carries only map features and labels.
+- **Cancel** on the terrain progress card and **Load terrain** / **Try again** in the lead rail use the updated shared theme Button. On touch devices a tapped control no longer stays highlighted.
+- The Tips walkthrough images were recaptured from this revision. They show the same steps; lakes now use their most detailed shoreline.
+
+Not part of the Atomm package: the standalone site's phone layout (bottom settings sheet, folded header), the LightBurn project export and its guides, depth-chart tracing, and the AI-assistant integrations. The embed never mounts the standalone settings rail or export dialog, and no LightBurn option or `.lbrn2` file reaches the platform export hook.
 
 ## Review exercises
 
-1. Open Cut size and Map details. Compare the depth-limit switch with the other switches, and the font selector with Text size. Labels share the same start edge and controls share the same end edge; selects retain their specified 110 px width and numeric fields their 92 px width.
-2. Open Linework → Customize preset. Compare each line-width row with its subgroup heading and other parameter cards. Repeat in Flat engraving, including contour and border widths.
-3. Switch to Export and inspect Nesting material. Change sheet size, finish nesting, and exercise the real host's Open in Studio and Download controls.
-4. Check a narrow frame and RTL layout. There should be no horizontal overflow or inaccessible view/Tips/export controls.
+1. Open each parameter section in Layered relief and Flat engraving. Labels share one start edge and controls one end edge, including the new Water, public-land and Aviation rows; selects keep their 110 px width and numeric fields their 92 px width.
+2. In Water, turn on **Acrylic water inserts**. The 3D view shows the lake as acrylic. In Export, both Nesting material cards lay out sheets, and Open in Studio and Download include the acrylic pieces.
+3. Choose a US national park (for example Crater Lake). In Map features, turn on public land boundaries and paint; the 2D and Export views show the outlines and the paint-mask artwork.
+4. Choose a place near an airport (for example Colorado Springs). In Aviation (US), turn on airspace; then turn on **Airspace in 3D** and check the acrylic levels and rods in 3D and Export.
+5. Switch to Export, change the material size, finish nesting, and exercise the real host's Open in Studio and Download controls.
+6. Check a narrow frame, a phone-width frame and RTL layout. There is no horizontal overflow, and the view switch, Tips and export controls stay reachable.
 
 ## Media
 
-Use only the current v8 media named in `listing.md` and `media-provenance.json`. These are fresh captures of the corrected 0.7.1 UI with live Crater Lake terrain and survey data. The linework gallery now opens Customize preset so the corrected numeric fields are visible. Media includes 17 PNGs and two silent H.264 videos. The SDK mount/export hook used for capture is a stand-in; media is not a claim of native Studio validation.
+Use only the v10 media named in `listing.md` and `media-provenance.json`. There is a still cover built for the 272 × 204 grid card and nine gallery cards. They show Crater Lake and five other places, plus acrylic water inserts, public-land paint and acrylic airspace. All of it is rendered by this revision's embedded studio from live terrain and survey data, and the backdrops are each place's own engraving artwork. The cover is a still image; no cover video is uploaded. The SDK mount/export hook used for capture is a stand-in, so the media does not claim native Studio validation.
 
 ## Platform handoff
 
-Upload `apps/generator/topostack-atomm-v0.7.1.zip` as the application and use `atomm/topostack-listing-upload-v0.7.1.zip` for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
+Upload `topostack-atomm-v0.12.0.zip` from the `atomm-v0.12.0` GitHub release as the application and `topostack-listing-upload-v0.12.0.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
 
 ## Validation completed
 
-- All 39 existing Atomm browser cases passed; the final expanded-row regression passed in Chromium, Firefox and WebKit, covering both output modes across five widths in LTR and RTL (60 combinations).
-- The exact packaged ZIP separately passed 30 browser/width/direction alignment checks without injected CSS. Measured offsets were zero within 0.00004 px.
-- All 650 generator tests and 135 release/tooling tests passed, along with workspace typechecking, final lint, version consistency, and changelog verification. Svelte reported zero errors/warnings.
-- Production Atomm packaging passed environment, SDK and endpoint verification. The standalone production build passed its web bundle budget.
-- Application ZIP: 3,227,007 bytes; SHA-256 `faaf772af8e4298d730e80cf75068e57cfbd5ac135506461a42410d8897a0c69`. The receipt records the existing dirty working tree honestly; no release commit was made.
-- All 17 listing PNGs were visually reviewed and are 3200 × 2400. Both silent H.264 videos are 1920 × 1440 at 60 fps and passed full decoding. The listing packager checks all 19 hashes, byte sizes and image dimensions.
-- `assets/topostack-cover-loop-v8.mp4`: 7,304,387 bytes; SHA-256 `66629345573479137199c9abca643e35b4e5ec9b9a35a92094f6205dbc860aec`.
-- `assets/topostack-showcase-v8.mp4`: 35,925,959 bytes; SHA-256 `0ef747b05ff3742b8ddaf55e8cdb767ff61b1084bd3eb5b425a4a016bc51292b`.
+Run on the candidate branch (`dev` at `5bce26f` plus this revision's changes), 2026-11-18, and the full gate again on `dev` at `8e9cc6f` (code and v10 media together), 2026-11-19:
+
+- `e2e/atomm.spec.ts`: all 42 cases passed in Chromium, Firefox and WebKit, including the parameter alignment regression (both output modes, five widths, LTR and RTL). The suite was rerun after the Open in Studio label change: 42 of 42 again.
+- A frame audit of the embed made 48 checks across three browsers and seven frame sizes, from 1600 × 1000 down to 320 × 640 and phone landscape, with every section expanded. It found no horizontal overflow, no control outside the parameter rail, no standalone rail or sheet, no LightBurn text and no page errors. See [the report](../docs/reports/atomm-0.12.0-review/README.md).
+- Workspace typecheck, zero-warning lint, every workspace's unit tests and the script tests passed. So did the production build, the web and Worker bundle budgets, `version:check` and `changelog:verify`.
+- Production Atomm packaging against `https://topostack.app` passed environment, SDK and endpoint verification, and the listing packager verified all 10 v10 media hashes, sizes and dimensions. This was a pre-release build still numbered 0.11.1. The 0.12.0 ZIP, checksum and receipt come from production CI after promotion, and its SHA-256 is recorded with the release.
+- All 10 v10 listing PNGs (the cover and nine gallery cards) were visually reviewed (scaled to 1000 × 750, and the cover also at the 272 × 204 grid size) and are 3200 × 2400. The listing packager verified their hashes, sizes and dimensions.

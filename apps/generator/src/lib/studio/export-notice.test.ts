@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, type ProjectConfigV1 } from "@topostack/core";
 import { describeExport, downloadProject, ExportNotice } from "$lib/studio/export-notice";
 import { prepareProjectSettings, prepareSelectedDownload, startBrowserDownload } from "$lib/studio/native-export";
-import { buildProjectPackage, loadGuideFonts } from "$lib/studio/export-policy";
+import { buildProjectPackage, loadGuideFonts, withLightBurnProjects } from "$lib/studio/export-policy";
 import { chartsForProject } from "$lib/storage/user-charts";
 
 vi.mock("$lib/studio/native-export", () => ({
@@ -13,6 +13,7 @@ vi.mock("$lib/studio/native-export", () => ({
 vi.mock("$lib/studio/export-policy", () => ({
   buildProjectPackage: vi.fn(() => ({ schemaVersion: 1, files: [] })),
   loadGuideFonts: vi.fn(async () => [{ family: "guide" }]),
+  withLightBurnProjects: vi.fn(async (output: object) => ({ ...output, files: [{ filename: "ridge-layer-01.lbrn2" }] })),
 }));
 vi.mock("$lib/storage/user-charts", () => ({ chartsForProject: vi.fn(async () => [{ id: "round-lake-chart" }]) }));
 
@@ -79,6 +80,17 @@ describe("downloading fabrication files", () => {
     expect(startBrowserDownload).toHaveBeenCalledWith({ fileCount: 3 });
     expect(track).toHaveBeenCalledWith("export_prepared");
     expect(notice).toMatchObject({ phase: "ready", title: "Download ready" });
+    notice.dispose();
+  });
+
+  it("adds the LightBurn projects only for the LightBurn download", async () => {
+    const geometry = generateGeometry(DEFAULT_PROJECT, { ...createSyntheticSource(DEFAULT_PROJECT, 16), sourceKind: "real" });
+    const notice = new ExportNotice(() => undefined);
+    await downloadProject({ option: "panels", geometry, project: DEFAULT_PROJECT, notice, track: vi.fn(), nextFrame: async () => undefined });
+    expect(withLightBurnProjects).not.toHaveBeenCalled();
+    await downloadProject({ option: "lightburn", geometry, project: DEFAULT_PROJECT, notice, track: vi.fn(), nextFrame: async () => undefined });
+    expect(withLightBurnProjects).toHaveBeenCalledOnce();
+    expect(prepareSelectedDownload).toHaveBeenLastCalledWith({ schemaVersion: 1, files: [{ filename: "ridge-layer-01.lbrn2" }] }, "lightburn");
     notice.dispose();
   });
 

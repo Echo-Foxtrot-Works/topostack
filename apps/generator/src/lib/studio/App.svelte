@@ -317,8 +317,11 @@
   function dismissPreviewWarning(event: MouseEvent, warningKey?: string): void {
     const button = event.currentTarget as HTMLButtonElement;
     // Keep keyboard focus in the preview after removing the focused control.
-    const next = [...(button.closest(".warning-stack")?.querySelectorAll<HTMLButtonElement>("button") ?? [])]
-      .find((candidate) => candidate !== button);
+    // Only a rendered button can take focus: on phones the warnings may be folded behind their chip,
+    // which takes focus only when no other control is showing.
+    const others = [...(button.closest(".warning-stack")?.querySelectorAll<HTMLButtonElement>("button") ?? [])]
+      .filter((candidate) => candidate !== button && candidate.getClientRects().length > 0);
+    const next = others.find((candidate) => !candidate.classList.contains("warning-toggle")) ?? others[0];
     (next ?? document.querySelector<HTMLButtonElement>('.mode-switch [aria-checked="true"]'))?.focus({ preventScroll: true });
     if (warningKey) dismissedWarnings = [...dismissedWarnings, warningKey];
     else previewNotice = "";
@@ -963,6 +966,8 @@
     get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
     get activePanel() { return panels.active; },
     set activePanel(value) { panels.active = value; },
+    get settingsSheet() { return panels.sheet; },
+    set settingsSheet(value) { panels.sheet = value; },
     get openPanels() { return panels.open; },
     get shownLengthUnit() { return shownLengthUnit; },
     get shownElevationUnit() { return shownElevationUnit; },
@@ -1008,7 +1013,7 @@
   <meta name="theme-color" content={themeColor} />
 </svelte:head>
 
-{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <button type="button" class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
+{#snippet customDataTools()}{#if CustomDataNav}<CustomDataNav />{:else if customDataNav.failed}<p class="panel-loading" role="alert">Custom data tools could not load. <Button class="btn btn-secondary" onclick={() => customDataNav.load()}>Retry</Button></p>{:else}<p class="panel-loading" role="status">Loading custom data tools…</p>{/if}{/snippet}
 
 {#snippet locationSearch()}
   <!-- One dialog for both shells: the embedded and standalone branches rendered

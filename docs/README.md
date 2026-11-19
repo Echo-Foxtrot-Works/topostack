@@ -83,5 +83,6 @@ Dated snapshots kept for history. Do not update them; write a new one.
 - [Atomm 0.5.1 compatibility review, 2026-09-24](reports/atomm-0.5.1-audit/README.md) and its [follow-up fixes](reports/atomm-0.5.1-audit/FIXES.md).
 - [Atomm alignment investigation, 2026-09-29](reports/atomm-alignment-20260929/README.md) — reproduced 0.7.0 sidebar offsets and candidate correction.
 - [Atomm 0.7.1 validation, 2026-09-29](reports/atomm-071-validation/README.md) — release checks and alignment measurements from the exact patch ZIP.
+- [Atomm 0.12.0 review preparation, 2026-11-18](reports/atomm-0.12.0-review/README.md) — what standalone changes since 0.7.1 could reach the embed, the Open in Studio acrylic fix, and the frame audit.
 
 Airspace data acceptance and physical assembly fixtures: [airspace-validation.md](airspace-validation.md).

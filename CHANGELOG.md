@@ -4,6 +4,23 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.12.0 (2026-11-19)
+
+### New
+
+- **Open your project in LightBurn with its layers already set up**: **LightBurn projects** under Individual files in Export gives one `.lbrn2` per panel or nested sheet, plus the master, with engraving, assembly ids, score and cut each on a named layer in running order. Set speed and power, then run. A new [xTool Studio guide](https://topostack.app/guides/xtool-studio) covers importing the SVG there. See the [LightBurn guide](https://topostack.app/guides/lightburn). ([#282](https://github.com/Echo-Foxtrot-Works/topostack/pull/282))
+
+### Improved
+
+- **More of the model on a phone screen**: On phones the studio's header, place name and view switcher each fit one row, so the preview starts near the top of the screen. Terrain notices fold into one chip you can tap open, the layer slider is a single row with its scale and stack spacing a tap away, and **Send feedback** moves into the studio menu instead of covering the model. ([#279](https://github.com/Echo-Foxtrot-Works/topostack/pull/279))
+- **Edit settings on a phone without losing sight of the model**: On a phone held upright, the studio now fills the screen: the model stays in view, **Generate terrain** and the panel tabs sit at the bottom, and tapping a tab opens its settings in a sheet below the model. Drag or tap the sheet's handle to make it taller, and tap the open tab, the close button or Escape to put it away. ([#279](https://github.com/Echo-Foxtrot-Works/topostack/pull/279))
+
+### Fixed
+
+- **Studio buttons match the rest of the studio, and taps no longer leave controls highlighted**: **Open export**, the share buttons in the export dialog, **Cancel** while terrain generates and the **Retry** buttons after a failed load now look like the studio's other buttons instead of plain browser buttons. On phones and tablets, a tapped button, card or list row no longer keeps its hover colour until you tap something else. ([#279](https://github.com/Echo-Foxtrot-Works/topostack/pull/279))
+- **Site header spacing no longer shifts after you first hover or tap**: On the homepage and guides, the header links next to **Start creating** now stay evenly spaced instead of bunching together once the studio starts loading in the background, and the **Studio** label beside the logo no longer disappears on mid-size windows. ([#283](https://github.com/Echo-Foxtrot-Works/topostack/pull/283))
+- **Atomm says when acrylic airspace is left out of Open in Studio**: In Atomm, **Open in Studio** sends the wood layout only. With **Airspace in 3D** on, it now says the acrylic airspace is in the download, as it already did for acrylic water inserts, and the Export view labels that file **Wood layout** instead of **Entire layout**. ([#284](https://github.com/Echo-Foxtrot-Works/topostack/pull/284))
+
 ## 0.11.1 (2026-10-30)
 
 ### Fixed

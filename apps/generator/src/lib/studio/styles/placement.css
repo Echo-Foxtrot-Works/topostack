@@ -191,8 +191,10 @@
   transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
-.placement-start:hover {
-  border-color: var(--loidolt-accent);
+@media (hover: hover) {
+  .placement-start:hover {
+    border-color: var(--loidolt-accent);
+  }
 }
 
 .placement-start[aria-pressed="true"] {

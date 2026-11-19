@@ -142,7 +142,9 @@ body:has(.app-shell) {
 .export-status-dot[data-status="error"] { background: var(--loidolt-danger); opacity: 1; }
 .export-status-dot[data-status="busy"] { opacity: 1; animation: pulse 1s infinite; }
 
-.ldt-topbar__actions {
+/* Scoped to the studio topbar: this stylesheet stays in the document after the
+   studio route is preloaded, so a bare theme class here restyles the site header. */
+.topbar .ldt-topbar__actions {
   gap: var(--loidolt-space-2);
 }
 
@@ -173,9 +175,11 @@ body:has(.app-shell) {
   outline-offset: -2px;
 }
 
-.header-menu__list .ldt-menu__item:disabled:hover {
-  color: var(--loidolt-text);
-  background: transparent;
+@media (hover: hover) {
+  .header-menu__list .ldt-menu__item:disabled:hover {
+    color: var(--loidolt-text);
+    background: transparent;
+  }
 }
 
 .header-menu__list .ldt-menu__item > svg {

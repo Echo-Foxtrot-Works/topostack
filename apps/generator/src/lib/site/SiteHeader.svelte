@@ -31,7 +31,9 @@
   .star-link:hover :global(svg:first-child), .star-link:focus-visible :global(svg:first-child) { color: var(--loidolt-text-accent); fill: currentColor; }
   .header-cta { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 42px; padding: 10px 16px; background: var(--loidolt-accent); color: var(--loidolt-on-accent); border-radius: var(--loidolt-border-radius); font-size: 13px; font-weight: 600; text-decoration: none; }
   a:hover { color: var(--loidolt-text-accent); }
-  .header-cta:hover { background: var(--loidolt-accent-hover); color: var(--loidolt-on-accent); }
+  @media (hover: hover) {
+    .header-cta:hover { background: var(--loidolt-accent-hover); color: var(--loidolt-on-accent); }
+  }
   a:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: 5px; }
   @media (max-width: 760px) {
     .header-guide { display: none; }

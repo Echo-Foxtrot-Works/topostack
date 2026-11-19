@@ -17,5 +17,7 @@
   .example-actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border-radius: var(--loidolt-border-radius); text-decoration: none; font-size: 15px; font-weight: 600; }
   .example-actions .open { background: var(--loidolt-accent); color: var(--loidolt-on-accent); }
   .example-actions .download { border: 1px solid var(--loidolt-border); color: var(--loidolt-text-accent); }
-  .example-actions .download:hover { border-color: var(--loidolt-accent); }
+  @media (hover: hover) {
+    .example-actions .download:hover { border-color: var(--loidolt-accent); }
+  }
 </style>

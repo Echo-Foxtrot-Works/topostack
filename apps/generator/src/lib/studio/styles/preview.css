@@ -320,8 +320,10 @@
   text-transform: none;
 }
 
-.preview-warning .warning-action:hover:not(:disabled) {
-  background: var(--loidolt-surface-alt);
+@media (hover: hover) {
+  .preview-warning .warning-action:hover:not(:disabled) {
+    background: var(--loidolt-surface-alt);
+  }
 }
 
 .warning-dismiss {
@@ -337,8 +339,10 @@
   cursor: pointer;
 }
 
-.warning-dismiss:hover {
-  background: color-mix(in srgb, var(--loidolt-warning) 18%, transparent);
+@media (hover: hover) {
+  .warning-dismiss:hover {
+    background: color-mix(in srgb, var(--loidolt-warning) 18%, transparent);
+  }
 }
 
 .warning-dismiss:focus-visible {
@@ -355,4 +359,38 @@
     width: 44px;
     min-height: 44px;
   }
+}
+
+/* Phone-only pieces of the preview chrome; responsive.css shows them. */
+.mode-label--short,
+.warning-toggle {
+  display: none;
+}
+
+/* Wraps the warnings so the phone chip can fold them; elsewhere it adds no box. */
+.warning-list {
+  display: contents;
+}
+
+.warning-toggle {
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-left: 2px solid var(--loidolt-warning);
+  background: color-mix(in srgb, var(--loidolt-warning) 12%, var(--loidolt-surface));
+  color: var(--loidolt-text-warning);
+  font: 11px var(--loidolt-font-utility);
+  cursor: pointer;
+}
+
+.warning-toggle[aria-expanded="true"] > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.warning-toggle:focus-visible {
+  outline: 2px solid var(--loidolt-focus-ring, var(--loidolt-accent));
+  outline-offset: 2px;
 }

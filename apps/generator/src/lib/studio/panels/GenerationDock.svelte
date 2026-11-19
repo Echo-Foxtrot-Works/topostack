@@ -27,7 +27,7 @@
   {/if}
   <div class={`status-line status-${studio.previewBusy ? "loading" : studio.generationState}`} role="status" aria-live="polite"><span></span>{statusLine({ generationState: studio.generationState, status: studio.status, detailsUpdating: studio.detailsUpdating, terrainDataStale: studio.terrainDataStale, terrainDataAction: studio.terrainDataAction, verticalExaggerationStale: studio.verticalExaggerationStale, exportReady: studio.exportReady, exportBlockedBy: studio.exportBlockedBy, sourceKind: studio.geometry.sourceKind })}</div>
   {#if studio.embeddedInPlatform}
-    {#if needsTerrain}<button type="button" class="btn btn-secondary generate-retry" onclick={() => void generate()}>{studio.generationState === "error" ? "Try again" : "Load terrain"}</button>{/if}
+    {#if needsTerrain}<Button class="btn btn-secondary generate-retry" onclick={() => void generate()}>{studio.generationState === "error" ? "Try again" : "Load terrain"}</Button>{/if}
   {:else}
   <Button variant="primary" class="generate-button" onclick={() => studio.generationState === "loading" ? cancelGeneration() : void generate()}>{#if studio.generationState === "loading"}<X size={18} /> Cancel generation{:else}<Sparkles size={18} /> {studio.geometry.sourceKind === "real" ? studio.terrainDataStale ? "Regenerate terrain data" : "Regenerate terrain" : "Generate terrain"}{/if}</Button>
   {/if}

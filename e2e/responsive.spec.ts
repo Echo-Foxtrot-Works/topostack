@@ -134,7 +134,14 @@ test("mobile preview warnings can be dismissed without enabling export", async (
   await expect(notice).toBeVisible();
   await notice.press("Enter");
   await expect(page.locator(".preview-notice")).toHaveCount(0);
-  await expect(page.locator(".warning-dismiss").first()).toBeFocused();
+  // On a phone the terrain warnings fold behind one chip so they do not cover the model,
+  // and focus moves to that chip rather than to a hidden dismiss button.
+  const notices = page.getByRole("button", { name: /^\d+ notices?$/ });
+  await expect(notices).toBeFocused();
+  await expect(notices).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".preview-warning:not(.preview-notice)").first()).toBeHidden();
+  await notices.tap();
+  await expect(notices).toHaveAttribute("aria-expanded", "true");
   // Only two warnings are visible at once. Higher-priority lake-depth warnings
   // can precede the bundled-preview warning, so inspect each as it is revealed.
   let dismissedSampleWarning = false;
@@ -159,5 +166,88 @@ test("mobile preview warnings can be dismissed without enabling export", async (
   // A new failed attempt must still explain why the selected view is unavailable.
   await page.getByRole("radio", { name: "3D stack", exact: true }).click();
   await expect(notice).toBeVisible();
+  await context.close();
+});
+
+test("phone studio fits its header, view switcher and layer dock above the settings", async ({ browser, browserName, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, ...(browserName !== "firefox" ? { isMobile: true } : {}) });
+  const page = await context.newPage();
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort());
+  await page.goto("/studio");
+  await expect(page.locator(".preview-stage")).toBeVisible({ timeout: 30_000 });
+  // One header row, one terrain row and one toolbar row: the preview starts in the top quarter of the screen.
+  const top = await page.locator(".topbar").boundingBox();
+  const context_ = await page.locator(".terrain-contextbar").boundingBox();
+  const toolbar = await page.locator(".preview-toolbar").boundingBox();
+  for (const row of [top, context_, toolbar]) expect(row!.height).toBeLessThanOrEqual(64);
+  expect((await page.locator(".preview-stage").boundingBox())!.y).toBeLessThan(812 / 4);
+  // The views keep their full accessible names behind short labels, and Fit view keeps a 44px target.
+  for (const name of ["Map", "Cut layers", "3D stack", "Custom data"]) await expect(page.getByRole("radio", { name, exact: true })).toBeVisible();
+  // Fit view belongs to the 3D view, which a browser without WebGL replaces with cut layers.
+  if (await page.getByRole("radio", { name: "3D stack", exact: true }).getAttribute("aria-checked") === "true") {
+    const fit = (await page.getByRole("button", { name: "Fit view", exact: true }).boundingBox())!;
+    expect(Math.min(fit.width, fit.height)).toBeGreaterThanOrEqual(44);
+  }
+  // The layer dock is a single row until its details are opened.
+  const dock = page.locator(".layer-dock");
+  const closed = (await dock.boundingBox())!.height;
+  expect(closed).toBeLessThanOrEqual(56);
+  await expect(page.locator(".layer-scale")).toBeHidden();
+  await page.getByRole("button", { name: /^Layer scale/ }).tap();
+  await expect(page.locator(".layer-scale")).toBeVisible();
+  expect((await dock.boundingBox())!.height).toBeGreaterThan(closed);
+  await expectWithinWidth(page);
+  // Feedback moves from the preview's edge into the studio menu.
+  await expect(page.locator(".feedback-trigger--edge")).toBeHidden();
+  await page.getByRole("button", { name: /^Studio menu/ }).tap();
+  await page.getByRole("menuitem", { name: "Send feedback" }).tap();
+  await expect(page.getByRole("dialog", { name: "Help improve TopoStack" })).toBeVisible();
+  await context.close();
+});
+
+test("phone settings open in a sheet that leaves the model in view", async ({ browser, browserName, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, ...(browserName !== "firefox" ? { isMobile: true } : {}) });
+  const page = await context.newPage();
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort());
+  await page.goto("/studio");
+  const rail = page.locator(".settings-rail");
+  const stage = page.locator(".preview-stage");
+  const generate = page.getByRole("button", { name: /Generate terrain/ });
+  await expect(rail).toHaveAttribute("data-sheet", "closed", { timeout: 30_000 });
+  // The studio fills the screen without scrolling: the model, Generate and the panel tabs are all in view.
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
+  await expect(generate).toBeInViewport({ ratio: 1 });
+  expect((await stage.boundingBox())!.height).toBeGreaterThan(400);
+  const terrain = page.getByRole("tab", { name: "Terrain", exact: true });
+  await expect(terrain).toBeInViewport({ ratio: 1 });
+
+  // A tab opens its panel over the lower part of the screen; the model stays above it.
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "half");
+  await expect(terrain).toHaveAttribute("aria-expanded", "true");
+  const panel = page.getByRole("tabpanel", { name: "Terrain" });
+  await expect(panel).toBeVisible();
+  expect((await stage.boundingBox())!.height).toBeGreaterThan(150);
+
+  // The handle steps the sheet up; Generate and the tabs stay put.
+  await page.getByRole("button", { name: "Expand settings" }).tap();
+  await expect(rail).toHaveAttribute("data-sheet", "full");
+  await expect(generate).toBeInViewport({ ratio: 1 });
+  await expect(terrain).toBeInViewport({ ratio: 1 });
+
+  // Escape from a control in the panel closes the sheet and returns focus to its tab.
+  await panel.getByRole("spinbutton").first().focus();
+  await page.keyboard.press("Escape");
+  await expect(rail).toHaveAttribute("data-sheet", "closed");
+  await expect(terrain).toBeFocused();
+  await expect(terrain).toHaveAttribute("aria-expanded", "false");
+  await expect(panel).toBeHidden();
+
+  // Tapping the open tab closes its panel again.
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "half");
+  await terrain.tap();
+  await expect(rail).toHaveAttribute("data-sheet", "closed");
+  await expect(page.getByRole("button", { name: "Hide settings" })).toBeHidden();
   await context.close();
 });

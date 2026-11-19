@@ -10,6 +10,7 @@ import type { HistoryAvailability } from "$lib/studio/history";
 import type { LazyComponent } from "$lib/studio/lazy-component";
 import type { PlaceableId, PlacementSession } from "$lib/studio/placement/placeables";
 import type { countDetailMarkings, DisclosureId, modeledLakes, PanelId, visibleWarnings } from "$lib/studio/preview-summary";
+import type { SettingsSheet } from "$lib/studio/panel-state.svelte";
 
 /** Editing, waiting for Done's regeneration, or fading out. */
 export type PlacementPhase = "editing" | "settling" | "closing";
@@ -116,6 +117,8 @@ export interface StudioContext {
   // Sidebar and dialogs
   /** The settings panel the rail shows. */
   activePanel: PanelId;
+  /** The phone settings sheet's size (see panel-state.svelte.ts). */
+  settingsSheet: SettingsSheet;
   /** Open blocks in the platform embed, which stacks the panels as disclosures. */
   readonly openPanels: Record<DisclosureId, boolean>;
   searchOpen: boolean;

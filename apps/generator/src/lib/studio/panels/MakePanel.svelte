@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "@loidolt/theme-svelte";
   import { Download, Layers3 } from "@lucide/svelte";
   import { displayLength, MAX_PROJECT_DIMENSION_MM } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
@@ -36,7 +37,7 @@
     {:else}
       <div class="detail-group export-pointer">
         <p class="depth-note">Material-saving nests, seams and sheet layout are set when you export.</p>
-        <button type="button" class="btn btn-secondary" onclick={() => studio.openExport()}><Download size={16} aria-hidden="true" />Open export</button>
+        <Button class="btn btn-secondary" onclick={() => studio.openExport()}><Download size={16} aria-hidden="true" />Open export</Button>
       </div>
     {/if}
   {/if}

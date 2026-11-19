@@ -163,6 +163,17 @@ describe("export choices", () => {
     await expect(prepareSelectedDownload(output, "airspace")).rejects.toThrow(/no airspace was built/i);
   });
 
+  it("bundles the LightBurn projects with the README and credits, or hands one over as itself", async () => {
+    const projects = ["ridge-layer-01.lbrn2", "ridge-layer-03-a1.lbrn2", "ridge-master.lbrn2"];
+    const withProjects: FabricationPackageV1 = { ...output, files: [...output.files, ...projects.map((name) => file(name))] };
+    const download = await prepareSelectedDownload(withProjects, "lightburn");
+    expect(download.filename).toBe("ridge-layer-01-lightburn.zip");
+    expect(Object.keys(unzipSync(new Uint8Array(await download.blob.arrayBuffer())))).toEqual([...projects, "README.txt", "ATTRIBUTION.txt"]);
+    const engraving = file("crater-lake-engraving.lbrn2");
+    expect(await prepareSelectedDownload({ ...output, files: [...output.files, engraving] }, "lightburn")).toEqual({ ...engraving, fileCount: 1 });
+    await expect(prepareSelectedDownload(output, "lightburn")).rejects.toThrow(/no artwork to convert/i);
+  });
+
   it("bundles every file for the everything option", async () => {
     const download = await prepareSelectedDownload(output, "all");
     expect(download).toMatchObject({ filename: "ridge-layer-01-project-files.zip", fileCount: output.files.length });

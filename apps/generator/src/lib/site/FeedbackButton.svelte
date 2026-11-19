@@ -1,14 +1,18 @@
 <script lang="ts">
   import type { FeedbackContext, FeedbackType } from '$lib/site/feedback';
-  let { label = 'Feedback', type = 'bug', edge = false, getContext }: { label?: string; type?: FeedbackType; edge?: boolean; getContext?: () => FeedbackContext } = $props();
+  // `triggerless` renders only the dialog, for a caller that opens it with `show()` from its own control (a menu row).
+  let { label = 'Feedback', type = 'bug', edge = false, triggerless = false, getContext }: { label?: string; type?: FeedbackType; edge?: boolean; triggerless?: boolean; getContext?: () => FeedbackContext } = $props();
   let Dialog = $state.raw<typeof import('$lib/site/FeedbackDialog.svelte').default>();
   let open = $state(false);
   let loading = $state(false);
   let failed = $state(false);
   let context = $state.raw<FeedbackContext>();
-  let trigger: HTMLButtonElement;
-  async function show() {
-    trigger.focus();
+  let trigger = $state<HTMLButtonElement>();
+  let returnFocus: HTMLElement | undefined;
+  /** Opens the dialog; focus goes back to `from` (default: this trigger) when it closes. */
+  export async function show(from?: HTMLElement) {
+    returnFocus = from ?? trigger;
+    returnFocus?.focus();
     loading = true; failed = false;
     try {
       Dialog ??= (await import('$lib/site/FeedbackDialog.svelte')).default;
@@ -19,16 +23,20 @@
   }
 </script>
 
-<button bind:this={trigger} type="button" class="feedback-trigger" class:feedback-trigger--edge={edge} aria-haspopup="dialog" aria-busy={loading} onclick={show}>{label}</button>
+{#if !triggerless}<button bind:this={trigger} type="button" class="feedback-trigger" class:feedback-trigger--edge={edge} aria-haspopup="dialog" aria-busy={loading} onclick={() => show()}>{label}</button>{/if}
 {#if failed}<span class:feedback-error--edge={edge} role="alert">Feedback could not load. <a href="https://github.com/Echo-Foxtrot-Works/topostack/issues/new/choose" target="_blank" rel="noopener noreferrer">Open GitHub issues</a> or try again.</span>{/if}
-{#if Dialog}<Dialog {open} initialType={type} {context} onClose={() => { open = false; trigger.focus({ preventScroll: true }); }} />{/if}
+{#if Dialog}<Dialog {open} initialType={type} {context} onClose={() => { open = false; returnFocus?.focus({ preventScroll: true }); }} />{/if}
 
 <style>
   .feedback-trigger { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--loidolt-text-muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
-  .feedback-trigger:hover { background: var(--loidolt-surface); color: var(--loidolt-text); }
+  @media (hover: hover) {
+    .feedback-trigger:hover { background: var(--loidolt-surface); color: var(--loidolt-text); }
+  }
   .feedback-trigger:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: 2px; }
   .feedback-trigger--edge { position: absolute; z-index: 30; top: 50%; right: 0; transform: translateY(-50%); writing-mode: vertical-rl; min-height: 100px; width: 36px; padding: 14px 8px; border: 1px solid var(--loidolt-border); border-right: 0; border-radius: 8px 0 0 8px; background: var(--loidolt-surface); color: var(--loidolt-text); box-shadow: -2px 2px 8px #0001; }
-  .feedback-trigger--edge:hover { background: var(--loidolt-background); }
+  @media (hover: hover) {
+    .feedback-trigger--edge:hover { background: var(--loidolt-background); }
+  }
   .feedback-trigger--edge:focus-visible { outline-offset: -3px; }
   .feedback-error--edge { position: absolute; z-index: 31; top: 50%; right: 52px; width: min(260px, calc(100% - 68px)); padding: 12px; border: 1px solid var(--loidolt-border); border-radius: 6px; background: var(--loidolt-surface); color: var(--loidolt-text); }
   @media (pointer: coarse), (max-width: 600px) { .feedback-trigger--edge { width: 44px; } }

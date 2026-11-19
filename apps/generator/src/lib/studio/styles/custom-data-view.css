@@ -217,9 +217,11 @@
   cursor: pointer;
 }
 
-.chart-places button:hover,
-.chart-lakes button:hover {
-  border-color: var(--loidolt-accent);
+@media (hover: hover) {
+  .chart-places button:hover,
+  .chart-lakes button:hover {
+    border-color: var(--loidolt-accent);
+  }
 }
 
 .chart-chosen {

@@ -13,8 +13,10 @@
   text-align: left;
 }
 
-.location-card:hover {
-  border-color: var(--loidolt-accent);
+@media (hover: hover) {
+  .location-card:hover {
+    border-color: var(--loidolt-accent);
+  }
 }
 
 .location-card > span:nth-child(2) {
@@ -63,7 +65,9 @@
   font: 8px var(--loidolt-font-utility);
 }
 
-.preset-row button:hover {
-  border-color: var(--loidolt-accent);
-  color: var(--loidolt-accent);
+@media (hover: hover) {
+  .preset-row button:hover {
+    border-color: var(--loidolt-accent);
+    color: var(--loidolt-accent);
+  }
 }

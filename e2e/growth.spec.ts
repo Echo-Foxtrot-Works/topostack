@@ -55,7 +55,7 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
     expect(image.material).toBeGreaterThan(10_000);
     await expect(dialog).toContainText("Preview image prepared");
     await dialog.getByRole("button", { name: "Copy design link" }).click();
-    await expect(dialog.locator('.export-share [role="status"]')).toContainText(/Share link copied|Could not copy the share link/);
+    await expect(dialog.locator('.export-share > [role="status"]')).toContainText(/Share link copied|Could not copy the share link/);
     await expect.poll(() => events.filter((event) => event.event === "share_preview_prepared").length).toBe(1);
     expect(events.filter((event) => event.event === "export_prepared")).toHaveLength(1);
     expect(events.every((event) => event.channel === "lightburn-forum")).toBe(true);
@@ -63,19 +63,24 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
   });
 }
 
-test("LightBurn workflow and contextual lake links are usable without JavaScript", async ({ browser, baseURL }) => {
+test("LightBurn and xTool Studio workflows and contextual lake links are usable without JavaScript", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport: { width: 375, height: 812 } });
   const page = await context.newPage();
   await page.goto("/guides/lightburn");
-  await expect(page).toHaveTitle("Import Topographic Map SVGs into LightBurn | TopoStack");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Use TopoStack SVG files in LightBurn");
+  await expect(page).toHaveTitle("Open Topographic Map Projects in LightBurn | TopoStack");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Use TopoStack projects in LightBurn");
+  await expect(page.getByRole("heading", { name: "Open the LightBurn project" })).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://topostack.app/guides/lightburn");
   await expect(page.getByRole("heading", { name: "Apply kerf compensation once" })).toBeVisible();
   const next = page.getByRole("region", { name: "Continue your project" });
   const destination = async (name: RegExp) => new URL(await next.getByRole("link", { name }).getAttribute("href") ?? "", page.url()).href;
-  expect(await destination(/Start a flat engraving/)).toBe(`${baseURL}/studio?starter=engraving`);
+  expect(await destination(/Take your SVG into xTool Studio/)).toBe(`${baseURL}/guides/xtool-studio`);
+  await page.goto("/guides/xtool-studio");
+  await expect(page).toHaveTitle("Import Topographic Map SVGs into xTool Studio | TopoStack");
+  await expect(page.getByRole("heading", { name: "Set the processing for each color" })).toBeVisible();
+  expect(await destination(/Take your project into LightBurn/)).toBe(`${baseURL}/guides/lightburn`);
   await page.goto("/lake/crater-lake-oregon");
   expect(await destination(/Explore the Lake Tahoe example/)).toBe(`${baseURL}/examples/lake-tahoe`);
-  expect(await destination(/Take your SVG into LightBurn/)).toBe(`${baseURL}/guides/lightburn`);
+  expect(await destination(/Take your project into LightBurn/)).toBe(`${baseURL}/guides/lightburn`);
   await context.close();
 });

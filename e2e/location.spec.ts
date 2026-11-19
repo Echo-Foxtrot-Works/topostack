@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { showPanel } from "./studio-panels";
 
 async function openLocation(page: import("@playwright/test").Page): Promise<void> {
   await page.route("https://static-res.makextool.com/**", (route) => route.abort());
   await page.goto("/studio");
+  if ((page.viewportSize()?.width ?? 1280) <= 760) await showPanel(page, "Place");
   await page.locator(".location-card").first().click();
   await expect(page.getByRole("dialog", { name: "Choose anywhere" })).toBeVisible();
 }

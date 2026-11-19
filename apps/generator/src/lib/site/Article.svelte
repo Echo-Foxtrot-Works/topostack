@@ -156,7 +156,9 @@
   article :global(.note) { padding: 20px; border-left: 3px solid var(--loidolt-accent); background: var(--loidolt-surface); }
   .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--loidolt-border); }
   .pager a { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--loidolt-border); border-radius: var(--loidolt-border-radius); text-decoration: none; font-weight: 600; }
-  .pager a:hover { border-color: var(--loidolt-accent); }
+  @media (hover: hover) {
+    .pager a:hover { border-color: var(--loidolt-accent); }
+  }
   .pager small { font-size: 12px; font-weight: 400; color: var(--loidolt-text-muted); }
   .pager .next { grid-column: 2; text-align: right; }
   .cta { margin-top: 32px; }
