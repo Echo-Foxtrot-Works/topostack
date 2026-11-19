@@ -3,7 +3,6 @@
 // `water.acrylicInserts`. Add an area here and in AREAS (i18n.svelte.ts).
 import app from "./app.json";
 import aviation from "./aviation.json";
-import common from "./common.json";
 import customdata from "./customdata.json";
 import domain from "./domain.json";
 import features from "./features.json";
@@ -26,7 +25,6 @@ function area<Prefix extends string, Messages extends Record<string, string>>(pr
 export const en = {
   ...area("app", app),
   ...area("aviation", aviation),
-  ...area("common", common),
   ...area("customdata", customdata),
   ...area("domain", domain),
   ...area("features", features),
