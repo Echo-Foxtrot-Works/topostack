@@ -2,6 +2,7 @@ import { buildProjectPackage, exportBlockReason, svgToLightBurn, type ExportFile
 import jostUrl from "@loidolt/theme-styles/fonts/Jost-Medium.woff2?url";
 import archivoUrl from "@loidolt/theme-styles/fonts/Archivo-Regular.woff2?url";
 import { networkSignal } from "$lib/domain/network";
+import { t } from "$lib/i18n/i18n.svelte";
 
 export { buildProjectPackage, exportBlockReason } from "@topostack/core";
 export type ExportIntent = "download" | "openInStudio";
@@ -74,8 +75,7 @@ export function acrylicOutsideStudio(geometry: GeometryIRV1): string {
   const inserts = Boolean(geometry.waterInserts?.length);
   const airspace = Boolean(geometry.airspaceStack?.levels.length);
   if (!inserts && !airspace) return "";
-  const what = inserts && airspace ? "water inserts and airspace are" : inserts ? "water inserts are" : "airspace is";
-  return `The acrylic ${what} not in it: download the project files for their own SVGs.`;
+  return t("status.acrylicOutsideStudio", { what: inserts && airspace ? "both" : inserts ? "inserts" : "airspace" });
 }
 
 export async function createAtommExport(geometry: GeometryIRV1, project: ProjectConfigV1, intent: ExportIntent, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1) {

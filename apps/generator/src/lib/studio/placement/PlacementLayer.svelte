@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { onMount, tick } from "svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { Move, Trash2 } from "@lucide/svelte";
@@ -33,7 +34,6 @@
   const ROTATE_STANDOFF_PX = 22;
   const ROTATE_STEP_DEG = 15;
   const ROTATE_FINE_DEG = 1;
-  const OPERATION_LABELS: Record<GraphicOperation, string> = { engrave: "Engrave", score: "Score", cut: "Cut" };
 
   let svg: SVGSVGElement;
   let drag: { id: PlaceableId; pointerId: number; x: number; y: number; unitsPerPixel: number; start: Point2D } | undefined;
@@ -56,8 +56,24 @@
     return placeable.available(draft) ? placeable : undefined;
   });
   const selectedLabel = $derived(selected ? selected.name?.(draft) ?? selected.label : undefined);
-  const sizeReadout = $derived(selected?.resize ? `${selected.resize.label} ${Number(displayLength(selected.resize.value(draft), draft.units).toFixed(draft.units === "imperial" ? 2 : 1))} ${lengthUnit(draft.units)}` : undefined);
-  const rotationReadout = $derived(selected?.rotate ? `${Number(selected.rotate.value(draft).toFixed(1))}°` : undefined);
+  const sizeReadout = $derived(selected?.resize ? t("preview.placementSize", { label: selected.resize.label, value: Number(displayLength(selected.resize.value(draft), draft.units).toFixed(draft.units === "imperial" ? 2 : 1)), unit: lengthUnit(draft.units) }) : undefined);
+  const rotationReadout = $derived(selected?.rotate ? t("preview.placementRotation", { value: Number(selected.rotate.value(draft).toFixed(1)) }) : undefined);
+  // "Placing {item}" with the item in bold: the translation sets where the name sits.
+  const placingParts = $derived(t("preview.placing", { item: "\u0000" }).split("\u0000"));
+  const handleLabel = (placeable: (typeof items)[number]["placeable"]) => [
+    t("preview.placementHandle", { item: placeable.name?.(draft) ?? placeable.label }),
+    placeable.resize ? t("preview.placementHandleResize") : "",
+    placeable.rotate ? t("preview.placementHandleRotate") : "",
+    placeable.remove ? t("preview.placementHandleRemove") : "",
+  ].filter(Boolean).join(" ");
+  const placementHint = $derived(selected ? [
+    t("preview.placementHintMove"),
+    selected.resize ? t("preview.placementHintResize") : "",
+    selected.rotate ? t("preview.placementHintRotate") : "",
+    t("preview.placementHintNudge"),
+    selected.resize ? t("preview.placementHintSize") : "",
+    t("preview.placementHintTab"),
+  ].filter(Boolean).join(" · ") : "");
   const graphics = $derived(draft.customGraphics ?? []);
   const selectedOperation = $derived(selected?.operation?.value(draft));
 
@@ -272,7 +288,7 @@
           class="placement-handle" d={`${outline} Z`}
           data-placeable={placeable.id}
           role="button" tabindex="0"
-          aria-label={`${placeable.name?.(draft) ?? placeable.label}. Drag to move, or use the arrow keys; hold Shift for bigger steps.${placeable.resize ? " Plus and minus change the size." : ""}${placeable.rotate ? " Brackets turn it." : ""}${placeable.remove ? " Delete removes it." : ""}`}
+          aria-label={handleLabel(placeable)}
           aria-pressed={session.selected === placeable.id}
           onfocus={() => select(placeable.id)}
           onpointerdown={(event) => startDrag(event, placeable.id)} onpointermove={moveDrag} onpointerup={endDrag} onpointercancel={endDrag} onlostpointercapture={endDrag}
@@ -299,37 +315,37 @@
       </g>
     {/each}
   </svg>
-  <div class="placement-toolbar" class:placement-toolbar--graphics={graphics.length > 0} role="toolbar" aria-label="Placement" inert={!interactive}>
+  <div class="placement-toolbar" class:placement-toolbar--graphics={graphics.length > 0} role="toolbar" aria-label={t("preview.placementToolbar")} inert={!interactive}>
     <span class="placement-toolbar__icon" aria-hidden="true"><Move size={16} /></span>
     <span class="placement-toolbar__text">
       {#if selected}
-        <span class="placement-toolbar__status" aria-live="polite">Placing <b>{selectedLabel}</b>{#if sizeReadout}<span class="placement-toolbar__size">{sizeReadout}</span>{/if}{#if rotationReadout}<span class="placement-toolbar__size">{rotationReadout}</span>{/if}</span>
-        <span class="placement-toolbar__hint">Drag to move{selected.resize ? " · corner to resize" : ""}{selected.rotate ? " · top grip or [ ] to turn" : ""} · arrow keys nudge{selected.resize ? " · +/− size" : ""} · Tab switches</span>
+        <span class="placement-toolbar__status" aria-live="polite">{placingParts[0]}<b>{selectedLabel}</b>{placingParts[1]}{#if sizeReadout}<span class="placement-toolbar__size">{sizeReadout}</span>{/if}{#if rotationReadout}<span class="placement-toolbar__size">{rotationReadout}</span>{/if}</span>
+        <span class="placement-toolbar__hint">{placementHint}</span>
       {:else}
-        <span class="placement-toolbar__status" aria-live="polite">Nothing selected</span>
-        <span class="placement-toolbar__hint">Add a graphic, or press Done to keep the piece as it is</span>
+        <span class="placement-toolbar__status" aria-live="polite">{t("preview.placementNothingSelected")}</span>
+        <span class="placement-toolbar__hint">{t("preview.placementNothingSelectedHint")}</span>
       {/if}
     </span>
-    <Button size="sm" onclick={onCancel}>Cancel</Button>
-    <Button variant="primary" size="sm" onclick={onDone}>Done</Button>
+    <Button size="sm" onclick={onCancel}>{t("preview.cancel")}</Button>
+    <Button variant="primary" size="sm" onclick={onDone}>{t("preview.done")}</Button>
     {#if graphics.length}
       <div class="placement-toolbar__graphics">
-        <select class="placement-add-graphic" aria-label="Add a graphic to the piece" value="" onchange={(event) => { const select = event.currentTarget; addGraphic(select.value); select.value = ""; }}>
-          <option value="" disabled>Add graphic…</option>
+        <select class="placement-add-graphic" aria-label={t("preview.addGraphicToPiece")} value="" onchange={(event) => { const select = event.currentTarget; addGraphic(select.value); select.value = ""; }}>
+          <option value="" disabled>{t("preview.addGraphic")}</option>
           {#each graphics as graphic (graphic.id)}<option value={graphic.id}>{graphic.name}</option>{/each}
         </select>
         {#if selected?.operation && selectedOperation}
           {@const id = selected.id}
-          <span class="placement-operation" role="radiogroup" aria-label="What the laser does with this graphic">
+          <span class="placement-operation" role="radiogroup" aria-label={t("preview.graphicOperation")}>
             {#each GRAPHIC_OPERATIONS as operation (operation)}
-              <button type="button" role="radio" aria-checked={selectedOperation === operation} data-state={selectedOperation === operation ? "on" : "off"} onclick={() => setOperation(id, operation)}>{OPERATION_LABELS[operation]}</button>
+              <button type="button" role="radio" aria-checked={selectedOperation === operation} data-state={selectedOperation === operation ? "on" : "off"} onclick={() => setOperation(id, operation)}>{t(`preview.graphicOperation.${operation}` as MessageKey)}</button>
             {/each}
           </span>
-          {#if selectedOperation === "cut"}<span class="placement-toolbar__hint">The sheet opens when you press Done</span>{/if}
+          {#if selectedOperation === "cut"}<span class="placement-toolbar__hint">{t("preview.graphicCutHint")}</span>{/if}
         {/if}
         {#if selected?.remove}
           {@const id = selected.id}
-          <button type="button" class="placement-remove" aria-label={`Remove ${selectedLabel} from the piece`} title="Remove from the piece (Delete)" onclick={() => remove(id)}><Trash2 size={14} /></button>
+          <button type="button" class="placement-remove" aria-label={t("preview.removeFromPiece", { item: selectedLabel ?? "" })} title={t("preview.removeFromPieceTitle")} onclick={() => remove(id)}><Trash2 size={14} /></button>
         {/if}
       </div>
     {/if}

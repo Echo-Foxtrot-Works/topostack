@@ -1,5 +1,6 @@
 import { untrack } from "svelte";
 import type { GeometryIRV1, ProjectConfigV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import { addGraphicToSession, canPlace, draftProject, graphicPlaceableId, hiddenMarkingPrefixes, placeableFor, placementPatch, type PlaceableId, type PlacementSession } from "$lib/studio/placement/placeables";
 import { placementMarginMm } from "$lib/studio/placement/viewport";
 import type { PlacementPhase, PreviewMode } from "$lib/studio/studio-context";
@@ -64,7 +65,7 @@ export class PlacementController {
   placeGraphic(graphicId: string): void {
     if (this.session && this.phase !== "editing") return;
     const next = addGraphicToSession(this.#host.project(), this.session, graphicId, crypto.randomUUID());
-    if (!next) { this.#host.setStatus("The piece already holds as many graphics as it can. Remove one before adding another."); return; }
+    if (!next) { this.#host.setStatus(t("status.graphicsFull")); return; }
     if (this.session) this.session = next;
     else this.#open(next);
   }

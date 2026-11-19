@@ -1,4 +1,5 @@
 import type { GeometryIRV1, NestPartV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import type { NestMaterial, SheetPreview } from "$lib/studio/sheet-nest-runner";
 import type { NestClient } from "$lib/workers/nest-client";
 
@@ -93,7 +94,7 @@ export class SheetNesting {
         return;
       }
       this.status = "error";
-      this.error = error instanceof Error ? error.message : "Sheet nesting failed.";
+      this.error = error instanceof Error ? error.message : t("status.sheetNestingFailed");
     }
   }
 

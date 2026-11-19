@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
   import { cropRadiusMm, waterPatternStrokes, type GeometryIRV1, type Point2D, type ProjectConfigV1 } from "@topostack/core";
   import { markingDash, markingWidth } from "$lib/studio/marking-style";
@@ -55,7 +56,7 @@
 </script>
 
 <div class="engraving-stage">
-  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="engraving" svgLabel="Flat engraving preview" controlsLabel="Engraving zoom controls" resetLabel="Reset engraving view">
+  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="engraving" svgLabel={t("preview.flatEngravingPreview")} controlsLabel={t("preview.engravingZoomControls")} resetLabel={t("preview.resetEngravingView")}>
     <defs><filter id="engraving-shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2" /></filter></defs>
     {#if crop.cropShape === "circle"}
       <circle cx="0" cy="0" r={cropRadiusMm(crop)} class="engraving-surface" data-preview-shadow filter="url(#engraving-shadow)" />
@@ -88,5 +89,5 @@
       {#if crop.cropShape === "circle"}<circle cx="0" cy="0" r={cropRadiusMm(crop)} class="engraving-border" stroke-width={geometry.lineStyle.borderMm} />{:else}<rect x={-crop.widthMm / 2} y={-crop.heightMm / 2} width={crop.widthMm} height={crop.heightMm} class="engraving-border" stroke-width={geometry.lineStyle.borderMm} />{/if}
     {/if}
   </SvgViewport>
-  <div class="engraving-legend">{#if project.showEngravingContours}<span><i style:--sample-width={`${Math.max(1, geometry.lineStyle.contourMm * 5)}px`}></i> Minor contour</span><span><i class="index" style:--sample-width={`${Math.max(1, geometry.lineStyle.indexContourMm * 5)}px`}></i> Index every {project.engravingIndexInterval}</span><span>{project.engravingContourCount} contours</span>{:else}<span>No contours</span>{/if}{#if project.showWater && project.waterFillPattern !== "none"}<span>{project.waterFillPattern} water</span>{/if}</div>
+  <div class="engraving-legend">{#if project.showEngravingContours}<span><i style:--sample-width={`${Math.max(1, geometry.lineStyle.contourMm * 5)}px`}></i> {t("preview.legendMinorContour")}</span><span><i class="index" style:--sample-width={`${Math.max(1, geometry.lineStyle.indexContourMm * 5)}px`}></i> {t("preview.legendIndexEvery", { interval: project.engravingIndexInterval })}</span><span>{t("preview.legendContourCount", { count: project.engravingContourCount })}</span>{:else}<span>{t("preview.legendNoContours")}</span>{/if}{#if project.showWater && project.waterFillPattern !== "none"}<span>{t("preview.legendWaterPattern", { pattern: project.waterFillPattern })}</span>{/if}</div>
 </div>

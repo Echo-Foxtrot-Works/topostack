@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import { getEmbedded } from "$lib/studio/embed-context";
   import { onDestroy, onMount, untrack, type Snippet } from "svelte";
   import { IconButton } from "@loidolt/theme-svelte";
@@ -335,9 +336,9 @@
 <div class="svg-viewer">
   {#if isEmbedded()}<AtommZoom value={zoom} min={MIN_ZOOM} max={MAX_ZOOM} onZoom={setZoom} onFit={resetView} />{:else}
   <div class="svg-zoom-controls" aria-label={controlsLabel}>
-    <IconButton label="Zoom out" size="sm" disabled={zoom <= MIN_ZOOM} onclick={() => setZoom(zoom - ZOOM_STEP)}><Minus size={15} /></IconButton>
+    <IconButton label={t("preview.zoomOut")} size="sm" disabled={zoom <= MIN_ZOOM} onclick={() => setZoom(zoom - ZOOM_STEP)}><Minus size={15} /></IconButton>
     <span class="svg-zoom-value" aria-live="polite">{Math.round(zoom * 100)}%</span>
-    <IconButton label="Zoom in" size="sm" disabled={zoom >= MAX_ZOOM} onclick={() => setZoom(zoom + ZOOM_STEP)}><Plus size={15} /></IconButton>
+    <IconButton label={t("preview.zoomIn")} size="sm" disabled={zoom >= MAX_ZOOM} onclick={() => setZoom(zoom + ZOOM_STEP)}><Plus size={15} /></IconButton>
     <IconButton label={resetLabel} size="sm" disabled={zoom === MIN_ZOOM && panX === 0 && panY === 0} onclick={resetView}><RotateCcw size={14} /></IconButton>
   </div>
   {/if}
@@ -351,7 +352,7 @@
     data-zoom={zoom.toFixed(2)}
     data-render-zoom={renderZoom.toFixed(2)}
     data-rendering={zoom === renderZoom ? "sharp" : "preview"}
-    aria-label={`Interactive ${label} preview. Scroll or use plus and minus to zoom, drag or use arrow keys to pan, and press zero to reset.`}
+    aria-label={t("preview.interactiveViewport", { label })}
     onclickcapture={filterClick}
     onclick={onactivate}
     onwheel={handleWheel}

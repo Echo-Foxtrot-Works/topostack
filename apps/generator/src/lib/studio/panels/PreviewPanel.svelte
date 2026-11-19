@@ -13,6 +13,7 @@
   import { getStudio, type PreviewMode } from "$lib/studio/studio-context";
   import PlaceGraphicsButton from "$lib/studio/customdata/PlaceGraphicsButton.svelte";
   import { warningText } from "$lib/i18n/warnings";
+  import { formatNumber, t } from "$lib/i18n/i18n.svelte";
   const base = basePath();
 
   let { openLakeDepthHelp }: { openLakeDepthHelp?: (trigger: HTMLButtonElement) => void } = $props();
@@ -26,6 +27,8 @@
   const CustomDataView = $derived(studio.CustomDataView);
   const ExportPreview = $derived(studio.ExportPreview);
   const { cancelGeneration, cancelPlacement, commitPlacement, dismissPreviewWarning, getFeedbackContext, navigateChoice, shownLength, updateFabrication } = studio;
+  // Lengths read like "1200 × 200 mm": locale decimals, no digit grouping.
+  const lengthText = (valueMm: number) => formatNumber(shownLength(valueMm), { maximumFractionDigits: 3, useGrouping: false });
   const keyboardView = $derived(studio.previewModeOptions.find(option => option.value === studio.mode)?.value ?? studio.previewModeOptions[0]?.value);
   function choosePreviewMode(value: string): void {
     if (value === "2d" && studio.selectedLayer === 0) studio.selectedLayer = featuredLayerIndex(studio.geometry);
@@ -35,36 +38,38 @@
   }
   function mapUnavailable(reason?: "unsupported" | "load-failed"): void {
     studio.mode = studio.project.outputMode === "engraving" ? "engraving" : "2d";
-    studio.previewNotice = reason === "load-failed" ? "Map could not load · check your connection or choose a location using search or coordinates" : "Map is unavailable in this browser · choose a location using search or coordinates";
+    studio.previewNotice = reason === "load-failed" ? t("preview.noticeMapLoadFailed") : t("preview.noticeMapUnsupported");
   }
   function threeUnavailable(): void {
     studio.threeUnavailable = true;
     studio.mode = "2d";
-    studio.previewNotice = "3D is unavailable in this browser · showing cut layers";
+    studio.previewNotice = t("preview.noticeThreeUnavailable");
   }
   /** While placing over the 3D preview, what it hides and how it frames the model. */
   const threePlacement = $derived(studio.placementBackdrop === "3d" ? { hiddenPrefixes: studio.placementPhase === "closing" ? [] : studio.placementHiddenPrefixes, marginMm: studio.placementMargin, hideMarkings: studio.placementPhase !== "closing", toolbarRows: studio.project.customGraphics?.length ? 2 : 1 } : undefined);
   // Phones show each view by a short name (the radio keeps its full name) so four views fit one row.
-  const SHORT_VIEW_LABELS: Record<string, string> = { "2d": "Cut", "3d": "3D", custom: "Data" };
+  const SHORT_VIEW_LABELS: Record<string, string> = { get "2d"() { return t("preview.shortViewCut"); }, get "3d"() { return t("preview.shortView3d"); }, get custom() { return t("preview.shortViewData"); } };
   // On a phone-width preview the warnings fold behind one chip so they do not cover the model; wider previews ignore this.
   let warningsOpen = $state(false);
+  // "Map data © {source}" with the source as a link: the translation sets where it sits.
+  const attributionParts = $derived(t("preview.mapDataAttribution", { source: "\u0000" }).split("\u0000"));
   const OSM_ATTRIBUTION = MAP_DATA_ATTRIBUTION.find((entry) => entry.name === "OpenStreetMap contributors") ?? { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright" };
 </script>
 
 <section class="preview-panel" class:engraving-preview-panel={studio.project.outputMode === "engraving"}>
   <div class="preview-toolbar">
-    <div class="ldt-toggle-group mode-switch" role="radiogroup" aria-label="Preview mode">
+    <div class="ldt-toggle-group mode-switch" role="radiogroup" aria-label={t("preview.previewMode")}>
       {#each studio.previewModeOptions as option}
         <button type="button" class="ldt-toggle-group__item" role="radio" aria-checked={studio.mode === option.value} data-state={studio.mode === option.value ? "on" : "off"} tabindex={keyboardView === option.value ? 0 : -1} onclick={() => choosePreviewMode(option.value)} aria-label={!studio.embeddedInPlatform && SHORT_VIEW_LABELS[option.value] ? option.label : undefined} onkeydown={navigateChoice}>{#if option.value === "map"}<MapIcon size={15} />{:else if option.value === "engraving"}<PenTool size={15} />{:else if option.value === "2d"}<Layers3 size={15} />{:else if option.value === "custom"}<Waves size={15} />{:else if option.value === "export"}<FileOutput size={15} />{:else}<Box size={15} />{/if}{#if !studio.embeddedInPlatform && SHORT_VIEW_LABELS[option.value]}<span class="mode-label">{option.label}</span><span class="mode-label mode-label--short" aria-hidden="true">{SHORT_VIEW_LABELS[option.value]}</span>{:else}{option.label}{/if}</button>
       {/each}
     </div>
     {#if studio.mode === "3d" && !studio.embeddedInPlatform && !studio.placementBackdrop}
-      <Button class="fit-view" variant="ghost" size="sm" aria-label="Fit view" title="Fit view" disabled={studio.previewBusy || !threePreview} onclick={() => threePreview?.fitView()}><Scan size={15} aria-hidden="true" /><span class="fit-view__label">Fit view</span></Button>
+      <Button class="fit-view" variant="ghost" size="sm" aria-label={t("preview.fitView")} title={t("preview.fitView")} disabled={studio.previewBusy || !threePreview} onclick={() => threePreview?.fitView()}><Scan size={15} aria-hidden="true" /><span class="fit-view__label">{t("preview.fitView")}</span></Button>
     {/if}
     <div class="preview-readout">
-      <span>{shownLength(studio.project.widthMm)} × {shownLength(studio.project.heightMm)} {studio.shownLengthUnit}</span>
+      <span>{t("preview.readoutSize", { width: lengthText(studio.project.widthMm), height: lengthText(studio.project.heightMm), unit: studio.shownLengthUnit })}</span>
       {#if !studio.embeddedInPlatform}<span class="output-summary">{#each studio.outputSummary as item}<span>{item}</span>{/each}</span>{/if}
-      <span>{Math.round(displayElevation(studio.geometry.minElevationM, studio.project.units)).toLocaleString()}–{Math.round(displayElevation(studio.geometry.maxElevationM, studio.project.units)).toLocaleString()} {studio.shownElevationUnit}</span>
+      <span>{t("preview.readoutElevation", { min: Math.round(displayElevation(studio.geometry.minElevationM, studio.project.units)), max: Math.round(displayElevation(studio.geometry.maxElevationM, studio.project.units)), unit: studio.shownElevationUnit })}</span>
     </div>
   </div>
   <div class="preview-stage" aria-busy={studio.previewBusy} data-placement-graphics={studio.project.customGraphics?.length ? "" : undefined} data-placement-fade={studio.placementFade || undefined}
@@ -75,59 +80,59 @@
       <MapStage onUnavailable={mapUnavailable} />
     {:else if studio.mode === "engraving" && studio.placementBackdrop !== "3d"}
       {#if studio.EngravingPreview}<EngravingPreview geometry={studio.geometry} project={studio.project} cropShape={studio.sourceProject.cropShape} />
-      {:else if studio.engravingPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Engraving preview could not load<Button class="btn btn-secondary" onclick={() => studio.engravingPreview.load()}>Retry</Button></div>
-      {:else}<div class="preview-loading">Loading engraving…</div>{/if}
+      {:else if studio.engravingPreview.failed}<div class="preview-loading preview-load-failed" role="alert">{t("preview.engravingPreviewFailed")}<Button class="btn btn-secondary" onclick={() => studio.engravingPreview.load()}>{t("preview.retry")}</Button></div>
+      {:else}<div class="preview-loading">{t("preview.loadingEngraving")}</div>{/if}
     {:else if studio.mode === "custom" && studio.placementBackdrop !== "3d"}
       {#if CustomDataView}<CustomDataView />
-      {:else if studio.customDataView.failed}<div class="preview-loading preview-load-failed" role="alert">Custom data could not load<Button class="btn btn-secondary" onclick={() => studio.customDataView.load()}>Retry</Button></div>
-      {:else}<div class="preview-loading">Loading custom data…</div>{/if}
+      {:else if studio.customDataView.failed}<div class="preview-loading preview-load-failed" role="alert">{t("preview.customDataFailed")}<Button class="btn btn-secondary" onclick={() => studio.customDataView.load()}>{t("preview.retry")}</Button></div>
+      {:else}<div class="preview-loading">{t("preview.loadingCustomData")}</div>{/if}
     {:else if studio.mode === "export" && studio.placementBackdrop !== "3d"}
       {#if ExportPreview}<ExportPreview geometry={studio.geometry} project={studio.project} blocked={studio.exportBlockedBy} busy={studio.previewBusy} />
-      {:else if studio.exportPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Export preview could not load<Button class="btn btn-secondary" onclick={() => studio.exportPreview.load()}>Retry</Button></div>
-      {:else}<div class="preview-loading">Loading export preview…</div>{/if}
+      {:else if studio.exportPreview.failed}<div class="preview-loading preview-load-failed" role="alert">{t("preview.exportPreviewLoadFailed")}<Button class="btn btn-secondary" onclick={() => studio.exportPreview.load()}>{t("preview.retry")}</Button></div>
+      {:else}<div class="preview-loading">{t("preview.loadingExportPreview")}</div>{/if}
     {:else if studio.mode === "2d" && studio.placementBackdrop !== "3d"}
       {#if studio.TwoDPreview}<TwoDPreview geometry={studio.geometry} selectedLayer={studio.selectedLayer} selectedAirspaceLevel={studio.selectedAirspaceLevel} />
-      {:else if studio.twoDPreview.failed}<div class="preview-loading preview-load-failed" role="alert">Cut preview could not load<Button class="btn btn-secondary" onclick={() => studio.twoDPreview.load()}>Retry</Button></div>
-      {:else}<div class="preview-loading">Loading cut preview…</div>{/if}
+      {:else if studio.twoDPreview.failed}<div class="preview-loading preview-load-failed" role="alert">{t("preview.cutPreviewFailed")}<Button class="btn btn-secondary" onclick={() => studio.twoDPreview.load()}>{t("preview.retry")}</Button></div>
+      {:else}<div class="preview-loading">{t("preview.loadingCutPreview")}</div>{/if}
     {:else if studio.ThreePreview}
       <ThreePreview bind:this={threePreview} geometry={studio.geometry} exploded={studio.explodedPreview} placement={threePlacement} onUnavailable={threeUnavailable} />
     {:else}
-      <div class="preview-loading">Loading 3D preview…</div>
+      <div class="preview-loading">{t("preview.loadingThreePreview")}</div>
     {/if}
     {#if studio.placementBackdrop && PlacementStage && (studio.placementBackdrop === "flat" || studio.ThreePreview)}
       <PlacementStage backdrop={studio.placementBackdrop} phase={studio.placementPhase} geometry={studio.geometry} project={studio.project} cropShape={studio.sourceProject.cropShape} session={studio.placement!} marginMm={studio.placementMargin} hiddenPrefixes={studio.placementHiddenPrefixes} onChange={(session) => { studio.placement = session; }} onDone={commitPlacement} onCancel={cancelPlacement} />
     {/if}
     {#if studio.mode === "3d" || studio.mode === "engraving"}<PlaceGraphicsButton />{/if}
     {#if studio.mode !== "map" && studio.mode !== "custom"}
-      <div class="preview-attribution">Map data © <a href={OSM_ATTRIBUTION.url} target="_blank" rel="noreferrer">{OSM_ATTRIBUTION.name}</a> · <a href={`${base}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}`} target="_blank" rel="noopener noreferrer">All sources<span class="ldt-visually-hidden"> (opens in a new tab)</span></a></div>
+      <div class="preview-attribution">{attributionParts[0]}<a href={OSM_ATTRIBUTION.url} target="_blank" rel="noreferrer">{OSM_ATTRIBUTION.name}</a>{attributionParts[1]} · <a href={`${base}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}`} target="_blank" rel="noopener noreferrer">{t("preview.allSources")}<span class="ldt-visually-hidden"> {t("preview.opensInNewTab")}</span></a></div>
     {/if}
     {#if studio.previewBusy && studio.mode !== "custom"}
-      <GenerationProgress compact={studio.detailsUpdating && studio.generationState !== "loading" && (!studio.terrainRefreshing || studio.mode === "map")} passive={studio.detailsUpdating && studio.generationState !== "loading"} title={studio.previewBusyLabel} detail={studio.status} step={studio.generationState === "loading" ? studio.generationStep : undefined} onCancel={studio.embeddedInPlatform && (studio.generationState === "loading" || (studio.terrainRefreshing && studio.mode !== "map")) ? cancelGeneration : undefined} cancelLabel={studio.generationState === "loading" ? "Cancel generation" : "Cancel"} />
+      <GenerationProgress compact={studio.detailsUpdating && studio.generationState !== "loading" && (!studio.terrainRefreshing || studio.mode === "map")} passive={studio.detailsUpdating && studio.generationState !== "loading"} title={studio.previewBusyLabel} detail={studio.status} step={studio.generationState === "loading" ? studio.generationStep : undefined} onCancel={studio.embeddedInPlatform && (studio.generationState === "loading" || (studio.terrainRefreshing && studio.mode !== "map")) ? cancelGeneration : undefined} cancelLabel={studio.generationState === "loading" ? t("preview.cancelGeneration") : t("preview.cancel")} />
     {/if}
     {#if studio.mode !== "custom" && studio.mode !== "export" && (studio.visibleWarnings.length || studio.previewNotice || studio.lakeDepthFittingOn)}
       <div class="warning-stack" data-collapsed={!studio.embeddedInPlatform && studio.visibleWarnings.length && !warningsOpen ? "" : undefined}>
         {#if !studio.embeddedInPlatform && studio.visibleWarnings.length}
-          <button type="button" class="warning-toggle" aria-expanded={warningsOpen} aria-controls="preview-warnings" onclick={() => { warningsOpen = !warningsOpen; }}><TriangleAlert size={14} aria-hidden="true" /><span>{studio.visibleWarnings.length === 1 ? "1 notice" : `${studio.visibleWarnings.length} notices`}</span><ChevronDown size={14} aria-hidden="true" /></button>
+          <button type="button" class="warning-toggle" aria-expanded={warningsOpen} aria-controls="preview-warnings" onclick={() => { warningsOpen = !warningsOpen; }}><TriangleAlert size={14} aria-hidden="true" /><span>{t("preview.noticeCount", { count: studio.visibleWarnings.length })}</span><ChevronDown size={14} aria-hidden="true" /></button>
         {/if}
         {#if studio.lakeDepthFittingOn}
           <div class="preview-warning preview-notice" role="status">
             <span class="warning-icon" aria-hidden="true"><Waves size={12} /></span>
-            <p>Lake depth fitting is on. <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: false })}>Use manual depth</Button></p>
+            <p>{t("preview.lakeDepthFittingOn")} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: false })}>{t("preview.useManualDepth")}</Button></p>
           </div>
         {/if}
         {#if studio.previewNotice}
           <div class="preview-warning preview-notice" role="status">
             <span class="warning-icon" aria-hidden="true">!</span>
             <p>{studio.previewNotice}</p>
-            <button type="button" class="warning-dismiss" aria-label={`Dismiss notice: ${studio.previewNotice}`} title="Dismiss notice" onclick={(event) => dismissPreviewWarning(event)}><X size={14} aria-hidden="true" /></button>
+            <button type="button" class="warning-dismiss" aria-label={t("preview.dismissNoticeLabel", { notice: studio.previewNotice })} title={t("preview.dismissNotice")} onclick={(event) => dismissPreviewWarning(event)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/if}
         <div id="preview-warnings" class="warning-list">
         {#each studio.visibleWarnings as warning (`${warning.code}-${warning.message}`)}
           <div class="preview-warning">
             <span class="warning-icon" aria-hidden="true">!</span>
-            <p>{warningText(warning)}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>Fit depth</Button>{/if}</p>
-            <button type="button" class="warning-dismiss" aria-label={`Dismiss warning: ${warning.message}`} title="Dismiss warning" onclick={(event) => dismissPreviewWarning(event, `${warning.code}-${warning.message}`)}><X size={14} aria-hidden="true" /></button>
+            <p>{warningText(warning)}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>{t("preview.fitDepth")}</Button>{/if}</p>
+            <button type="button" class="warning-dismiss" aria-label={t("preview.dismissWarningLabel", { warning: warningText(warning) })} title={t("preview.dismissWarning")} onclick={(event) => dismissPreviewWarning(event, `${warning.code}-${warning.message}`)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/each}
         </div>

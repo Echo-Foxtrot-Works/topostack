@@ -1,6 +1,7 @@
 // What MapCanvas draws over the map, built without the map: marker elements
 // and the GeoJSON for custom lines, the map area, and the path being drawn.
 import { boundsForProject, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import { polygonsPath } from "$lib/studio/svg-path";
 
 const MARKER_SYMBOL_SIZE = 22;
@@ -20,8 +21,10 @@ export function markerPixelOffset(marker: MapMarkerV1, icons: MarkerIcons): [num
   return [center.x * scale, center.y * scale];
 }
 
-export const markerLabel = (marker: MapMarkerV1, icons: MarkerIcons): string =>
-  `${marker.name ? `${marker.name}, ` : ""}${markerIcon(marker, icons)?.name ?? marker.symbol} marker at ${marker.lat.toFixed(5)}, ${marker.lon.toFixed(5)}`;
+export const markerLabel = (marker: MapMarkerV1, icons: MarkerIcons): string => {
+  const params = { symbol: markerIcon(marker, icons)?.name ?? marker.symbol, lat: marker.lat.toFixed(5), lon: marker.lon.toFixed(5) };
+  return marker.name ? t("app.markerLabelNamed", { ...params, name: marker.name }) : t("app.markerLabel", params);
+};
 
 /** What a marker's element draws; a change to it redraws the element. */
 export function markerDrawingKey(marker: MapMarkerV1, icons: MarkerIcons): string {
