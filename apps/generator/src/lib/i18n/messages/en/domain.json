@@ -1,1 +1,27 @@
-{}
+{
+  "placeSearchUnavailable": "Place search is temporarily unavailable.",
+  "placeSearchUnexpected": "Place search returned an unexpected response.",
+  "geoInvalidXml": "This {format} file is not valid XML.",
+  "geoInvalidJson": "This GeoJSON file is not valid JSON.",
+  "geoNoFeatures": "This GeoJSON file has no features.",
+  "geoChooseFile": "Choose a GPX, KML or GeoJSON file.",
+  "geoFileTooLarge": "Map data files must be {sizeMb} MB or smaller.",
+  "geoNothingFound": "No points, paths or boundaries were found in this file.",
+  "geoCustomDataFull": "Custom data is full. Remove markers or paths before importing more.",
+  "geoImportedPaths": "Imported {paths, plural, one {# path} other {# paths}}",
+  "geoImportedMarkers": "Imported {markers, plural, one {# marker} other {# markers}}",
+  "geoImportedPathsAndMarkers": "Imported {paths, plural, one {# path} other {# paths}} and {markers, plural, one {# marker} other {# markers}}",
+  "geoImportSimplified": "paths simplified to fit the point limit",
+  "geoImportDropped": "{count, plural, one {# feature} other {# features}} left out at the custom data limit",
+  "geoImportSkipped": "{count, plural, one {# invalid coordinate} other {# invalid coordinates}} skipped",
+  "geoImportOutside": "some features lie outside the map area",
+  "svgTextIgnored": "Text is left out; convert it to outlines first.",
+  "svgImageIgnored": "Embedded images are left out; only vector shapes are used.",
+  "svgHtmlIgnored": "Embedded HTML is left out.",
+  "svgNotReadable": "This file is not a readable SVG.",
+  "svgGradients": "Gradients and patterns are engraved as solid shapes.",
+  "svgClipping": "Clipping paths and masks are ignored; the whole shape is used.",
+  "svgExternalReferences": "References to other files are ignored.",
+  "svgIconTooLarge": "SVG icons must be {sizeMb} MB or smaller.",
+  "svgGraphicTooLarge": "SVG graphics must be {sizeMb} MB or smaller."
+}

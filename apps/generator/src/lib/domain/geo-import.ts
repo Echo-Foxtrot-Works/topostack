@@ -1,5 +1,6 @@
 import { MAX_CUSTOM_LINE_POINTS, type CustomLineKind, type GeoBounds, type GeoPoint } from "@topostack/core";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
+import { t } from "$lib/i18n/i18n.svelte";
 
 /**
  * Reads GPX, KML and GeoJSON into the studio's custom markers and paths.
@@ -66,7 +67,7 @@ class Collector {
 
 function parseXml(text: string, format: "gpx" | "kml"): Document {
   const document = new DOMParser().parseFromString(text, "application/xml");
-  if (document.getElementsByTagName("parsererror").length > 0) throw new Error(`This ${format.toUpperCase()} file is not valid XML.`);
+  if (document.getElementsByTagName("parsererror").length > 0) throw new Error(t("domain.geoInvalidXml", { format: format.toUpperCase() }));
   return document;
 }
 
@@ -129,8 +130,8 @@ function readGeometry(geometry: unknown, into: Collector, depth = 0): void {
 function readGeoJson(text: string, into: Collector): void {
   let value: unknown;
   try { value = JSON.parse(text); }
-  catch (error) { throw new Error("This GeoJSON file is not valid JSON.", { cause: error }); }
-  if (!value || typeof value !== "object") throw new Error("This GeoJSON file has no features.");
+  catch (error) { throw new Error(t("domain.geoInvalidJson"), { cause: error }); }
+  if (!value || typeof value !== "object") throw new Error(t("domain.geoNoFeatures"));
   const record = value as { type?: unknown; features?: unknown; geometry?: unknown };
   if (record.type === "FeatureCollection") for (const feature of positions(record.features)) readGeometry((feature as { geometry?: unknown } | null)?.geometry, into);
   else if (record.type === "Feature") readGeometry(record.geometry, into);
@@ -139,7 +140,7 @@ function readGeoJson(text: string, into: Collector): void {
 
 export function parseGeoFile(text: string, fileName = ""): ImportedGeoData {
   const format = detectGeoFormat(text, fileName);
-  if (!format) throw new Error("Choose a GPX, KML or GeoJSON file.");
+  if (!format) throw new Error(t("domain.geoChooseFile"));
   const into = new Collector();
   if (format === "gpx") readGpx(text, into);
   else if (format === "kml") readKml(text, into);
@@ -260,26 +261,25 @@ export function countOutside(data: Pick<FittedGeoData, "markers" | "lines">, bou
 /** GPS recorders write verbose XML; paths are thinned to the point limits after parsing. */
 const MAX_GEO_FILE_BYTES = 20_000_000;
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
 /**
  * Reads a dropped or chosen file and fits it to the project's remaining
  * allowance. Returns the features to append, or none with a message saying why.
  * @public App.svelte loads this lazily, which the unused-export check cannot follow.
  */
 export async function importGeoFile(file: Pick<File, "size" | "name" | "text">, capacity: ImportCapacity, bounds: GeoBounds): Promise<{ patch?: Pick<FittedGeoData, "markers" | "lines">; message: string }> {
-  if (file.size > MAX_GEO_FILE_BYTES) return { message: "Map data files must be 20 MB or smaller." };
+  if (file.size > MAX_GEO_FILE_BYTES) return { message: t("domain.geoFileTooLarge", { sizeMb: MAX_GEO_FILE_BYTES / 1_000_000 }) };
   const parsed = parseGeoFile(await file.text(), file.name);
-  if (!parsed.markers.length && !parsed.lines.length) return { message: "No points, paths or boundaries were found in this file." };
+  if (!parsed.markers.length && !parsed.lines.length) return { message: t("domain.geoNothingFound") };
   const fitted = fitToCapacity(parsed, capacity);
-  if (!fitted.markers.length && !fitted.lines.length) return { message: "Custom data is full. Remove markers or paths before importing more." };
-  const added = [fitted.lines.length && plural(fitted.lines.length, "path"), fitted.markers.length && plural(fitted.markers.length, "marker")].filter(Boolean).join(" and ");
+  if (!fitted.markers.length && !fitted.lines.length) return { message: t("domain.geoCustomDataFull") };
+  const paths = fitted.lines.length, markers = fitted.markers.length;
+  const added = paths && markers ? t("domain.geoImportedPathsAndMarkers", { paths, markers }) : paths ? t("domain.geoImportedPaths", { paths }) : t("domain.geoImportedMarkers", { markers });
   const dropped = fitted.droppedLines + fitted.droppedMarkers;
   const notes = [
-    fitted.simplified && "paths simplified to fit the point limit",
-    dropped && `${plural(dropped, "feature")} left out at the custom data limit`,
-    parsed.skippedPoints && `${plural(parsed.skippedPoints, "invalid coordinate")} skipped`,
-    countOutside(fitted, bounds) && "some features lie outside the map area",
+    fitted.simplified && t("domain.geoImportSimplified"),
+    dropped && t("domain.geoImportDropped", { count: dropped }),
+    parsed.skippedPoints && t("domain.geoImportSkipped", { count: parsed.skippedPoints }),
+    countOutside(fitted, bounds) && t("domain.geoImportOutside"),
   ].filter(Boolean);
-  return { patch: { markers: fitted.markers, lines: fitted.lines }, message: `Imported ${added}${notes.length ? ` · ${notes.join(" · ")}` : ""}` };
+  return { patch: { markers: fitted.markers, lines: fitted.lines }, message: [added, ...notes].join(" · ") };
 }

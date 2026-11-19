@@ -1,5 +1,6 @@
 import type { GeometryIRV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
 import type { NestClient } from "$lib/workers/nest-client";
+import { t } from "$lib/i18n/i18n.svelte";
 
 import type { SheetPreview } from "$lib/studio/sheet-nest-runner";
 
@@ -56,7 +57,7 @@ export class AutomaticNesting {
       const runner = await (this.#runner ??= this.loadRunner());
       if (sequence !== this.#sequence) throw new DOMException("Layout changed", "AbortError");
       const job = runner.prepareNestJob(geometry, project);
-      if (!job.ok) return { layoutNote: "Automatic layout unavailable. Using original panels; check the material and piece sizes." };
+      if (!job.ok) return { layoutNote: t("workbench.automaticLayoutUnavailableCheckSizes") };
       this.#client ??= new runner.NestClient();
       // Stop at the best complete layout if the optimizer runs past its budget.
       timer = setTimeout(() => { if (sequence === this.#sequence) this.#client?.stop(); }, this.timeoutMs);
@@ -66,12 +67,12 @@ export class AutomaticNesting {
       } });
       if (sequence !== this.#sequence) throw new DOMException("Layout changed", "AbortError");
       const { sheetWidthMm: width, sheetHeightMm: height } = sheetPlan.settings;
-      return { sheetPlan, layoutNote: `Automatic layout · ${sheetPlan.sheets.length} ${sheetPlan.sheets.length === 1 ? "sheet" : "sheets"} · ${width} × ${height} mm` };
+      return { sheetPlan, layoutNote: t("workbench.automaticLayout", { sheets: sheetPlan.sheets.length, width, height }) };
     } catch (error) {
       if (sequence !== this.#sequence) throw new DOMException("Layout changed", "AbortError");
       const reason = error instanceof Error && "code" in error && error.code === "oversize"
-        ? "Pieces exceed the usable sheet size. Using original panels; increase the material size or reduce the cut size."
-        : "Automatic layout unavailable. Using original panels.";
+        ? t("workbench.automaticLayoutOversize")
+        : t("workbench.automaticLayoutUnavailable");
       return { layoutNote: reason };
     } finally {
       if (timer !== undefined) clearTimeout(timer);

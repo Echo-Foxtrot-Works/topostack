@@ -1,5 +1,6 @@
 import type { GeometryIRV1, ProjectConfigV1, SheetNestPlanV1 } from "@topostack/core";
 import type { ExportIntent } from "$lib/studio/export-policy";
+import { t } from "$lib/i18n/i18n.svelte";
 
 type ExportSnapshot = { geometry: GeometryIRV1; project: ProjectConfigV1; sheetPlan?: SheetNestPlanV1; acrylicSheetPlan?: SheetNestPlanV1; layoutNote?: string };
 type CurrentExport = () => ExportSnapshot | Promise<ExportSnapshot>;
@@ -33,19 +34,19 @@ export function connectAtomm(getCurrent: CurrentExport, onReady: () => void, onE
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       try {
         const { acrylicOutsideStudio, createAtommExport, loadGuideFonts } = await import("$lib/studio/export-policy");
-        if (!currentExport) throw new Error("TopoStack is not ready to export.");
+        if (!currentExport) throw new Error(t("workbench.exportNotReady"));
         const fonts = intent === "download" ? await loadGuideFonts() : [];
         const getter = currentExport;
         const { geometry, project, sheetPlan, acrylicSheetPlan, layoutNote } = await getter();
-        if (currentExport !== getter) throw new Error("TopoStack disconnected while preparing the export.");
+        if (currentExport !== getter) throw new Error(t("workbench.exportDisconnected"));
         const output = await createAtommExport(geometry, project, intent, fonts, sheetPlan, acrylicSheetPlan);
         const acrylicNote = intent === "openInStudio" ? acrylicOutsideStudio(geometry) : "";
         // The layout note is a label ("Automatic layout · 2 sheets · …"); end it as a sentence when another follows.
-        const note = [layoutNote, acrylicNote].filter((part): part is string => Boolean(part)).map((part, index, parts) => index < parts.length - 1 && !/[.!?]$/.test(part) ? `${part}.` : part).join(" ");
+        const note = [layoutNote, acrylicNote].filter((part): part is string => Boolean(part)).map((part, index, parts) => index < parts.length - 1 && !/[.!?。！？]$/.test(part) ? `${part}.` : part).join(" ");
         currentExportUpdate?.({ phase: "ready", intent, fileCount: Array.isArray(output) ? output.length : 1, ...(note ? { layoutNote: note } : {}) });
         return output;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "TopoStack could not prepare this export.";
+        const message = error instanceof Error ? error.message : t("workbench.exportFailed");
         currentExportUpdate?.({ phase: "error", intent, message });
         throw error;
       }
