@@ -426,7 +426,8 @@
     // so no English flashes first; a host that never answers gets English.
     let localeLoaded!: () => void;
     const atommLocale = new Promise<void>((resolve) => { localeLoaded = resolve; });
-    const localeTimeout = window.setTimeout(() => localeLoaded(), ATOMM_LOCALE_WAIT_MS);
+    // The platform SDK loads synchronously before the app; without it there is no language to wait for.
+    const localeTimeout = window.setTimeout(() => localeLoaded(), window.atomm ? ATOMM_LOCALE_WAIT_MS : 0);
     if (embeddedInPlatform) void Promise.all([import("$lib/atomm/AtommWorkbench.svelte"), atommLocale]).then(([module]) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
       if (!embeddedInPlatform) return { geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan };
