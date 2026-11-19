@@ -34,10 +34,10 @@ Upload `topostack-atomm-v0.12.0.zip` from the `atomm-v0.12.0` GitHub release as 
 
 ## Validation completed
 
-Run on the candidate branch (`dev` at `5bce26f` plus this revision's changes), 2026-11-18:
+Run on the candidate branch (`dev` at `5bce26f` plus this revision's changes), 2026-11-18, and the full gate again on `dev` at `8e9cc6f` (code and v10 media together), 2026-11-19:
 
 - `e2e/atomm.spec.ts`: all 42 cases passed in Chromium, Firefox and WebKit, including the parameter alignment regression (both output modes, five widths, LTR and RTL). The suite was rerun after the Open in Studio label change: 42 of 42 again.
 - A frame audit of the embed made 48 checks across three browsers and seven frame sizes, from 1600 × 1000 down to 320 × 640 and phone landscape, with every section expanded. It found no horizontal overflow, no control outside the parameter rail, no standalone rail or sheet, no LightBurn text and no page errors. See [the report](../docs/reports/atomm-0.12.0-review/README.md).
 - Workspace typecheck, zero-warning lint, every workspace's unit tests and the script tests passed. So did the production build, the web and Worker bundle budgets, `version:check` and `changelog:verify`.
-- Production Atomm packaging against `https://topostack.app` passed environment, SDK and endpoint verification, and the listing packager verified all 19 media hashes, sizes and dimensions. This was a pre-release build still numbered 0.11.1. The 0.12.0 ZIP, checksum and receipt come from production CI after promotion, and its SHA-256 is recorded with the release.
+- Production Atomm packaging against `https://topostack.app` passed environment, SDK and endpoint verification, and the listing packager verified all 10 v10 media hashes, sizes and dimensions. This was a pre-release build still numbered 0.11.1. The 0.12.0 ZIP, checksum and receipt come from production CI after promotion, and its SHA-256 is recorded with the release.
 - All 10 v10 listing PNGs (the cover and nine gallery cards) were visually reviewed (scaled to 1000 × 750, and the cover also at the 272 × 204 grid size) and are 3200 × 2400. The listing packager verified their hashes, sizes and dimensions.
