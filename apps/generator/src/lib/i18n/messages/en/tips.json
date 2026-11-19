@@ -1,1 +1,23 @@
-{}
+{
+  "dialogTitle": "Fabrication tips",
+  "stepAnnouncement": "Step {step} of {count}: {title}",
+  "close": "Close fabrication tips",
+  "back": "Back",
+  "next": "Next",
+  "done": "Done",
+  "placeTitle": "Pick a place",
+  "placeBody": "Choose a location, a suggested place, or choose Edit map area to drag the selection. The terrain reloads for the new area on its own, so there is no Generate step to remember.",
+  "layersTitle": "Terrain layers",
+  "layersBody": "The layer count follows the vertical exaggeration, cut size and material thickness. The stack uses whole sheets, at least two. Small changes can keep the same count; the Terrain layers card shows the scale actually applied.",
+  "sizeTitle": "Real-world size",
+  "sizeBody": "Exported artwork is in millimetres at its actual size, even when the controls show inches. Check the size and your laser's kerf before cutting.",
+  "processingTitle": "Processing in Studio",
+  "processingBody": "Set blue lines to Score and red lines to Cut. Score follows each path; Engrave fills closed shapes, so keep it for intentionally filled marks such as solid markers.",
+  "lakesTitle": "How lake depths work",
+  "lakesBodySources": "Surveyed floors come from underwater measurements or the terrain data. Where a lake has none, its floor is modelled from the shoreline, the slopes around it and published depth estimates. Neither reflects today's water level.",
+  "lakesBodyControls": "Depth exaggeration deepens lake floors relative to the hills. Limit depth layers caps how many sheets go below the lowest land, and Fit lake depth compresses each lake into that allowance while keeping its shoreline.",
+  "exportTitle": "Check the export",
+  "exportBody": "For layered reliefs, set material width and height in Export. Pieces arrange automatically with 3 mm margins and 2 mm spacing; choose Use current layout to finish early. Open in Studio sends one editable SVG of the entire layout. Download includes the artwork, settings and data credits, plus an assembly guide for layered reliefs.",
+  "assemblyTitle": "Assembly",
+  "assemblyBody": "Keep the nested pieces with their sheets and glue from the lowest layer upward, following the assembly guide. Test-fit a small piece before cutting the whole project."
+}
