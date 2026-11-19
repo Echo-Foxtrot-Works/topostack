@@ -46,12 +46,15 @@
    */
   const CLOSEST_ORBIT_MM = 0.25;
   let fitDistance = 320;
+  /** True while the camera shows the fitted view; a drag, wheel or zoom by the user clears it. */
+  let showingFit = false;
   let fitTarget = new THREE.Vector3();
   function setZoom(value: number) {
     if (!runtime) return;
     const direction = runtime.camera.position.clone().sub(runtime.controls.target).normalize();
     runtime.camera.position.copy(runtime.controls.target).addScaledVector(direction, fitDistance / value);
     runtime.controls.update(); runtime.requestRender();
+    showingFit = false;
   }
   /**
    * Keep the near plane a fixed fraction of the orbit distance, capped at the
@@ -86,6 +89,7 @@
     runtime.controls.target.copy(fitTarget);
     runtime.camera.position.copy(fitTarget).addScaledVector(direction.normalize(), fitDistance);
     runtime.controls.update(); runtime.requestRender();
+    showingFit = true;
   }
   let container: HTMLButtonElement;
   let runtime: Runtime | undefined;
@@ -293,7 +297,8 @@
     controls.addEventListener("change", requestRender);
     const updateZoom = () => { zoom = fitDistance / controls.getDistance(); fitNearPlane(); };
     controls.addEventListener("change", updateZoom);
-    const resizeObserver = new ResizeObserver(([entry]) => { const width = entry?.contentRect.width ?? 0; const height = entry?.contentRect.height ?? 0; if (width <= 0 || height <= 0) return; if (placement) toolbarSpace = readToolbarSpace(); applyViewOffset(viewOffset); renderer.setSize(width, height, false); fitTopCamera(); stopFrame(); render(); }); resizeObserver.observe(container);
+    controls.addEventListener("start", () => { showingFit = false; });
+    const resizeObserver = new ResizeObserver(([entry]) => { const width = entry?.contentRect.width ?? 0; const height = entry?.contentRect.height ?? 0; if (width <= 0 || height <= 0) return; if (placement) toolbarSpace = readToolbarSpace(); applyViewOffset(viewOffset); renderer.setSize(width, height, false); fitTopCamera(); if (showingFit) fitView(); stopFrame(); render(); }); resizeObserver.observe(container);
     const stopFrame = () => { if (runtime) { cancelAnimationFrame(runtime.frame); runtime.frame = 0; } };
     const onFocusChange = () => queueMicrotask(() => {
       const active = document.activeElement;

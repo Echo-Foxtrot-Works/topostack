@@ -2,6 +2,18 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.12.2",
+      "date": "2026-11-19",
+      "entries": [
+        {
+          "type": "fix",
+          "title": "Atomm's Export view keeps every sheet in sight",
+          "body": "In Atomm, the Export view lays the sheets out beside the **Export contents** card instead of under it. On a narrow canvas the card folds to one line (sheets and files) that you can open, and the 3D view refits when the canvas changes size until you move the camera yourself.",
+          "pr": 291
+        }
+      ]
+    },
+    {
       "version": "0.12.1",
       "date": "2026-11-19",
       "entries": [

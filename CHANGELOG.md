@@ -4,6 +4,12 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.12.2 (2026-11-19)
+
+### Fixed
+
+- **Atomm's Export view keeps every sheet in sight**: In Atomm, the Export view lays the sheets out beside the **Export contents** card instead of under it. On a narrow canvas the card folds to one line (sheets and files) that you can open, and the 3D view refits when the canvas changes size until you move the camera yourself. ([#291](https://github.com/Echo-Foxtrot-Works/topostack/pull/291))
+
 ## 0.12.1 (2026-11-19)
 
 ### Improved

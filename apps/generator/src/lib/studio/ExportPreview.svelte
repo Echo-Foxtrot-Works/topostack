@@ -1,4 +1,12 @@
 <script lang="ts">
+  import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
+  import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
+  import type { NestingProgress } from "$lib/atomm/automatic-nesting";
+  import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
+  import { acrylicOutsideStudio, buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
+  import SvgViewport from "$lib/studio/SvgViewport.svelte";
+  import { ChevronDown } from "@lucide/svelte";
+
   /**
    * A file name split so a narrow list shortens the shared project prefix, not
    * the end that tells the files apart ("…-sheet-01-paint-national-park.svg").
@@ -7,12 +15,6 @@
     const prefix = master.replace(/master\.svg$/, "");
     return prefix && filename.startsWith(prefix) && filename !== master ? [prefix, filename.slice(prefix.length)] : ["", filename];
   }
-  import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
-  import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
-  import type { NestingProgress } from "$lib/atomm/automatic-nesting";
-  import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
-  import { acrylicOutsideStudio, buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
-  import SvgViewport from "$lib/studio/SvgViewport.svelte";
 
   /**
    * What leaves the generator: the artwork Open in Studio sends, drawn from
@@ -26,6 +28,12 @@
   let progress = $state<NestingProgress>({ running: false, previews: [], sheetCount: 0, utilization: 0, updates: 0 });
   $effect(() => automaticNesting?.subscribe(value => { progress = value; }));
   let packaging = $state(false);
+  // Below this canvas width the contents card would cover most of the sheets, so it folds to one line.
+  const NARROW_CANVAS_PX = 640;
+  let canvasWidth = $state(Number.POSITIVE_INFINITY);
+  const narrow = $derived(canvasWidth < NARROW_CANVAS_PX);
+  let manifestChoice = $state<boolean | undefined>(undefined);
+  const manifestOpen = $derived(manifestChoice ?? !narrow);
   let preparing = $state("Preparing export preview…");
 
   type Built = { layoutNote: string; url: string; filename: string; bytes: number; width: number; height: number; cut: boolean; score: boolean; fill: boolean; files: Array<{ filename: string; bytes: number }> };
@@ -96,7 +104,7 @@
   const totalBytes = $derived(built?.files.reduce((total, file) => total + file.bytes, 0) ?? 0);
 </script>
 
-<div class="export-preview" aria-busy={!built && !failure && !blocked}>
+<div class="export-preview" aria-busy={!built && !failure && !blocked} bind:clientWidth={canvasWidth} data-narrow={narrow ? "" : undefined} data-manifest={manifestOpen ? "open" : "folded"}>
   {#if built}
     <div class="export-sheet">
       <SvgViewport widthMm={built.width} heightMm={built.height} topLeft label="export" svgLabel={`Export preview of ${built.filename}`} controlsLabel="Export preview zoom controls" resetLabel="Reset export view">
@@ -104,8 +112,15 @@
         <image href={built.url} x="0" y="0" width={built.width} height={built.height} />
       </SvgViewport>
     </div>
-    <section class="export-manifest" aria-label="Export contents">
-      <h2>Export contents</h2>
+    <section class="export-manifest" id="export-manifest" aria-label="Export contents">
+      <div class="export-manifest-head">
+        <h2>Export contents</h2>
+        {#if narrow}
+          <span class="export-manifest-summary">{[/\b\d+ sheets?\b/.exec(built.layoutNote)?.[0], `${built.files.length} files`].filter(Boolean).join(" · ")}</span>
+          <button type="button" class="btn-icon btn-icon-sm export-manifest-toggle" aria-expanded={manifestOpen} aria-controls="export-manifest-body" aria-label={manifestOpen ? "Fold export contents" : "Show export contents"} onclick={() => { manifestChoice = !manifestOpen; }}><ChevronDown size={16} aria-hidden="true" /></button>
+        {/if}
+      </div>
+      <div class="export-manifest-body" id="export-manifest-body" hidden={!manifestOpen}>
       {#if built.layoutNote}<p class="export-layout-note">{built.layoutNote}</p><p class="export-layout-credit">Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noreferrer">sparrow</a></p>{/if}
       <p class="export-manifest-row"><span>Open in Studio</span><strong>1 editable SVG</strong><small>{woodOnly ? "Wood layout · acrylic is in Download" : "Entire layout"} · {formatBytes(built.bytes)}</small></p>
       <details>
@@ -113,6 +128,7 @@
         <ul>{#each built.files as file (file.filename)}{@const [stem, end] = splitFilename(file.filename, built.filename)}<li><span class="export-file-name" title={file.filename}><span class="export-file-stem">{stem}</span><span class="export-file-end">{end}</span></span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>
       </details>
       <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>Red line · Cut</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>Blue line · Score</span>{/if}{#if built.fill}<span><i class="export-key-fill" aria-hidden="true"></i>Blue fill · Engrave</span>{/if}</div>
+    </div>
     </section>
   {:else if !failure && !blocked && !busy && isEmbedded()}
     {#if progress.previews.length}

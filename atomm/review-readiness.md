@@ -1,6 +1,14 @@
-# Atomm review revision — 0.12.1 — 2026-11-19
+# Atomm review revision — 0.12.2 — 2026-11-19
 
-0.12.1 replaces 0.12.0 for this review. 0.12.0 was tested inside the live platform (Developer Console › Local debug) before submission and two platform specs published after our design sync were found unmet; 0.12.1 meets them. Everything below about 0.12.0 still applies.
+0.12.2 replaces 0.12.0 and 0.12.1 for this review. 0.12.2 only adds the Export view and 3D fixes below to 0.12.1.
+
+0.12.1 replaced 0.12.0. 0.12.0 was tested inside the live platform (Developer Console › Local debug) before submission and two platform specs published after our design sync were found unmet; 0.12.1 meets them. Everything below about 0.12.0 still applies.
+
+## Export view and 3D in 0.12.2
+
+- The Export view lays the sheets out beside the **Export contents** card instead of under it; the zoom cluster keeps the canvas corner. Below a 640 px canvas the card folds to one line with a toggle (`aria-expanded`) and the sheets start below it.
+- The 3D preview refits when the canvas changes size, until the user moves the camera.
+- Checked in the live platform's Local debug at about 790 px and 430 px canvas widths.
 
 ## Platform spec updates met in 0.12.1
 
@@ -41,7 +49,7 @@ Use only the v10 media named in `listing.md` and `media-provenance.json`. There 
 
 ## Platform handoff
 
-Upload `topostack-atomm-v0.12.1.zip` from the `atomm-v0.12.1` GitHub release as the application and `topostack-listing-upload-v0.12.1.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
+Upload `topostack-atomm-v0.12.2.zip` from the `atomm-v0.12.2` GitHub release as the application and `topostack-listing-upload-v0.12.2.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
 
 ## Validation completed
 
