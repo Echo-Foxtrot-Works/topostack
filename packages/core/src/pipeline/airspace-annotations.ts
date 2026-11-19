@@ -107,7 +107,7 @@ export function annotateAirspace(stack: AirspaceStackIR, volumes: AirspaceVolume
       }
       if (placed) break;
     }
-    if (!placed) warnings.push({ code: "AIRSPACE_LABELS_OMITTED", message: "The lowest acrylic level has no room for the navigation notice beside its rods. The assembly guide retains the notice and FAA cycle." });
+    if (!placed) warnings.push({ code: "AIRSPACE_LABELS_OMITTED", message: "The lowest acrylic level has no room for the navigation notice beside its rods. The assembly guide retains the notice and FAA cycle.", messageKey: "airspaceNoticeOmitted" });
   }
   const labelled = new Set<string>();
   const byId = new Map(volumes.map((volume) => [volume.id, volume]));
@@ -127,7 +127,7 @@ export function annotateAirspace(stack: AirspaceStackIR, volumes: AirspaceVolume
   }
   const represented = new Set(stack.levels.flatMap((level) => level.pieces.flatMap((piece) => piece.sectorIds)));
   const omitted = [...represented].filter((id) => !labelled.has(id)).length;
-  if (omitted) warnings.push({ code: "AIRSPACE_LABELS_OMITTED", message: `${omitted} airspace sector ${omitted === 1 ? "label did" : "labels did"} not fit beside the rods and other labels. Full names and charted limits remain in the export manifest.` });
+  if (omitted) warnings.push({ code: "AIRSPACE_LABELS_OMITTED", message: `${omitted} airspace sector ${omitted === 1 ? "label did" : "labels did"} not fit beside the rods and other labels. Full names and charted limits remain in the export manifest.`, messageKey: "airspaceLabelsOmitted", params: { count: omitted } });
   for (const level of stack.levels) for (const piece of level.pieces) {
     const clear = windows.get(piece)!;
     if (piece.frost?.length && clear.length) piece.frost = clipPolygons(piece.frost, clear, "difference");

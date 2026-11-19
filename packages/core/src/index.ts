@@ -45,7 +45,7 @@ export { carveWaterDepth } from "./water/water.js";
 // The lake-page depth previews (apps/generator/src/lib/site/lake-preview) repeat the studio's shoreline smoothing before carving.
 export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
-export { exportBlockReason } from "./export/export-policy.js";
+export { exportBlockMessage, exportBlockReason, type ExportBlock } from "./export/export-policy.js";
 export { landClassesNeeded, sourceRequirements } from "./pipeline/source-requirements.js";
 export { landStroke, type LandStroke } from "./pipeline/lands.js";
 export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationRequested, aviationStroke, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";

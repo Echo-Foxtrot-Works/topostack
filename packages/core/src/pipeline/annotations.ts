@@ -16,9 +16,13 @@ import { DEFAULT_TEXT_STYLE, MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type L
 import type { GenerationContext } from "./generation-context.js";
 import type { LayerClip } from "./layer-clips.js";
 
+/** The annotations a placer can leave out, with their English names for the warning. */
+type AnnotationItem = "northArrow" | "scaleBar" | "title";
+const ANNOTATION_NAMES: Record<AnnotationItem, string> = { northArrow: "North arrow", scaleBar: "Scale bar", title: "Title" };
+
 interface AnnotationPlacer {
-  /** Whether every marking fits inside the crop; pushes a LABEL_OMITTED warning naming `name` when not. */
-  fits(markings: OperationPath[], name: string): boolean;
+  /** Whether every marking fits inside the crop; pushes a LABEL_OMITTED warning naming `item` when not. */
+  fits(markings: OperationPath[], item: AnnotationItem): boolean;
   /** Adds markings to the base layer, or routes them onto the exposed surface of the stack. */
   push(markings: OperationPath[], followSurface: boolean): void;
 }
@@ -34,14 +38,14 @@ export function annotationPlacer({ config, clip, warnings, flatEngraving }: Gene
   const baseLayer = clips[0]!.layer;
   return {
     // All crop boundaries are convex, so endpoint/label-box checks suffice.
-    fits(markings, name) {
+    fits(markings, item) {
       const fits = markings.every((marking) => {
         const points = [...marking.points];
         // The text's own footprint, turned with it and including glyphs past their advance box.
         if (marking.label && marking.points[0]) points.push(...labelFootprint(marking.label, marking.points[0], marking.labelRotationRad ?? 0, marking.textStyle ?? DEFAULT_TEXT_STYLE, 0));
         return insetFits(points, config.lineStyle.annotationMm / 2, clip);
       });
-      if (!fits) warnings.push({ code: "LABEL_OMITTED", message: `${name} was omitted because it does not fit the material. Increase the output size or reduce the annotation size.` });
+      if (!fits) warnings.push({ code: "LABEL_OMITTED", message: `${ANNOTATION_NAMES[item]} was omitted because it does not fit the material. Increase the output size or reduce the annotation size.`, messageKey: "annotationOmitted", params: { item } });
       return fits;
     },
     push(markings, followSurface) {
@@ -85,17 +89,17 @@ export function annotationPlacer({ config, clip, warnings, flatEngraving }: Gene
 export function placeAnnotations(context: GenerationContext, clips: LayerClip[]): void {
   const { config, source } = context;
   const placer = annotationPlacer(context, clips);
-  const addAnnotation = (markings: OperationPath[], name: string, followSurface = false): void => {
-    if (placer.fits(markings, name)) placer.push(markings, followSurface);
+  const addAnnotation = (markings: OperationPath[], item: AnnotationItem, followSurface = false): void => {
+    if (placer.fits(markings, item)) placer.push(markings, followSurface);
   };
 
   if (config.showNorthArrow) {
-    addAnnotation(northArrowMarkings(config), "North arrow", true);
+    addAnnotation(northArrowMarkings(config), "northArrow", true);
   }
   if (config.showScaleBar) {
     // Like the compass, the bar follows the exposed surface: on the bottom
     // sheet alone, the sheets above covered most of it.
-    addAnnotation(scaleBarMarkings(config, groundWidthMFor(source.bounds)), "Scale bar", true);
+    addAnnotation(scaleBarMarkings(config, groundWidthMFor(source.bounds)), "scaleBar", true);
   }
 }
 
@@ -135,6 +139,8 @@ export function placeElevationLabels({ config, flatEngraving, warnings }: Genera
   if (omittedLayers.length) warnings.push({
     code: "LABEL_OMITTED",
     message: `Elevation labels were omitted from layer${omittedLayers.length === 1 ? "" : "s"} ${omittedLayers.join(", ")} because no collision-free position fit the exposed face.`,
+    messageKey: "elevationLabelsOmitted",
+    params: { count: omittedLayers.length, layers: omittedLayers },
   });
 }
 
@@ -148,7 +154,7 @@ export function placePlaque(context: GenerationContext, clips: LayerClip[]): voi
   const markings = plaqueMarkings(config);
   const footprint = plaqueFootprint(config);
   const placer = annotationPlacer(context, clips);
-  if (!markings.length || !footprint || !placer.fits(markings, "Title")) return;
+  if (!markings.length || !footprint || !placer.fits(markings, "title")) return;
   const materials = (flatEngraving ? clips.slice(0, 1) : clips).map(clip => clip.material);
   markerLayerPolygons(footprint, materials).forEach(({ layerIndex, polygon }, pieceIndex) => clips[layerIndex]!.layer.markings.push({
     id: `plaque-backing-${layerIndex}-${pieceIndex}`,
@@ -208,7 +214,7 @@ export function placeMarkers({ config, source, flatEngraving }: GenerationContex
 /** Whether every point of a graphic keeps the annotation line inside the crop; warns naming it when not. */
 function graphicFits({ config, clip, warnings }: GenerationContext, polygons: Polygon2D[], placedIndex: number): boolean {
   const fits = polygons.length > 0 && polygons.every(({ outer }) => insetFits(outer, config.lineStyle.annotationMm / 2, clip));
-  if (!fits && polygons.length) warnings.push({ code: "LABEL_OMITTED", message: `Graphic ${placedIndex + 1} was omitted because it does not fit the material. Make it smaller or move it inward.` });
+  if (!fits && polygons.length) warnings.push({ code: "LABEL_OMITTED", message: `Graphic ${placedIndex + 1} was omitted because it does not fit the material. Make it smaller or move it inward.`, messageKey: "graphicOmitted", params: { number: placedIndex + 1 } });
   return fits;
 }
 
@@ -250,6 +256,7 @@ export function cutPlacedGraphics(context: GenerationContext, layers: LayerIR[])
   if (loosePieces) warnings.push({
     code: "GRAPHIC_LOOSE_PIECES",
     message: "A cut graphic goes through the bottom sheet, so the islands inside its shape fall out. Engrave or score it instead, or keep them to glue back by hand.",
+    messageKey: "graphicLoosePieces",
   });
 }
 

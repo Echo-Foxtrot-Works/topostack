@@ -262,6 +262,8 @@ export function paintRegions(config: ProjectConfigV1, clips: PaintLayerClip[], s
     warnings.push({
       code: "PAINT_WINDOWS_OMITTED",
       message: `Some paint windows on layer${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")} could not be cut, so those areas are left off the stencils. Paint them by hand, or nudge the design and generate again.`,
+      messageKey: "paintWindowsOmitted",
+      params: { count: numbers.length, layers: numbers.map(String) },
     });
   }
   return regions;
