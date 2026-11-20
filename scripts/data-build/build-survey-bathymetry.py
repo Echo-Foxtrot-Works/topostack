@@ -314,6 +314,11 @@ def main():
     # The chart archive is built from the committed records, so it is buildable
     # before it is registered in the catalog; the catalog copy wins once added.
     sources=CATALOG+([CHART_SOURCE] if not any(x['id']==CHART_SOURCE['id'] for x in CATALOG) else [])
+    # GSI's lake surveys wait on a Survey Act approval, so they are buildable
+    # from their candidate file before they are registered (survey_gsi.py).
+    from survey_gsi import candidate as gsi_candidate
+    gsi_source,gsi_pins=gsi_candidate()
+    sources+=[gsi_source] if gsi_source and not any(x['id']==gsi_source['id'] for x in CATALOG) else []
     parser.add_argument('--dataset',default='all',choices=['all']+[x['id'] for x in sources if x['id']!='noaa-great-lakes-v1'])
     args=parser.parse_args()
     args.cache.mkdir(parents=True,exist_ok=True);args.out_dir.mkdir(parents=True,exist_ok=True)
@@ -325,6 +330,12 @@ def main():
             from chart_records import charts
             writer=TileWriter(args.out_dir/f"{source['id']}.pmtiles",source)
             writer.finish(charts(source,args.cache,writer,write_grid))
+            continue
+        if gsi_source and source['id']==gsi_source['id']:
+            from survey_gsi import gsi
+            writer=TileWriter(args.out_dir/f"{source['id']}.pmtiles",source)
+            gsi(source,gsi_pins,args.cache,writer,download,write_grid)
+            writer.finish(gsi_pins)
             continue
         if source['id'].startswith('noaa-enc-'):
             # Pinned in noaa-enc-sources.json, like the NBS lakes.
