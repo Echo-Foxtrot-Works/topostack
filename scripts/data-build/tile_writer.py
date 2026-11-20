@@ -131,8 +131,11 @@ class TileWriter:
         complete_receipt(receipt) may enrich and validate the receipt before it is
         written; if it raises, no receipt is left beside the archive.
         """
-        metadata = {'name':self.source['name'], 'format':'png', 'type':'overlay', 'version':'1', 'minzoom':str(self.db.execute('SELECT min(zoom_level) FROM tiles').fetchone()[0]),
-                    'center':f"{(self.source['bounds'][0]+self.source['bounds'][2])/2},{(self.source['bounds'][1]+self.source['bounds'][3])/2},8",
+        minzoom = self.db.execute('SELECT min(zoom_level) FROM tiles').fetchone()[0]
+        # PMTiles requires the centre zoom inside the archive's zoom range.
+        center_zoom = min(max(8, minzoom or 0), self.source['maxZoom'])
+        metadata = {'name':self.source['name'], 'format':'png', 'type':'overlay', 'version':'1', 'minzoom':str(minzoom),
+                    'center':f"{(self.source['bounds'][0]+self.source['bounds'][2])/2},{(self.source['bounds'][1]+self.source['bounds'][3])/2},{center_zoom}",
                     'maxzoom':str(self.source['maxZoom']), 'bounds':','.join(map(str,self.source['bounds'])),
                     'topostack_dataset':self.source['id'], 'topostack_encoding':self.source['encoding'],
                     'attribution':self.source['url'], 'description':self.source['license']}
