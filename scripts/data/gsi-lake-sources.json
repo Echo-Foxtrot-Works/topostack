@@ -1,0 +1,1820 @@
+{
+ "source": {
+  "id": "gsi-lakes-japan-v1",
+  "name": "GSI lake surveys (湖沼データ)",
+  "url": "https://www.gsi.go.jp/kankyochiri/lakedata.html",
+  "license": "国土地理院 湖沼データを加工して作成 — Geospatial Information Authority of Japan lake survey depth grids (10 m), resampled to Web Mercator by TopoStack; depths below the surveyed water level. Survey Act approval pending.",
+  "encoding": "depth-terrarium-v1",
+  "maxZoom": 14,
+  "availability": "development",
+  "approval": {
+   "required": true
+  },
+  "bounds": [
+   130.5274,
+   31.2075,
+   145.5425,
+   45.2943
+  ]
+ },
+ "pins": [
+  {
+   "id": "gsi_abashiriko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/abashiriko/abashiriko-2016.zip",
+   "sha256": "96e3390fe0303f093640685aca738a45f6ed892b21953f0013ca0221ec979ecf",
+   "bbox": [
+    144.1247313,
+    43.9170785,
+    144.2269019,
+    44.0078734
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/abashiriko-2016.zip",
+   "surveyYear": 2016,
+   "crs": "EPSG:6681",
+   "maxDepthM": 16.28,
+   "grids": [
+    {
+     "name": "abashiriko-dem-2016",
+     "bbox": [
+      144.1247313,
+      43.9170785,
+      144.2269019,
+      44.0078734
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 16.28
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_akanko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/akanko/akanko-2025.zip",
+   "sha256": "fee15a953616f1e6565a7ede2559230b39cf2dd8a46457deb97fce7f6edf46c5",
+   "bbox": [
+    144.0580237,
+    43.4316797,
+    144.1384629,
+    43.4800351
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/akanko-2025.zip",
+   "surveyYear": 2025,
+   "crs": "EPSG:6681",
+   "maxDepthM": 44.0,
+   "grids": [
+    {
+     "name": "akanko-dem-2025",
+     "bbox": [
+      144.0580237,
+      43.4316797,
+      144.1384629,
+      43.4800351
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 44.0
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_akkeshiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/akkeshiko/akkeshiko-2022.zip",
+   "sha256": "48f6e460883678929cef2e7b7cfa912efe585b0a7a0ede1d53b4d24f89074686",
+   "bbox": [
+    144.8478393,
+    43.0166272,
+    144.9456543,
+    43.0752377
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/akkeshiko-2022.zip",
+   "surveyYear": 2022,
+   "crs": "EPSG:6681",
+   "maxDepthM": 13.7,
+   "grids": [
+    {
+     "name": "akkeshiko-dem-2022",
+     "bbox": [
+      144.8478393,
+      43.0166272,
+      144.9456543,
+      43.0752377
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 13.7
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_anenuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/anenuma/anenuma-2018.zip",
+   "sha256": "d1c686ca85a9c049227e76adf27b65a7422103b98b4110554a18be521f2d139f",
+   "bbox": [
+    141.3199305,
+    40.7014676,
+    141.345048,
+    40.7211179
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/anenuma-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6678",
+   "maxDepthM": 3.89,
+   "grids": [
+    {
+     "name": "anenuma-dem-2018",
+     "bbox": [
+      141.3199305,
+      40.7014676,
+      141.345048,
+      40.7211179
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 3.89
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_ashinoko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/ashinoko/ashinoko-2021.zip",
+   "sha256": "8cc9a165e983c260e28f3c9ce5e07b1a6392274aebb6132cb72ed1b37b6de209",
+   "bbox": [
+    138.9835713,
+    35.1885706,
+    139.0307621,
+    35.2395449
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/ashinoko-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6677",
+   "maxDepthM": 40.6,
+   "grids": [
+    {
+     "name": "ashinoko-dem-2021",
+     "bbox": [
+      138.9835713,
+      35.1885706,
+      139.0307621,
+      35.2395449
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 40.6
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_asokai",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/asokai/asokai-2019.zip",
+   "sha256": "2d43cf019509fc2e637ca752cb7ffff30e286e440c5ba309910568b80628514a",
+   "bbox": [
+    135.1533705,
+    35.5531112,
+    135.1978927,
+    35.5815341
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/asokai-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6674",
+   "maxDepthM": 12.99,
+   "grids": [
+    {
+     "name": "asokai-dem-2019",
+     "bbox": [
+      135.1533705,
+      35.5531112,
+      135.1978927,
+      35.5815341
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 12.99
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_chuzenjiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/chuzenjiko/chuzenjiko-2019.zip",
+   "sha256": "f7fe58588f60be8c88ed81c0bcd907f966ca3395a4387047b2aced6373358fee",
+   "bbox": [
+    139.4204064,
+    36.7202099,
+    139.4968195,
+    36.7537941
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/chuzenjiko-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6677",
+   "maxDepthM": 163.0,
+   "grids": [
+    {
+     "name": "chuzenjiko-dem-2019",
+     "bbox": [
+      139.4204064,
+      36.7202099,
+      139.4968195,
+      36.7537941
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 163.0
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_hachirougata-chouseichi",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/hachirougata-chouseichi/hachirougata-chouseichi-2019.zip",
+   "sha256": "d2b48229e5b6c8158399ec5e405072ef300c6856744ae1a7a0eba2451aa269f5",
+   "bbox": [
+    139.9486981,
+    39.8752167,
+    140.0575564,
+    39.9511921
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/hachirougata-chouseichi-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6678",
+   "maxDepthM": 11.17,
+   "grids": [
+    {
+     "name": "hachirougata-chouseichi-dem-2019",
+     "bbox": [
+      139.9486981,
+      39.8752167,
+      140.0575564,
+      39.9511921
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 11.17
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_hichirippunuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/hichirippunuma/hichirippunuma-2017.zip",
+   "sha256": "5d4d98e1ff419075a2307663d3bbcbac19d004a4252dfcbc4beab159020f1512",
+   "bbox": [
+    144.9861338,
+    43.0296983,
+    145.0266252,
+    43.0592185
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/hichirippunuma-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6681",
+   "maxDepthM": 5.4,
+   "grids": [
+    {
+     "name": "hichirippunuma-dem-2017",
+     "bbox": [
+      144.9861338,
+      43.0296983,
+      145.0266252,
+      43.0592185
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 5.4
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_ikedako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/ikedako/ikedako-2021.zip",
+   "sha256": "c17d0520d257ea661110d4e450f56e729e8ea3d5af8e394491f2304538c8be00",
+   "bbox": [
+    130.5373966,
+    31.2179265,
+    130.5853147,
+    31.2517337
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/ikedako-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6670",
+   "maxDepthM": 232.99,
+   "grids": [
+    {
+     "name": "ikedako-dem-2021",
+     "bbox": [
+      130.5373966,
+      31.2179265,
+      130.5853147,
+      31.2517337
+     ],
+     "crs": "EPSG:6670",
+     "maxDepthM": 232.99
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_inawashiroko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/inawashiroko/inawashiroko-2024.zip",
+   "sha256": "ea323a9266dd0f9f2680dd5fc9e04550bdf7256fb57edbe810d195c3489c603c",
+   "bbox": [
+    140.0184912,
+    37.4127605,
+    140.1555899,
+    37.5341606
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/inawashiroko-2024.zip",
+   "surveyYear": 2024,
+   "crs": "EPSG:6677",
+   "maxDepthM": 93.5,
+   "grids": [
+    {
+     "name": "inawashiroko-dem-2024",
+     "bbox": [
+      140.0184912,
+      37.4127605,
+      140.1555899,
+      37.5341606
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 93.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_izunuma-uchinuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/izunuma-uchinuma/izunuma-uchinuma-2017.zip",
+   "sha256": "970c451d71131e2a9583d783a1a94655f97af7a808483ea9f0db9fa39d3f3f0b",
+   "bbox": [
+    141.0654644,
+    38.7046194,
+    141.1274072,
+    38.726078
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/izunuma-uchinuma-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6678",
+   "maxDepthM": 1.3,
+   "grids": [
+    {
+     "name": "izunuma-dem-2017",
+     "bbox": [
+      141.07514,
+      38.7098323,
+      141.1274072,
+      38.726078
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 1.2
+    },
+    {
+     "name": "uchinuma-dem-2017",
+     "bbox": [
+      141.0654644,
+      38.7046194,
+      141.0833234,
+      38.7156471
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 1.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_jusanko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/jusanko/jusanko-2021.zip",
+   "sha256": "e7012670a72bc821aea257d8566173d837f988f698901330ae903d742577652b",
+   "bbox": [
+    140.3194219,
+    40.9960362,
+    140.4148215,
+    41.0520726
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/jusanko-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6678",
+   "maxDepthM": 10.3,
+   "grids": [
+    {
+     "name": "jusanko-dem-2021",
+     "bbox": [
+      140.3194219,
+      40.9960362,
+      140.4148215,
+      41.0520726
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 10.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kahokugata",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kahokugata/kahokugata-2018.zip",
+   "sha256": "b0f83a5fa1aee5d47553bff163a9789171aebd0402826d5ddd5899cc53ad28d4",
+   "bbox": [
+    136.6441378,
+    36.6355162,
+    136.6948791,
+    36.6651061
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kahokugata-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6675",
+   "maxDepthM": 5.18,
+   "grids": [
+    {
+     "name": "kahokugata-dem-2018",
+     "bbox": [
+      136.6441378,
+      36.6355162,
+      136.6948791,
+      36.6651061
+     ],
+     "crs": "EPSG:6675",
+     "maxDepthM": 5.18
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kasumigaura",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kasumigaura/kasumigaura-2018.zip",
+   "sha256": "f83fced229850d48b09479102f6bb822c31bea2d4e2846a41b7f6083cbfe3c72",
+   "bbox": [
+    140.2150109,
+    35.9528516,
+    140.5107627,
+    36.1616246
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kasumigaura-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:2451",
+   "maxDepthM": 11.5,
+   "grids": [
+    {
+     "name": "kasumigaura-dem-2018",
+     "bbox": [
+      140.2150109,
+      35.9528516,
+      140.5107627,
+      36.1616246
+     ],
+     "crs": "EPSG:2451",
+     "maxDepthM": 11.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kawaguchiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kawaguchiko/kawaguchiko-2020.zip",
+   "sha256": "9b822e4cdb8cf78c3dfa4a8375c4e3a3b000e65c4017ec7a8bfc1596a505e6c1",
+   "bbox": [
+    138.7162733,
+    35.5015066,
+    138.774002,
+    35.5246993
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kawaguchiko-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6676",
+   "maxDepthM": 13.84,
+   "grids": [
+    {
+     "name": "kawaguchiko-dem-2020",
+     "bbox": [
+      138.7162733,
+      35.5015066,
+      138.774002,
+      35.5246993
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 13.84
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kibagata",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kibagata/kibagata-2017.zip",
+   "sha256": "86ab3443c4360d4924487a728aba65a025e302b326adc886faa97c88f06f7cff",
+   "bbox": [
+    136.4384324,
+    36.3561377,
+    136.4535602,
+    36.377496
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kibagata-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6675",
+   "maxDepthM": 4.3,
+   "grids": [
+    {
+     "name": "kibagata-dem-2017",
+     "bbox": [
+      136.4384324,
+      36.3561377,
+      136.4535602,
+      36.377496
+     ],
+     "crs": "EPSG:6675",
+     "maxDepthM": 4.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kita-inbanuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kita-inbanuma/kita-inbanuma-2019.zip",
+   "sha256": "d4b789d4e1e054b24a230611236b05603c4916c8216d62c0ae9dceba3441c687",
+   "bbox": [
+    140.231933,
+    35.7693849,
+    140.2648391,
+    35.8213241
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kita-inbanuma-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6677",
+   "maxDepthM": 4.5,
+   "grids": [
+    {
+     "name": "kita-inbanuma-dem-2019",
+     "bbox": [
+      140.231933,
+      35.7693849,
+      140.2648391,
+      35.8213241
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 4.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kitagatako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kitagatako/kitagatako-2017.zip",
+   "sha256": "750b5d986bdfcace95181d36d4408031ecf9d8e0000c949dcd4e5549ef2043e8",
+   "bbox": [
+    136.2127563,
+    36.251015,
+    136.2537117,
+    36.2927559
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kitagatako-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6674",
+   "maxDepthM": 3.6,
+   "grids": [
+    {
+     "name": "kitagatakojyouryugawa-dem-2017",
+     "bbox": [
+      136.2127563,
+      36.251015,
+      136.2537117,
+      36.2875964
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 3.6
+    },
+    {
+     "name": "kitagatakokaryugawa-dem-2017",
+     "bbox": [
+      136.2480344,
+      36.2876087,
+      136.2528379,
+      36.2927559
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 3.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kitaura-sotonasakaura",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kitaura-sotonasakaura/kitaura-sotonasakaura-2018.zip",
+   "sha256": "bfcc2d936c8254f148c862965fa233db8ad5a2f243c939bb54fbc1ec2207d1d9",
+   "bbox": [
+    140.5135053,
+    35.8959629,
+    140.6322693,
+    36.1418174
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kitaura-sotonasakaura-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:2451",
+   "maxDepthM": 23.22,
+   "grids": [
+    {
+     "name": "kitaura-dem-2018",
+     "bbox": [
+      140.5135053,
+      35.9231769,
+      140.6322693,
+      36.1418174
+     ],
+     "crs": "EPSG:2451",
+     "maxDepthM": 9.95
+    },
+    {
+     "name": "sotonasakaura-dem-2018",
+     "bbox": [
+      140.582058,
+      35.8959629,
+      140.6158579,
+      35.9315956
+     ],
+     "crs": "EPSG:2451",
+     "maxDepthM": 23.22
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_koyamaike",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/koyamaike/koyamaike-2019.zip",
+   "sha256": "e675f5c4e5baca5ebcb2b6a03afdeca8a7619f34e66189b4d6dd07db16cedb9a",
+   "bbox": [
+    134.1288053,
+    35.4954247,
+    134.1750536,
+    35.5211839
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/koyamaike-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6673",
+   "maxDepthM": 6.43,
+   "grids": [
+    {
+     "name": "koyamaike-dem-2019",
+     "bbox": [
+      134.1288053,
+      35.4954247,
+      134.1750536,
+      35.5211839
+     ],
+     "crs": "EPSG:6673",
+     "maxDepthM": 6.43
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kumihamawan",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kumihamawan/kumihamawan-2019.zip",
+   "sha256": "b399818ce9bea4afd2d0ee06e6f435eb204da86a58af4c254570dc7c3e5e72ee",
+   "bbox": [
+    134.8873713,
+    35.6051229,
+    134.9291776,
+    35.644069
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kumihamawan-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6674",
+   "maxDepthM": 20.59,
+   "grids": [
+    {
+     "name": "kumihamawan-dem-2019",
+     "bbox": [
+      134.8873713,
+      35.6051229,
+      134.9291776,
+      35.644069
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 20.59
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kussyaroko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kussyaroko/kussyaroko-2024.zip",
+   "sha256": "3c571285196d7a0bf64772ac4036d6cf434b9884ccd9080cce3547430c80312a",
+   "bbox": [
+    144.2591594,
+    43.5575642,
+    144.4151906,
+    43.6755112
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kussyaroko-2024.zip",
+   "surveyYear": 2024,
+   "crs": "EPSG:6681",
+   "maxDepthM": 117.5,
+   "grids": [
+    {
+     "name": "kussyaroko-dem-2024",
+     "bbox": [
+      144.2591594,
+      43.5575642,
+      144.4151906,
+      43.6755112
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 117.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kutcharoko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kutcharoko/kutcharoko-2022.zip",
+   "sha256": "0f5b43466bbc9238db02d762884933db5d21bd47eef43ba8ea335cef3bb9330f",
+   "bbox": [
+    142.2609305,
+    45.1165737,
+    142.3536871,
+    45.1726839
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kutcharoko-2022.zip",
+   "surveyYear": 2022,
+   "crs": "EPSG:6680",
+   "maxDepthM": 3.28,
+   "grids": [
+    {
+     "name": "kutcharoko-dem-2022",
+     "bbox": [
+      142.2609305,
+      45.1165737,
+      142.3536871,
+      45.1726839
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 3.28
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_kuttarako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/kuttarako/kuttarako-2020.zip",
+   "sha256": "9b99ac3df83fc28ff9322a706e254ba8b4acf13077ec8831949bd985fea81472",
+   "bbox": [
+    141.1667325,
+    42.4889396,
+    141.1972701,
+    42.5109147
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/kuttarako-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6680",
+   "maxDepthM": 148.0,
+   "grids": [
+    {
+     "name": "kuttarako-dem-2020",
+     "bbox": [
+      141.1667325,
+      42.4889396,
+      141.1972701,
+      42.5109147
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 148.0
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_mangokuura",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/mangokuura/mangokuura-2018.zip",
+   "sha256": "6dbd76a8c908eff883b62ab538037635a0d258af3a008184b4ed0fc42f3a6fdd",
+   "bbox": [
+    141.3632052,
+    38.4021473,
+    141.423594,
+    38.4372098
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/mangokuura-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6678",
+   "maxDepthM": 16.79,
+   "grids": [
+    {
+     "name": "mangokuura-dem-2018",
+     "bbox": [
+      141.3632052,
+      38.4021473,
+      141.423594,
+      38.4372098
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 16.79
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_mashuko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/mashuko/mashuko-2020.zip",
+   "sha256": "b47d18bb7e5fd3b314a1b1fe5c43e05c0a1633d7b0e43bff9e8dc33c3b91c627",
+   "bbox": [
+    144.5056915,
+    43.5508389,
+    144.5722015,
+    43.6069947
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/mashuko-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6681",
+   "maxDepthM": 211.37,
+   "grids": [
+    {
+     "name": "mashuko-dem-2020",
+     "bbox": [
+      144.5056915,
+      43.5508389,
+      144.5722015,
+      43.6069947
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 211.37
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_mikatagoko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/mikatagoko/mikatagoko-2020.zip",
+   "sha256": "ac66537e672b571e87f41a6c991190da719e70ffa24c8a3ceff6480740163e1e",
+   "bbox": [
+    135.8641367,
+    35.5584388,
+    135.9130404,
+    35.6151811
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/mikatagoko-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6674",
+   "maxDepthM": 39.37,
+   "grids": [
+    {
+     "name": "hirugako-dem-2020",
+     "bbox": [
+      135.884319,
+      35.5994729,
+      135.8955946,
+      35.6122828
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 39.37
+    },
+    {
+     "name": "kugushiko-dem-2020",
+     "bbox": [
+      135.8999897,
+      35.5920054,
+      135.9130404,
+      35.6151811
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 2.29
+    },
+    {
+     "name": "suigetsuko-sugako-mikatako-dem-2020",
+     "bbox": [
+      135.8641367,
+      35.5584388,
+      135.902487,
+      35.6018325
+     ],
+     "crs": "EPSG:6674",
+     "maxDepthM": 33.69
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_mokotoko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/mokotoko/mokotoko-2018.zip",
+   "sha256": "b2478d4f4c97348c9d0792db233c9e8ce18066d1cabdd7a69933e12ead2c25a5",
+   "bbox": [
+    144.3141629,
+    43.9507363,
+    144.3314991,
+    43.9642487
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/mokotoko-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6681",
+   "maxDepthM": 5.4,
+   "grids": [
+    {
+     "name": "mokotoko-dem-2018",
+     "bbox": [
+      144.3141629,
+      43.9507363,
+      144.3314991,
+      43.9642487
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 5.4
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_motosuko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/motosuko/motosuko-2021.zip",
+   "sha256": "747c75d1ae8fe441f72b360437c08b7cd19c75f7f7930de5368d99f5e397a596",
+   "bbox": [
+    138.569293,
+    35.4522875,
+    138.602042,
+    35.4763782
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/motosuko-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6676",
+   "maxDepthM": 121.19,
+   "grids": [
+    {
+     "name": "motosuko-dem-2021",
+     "bbox": [
+      138.569293,
+      35.4522875,
+      138.602042,
+      35.4763782
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 121.19
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_nakaumi",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/nakaumi/nakaumi-2023.zip",
+   "sha256": "6d407bd7fc037054aa32af69f54318165318bd80caa570998995f71b7721a84c",
+   "bbox": [
+    133.1239553,
+    35.4116199,
+    133.3268883,
+    35.538569
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/nakaumi-2023.zip",
+   "surveyYear": 2023,
+   "crs": "EPSG:6671",
+   "maxDepthM": 17.55,
+   "grids": [
+    {
+     "name": "nakaumi-dem-2023",
+     "bbox": [
+      133.1239553,
+      35.4116199,
+      133.3268883,
+      35.538569
+     ],
+     "crs": "EPSG:6671",
+     "maxDepthM": 17.55
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_nishi-inbanuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/nishi-inbanuma/nishi-inbanuma-2019.zip",
+   "sha256": "4a1b1d3fa6f26b06a96b6485e5bd402d380282b57abec2f54a4a165a3461ca0e",
+   "bbox": [
+    140.1446662,
+    35.7397762,
+    140.2249773,
+    35.7721884
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/nishi-inbanuma-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6677",
+   "maxDepthM": 2.71,
+   "grids": [
+    {
+     "name": "nishi-inbanuma-dem-2019",
+     "bbox": [
+      140.1446662,
+      35.7397762,
+      140.2249773,
+      35.7721884
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 2.71
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_nojiriko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/nojiriko/nojiriko-2017.zip",
+   "sha256": "654534b06781e0775cb123cfab23b0553d28b9893115d72f741bc08f215c077f",
+   "bbox": [
+    138.2056822,
+    36.8136653,
+    138.2426459,
+    36.8369114
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/nojiriko-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6676",
+   "maxDepthM": 38.3,
+   "grids": [
+    {
+     "name": "nojiriko-dem-2017",
+     "bbox": [
+      138.2056822,
+      36.8136653,
+      138.2426459,
+      36.8369114
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 38.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_notoroko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/notoroko/notoroko-2025.zip",
+   "sha256": "682cad0d188fdf3d8f0387c715fcfb74796ed61b4276e1a6f086479dd1ca0ecf",
+   "bbox": [
+    144.0971086,
+    44.0118691,
+    144.1978686,
+    44.1049365
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/notoroko-2025.zip",
+   "surveyYear": 2025,
+   "crs": "EPSG:6681",
+   "maxDepthM": 23.09,
+   "grids": [
+    {
+     "name": "notoroko-dem-2025",
+     "bbox": [
+      144.0971086,
+      44.0118691,
+      144.1978686,
+      44.1049365
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 23.09
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_ogawarako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/ogawarako/ogawarako-2018.zip",
+   "sha256": "8a78d24d62e8beca1c3d4fad76abe163c6a09d9c4676d7294612cfefe81686d1",
+   "bbox": [
+    141.2760104,
+    40.7163832,
+    141.3733361,
+    40.8527769
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/ogawarako-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6678",
+   "maxDepthM": 26.3,
+   "grids": [
+    {
+     "name": "ogawarako-dem-2018",
+     "bbox": [
+      141.2760104,
+      40.7163832,
+      141.3733361,
+      40.8527769
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 26.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_onneto",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/onneto/onneto-2017.zip",
+   "sha256": "fb98ac8f1a24e043050bd7c7cb11a35d1b86acc03001521c960096726a5e61c4",
+   "bbox": [
+    145.4830609,
+    43.22923,
+    145.5325231,
+    43.270084
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/onneto-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6681",
+   "maxDepthM": 7.2,
+   "grids": [
+    {
+     "name": "onneto-dem-2017",
+     "bbox": [
+      145.4830609,
+      43.22923,
+      145.5325231,
+      43.270084
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 7.2
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_onogawako-akimotoko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/onogawako-akimotoko/onogawako%E3%83%BBakimotoko-2019.zip",
+   "sha256": "892b8dd977964cc158b82191d0d4851f7fbfca89561e4f6d50b0354df5aa703c",
+   "bbox": [
+    140.0818982,
+    37.6479232,
+    140.1628527,
+    37.6832629
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/onogawako-akimotoko-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6677",
+   "maxDepthM": 36.0,
+   "grids": [
+    {
+     "name": "akimotoko-dem-2019",
+     "bbox": [
+      140.1097329,
+      37.6479232,
+      140.1628527,
+      37.6671619
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 36.0
+    },
+    {
+     "name": "onogawako-dem-2019",
+     "bbox": [
+      140.0818982,
+      37.660932,
+      140.115192,
+      37.6832629
+     ],
+     "crs": "EPSG:6677",
+     "maxDepthM": 20.1
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_oonuma-konuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/oonuma-konuma/oonuma-konuma-2025.zip",
+   "sha256": "904787c9e1423b00ea7ce2e9bfa6776e85a2541a491cda66efc3919bc0dd1269",
+   "bbox": [
+    140.6432493,
+    41.9561352,
+    140.7162898,
+    42.0145713
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/oonuma-konuma-2025.zip",
+   "surveyYear": 2025,
+   "crs": "EPSG:6679",
+   "maxDepthM": 11.59,
+   "grids": [
+    {
+     "name": "oonuma-konuma-dem-2025",
+     "bbox": [
+      140.6432493,
+      41.9561352,
+      140.7162898,
+      42.0145713
+     ],
+     "crs": "EPSG:6679",
+     "maxDepthM": 11.59
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_penketo-panketo",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/penketo-panketo/penketo-panketo-2017.zip",
+   "sha256": "a9408d7fc5bc236b56c4632c25060914083a9567b4816b46101c7a84f8ea868c",
+   "bbox": [
+    141.698813,
+    45.023516,
+    141.7324031,
+    45.0728005
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/penketo-panketo-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6680",
+   "maxDepthM": 2.5,
+   "grids": [
+    {
+     "name": "panketo-dem-2017",
+     "bbox": [
+      141.7020202,
+      45.023516,
+      141.7324031,
+      45.0429143
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 2.1
+    },
+    {
+     "name": "penketo-dem-2017",
+     "bbox": [
+      141.698813,
+      45.0570673,
+      141.7148336,
+      45.0728005
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 2.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_poronuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/poronuma/poronuma-2022.zip",
+   "sha256": "78ad1f652b3b160e57413fe7320842e2ab838f6ce3a9ef89fc465fcd58e43b16",
+   "bbox": [
+    142.1928922,
+    45.2717478,
+    142.2241287,
+    45.2842675
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/poronuma-2022.zip",
+   "surveyYear": 2022,
+   "crs": "EPSG:6680",
+   "maxDepthM": 2.23,
+   "grids": [
+    {
+     "name": "poronuma-dem-2022",
+     "bbox": [
+      142.1928922,
+      45.2717478,
+      142.2241287,
+      45.2842675
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 2.23
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_saiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/saiko/saiko-2016.zip",
+   "sha256": "0dd11a34fe34a3a97b86b2d665cda70260e19726a75c8749fccc67b3fc84868c",
+   "bbox": [
+    138.6639483,
+    35.4915113,
+    138.6999138,
+    35.5056272
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/saiko-2016.zip",
+   "surveyYear": 2016,
+   "crs": "EPSG:6676",
+   "maxDepthM": 71.31,
+   "grids": [
+    {
+     "name": "saiko-dem-2016",
+     "bbox": [
+      138.6639483,
+      35.4915113,
+      138.6999138,
+      35.5056272
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 71.31
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_shibayamagata",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/shibayamagata/shibayamagata-2017.zip",
+   "sha256": "f2b02c20f73cd2621d34b88a98e46aaffcd816907f0dfffff628428e4610564b",
+   "bbox": [
+    136.3610482,
+    36.3431991,
+    136.3890426,
+    36.3575322
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/shibayamagata-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6675",
+   "maxDepthM": 4.4,
+   "grids": [
+    {
+     "name": "shibayamagata-dem-2017",
+     "bbox": [
+      136.3610482,
+      36.3431991,
+      136.3890426,
+      36.3575322
+     ],
+     "crs": "EPSG:6675",
+     "maxDepthM": 4.4
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_shikaribetsuko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/shikaribetsuko/shikaribetsuko-2017.zip",
+   "sha256": "e4beecff7166db55f7374f758f38965746048b52629820cd7b85e91b20274bca",
+   "bbox": [
+    143.0999951,
+    43.264843,
+    143.1305357,
+    43.2977206
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/shikaribetsuko-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6681",
+   "maxDepthM": 98.5,
+   "grids": [
+    {
+     "name": "shikaribetsuko-dem-2017",
+     "bbox": [
+      143.0999951,
+      43.264843,
+      143.1305357,
+      43.2977206
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 98.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_shinjiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/shinjiko/shinjiko-2019.zip",
+   "sha256": "f2d043f25d4c2b38378f1b1cbb8716793dde232b30fa7166067c695f000e222a",
+   "bbox": [
+    132.8663595,
+    35.4057097,
+    133.0553212,
+    35.4813067
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/shinjiko-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6671",
+   "maxDepthM": 8.21,
+   "grids": [
+    {
+     "name": "shinjiko-dem-2019",
+     "bbox": [
+      132.8663595,
+      35.4057097,
+      133.0553212,
+      35.4813067
+     ],
+     "crs": "EPSG:6671",
+     "maxDepthM": 8.21
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_shirarutoronuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/shirarutoronuma/shirarutoronuma-2017.zip",
+   "sha256": "ccac4168f43817e7a98ca3c76c4c95bc1b0a6785f4747f49f489d59e7a9c1c37",
+   "bbox": [
+    144.4856522,
+    43.1710365,
+    144.5071493,
+    43.1941278
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/shirarutoronuma-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6681",
+   "maxDepthM": 3.5,
+   "grids": [
+    {
+     "name": "shirarutoronuma-dem-2017",
+     "bbox": [
+      144.4856522,
+      43.1710365,
+      144.5071493,
+      43.1941278
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 3.5
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_shojiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/shojiko/shojiko-2020.zip",
+   "sha256": "90309c2f1f8e4c470ca4e9514921b9813333ad540d1217cffa1c3e114b640260",
+   "bbox": [
+    138.6034843,
+    35.4810328,
+    138.617715,
+    35.4935705
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/shojiko-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6676",
+   "maxDepthM": 12.55,
+   "grids": [
+    {
+     "name": "shojiko-dem-2016",
+     "bbox": [
+      138.6063459,
+      35.4810328,
+      138.6126332,
+      35.485185
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 6.43
+    },
+    {
+     "name": "shojiko-dem-2020",
+     "bbox": [
+      138.6034843,
+      35.4839125,
+      138.617715,
+      35.4935705
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 12.55
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_suwako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/suwako/suwako-2023.zip",
+   "sha256": "beb0e8c5cd0bf3c238af5144a76c9043e6dd82d3b955decef95d9b7f58a93e43",
+   "bbox": [
+    138.0518287,
+    36.0272847,
+    138.1128649,
+    36.0685053
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/suwako-2023.zip",
+   "surveyYear": 2023,
+   "crs": "EPSG:6676",
+   "maxDepthM": 7.59,
+   "grids": [
+    {
+     "name": "suwako-dem-2023",
+     "bbox": [
+      138.0518287,
+      36.0272847,
+      138.1128649,
+      36.0685053
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 7.59
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_takkobuko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/takkobuko/takkobuko-2019.zip",
+   "sha256": "f2ff516886f294f40286fcbb181916fcbbd823e78c1d76ecfe175f3ce7fed5db",
+   "bbox": [
+    144.4755409,
+    43.097067,
+    144.4941505,
+    43.1123188
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/takkobuko-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6681",
+   "maxDepthM": 1.79,
+   "grids": [
+    {
+     "name": "takkobuko-dem-2019",
+     "bbox": [
+      144.4755409,
+      43.097067,
+      144.4941505,
+      43.1123188
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 1.79
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_tazawako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/tazawako/tazawako-2021.zip",
+   "sha256": "e82c5b595d8fa1315717cbd399c78cd7b95e76cae932e7ec98948dd07aba3287",
+   "bbox": [
+    140.6278341,
+    39.6978926,
+    140.7000549,
+    39.7518625
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/tazawako-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6678",
+   "maxDepthM": 423.4,
+   "grids": [
+    {
+     "name": "tazawako-dem-2021",
+     "bbox": [
+      140.6278341,
+      39.6978926,
+      140.7000549,
+      39.7518625
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 423.4
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_tofutsuko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/tofutsuko/tofutsuko-2018.zip",
+   "sha256": "7c6499704fd657dfdff1afc0afa81bc28f0b75d1db1a8dee345d48dc4ac3bdbc",
+   "bbox": [
+    144.3451273,
+    43.9142357,
+    144.4448676,
+    43.9545061
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/tofutsuko-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6681",
+   "maxDepthM": 2.3,
+   "grids": [
+    {
+     "name": "tofutsuko-dem-2018",
+     "bbox": [
+      144.3451273,
+      43.9142357,
+      144.4448676,
+      43.9545061
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 2.3
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_toroko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/toroko/toroko-2019.zip",
+   "sha256": "faf00e10376c90211d7ef47df6f272c5b94d8057d9be138cb0c7ebb12f08afda",
+   "bbox": [
+    144.4986822,
+    43.1388065,
+    144.5784678,
+    43.163223
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/toroko-2019.zip",
+   "surveyYear": 2019,
+   "crs": "EPSG:6681",
+   "maxDepthM": 6.79,
+   "grids": [
+    {
+     "name": "toroko-dem-2019",
+     "bbox": [
+      144.4986822,
+      43.1388065,
+      144.5784678,
+      43.163223
+     ],
+     "crs": "EPSG:6681",
+     "maxDepthM": 6.79
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_tougouike",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/tougouike/tougouike-2020.zip",
+   "sha256": "a7bbac5ca0ba45a365859b3767266db35ec419f1dae68de07019b89b1a16243a",
+   "bbox": [
+    133.8766926,
+    35.4634562,
+    133.9044072,
+    35.4937533
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/tougouike-2020.zip",
+   "surveyYear": 2020,
+   "crs": "EPSG:6673",
+   "maxDepthM": 3.29,
+   "grids": [
+    {
+     "name": "tougouike-dem-2020",
+     "bbox": [
+      133.8766926,
+      35.4634562,
+      133.9044072,
+      35.4937533
+     ],
+     "crs": "EPSG:6673",
+     "maxDepthM": 3.29
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_uchinuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/uchinuma/uchinuma-2018.zip",
+   "sha256": "ee291b0cc536d35f8ec30711a2c8a97ee6d1c3bc5dacb282cdb52a434795af07",
+   "bbox": [
+    141.3046624,
+    40.8519381,
+    141.3282335,
+    40.8639237
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/uchinuma-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:6678",
+   "maxDepthM": 5.76,
+   "grids": [
+    {
+     "name": "uchinuma-dem-2018",
+     "bbox": [
+      141.3046624,
+      40.8519381,
+      141.3282335,
+      40.8639237
+     ],
+     "crs": "EPSG:6678",
+     "maxDepthM": 5.76
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_unagiike",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/unagiike/unagiike-2021.zip",
+   "sha256": "a77790d1fcc2f136ac43bf47af5a05c8cc1fa3f560052402fa6ff6abc7bb022c",
+   "bbox": [
+    130.5998563,
+    31.2175041,
+    130.6118709,
+    31.229357
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/unagiike-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6670",
+   "maxDepthM": 55.78,
+   "grids": [
+    {
+     "name": "unagiike-dem-2021",
+     "bbox": [
+      130.5998563,
+      31.2175041,
+      130.6118709,
+      31.229357
+     ],
+     "crs": "EPSG:6670",
+     "maxDepthM": 55.78
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_ushikunuma",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/ushikunuma/ushikunuma-2018.zip",
+   "sha256": "75becb79ea3caf0d970fa7af211b183be84ea2003ce6149e06398f7334bdf4c7",
+   "bbox": [
+    140.0899048,
+    35.9352633,
+    140.1363993,
+    36.0083778
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/ushikunuma-2018.zip",
+   "surveyYear": 2018,
+   "crs": "EPSG:2451",
+   "maxDepthM": 3.21,
+   "grids": [
+    {
+     "name": "ushikunuma-dem-2018",
+     "bbox": [
+      140.0899048,
+      35.9352633,
+      140.1363993,
+      36.0083778
+     ],
+     "crs": "EPSG:2451",
+     "maxDepthM": 3.21
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_utonaiko",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/utonaiko/utonaiko-2017.zip",
+   "sha256": "01b62b8e2726cf3312df807288fef2b511f6af922a3cc08ee7c2e29a09c78997",
+   "bbox": [
+    141.6933892,
+    42.6897264,
+    141.7235652,
+    42.7073332
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/utonaiko-2017.zip",
+   "surveyYear": 2017,
+   "crs": "EPSG:6680",
+   "maxDepthM": 1.0,
+   "grids": [
+    {
+     "name": "utonaiko-dem-2017",
+     "bbox": [
+      141.6933892,
+      42.6897264,
+      141.7235652,
+      42.7073332
+     ],
+     "crs": "EPSG:6680",
+     "maxDepthM": 1.0
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  },
+  {
+   "id": "gsi_yamanakako",
+   "url": "https://www1.gsi.go.jp/geowww/lake/download/yamanakako/yamanakako-2021.zip",
+   "sha256": "1c1d95ba2253d6dc749cb5ac2b3c958c4dd00bd65f650107786ab2ab46b73cca",
+   "bbox": [
+    138.8495787,
+    35.408036,
+    138.9013212,
+    35.4293793
+   ],
+   "dataset": "gsi-lakes-japan-v1",
+   "file": "gsi/yamanakako-2021.zip",
+   "surveyYear": 2021,
+   "crs": "EPSG:6676",
+   "maxDepthM": 12.89,
+   "grids": [
+    {
+     "name": "yamanakako-dem-2021",
+     "bbox": [
+      138.8495787,
+      35.408036,
+      138.9013212,
+      35.4293793
+     ],
+     "crs": "EPSG:6676",
+     "maxDepthM": 12.89
+    }
+   ],
+   "verticalReference": "Depth below the surveyed water level, metres"
+  }
+ ]
+}
