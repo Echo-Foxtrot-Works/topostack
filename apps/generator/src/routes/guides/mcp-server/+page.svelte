@@ -14,7 +14,7 @@
     project: { name: "Mount Rainier", placeLabel: "Mount Rainier", output: "layered", widthMm: 300, heightMm: 200, shape: "rectangle", materialThicknessMm: 3, verticalExaggeration: 2, bounds: { west: -121.8918, south: 46.7923, east: -121.6288, north: 46.9122 } },
     plan: { output: "layered", sheetCount: 35, heightOfModelMm: 105, materialThicknessMm: 3, requestedVerticalExaggeration: 2, fittedVerticalExaggeration: 1.985, metersPerStep: 100.7, scaleDenominator: 66667, groundWidthKm: 20, groundHeightKm: 13.3, minElevationM: 844, maxElevationM: 4370, reliefM: 3526, estimate: true },
     relief: { sampleZoom: 10, tiles: 4, coastal: false },
-    coverage: { terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: [] }, lakeSurveys: [], roadsAndWater: "OpenStreetMap via Protomaps, worldwide", notes: ["…"] },
+    coverage: { terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: [], ocean: [] }, lakeSurveys: [], roadsAndWater: "OpenStreetMap via Protomaps, worldwide", notes: ["…"] },
     notes: ["Estimated from terrain sampled at zoom 10; peaks can be smoothed, so expect the studio's count to differ by a sheet or two. The studio's count is the one that is cut."],
     studioUrl: "https://topostack.app/studio?generate=1#p=1.bVVNc9s2EP0r…",
     attribution: { text: "Terrain: Mapzen Terrain Tiles and its sources · Map data © OpenStreetMap contributors (ODbL) · …", sources: ["…"], fullNotice: "https://topostack.app/attribution" },

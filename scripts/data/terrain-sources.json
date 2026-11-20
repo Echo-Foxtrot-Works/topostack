@@ -1,5 +1,75 @@
 {
   "records": {
+    "gebco-2026-ocean-v1": {
+      "pin": {
+        "bytes": 4241629269,
+        "etag": "\"69e8d88d-fcd22055\"",
+        "item": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+        "lastModified": "Wed, 22 Apr 2026 14:17:49 GMT",
+        "samplesSha256": "90720c74c0702fd8763d8eb8a23b1c0c6c024c38fef93742bbccafddba2f307d",
+        "snapshotSha256": "39bb6eb45a785101da606749a00cf0ec3217f32160d25859b48fd5db9c6d9368",
+        "sourceResolutionM": 463,
+        "tidBytes": 96150976,
+        "tidUrl": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/geotiff/gebco_2026_tid_geotiff.zip",
+        "url": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/geotiff/gebco_2026_geotiff.zip",
+        "verticalDatum": "MSL"
+      },
+      "receipt": {
+        "bytes": 6059356841,
+        "coverage": {
+          "totalSamples": 17179869184,
+          "validSamples": 10143086017,
+          "zoom": 9
+        },
+        "dataset": "gebco-2026-ocean-v1",
+        "encoding": "elevation-terrarium-v1",
+        "grids": [
+          {
+            "bounds": [
+              -180,
+              -85.0511,
+              180,
+              85.0511
+            ],
+            "name": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+            "tilesWritten": 220138
+          }
+        ],
+        "normalization": {
+          "horizontalCrs": "EPSG:3857",
+          "mask": "TID 0 (land) and depth >= 0 m are transparent",
+          "resampling": "bilinear depth, nearest TID; 2x2 mean of valid samples below z9",
+          "rounding": "1 m",
+          "verticalTransform": "none; GEBCO metres relative to mean sea level"
+        },
+        "schemaVersion": 1,
+        "sha256": "5484337000c4851d0a24929c465c4a6ad082e85dd73719f0e543a1e03c03f1c1",
+        "sources": [
+          {
+            "bytes": 4241629269,
+            "etag": "\"69e8d88d-fcd22055\"",
+            "item": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+            "lastModified": "Wed, 22 Apr 2026 14:17:49 GMT",
+            "samplesSha256": "90720c74c0702fd8763d8eb8a23b1c0c6c024c38fef93742bbccafddba2f307d",
+            "snapshotSha256": "39bb6eb45a785101da606749a00cf0ec3217f32160d25859b48fd5db9c6d9368",
+            "sourceResolutionM": 463,
+            "tidBytes": 96150976,
+            "tidUrl": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/geotiff/gebco_2026_tid_geotiff.zip",
+            "url": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/geotiff/gebco_2026_geotiff.zip",
+            "verticalDatum": "MSL"
+          }
+        ],
+        "tiles": 220138,
+        "tools": {
+          "gdal": "3.12.2",
+          "numpy": "2.5.4",
+          "python": "3.13.5",
+          "rasterio": "1.5.2"
+        },
+        "verticalDatum": "MSL",
+        "verticalUnits": "metre"
+      }
+    },
     "nrcan-hrdem-alexander-v1": {
       "pin": {
         "acquisitionYear": 2020,
@@ -132,7 +202,7 @@
     }
   },
   "registryVersion": 1,
-  "releaseManifest": "terrain-releases/b2779179e6d75fcb0603832dae70e8bbd81a75461ea152f772f3531428b22f1a.json",
+  "releaseManifest": "terrain-releases/1ede3dc0434478eee2e1ced8e84994d77d14094e051c3a8d812d9523c6432695.json",
   "sources": [
     {
       "acquisitionYear": 2020,
@@ -191,6 +261,25 @@
       "priority": 300,
       "url": "https://datacube.services.geo.ca/stac/api/collections/hrdem-mosaic-1m/items/7_2-mosaic-1m",
       "verticalDatum": "CGVD2013"
+    },
+    {
+      "bounds": [
+        -180,
+        -85.0511,
+        180,
+        85.0511
+      ],
+      "encoding": "elevation-terrarium-v1",
+      "id": "gebco-2026-ocean-v1",
+      "kind": "bathymetry-grid",
+      "license": "GEBCO Compilation Group (2026) GEBCO 2026 Grid. Public domain; free to use with this attribution. Not for navigation. TopoStack keeps depths below sea level away from land (TID 0), resamples them to Web Mercator and rounds them to whole metres.",
+      "maxZoom": 9,
+      "minZoom": 0,
+      "name": "GEBCO_2026 Grid (ocean depths)",
+      "nativeResolutionM": 463,
+      "priority": 100,
+      "url": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+      "verticalDatum": "MSL"
     }
   ]
 }

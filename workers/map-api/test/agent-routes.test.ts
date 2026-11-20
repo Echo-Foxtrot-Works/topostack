@@ -272,3 +272,20 @@ describe("GET /v1/openapi.json", () => {
     expect(statuses("/v1/geocode")).toEqual(expect.arrayContaining(["200", "400", "429", "502", "503", "504"]));
   });
 });
+
+describe("ocean depth coverage", () => {
+  it("lists ocean grids apart from land terrain and credits them", async () => {
+    const { areaCoverage } = await import("../src/agent/coverage");
+    const { attributionFor } = await import("../src/agent/attribution");
+    const { terrainArchives } = await import("../src/routes/archive");
+    const land = terrainArchives[0]!;
+    const ocean = { ...land, source: { ...land.source, id: "ocean-test-v1", name: "Ocean grid", kind: "bathymetry-grid" as const, nativeResolutionM: 463, bounds: [-180, -85.0511, 180, 85.0511] as [number, number, number, number] } };
+    const coverage = areaCoverage({ west: 138.4, south: 34.6, east: 138.9, north: 35.1 }, { terrain: [land, ocean], surveys: [] });
+    expect(coverage.terrain.highResolution.map(({ id }) => id)).toEqual([]);
+    expect(coverage.terrain.ocean.map(({ id }) => id)).toEqual(["ocean-test-v1"]);
+    expect(coverage.notes[0]).toContain("Sea floor depth comes from Ocean grid");
+    expect(attributionFor("https://topostack.test", coverage).sources.map(({ name }) => name)).toContain("Ocean grid");
+    const inland = areaCoverage({ west: 138.4, south: 34.6, east: 138.9, north: 35.1 }, { terrain: [], surveys: [] });
+    expect(inland.notes[0]).toContain("open sea is flat");
+  });
+});

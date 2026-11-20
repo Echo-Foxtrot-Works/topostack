@@ -25,9 +25,12 @@ describe("West Point terrain loading", () => {
     const result = await loadTerrain(project, undefined, (stage) => stages.push(stage));
     expect(stages).toEqual(["fetching", "preparing"]);
     expect(result.fallback).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[1]?.cache).toBe("no-cache");
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/v1/terrain/${zoom}/${x}/${y}.png`);
+    // The kilometre-deep spikes sit below sea level before repair, so the
+    // ocean grid is also asked for; only one base tile is fetched.
+    const tileCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/v1/terrain/"));
+    expect(tileCalls).toHaveLength(1);
+    expect(tileCalls[0]?.[1]?.cache).toBe("no-cache");
+    expect(String(tileCalls[0]?.[0])).toContain(`/v1/terrain/${zoom}/${x}/${y}.png`);
     expect(blocked).not.toHaveBeenCalled();
     expect(result.source.elevationRepairCount).toBeGreaterThan(100);
     expect(result.source.elevation.min).toBeGreaterThan(-100);

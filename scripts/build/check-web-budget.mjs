@@ -43,7 +43,8 @@ const budgets = {
   // The in-chat preview (MCP App): one self-contained page a chat host loads
   // when an assistant previews a model. It never loads on the site. 117,290 when set;
   // 130,596 once generation gained acrylic water inserts (dev was 128,227).
-  mcpAppHtmlGzip: 143_000,
+  // 143,011 once it carried the GEBCO ocean registration (dev was 142,797).
+  mcpAppHtmlGzip: 157_000,
 };
 
 // Reported, never enforced: totals across every route, lazy tool and worker
