@@ -20,6 +20,7 @@ import re
 import shutil
 import ssl
 import time
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -121,7 +122,9 @@ def pin(cache, html=None, out=CANDIDATE):
     if html is None:
         with urllib.request.urlopen(urllib.request.Request(LIST_URL, headers={'User-Agent': 'TopoStack data build'}), timeout=120, context=gsi_context()) as response:
             html = response.read().decode('utf-8', 'replace')
-    lakes = sorted({(match.group(0), match.group(1), match.group(3)) for match in ZIP_LINK.finditer(html)}, key=lambda item: item[1])
+    # One name carries a non-ASCII middle dot (onogawako・akimotoko-2019.zip).
+    lakes = sorted({(urllib.parse.quote(match.group(0), safe=':/'), match.group(1), match.group(3)) for match in ZIP_LINK.finditer(html)},
+                   key=lambda item: item[1])
     pins = []
     for index, (url, lake, year) in enumerate(lakes, 1):
         pins.append(pin_lake(url, lake, year, cache))

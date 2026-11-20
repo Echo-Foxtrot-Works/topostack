@@ -57,6 +57,11 @@ class SurveyGsiTest(unittest.TestCase):
                 '<a href="https://www1.gsi.go.jp/geowww/lake/download/onogawako-akimotoko/onogawako・akimotoko-2019.zip">')
         found = sorted((m.group(1), m.group(3)) for m in survey_gsi.ZIP_LINK.finditer(html))
         self.assertEqual(found, [('ashinoko', '2021'), ('onogawako-akimotoko', '2019')])
+        seen = []
+        with patch.object(survey_gsi, 'pin_lake', side_effect=lambda url, lake, year, cache: seen.append(url) or {'bbox': [0, 0, 1, 1]}):
+            survey_gsi.pin(self.root, html=html, out=self.root / 'candidate.json')
+        # Request URLs must be ASCII: the middle dot is percent-encoded.
+        self.assertIn('https://www1.gsi.go.jp/geowww/lake/download/onogawako-akimotoko/onogawako%E3%83%BBakimotoko-2019.zip', seen)
 
     def test_pins_each_lake_with_its_extent_and_writes_an_unregistered_candidate(self):
         cache = self.root / 'cache'
