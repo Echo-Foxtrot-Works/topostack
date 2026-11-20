@@ -81,7 +81,6 @@
   "levelsMerged": "Some airspace levels are too close to separate at this exaggeration. A whole Class B separates near {value}×.",
   "useSuggestedExaggeration": "Use {value}× vertical exaggeration",
   "assemblyNote": "Pieces sit at true height on rods you cut to the lengths in the assembly guide, exported as separate files. Not for navigation.",
-  "cutPreviewKind": "cut",
   "cutPreviewLabel": "Airspace cut preview for level {level}",
   "cutZoomControls": "Airspace cut zoom controls",
   "resetCutView": "Reset airspace cut view",

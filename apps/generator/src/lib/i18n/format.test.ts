@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMessage, messageArguments } from "$lib/i18n/format";
+import { formatMessage, messageArguments, messageProblems } from "$lib/i18n/format";
 
 describe("message format", () => {
   it("fills placeholders and formats numbers for the locale", () => {
@@ -49,5 +49,13 @@ describe("message format", () => {
 
   it("lists every argument a message uses", () => {
     expect(messageArguments("{a} and {count, plural, one {# {b}} other {# {c}}}")).toEqual(["a", "b", "c", "count"]);
+  });
+
+  it("reports malformed plural and select structure", () => {
+    expect(messageProblems("{count, plural, one {# sheet} other {# sheets}}")).toEqual([]);
+    expect(messageProblems("{source, select, chart {a chart} stray text survey {a survey} other {data}}")).toEqual(['{source} has a malformed option key "stray text survey"']);
+    expect(messageProblems("{count, plural, one {# sheet}}")).toEqual(["{count} has no other option"]);
+    expect(messageProblems("{count, plural, one {#} other {#} trailing}")).toEqual(['{count} has text after its last option: "trailing"']);
+    expect(messageProblems("{count, plural, eins {#} other {#}}")).toEqual(['{count} has a malformed option key "eins"']);
   });
 });

@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Tipps zur Fertigung",
+  "stepAnnouncement": "Schritt {step} von {count}: {title}",
+  "close": "Fertigungstipps schließen",
+  "back": "Zurück",
+  "next": "Weiter",
+  "done": "Fertig",
+  "placeTitle": "Wähle einen Ort",
+  "placeBody": "Wähle einen Ort oder einen vorgeschlagenen Ort, oder wähle „Kartenausschnitt bearbeiten“, um die Auswahl zu ziehen. Das Gelände wird für den neuen Bereich von selbst neu geladen, du musst also an keinen Erzeugen-Schritt denken.",
+  "layersTitle": "Geländeschichten",
+  "layersBody": "Die Zahl der Schichten richtet sich nach der Überhöhung, der Schnittgröße und der Materialstärke. Der Stapel besteht aus ganzen Platten, mindestens zwei. Kleine Änderungen können dieselbe Anzahl ergeben; die Karte „Geländeschichten“ zeigt den tatsächlich angewendeten Maßstab.",
+  "sizeTitle": "Reale Größe",
+  "sizeBody": "Exportierte Vorlagen sind in Millimetern und in Originalgröße, auch wenn die Regler Zoll anzeigen. Prüfe vor dem Schneiden die Größe und die Schnittfuge deines Lasers.",
+  "processingTitle": "Bearbeitung in Studio",
+  "processingBody": "Stell blaue Linien auf Ritzen und rote Linien auf Schneiden. Ritzen folgt jedem Pfad; Gravieren füllt geschlossene Formen, verwende es also nur für bewusst gefüllte Zeichen wie volle Markierungen.",
+  "lakesTitle": "So funktionieren Seetiefen",
+  "lakesBodySources": "Gemessene Seeböden stammen aus Unterwasser-Vermessungen oder den Geländedaten. Wo ein See keine hat, wird sein Boden aus der Uferlinie, den umliegenden Hängen und veröffentlichten Tiefenschätzungen modelliert. Beides gibt nicht den heutigen Wasserstand wieder.",
+  "lakesBodyControls": "Die Tiefenüberhöhung vertieft Seeböden im Verhältnis zu den Hügeln. „Tiefenschichten begrenzen“ legt fest, wie viele Platten unter das tiefste Land reichen, und „Seetiefe anpassen“ staucht jeden See in diesen Rahmen, ohne seine Uferlinie zu ändern.",
+  "exportTitle": "Export prüfen",
+  "exportBody": "Lege bei Schichtreliefs Materialbreite und -höhe im Export fest. Die Teile werden automatisch mit 3 mm Rand und 2 mm Abstand angeordnet; wähle „Aktuelle Anordnung verwenden“, um früher abzuschließen. „In Studio öffnen“ sendet ein bearbeitbares SVG der gesamten Anordnung. „Herunterladen“ liefert die Vorlagen, Einstellungen und Datenquellen, bei Schichtreliefs außerdem eine Montageanleitung.",
+  "assemblyTitle": "Montage",
+  "assemblyBody": "Lass die verschachtelten Teile bei ihren Platten und klebe von der untersten Schicht nach oben, wie in der Montageanleitung beschrieben. Probiere die Passung an einem kleinen Teil, bevor du das ganze Projekt schneidest."
+}

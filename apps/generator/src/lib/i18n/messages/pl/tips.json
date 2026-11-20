@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Wskazówki wykonania",
+  "stepAnnouncement": "Krok {step} z {count}: {title}",
+  "close": "Zamknij wskazówki wykonania",
+  "back": "Wstecz",
+  "next": "Dalej",
+  "done": "Gotowe",
+  "placeTitle": "Wybierz miejsce",
+  "placeBody": "Wybierz lokalizację, proponowane miejsce lub Edytuj obszar mapy, aby przeciągnąć zaznaczenie. Teren dla nowego obszaru wczytuje się sam, więc nie trzeba pamiętać o generowaniu.",
+  "layersTitle": "Warstwy terenu",
+  "layersBody": "Liczba warstw zależy od przewyższenia, rozmiaru cięcia i grubości materiału. Stos składa się z pełnych arkuszy, co najmniej dwóch. Drobne zmiany mogą nie zmienić liczby warstw; karta Warstwy terenu pokazuje faktycznie zastosowaną skalę.",
+  "sizeTitle": "Rzeczywisty rozmiar",
+  "sizeBody": "Eksportowana grafika jest w milimetrach i w rzeczywistym rozmiarze, nawet gdy ustawienia pokazują cale. Przed cięciem sprawdź rozmiar i szerokość cięcia swojego lasera.",
+  "processingTitle": "Obróbka w Studio",
+  "processingBody": "Ustaw niebieskie linie na Nacinanie, a czerwone na Cięcie. Nacinanie podąża za każdą ścieżką; Grawerowanie wypełnia zamknięte kształty, więc używaj go tylko do celowo wypełnionych oznaczeń, np. pełnych znaczników.",
+  "lakesTitle": "Jak działają głębokości jezior",
+  "lakesBodySources": "Zmierzone dna pochodzą z pomiarów podwodnych lub danych terenu. Gdy jezioro ich nie ma, dno jest modelowane na podstawie linii brzegowej, okolicznych zboczy i opublikowanych szacunków głębokości. Żadne z nich nie odzwierciedla dzisiejszego poziomu wody.",
+  "lakesBodyControls": "Przewyższenie głębokości pogłębia dna jezior względem wzgórz. Limit warstw głębokości określa, ile arkuszy schodzi poniżej najniższego lądu, a Dopasuj głębokość jezior ściska każde jezioro w tym limicie, zachowując linię brzegową.",
+  "exportTitle": "Sprawdź eksport",
+  "exportBody": "W reliefach warstwowych ustaw szerokość i wysokość materiału w Eksporcie. Elementy rozmieszczają się automatycznie z marginesami 3 mm i odstępami 2 mm; wybierz Użyj bieżącego układu, aby zakończyć wcześniej. Otwórz w Studio wysyła jeden edytowalny SVG całego układu. Pobierz zawiera grafikę, ustawienia i źródła danych, a dla reliefów warstwowych także instrukcję montażu.",
+  "assemblyTitle": "Montaż",
+  "assemblyBody": "Trzymaj rozmieszczone elementy razem z ich arkuszami i klej od najniższej warstwy w górę, zgodnie z instrukcją montażu. Przed wycięciem całego projektu sprawdź dopasowanie na małym elemencie."
+}

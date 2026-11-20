@@ -11,7 +11,7 @@
  */
 export type MessageParams = Record<string, string | number | readonly string[] | undefined>;
 
-type Part = string | { name: string; style?: { kind: "number" | "list"; value: string } } | { name: string; kind: "plural" | "select"; offset: number; options: Record<string, Part[]> } | { pound: true };
+type Part = string | { name: string; style?: { kind: "number" | "list"; value: string } } | { name: string; kind: "plural" | "select"; offset: number; options: Record<string, Part[]>; trailing?: string } | { pound: true };
 
 const cache = new Map<string, Part[]>();
 
@@ -58,7 +58,8 @@ function parse(source: string, inPlural = false): Part[] {
       options[key] = parse(optionsSource.slice(open + 1, end), inPlural || kind === "plural");
       cursor = end + 1;
     }
-    parts.push({ name, kind, offset, options });
+    const trailing = optionsSource.slice(cursor).trim();
+    parts.push({ name, kind, offset, options, ...(trailing ? { trailing } : {}) });
   }
   flush();
   return parts;
@@ -168,4 +169,53 @@ export function messageArguments(message: string): string[] {
   };
   walk(parse(message));
   return [...names].sort();
+}
+
+const PLURAL_KEY = /^(=\d+|zero|one|two|few|many|other)$/;
+const SELECT_KEY = /^[\w-]+$/;
+
+/**
+ * What is wrong with a message's structure, for catalog checks: a plural or
+ * select option key that is not a key (text left between options), text after
+ * the last option, or a missing `other`. Empty when the message is sound.
+ */
+export function messageProblems(message: string): string[] {
+  const problems: string[] = [];
+  const walk = (parts: Part[]) => {
+    for (const part of parts) {
+      if (typeof part === "string" || "pound" in part || !("options" in part)) continue;
+      for (const key of Object.keys(part.options)) {
+        if (!(part.kind === "plural" ? PLURAL_KEY : SELECT_KEY).test(key)) problems.push(`{${part.name}} has a malformed option key "${key}"`);
+      }
+      if (!("other" in part.options)) problems.push(`{${part.name}} has no other option`);
+      if (part.trailing) problems.push(`{${part.name}} has text after its last option: "${part.trailing}"`);
+      Object.values(part.options).forEach(walk);
+    }
+  };
+  try {
+    walk(parse(message));
+  } catch (error) {
+    problems.push(error instanceof Error ? error.message : String(error));
+  }
+  return problems;
+}
+
+
+export type ArgumentKind = { kind: "text" } | { kind: "number" } | { kind: "list" } | { kind: "plural" } | { kind: "select"; options: string[] };
+
+/** How each argument of a message is used, so tests can render it with fitting sample values. */
+export function messageArgumentKinds(message: string): Record<string, ArgumentKind> {
+  const kinds: Record<string, ArgumentKind> = {};
+  const walk = (parts: Part[]) => {
+    for (const part of parts) {
+      if (typeof part === "string" || "pound" in part) continue;
+      if ("options" in part) {
+        kinds[part.name] = part.kind === "plural" ? { kind: "plural" } : { kind: "select", options: Object.keys(part.options) };
+        Object.values(part.options).forEach(walk);
+      } else if (part.style) kinds[part.name] = { kind: part.style.kind };
+      else kinds[part.name] ??= { kind: "text" };
+    }
+  };
+  walk(parse(message));
+  return kinds;
 }

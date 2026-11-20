@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { messageArguments } from "$lib/i18n/format";
+import { formatMessage, messageArgumentKinds, messageArguments, messageProblems, type MessageParams } from "$lib/i18n/format";
 import { LOCALES, pseudo, setLocale, supportedLocale, t } from "$lib/i18n/i18n.svelte";
 import { en } from "$lib/i18n/messages/en/index";
 
@@ -87,3 +87,35 @@ describe("locale selection", () => {
     expect(t).toBeTypeOf("function");
   });
 });
+
+describe("every translation renders", () => {
+  // Sample values by how English uses each argument: counts 1, 2 and 5 cover
+  // every plural category the 18 locales use; every select option is tried.
+  const samples = (message: string): MessageParams[] => {
+    const kinds = Object.entries(messageArgumentKinds(message));
+    const base = (count: number): MessageParams => Object.fromEntries(kinds.map(([name, kind]) => [name,
+      kind.kind === "plural" || kind.kind === "number" ? count : kind.kind === "list" ? ["Alpha", "Beta", "Gamma"] : kind.kind === "select" ? kind.options[0] : "Sample"]));
+    const selects = kinds.flatMap(([name, kind]) => kind.kind === "select" ? kind.options.map((option) => ({ ...base(2), [name]: option === "other" ? "zzz" : option })) : []);
+    return [base(1), base(2), base(5), base(1.5), ...selects];
+  };
+
+  it.each(LOCALES)("%s: every message is well formed and renders without leftover syntax", (locale) => {
+    const problems: string[] = [];
+    for (const areaName of areas) {
+      const source = read("en", areaName);
+      const messages = locale === "en" ? source : read(locale, areaName);
+      for (const [key, message] of Object.entries(messages)) {
+        const english = source[key];
+        if (english === undefined) continue;
+        for (const problem of messageProblems(message)) problems.push(`${areaName}.${key}: ${problem}`);
+        for (const params of samples(english)) {
+          let out: string;
+          try { out = formatMessage(message, params, locale === "zh-hant" ? "zh-Hant" : locale); } catch (error) { problems.push(`${areaName}.${key}: throws ${String(error)}`); break; }
+          if (/[{}]/.test(out) || /\bNaN\b|undefined/.test(out)) { problems.push(`${areaName}.${key}: renders "${out}"`); break; }
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+});
+

@@ -9,7 +9,7 @@
 </script>
 
 <div class="two-d-stage">
-  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label={t("aviation.cutPreviewKind")} svgLabel={t("aviation.cutPreviewLabel", { level: level.index + 1 })} controlsLabel={t("aviation.cutZoomControls")} resetLabel={t("aviation.resetCutView")}>
+  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="cut" svgLabel={t("aviation.cutPreviewLabel", { level: level.index + 1 })} controlsLabel={t("aviation.cutZoomControls")} resetLabel={t("aviation.resetCutView")}>
     {#each level.pieces as piece (piece.id)}
       <g data-airspace-piece={piece.id} data-airspace-tint={piece.tint}>
         {#each piece.polygons as polygon}
