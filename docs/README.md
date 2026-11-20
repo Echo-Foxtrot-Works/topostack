@@ -45,6 +45,7 @@
 - [NOAA lake depth integration plan](noaa-lake-integration-plan.md) — phased local runbook for adding NBS grids and ENC contours for every NOAA-covered lake.
 - [Depth charts traced into bathymetry](depth-chart-tracing.md) — chart record contract, how traced charts carve, and the staged rollout. The first-release plan (shipped in 0.5.0) is [plans/depth-chart-first-release.md](plans/depth-chart-first-release.md).
 - [NRCan HRDEM terrain](hrdem-terrain.md)
+- [Ocean bathymetry (GEBCO)](ocean-bathymetry.md) — the global GEBCO_2026 ocean-depth archive: how the studio overlays it, how it is built, pinned and provisioned.
 - [GSI terrain for Japan](gsi-terrain.md) — 5 m shards and the 10 m national archive from GSI elevation tiles, the Survey Act approval they wait on, and the resumable fetch.
 - [FAA aviation data](faa-aviation.md) — airspace, airports, runways, navaids, special use airspace and obstacles: sources, archive, and the per-cycle refresh. The phased plan is [plans/aviation-layer.md](plans/aviation-layer.md).
 - [Public lands data](public-lands.md) — PAD-US classes, the refuge and tribal rules, the archive, and how to build and provision it.

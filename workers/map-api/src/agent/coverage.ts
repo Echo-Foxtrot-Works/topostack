@@ -10,6 +10,8 @@ export interface AreaCoverage {
     /** The global base terrain always covers Web Mercator land. */
     base: string;
     highResolution: Array<{ id: string; name: string; resolutionM: number; license: string }>;
+    /** Ocean depth grids, used where the area reaches the sea. */
+    ocean: Array<{ id: string; name: string; resolutionM: number; license: string }>;
   };
   lakeSurveys: Array<{ id: string; name: string; license: string }>;
   roadsAndWater: string;
@@ -51,8 +53,10 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   lands?: LandsSources;
 } = {}): AreaCoverage {
   const copies = worldCopies(bounds);
-  const terrain = (sources.terrain ?? servedTerrainArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
-    .map(({ source }) => ({ id: source.id, name: source.name, resolutionM: source.nativeResolutionM, license: source.license }));
+  const touching = (sources.terrain ?? servedTerrainArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
+    .map(({ source }) => ({ kind: source.kind, entry: { id: source.id, name: source.name, resolutionM: source.nativeResolutionM, license: source.license } }));
+  const terrain = touching.filter(({ kind }) => kind !== "bathymetry-grid").map(({ entry }) => entry);
+  const ocean = touching.filter(({ kind }) => kind === "bathymetry-grid").map(({ entry }) => entry);
   const surveys = (sources.surveys ?? servedBathymetryArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, license: source.license }));
   const faa = sources.aviation ?? aviationSources;
@@ -64,12 +68,14 @@ export function areaCoverage(bounds: GeoBounds, sources: {
     ...(touched.has("cpcad") && registration.canada ? [{ name: registration.canada.name, version: registration.canada.date, license: registration.canada.license }] : []),
   ];
   const notes = [
-    "Terrain is land elevation; open sea is flat at sea level and lakes use survey or modeled depths.",
+    ocean.length
+      ? `Sea floor depth comes from ${ocean.map(({ name }) => name).join(" and ")} where the area reaches the sea; lakes use survey or modeled depths.`
+      : "Terrain is land elevation; open sea is flat at sea level and lakes use survey or modeled depths.",
     ...(terrain.length ? ["High-resolution terrain is used where it covers the area."] : []),
     ...(surveys.length ? ["Surveyed lake floors here can add sheets below the shoreline when water depth is on; the studio counts them."] : []),
   ];
   return {
-    terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: terrain },
+    terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: terrain, ocean },
     lakeSurveys: surveys,
     roadsAndWater: "OpenStreetMap via Protomaps, worldwide",
     aviation,
