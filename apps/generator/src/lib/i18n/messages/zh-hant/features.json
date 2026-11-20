@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "實線",
   "trailPatternOption.dashed": "虛線",
   "trailPatternOption.dotted": "點線",
+  "rail": "鐵路",
+  "railHint": "地面路線依地方道路寬度繪製。不含隧道、調車場與側線。",
   "transportationLabels": "交通標註",
   "stateProvinceBoundariesName": "州界和省界",
   "stateProvinceBoundaries": "州/省界",

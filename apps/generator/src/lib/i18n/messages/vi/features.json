@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Liền",
   "trailPatternOption.dashed": "Gạch",
   "trailPatternOption.dotted": "Chấm",
+  "rail": "Đường sắt",
+  "railHint": "Các tuyến trên mặt đất với độ rộng của đường địa phương. Bỏ qua đường hầm, bãi tàu và đường nhánh.",
   "transportationLabels": "Nhãn giao thông",
   "stateProvinceBoundariesName": "Ranh giới bang và tỉnh",
   "stateProvinceBoundaries": "Ranh giới bang/tỉnh",

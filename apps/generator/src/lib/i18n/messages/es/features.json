@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Continuo",
   "trailPatternOption.dashed": "Discontinuo",
   "trailPatternOption.dotted": "Punteado",
+  "rail": "Ferrocarriles",
+  "railHint": "Líneas en superficie con el ancho de las carreteras locales. Se omiten túneles, playas de vías y apartaderos.",
   "transportationLabels": "Etiquetas de transporte",
   "stateProvinceBoundariesName": "Límites de estados y provincias",
   "stateProvinceBoundaries": "Límites estatales/provinciales",

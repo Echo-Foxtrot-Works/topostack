@@ -390,6 +390,7 @@
       const engraveMaterial = new THREE.LineBasicMaterial({ color: 0x39291d, linewidth: style.annotationMm });
       const majorRoadMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["major-road"], linewidth: style.majorRoadMm });
       const localRoadMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["local-road"], linewidth: style.localRoadMm });
+      const railMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.rail, linewidth: style.localRoadMm });
       const trailMaterial = style.trailPattern === "solid"
         ? new THREE.LineBasicMaterial({ color: MARKING_COLORS.trail, linewidth: style.trailMm })
         : new THREE.LineDashedMaterial({
@@ -411,7 +412,7 @@
       // Public land boundaries share one solid line here; the cut and engraving previews dash each class.
       const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
-        score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial,
+        score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial, rail: railMaterial,
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
         "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,
       };

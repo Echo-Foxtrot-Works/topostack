@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Plná",
   "trailPatternOption.dashed": "Čárkovaná",
   "trailPatternOption.dotted": "Tečkovaná",
+  "rail": "Železnice",
+  "railHint": "Nadzemní tratě v šířce místních silnic. Tunely, seřaďovací nádraží a vlečky se vynechávají.",
   "transportationLabels": "Popisky dopravy",
   "stateProvinceBoundariesName": "Hranice států a provincií",
   "stateProvinceBoundaries": "Hranice států/provincií",
