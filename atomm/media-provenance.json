@@ -1,16 +1,16 @@
 {
   "schemaVersion": 8,
-  "capturedAt": "2026-11-18T23:56:55.508Z",
+  "capturedAt": "2026-11-20T15:37:39.125Z",
   "reusedRenders": false,
-  "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
-  "sourceDiffSha256": "1f202bebd2f7505be6e3a79431fb4d35964b2f304c0fcec8ef1debe66398fb36",
-  "developmentBase": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
-  "version": "0.11.1",
+  "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
+  "sourceDiffSha256": "e50c49358e036f07d6cb0c59768d7daea8c03bac52bd44df433a34d704ae8f77",
+  "developmentBase": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
+  "version": "0.13.1",
   "origin": "http://localhost:5273",
-  "projectFile": "media-projects-v10.json",
+  "projectFile": "media-projects-v11.json",
   "method": "Embedded studio with live terrain and survey data, through an SDK stand-in. Models are the studio's own Three.js meshes and materials, rendered twice (over white and over black) so their alpha can be recovered; only the camera and the key light's angle and colour are set for capture. Backdrops are each card's flat-engraving SVG from the same studio, restyled as faint lines. Interface images are unedited screenshots of the embedded studio at 2x. Cards are composed in HTML; no AI imagery, photo compositing or fabricated interface. Historical media remains on disk and is excluded from this upload set.",
   "surveyResponses": [
-    "https://topostack.app/v1/bathymetry/usgs-crater-lake-v1.pmtiles"
+    "http://localhost:8787/v1/bathymetry/usgs-crater-lake-v1.pmtiles"
   ],
   "attribution": [
     {
@@ -111,23 +111,23 @@
   ],
   "media": [
     {
-      "file": "assets/topostack-cover-v10.png",
+      "file": "assets/topostack-cover-v11.png",
       "bytes": 6259164,
       "sha256": "d30611860f972fb94e4efbcd0e539f6f240d92027a65d7e68de0a4e1faf157ec",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Crater Lake",
       "subtitle": "Cover: software render on its own engraving artwork",
       "place": "Crater Lake"
     },
     {
-      "file": "assets/topostack-gallery-01-places-v10.png",
+      "file": "assets/topostack-gallery-01-places-v11.png",
       "bytes": 5897802,
       "sha256": "5fc7e070b7cb3543406691e2e0bf8d051cc3ee99a554fbf3a0cea3d2c387ba58",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Any place on Earth.",
       "places": [
         "Crater Lake",
@@ -139,75 +139,75 @@
       ]
     },
     {
-      "file": "assets/topostack-gallery-02-layers-v10.png",
+      "file": "assets/topostack-gallery-02-layers-v11.png",
       "bytes": 4355525,
       "sha256": "a121cc15ba8fe860d120a84c49a6a1dfceef6c3a1558c5f0222f203c25848aaf",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Built layer by layer."
     },
     {
-      "file": "assets/topostack-gallery-03-relief-engraving-v10.png",
+      "file": "assets/topostack-gallery-03-relief-engraving-v11.png",
       "bytes": 3637389,
       "sha256": "c348f179367c7441367fd22fa56c4365ec0eef8fa9be3749dd7911bfd5ba9e85",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Relief or engraving."
     },
     {
-      "file": "assets/topostack-gallery-04-acrylic-v10.png",
+      "file": "assets/topostack-gallery-04-acrylic-v11.png",
       "bytes": 5277871,
       "sha256": "e3edfd51b3aa961a07cbca09c5c4b66647e14470d1572d73dd9840c173f76105",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Cut lakes from acrylic."
     },
     {
-      "file": "assets/topostack-gallery-05-public-lands-v10.png",
+      "file": "assets/topostack-gallery-05-public-lands-v11.png",
       "bytes": 4273185,
       "sha256": "5c5b64a72d73ab326aca36d29a032067ee1435857fd55e119fb97b4dc6163bce",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Paint the parks."
     },
     {
-      "file": "assets/topostack-gallery-06-airspace-v10.png",
+      "file": "assets/topostack-gallery-06-airspace-v11.png",
       "bytes": 3927811,
       "sha256": "2c36c48331bf99008f327ad204692ee5f30868df31051fd6d38a59e07c49a227",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Airspace you can hold."
     },
     {
-      "file": "assets/topostack-gallery-07-three-steps-v10.png",
-      "bytes": 2127483,
-      "sha256": "26d7686edd67c29c76c0497fa0adae54b74180405a6c9e06f18d8917928b9685",
+      "file": "assets/topostack-gallery-07-three-steps-v11.png",
+      "bytes": 2083423,
+      "sha256": "54e2c5710eb3b212838249dacad07b606941a8d4a3528257260e3f06496430eb",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Three steps to a cut file."
     },
     {
-      "file": "assets/topostack-gallery-08-ready-to-cut-v10.png",
-      "bytes": 1995854,
-      "sha256": "3fb06025f6ee90fcd4f417859052ed9ddc0894c6ea35a92ea13e0019ddebc06a",
+      "file": "assets/topostack-gallery-08-ready-to-cut-v11.png",
+      "bytes": 1993818,
+      "sha256": "06f5ff5e902dfb3532483b9c0f9892e7e4a7a36b659441acb69d9e5b2e8d733e",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Ready to cut."
     },
     {
-      "file": "assets/topostack-gallery-09-make-it-yours-v10.png",
-      "bytes": 2199601,
-      "sha256": "42aeba82bc2e6ae035657fb5571f38eb8e01deefd01e62b74417db5aa4f45bfc",
+      "file": "assets/topostack-gallery-09-make-it-yours-v11.png",
+      "bytes": 2204656,
+      "sha256": "a7f65c16b0bd19b0b34c3a0e269df70d01b5ccb17318665e1a487f6c54b10dce",
       "width": 3200,
       "height": 2400,
-      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "sourceCommit": "2ccf284d28fc48656ffb66a3bdb4c286d19406ab",
       "title": "Make it yours."
     }
   ]
