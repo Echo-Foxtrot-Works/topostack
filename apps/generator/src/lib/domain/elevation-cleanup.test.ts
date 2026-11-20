@@ -29,6 +29,17 @@ describe("elevation spike repair", () => {
     expect(values).toEqual(original);
   });
 
+  it("keeps a trench axis that an ocean grid draws at the base zoom", () => {
+    // A V-shaped trench 7,000 m deep with 10° walls at about 250 m per pixel
+    // (z9 near 35°N, where GEBCO_2026 is sampled), like the Japan Trench.
+    const width = 64, height = 32, metresPerPixel = 250;
+    const values = Float32Array.from({ length: width * height }, (_, index) =>
+      -7000 + Math.abs((index % width) - 32) * metresPerPixel * Math.tan(10 * Math.PI / 180));
+    const original = values.slice();
+    expect(repairElevationSpikes(values, width, height)).toBe(0);
+    expect(values).toEqual(original);
+  });
+
   it("repairs streaks crossing a tile seam using neighbors on both sides", () => {
     const values = new Float32Array(512 * 32).fill(5);
     for (let y = 10; y < 14; y += 1) for (let x = 246; x < 265; x += 1) values[y * 512 + x] = -6000;

@@ -40,6 +40,88 @@ function failureFellBackToBase(bounds: GeoBounds, sourceBounds: readonly number[
   return false;
 }
 
+type TerrainArchive = ReturnType<typeof createArchive>;
+
+function decodeSourceTile(data: ArrayBuffer | Uint8Array, lowest: number, highest: number): Float32Array {
+  const values = decodeTerrainPng(new Uint8Array(data), true);
+  for (const value of values) {
+    if (!Number.isNaN(value) && (!Number.isFinite(value) || value < lowest || value > highest)) throw new Error("Invalid terrain elevation.");
+  }
+  return values;
+}
+
+/**
+ * Samples for tiles finer than the archive's deepest zoom, bilinearly
+ * upsampled from the ancestor tiles at that zoom (each fetched once, a
+ * neighbour only when a target's edge pixels need it). A corner the archive
+ * leaves transparent takes the target's own base value, so a coarse grid
+ * feathers into the base terrain over one source cell instead of stepping.
+ * Pixels with no valid corner stay NaN and keep the base terrain.
+ */
+export async function upsampledFromAncestors(archive: Pick<TerrainArchive, "getZxy">, sourceZoom: number, targets: readonly TerrainTile[],
+  lowest: number, highest: number, signal?: AbortSignal): Promise<Array<Float32Array | undefined>> {
+  const ancestors = new Map<string, { z: number; x: number; y: number }>();
+  const key = (x: number, y: number) => `${x}/${y}`;
+  const span = 2 ** sourceZoom;
+  const plans = targets.map((tile) => {
+    const scale = 2 ** (tile.z - sourceZoom);
+    // Pixel-center coordinates of the target's first and last pixels in source pixels.
+    const first = (value: number) => (value * TILE_SIZE + 0.5) / scale - 0.5;
+    const last = (value: number) => ((value + 1) * TILE_SIZE - 0.5) / scale - 0.5;
+    const columns = [Math.floor(first(tile.x)), Math.ceil(last(tile.x))] as const;
+    const rows = [Math.max(0, Math.floor(first(tile.y))), Math.min(span * TILE_SIZE - 1, Math.ceil(last(tile.y)))] as const;
+    for (let y = Math.floor(rows[0] / TILE_SIZE); y <= Math.floor(rows[1] / TILE_SIZE); y += 1) {
+      for (let x = Math.floor(columns[0] / TILE_SIZE); x <= Math.floor(columns[1] / TILE_SIZE); x += 1) {
+        const wrapped = ((x % span) + span) % span;
+        ancestors.set(key(wrapped, y), { z: sourceZoom, x: wrapped, y });
+      }
+    }
+    return { tile, scale };
+  });
+  const list = [...ancestors.values()];
+  const loaded = await mapTiles(list, async (ancestor, signal) => {
+    const result = await archive.getZxy(ancestor.z, ancestor.x, ancestor.y, signal);
+    signal.throwIfAborted();
+    return result ? decodeSourceTile(result.data, lowest, highest) : undefined;
+  }, signal);
+  const byKey = new Map(list.map((ancestor, index) => [key(ancestor.x, ancestor.y), loaded[index]]));
+  const sample = (column: number, row: number): number => {
+    if (row < 0 || row >= span * TILE_SIZE) return Number.NaN;
+    const x = Math.floor(column / TILE_SIZE), y = Math.floor(row / TILE_SIZE);
+    const values = byKey.get(key(((x % span) + span) % span, y));
+    if (!values) return Number.NaN;
+    return values[(row - y * TILE_SIZE) * TILE_SIZE + (column - x * TILE_SIZE)]!;
+  };
+  return plans.map(({ tile, scale }) => {
+    const out = new Float32Array(TILE_SIZE * TILE_SIZE).fill(Number.NaN);
+    let any = false;
+    for (let row = 0; row < TILE_SIZE; row += 1) {
+      const sourceRow = (tile.y * TILE_SIZE + row + 0.5) / scale - 0.5;
+      const top = Math.floor(sourceRow), fy = sourceRow - top;
+      for (let column = 0; column < TILE_SIZE; column += 1) {
+        const sourceColumn = (tile.x * TILE_SIZE + column + 0.5) / scale - 0.5;
+        const left = Math.floor(sourceColumn), fx = sourceColumn - left;
+        const base = tile.values[row * TILE_SIZE + column]!;
+        const corners = [sample(left, top), sample(left + 1, top), sample(left, top + 1), sample(left + 1, top + 1)];
+        if (!corners.some(Number.isFinite)) continue;
+        const [a, b, c, d] = corners.map((value) => (Number.isFinite(value) ? value : base)) as [number, number, number, number];
+        out[row * TILE_SIZE + column] = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+        any = true;
+      }
+    }
+    return any ? out : undefined;
+  });
+}
+
+/**
+ * True for a base pixel an ocean grid may replace: both the grid and the base
+ * terrain put it below sea level. Land, lakes above sea level and the coast the
+ * base terrain already draws are never moved by a coarse ocean grid.
+ */
+function oceanPixel(source: number, base: number): boolean {
+  return source < 0 && base <= 0;
+}
+
 /** Overlay only valid bare-earth samples, atomically per archive, before resampling. */
 export async function applyPreferredTerrain(apiBase: string, bounds: GeoBounds, tiles: TerrainTile[], signal?: AbortSignal, sources: readonly TerrainSource[] = registeredTerrainSources) {
   const datasetVersions: string[] = [];
@@ -52,7 +134,11 @@ export async function applyPreferredTerrain(apiBase: string, bounds: GeoBounds, 
   for (const source of rankTerrainSources(sources)) {
     signal?.throwIfAborted();
     const [west, south, east, north] = source.bounds;
-    const selected = tiles.filter((tile) => tile.z >= source.minZoom && tile.z <= source.maxZoom && owners[tiles.indexOf(tile)]!.some((owner) => owner === 0));
+    const ocean = source.kind === "bathymetry-grid";
+    // Zooms past the archive's deepest level are upsampled from its ancestors.
+    // Ocean grids skip tiles whose base terrain never reaches sea level.
+    const selected = tiles.filter((tile) => tile.z >= source.minZoom && owners[tiles.indexOf(tile)]!.some((owner) => owner === 0) &&
+      (!ocean || tile.values.some((value) => value <= 0)));
     if (!selected.length || bounds.east <= west || bounds.west >= east || bounds.north <= south || bounds.south >= north) continue;
     try {
       const archive = createArchive(`${apiBase}/v1/terrain-sources/${source.id}.pmtiles`, signal);
@@ -62,16 +148,17 @@ export async function applyPreferredTerrain(apiBase: string, bounds: GeoBounds, 
       const metadata = await archive.getMetadata() as Record<string, unknown>;
       if (metadata.topostack_dataset !== source.id || metadata.topostack_encoding !== source.encoding || metadata.topostack_vertical_datum !== source.verticalDatum) throw new Error("Invalid terrain archive metadata.");
       const [lowest, highest] = terrainValueRange(source.kind);
-      const preferred = await mapTiles(selected, async (tile, signal) => {
-        const result = await archive.getZxy(tile.z, tile.x, tile.y, signal);
-        signal.throwIfAborted();
-        if (!result) return undefined;
-        const values = decodeTerrainPng(new Uint8Array(result.data), true);
-        for (const value of values) {
-          if (!Number.isNaN(value) && (!Number.isFinite(value) || value < lowest || value > highest)) throw new Error("Invalid terrain elevation.");
-        }
-        return values;
-      }, signal);
+      const native = selected.filter((tile) => tile.z <= source.maxZoom);
+      const finer = selected.filter((tile) => tile.z > source.maxZoom);
+      const [direct, upsampled] = await Promise.all([
+        mapTiles(native, async (tile, signal) => {
+          const result = await archive.getZxy(tile.z, tile.x, tile.y, signal);
+          signal.throwIfAborted();
+          return result ? decodeSourceTile(result.data, lowest, highest) : undefined;
+        }, signal),
+        finer.length ? upsampledFromAncestors(archive, source.maxZoom, finer, lowest, highest, signal) : Promise.resolve([]),
+      ]);
+      const preferred = selected.map((tile) => tile.z <= source.maxZoom ? direct[native.indexOf(tile)] : upsampled[finer.indexOf(tile)]);
       signal?.throwIfAborted();
       let applied = false;
       const ownerId = selectedSources.length + 1;
@@ -80,7 +167,7 @@ export async function applyPreferredTerrain(apiBase: string, bounds: GeoBounds, 
         if (!values) return;
         const ownership = owners[tiles.indexOf(tile)]!;
         for (let i = 0; i < values.length; i += 1) {
-          if (ownership[i] === 0 && Number.isFinite(values[i])) {
+          if (ownership[i] === 0 && Number.isFinite(values[i]) && (!ocean || oceanPixel(values[i]!, tile.values[i]!))) {
             tile.values[i] = values[i]!; ownership[i] = ownerId; applied = true;
           }
         }

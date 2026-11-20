@@ -195,9 +195,79 @@ it("accepts trench depths only from ocean grids", async () => {
   mocks.getZxy.mockResolvedValue({ data: trench });
   for (const [source, applied] of [[land, false], [ocean, true]] as const) {
     mocks.getMetadata.mockResolvedValue({ topostack_dataset: source.id, topostack_encoding: source.encoding, topostack_vertical_datum: source.verticalDatum });
-    const target = tile();
+    const target = { ...tile(), values: new Float32Array(65536).fill(-50) };
     const result = await applyPreferredTerrain("", bounds, [target], undefined, [source]);
     expect(result.unavailable).toBe(!applied);
-    expect(target.values[0]).toBe(applied ? -8000 : 100);
+    expect(target.values[0]).toBe(applied ? -8000 : -50);
   }
+});
+
+describe("ocean grids", () => {
+  const land = validateTerrainCatalog(terrainCatalog).sources[0]!;
+  const ocean = { ...land, id: "ocean-test-v1", kind: "bathymetry-grid" as const, verticalDatum: "MSL" as const, minZoom: 0, maxZoom: 14 };
+  beforeEach(() => {
+    mocks.getMetadata.mockResolvedValue({ topostack_dataset: ocean.id, topostack_encoding: ocean.encoding, topostack_vertical_datum: ocean.verticalDatum });
+    mocks.getHeader.mockResolvedValue({ tileType: 2, minZoom: 0, maxZoom: 14, minLon: -78.97, minLat: 46.44, maxLon: -78.9, maxLat: 46.49 });
+  });
+
+  it("never fetches for tiles that are all land and never lifts the coast", async () => {
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const inland = tile();
+    await applyPreferredTerrain("", bounds, [inland], undefined, [ocean]);
+    expect(mocks.createArchive).not.toHaveBeenCalled();
+    // Left half land in the base terrain, right half sea; the grid says sea everywhere.
+    const coast = { ...tile(), values: Float32Array.from({ length: 65536 }, (_, i) => (i % 256 < 128 ? 12 : -5)) };
+    mocks.getZxy.mockResolvedValue({ data: elevationPng(() => -300) });
+    const result = await applyPreferredTerrain("", bounds, [coast], undefined, [ocean]);
+    expect(coast.values[10]).toBe(12);
+    expect(coast.values[200]).toBe(-300);
+    expect(result.owners[0]![10]).toBe(0);
+    expect(result.owners[0]![200]).toBe(1);
+  });
+});
+
+describe("ancestor upsampling", () => {
+  it("interpolates a coarser archive bilinearly and fetches each ancestor once", async () => {
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const { upsampledFromAncestors } = await import("$lib/domain/terrain-sources");
+    // A ramp of one metre per source column across the z13 ancestor of two z14 tiles.
+    const getZxy = vi.fn(async () => ({ data: elevationPng((column) => column) }));
+    const left = { z: 14, x: 4598, y: 5798, values: new Float32Array(65536) };
+    const right = { z: 14, x: 4599, y: 5798, values: new Float32Array(65536) };
+    const [a, b] = await upsampledFromAncestors({ getZxy } as never, 13, [left, right], -500, 9000);
+    // Both targets share ancestor 2299/2899. Target pixel centres sit a quarter
+    // source pixel inside, so the edge pixels also reach the neighbouring
+    // ancestors; each is still fetched once.
+    expect(new Set(getZxy.mock.calls.map((call: unknown[]) => `${call[0]}/${call[1]}/${call[2]}`))).toEqual(new Set(
+      ["13/2298/2898", "13/2299/2898", "13/2300/2898", "13/2298/2899", "13/2299/2899", "13/2300/2899"]));
+    expect(getZxy).toHaveBeenCalledTimes(6);
+    // Target pixel 1 of the left tile sits a quarter source pixel past column 0.
+    expect(a![1]).toBeCloseTo(0.25, 5);
+    expect(a![255]).toBeCloseTo(127.25, 5);
+    expect(b![0]).toBeCloseTo(127.75, 5);
+  });
+
+  it("feathers into the base where the archive has no data and leaves empty areas alone", async () => {
+    const { upsampledFromAncestors } = await import("$lib/domain/terrain-sources");
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const getZxy = vi.fn(async (_z: number, x: number) => (x === 2299 ? { data: elevationPng(() => -100) } : undefined));
+    const base = (value: number) => ({ z: 14, x: 4600, y: 5798, values: new Float32Array(65536).fill(value) });
+    const [beyond] = await upsampledFromAncestors({ getZxy } as never, 13, [base(-20)], -11000, 10);
+    // Target 4600 lies in ancestor 2300 (no data); its first column sits three
+    // quarters of a source pixel past 2299's last column, so -100 there blends
+    // with the base value standing in for the missing corner.
+    expect(beyond![0]).toBeCloseTo(-100 * 0.25 + -20 * 0.75, 4);
+    expect(Number.isNaN(beyond![10])).toBe(true);
+    const [none] = await upsampledFromAncestors({ getZxy: async () => undefined } as never, 13, [base(-20)], -11000, 10);
+    expect(none).toBeUndefined();
+  });
+
+  it("wraps neighbours across the antimeridian", async () => {
+    const { upsampledFromAncestors } = await import("$lib/domain/terrain-sources");
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const getZxy = vi.fn(async (_z: number, x: number) => ({ data: elevationPng(() => (x === 0 ? -10 : -30)) }));
+    const [east] = await upsampledFromAncestors({ getZxy } as never, 2, [{ z: 3, x: 7, y: 3, values: new Float32Array(65536) }], -11000, 10);
+    expect(getZxy.mock.calls.some((call: unknown[]) => call[1] === 0)).toBe(true);
+    expect(east![255]).toBeCloseTo(-30 * 0.75 + -10 * 0.25, 4);
+  });
 });
