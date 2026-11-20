@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Continuo",
   "trailPatternOption.dashed": "Tratteggiato",
   "trailPatternOption.dotted": "Punteggiato",
+  "rail": "Ferrovie",
+  "railHint": "Linee in superficie con la larghezza delle strade locali. Gallerie, scali e binari di raccordo sono esclusi.",
   "transportationLabels": "Etichette trasporti",
   "stateProvinceBoundariesName": "Confini di stati e province",
   "stateProvinceBoundaries": "Confini stati/province",

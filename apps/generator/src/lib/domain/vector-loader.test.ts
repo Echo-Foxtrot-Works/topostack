@@ -26,14 +26,31 @@ describe("transportation metadata", () => {
     expect(classifyTransportation({ kind: "major_road", kind_detail: "primary" })).toBe("major-road");
     expect(classifyTransportation({ kind: "minor_road", kind_detail: "residential" })).toBe("local-road");
     expect(classifyTransportation({ kind: "path", kind_detail: "track" })).toBe("trail");
-    expect(classifyTransportation({ kind: "rail", kind_detail: "light_rail" })).toBeUndefined();
     expect(classifyTransportation({ kind: "ferry", kind_detail: "path" })).toBeUndefined();
+  });
+
+  it("keeps running rail lines and drops tunnels, yards and sidings", () => {
+    expect(classifyTransportation({ kind: "rail", kind_detail: "rail" })).toBe("rail");
+    expect(classifyTransportation({ kind: "rail", kind_detail: "light_rail" })).toBe("rail");
+    expect(classifyTransportation({ kind: "rail" })).toBe("rail");
+    expect(classifyTransportation({ kind: "rail", kind_detail: "subway", is_tunnel: true })).toBeUndefined();
+    expect(classifyTransportation({ kind: "rail", kind_detail: "rail", service: "yard" })).toBeUndefined();
+    expect(classifyTransportation({ kind: "rail", kind_detail: "abandoned" })).toBeUndefined();
   });
 
   it("prefers names and falls back to route references", () => {
     expect(transportationLabel({ name: "Rim Drive", ref: "OR 62" })).toBe("Rim Drive");
     expect(transportationLabel({ ref: "OR 62", shield_text: "62" })).toBe("OR 62");
     expect(transportationLabel({ shield_text: "62" })).toBe("62");
+  });
+
+  it("uses a romanized name when the local one has no engravable letters", () => {
+    // Shapes of the Protomaps properties on a Tokyo z12 tile.
+    expect(transportationLabel({ name: "東海道本線", "name:ja": "東海道本線", "name:en": "Tokaido Main Line" })).toBe("Tokaido Main Line");
+    expect(transportationLabel({ name: "中央線", "name:ja-Latn": "Chūō-sen" })).toBe("Chūō-sen");
+    expect(transportationLabel({ name: "首都高速", ref: "C1" })).toBe("首都高速");
+    expect(transportationLabel({ name: "Невский проспект", "name:en": "Nevsky Prospekt" })).toBe("Невский проспект");
+    expect(transportationLabel({ name: "Rue de Rivoli", "name:en": "Rivoli Street" })).toBe("Rue de Rivoli");
   });
 
   it("removes vector-tile buffers before road geometry is projected", () => {

@@ -64,6 +64,9 @@ describe("markingEnabled", () => {
     expect(markingEnabled(feature("road"), { ...off, showRoads: true })).toBe(true);
     expect(markingEnabled(feature("road", { transportationClass: "trail" }), { ...off, showRoads: true })).toBe(false);
     expect(markingEnabled(feature("trail"), { ...off, showTrails: true })).toBe(true);
+    expect(markingEnabled(feature("road", { transportationClass: "rail" }), { ...off, showRoads: true })).toBe(false);
+    expect(markingEnabled(feature("road", { transportationClass: "rail" }), { ...off, showRail: true })).toBe(true);
+    expect(markingEnabled(feature("road"), { ...off, showRail: true })).toBe(false);
     expect(markingEnabled(feature("road", { id: "custom-data-line-0" }), off)).toBe(true);
     expect(markingEnabled(feature("boundary"), off)).toBe(false);
     expect(markingEnabled(feature("grid"), { ...off, showCoordinateGrid: true })).toBe(true);

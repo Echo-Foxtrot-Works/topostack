@@ -2,6 +2,10 @@
 
 0.13.1 replaces 0.12.0–0.13.0 for this review. It adds the platform's 18 languages to everything 0.12.2 contained; 0.13.1 fixes the unit and view switches, which in 0.13.0 split "Imperial" mid-word and let longer translations run past their button. Tested in the live platform's Local debug in all 18 languages with the DevTool Simulator.
 
+## Listing media v11
+
+The listing media were recaptured from the 0.13.1 embed as v11, so the screenshots match what reviewers open. v10 had been captured before 0.12.1. Cards 7–9 now show the 0.12.1 property cards with their `shadow-100` lift and the 0.12.2 Export view, with the sheets beside the **Export contents** card. Step 1 of card 7 shows a search for Crater Lake instead of the unfiltered lake list, which opens on survey ids. The models and backdrops are fresh renders of the same projects (`media-projects-v11.json`). The short and detailed descriptions now mention the 18 languages and the per-piece SVG groups.
+
 ## Languages since 0.13.0
 
 The platform requires every user-visible string in all 18 languages and switches through each during review. 0.13.0 reads `atomm.app.getLocale()` once before the workbench renders and shows the whole embed in that language: zh, en, zh-hant, de, es, fr, it, ja, ko, ru, uk, sl, th, pl, cs, id, vi and pt-BR. Every parameter label, hint, aria-label, tooltip, status line, warning, export message and Tips slide is translated, numbers use the locale's format and `<html lang>` follows the locale. There is no language switcher in the generator, as the platform asks. The Tips images carry no interface text (only map labels such as place names). Downloaded files (README, assembly guide, SVG titles) remain English.

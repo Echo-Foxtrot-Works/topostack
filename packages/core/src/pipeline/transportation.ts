@@ -80,7 +80,7 @@ export function transportationJunctions(features: MarkingFeature[]): Transportat
   const junctions = new Map<string, TransportationJunction>();
   for (const feature of features) {
     const transportationClass = feature.transportationClass ?? (feature.kind === "road" ? "local-road" : undefined);
-    if (!transportationClass || transportationClass === "trail" || feature.points.length < 2) continue;
+    if (!transportationClass || transportationClass === "trail" || transportationClass === "rail" || feature.points.length < 2) continue;
     // One road contributes at most one arm per place. Vector tiles quantize
     // coordinates, so a doubled vertex - or a loop returning to its own seam -
     // would otherwise reach three arms by itself and engrave a junction ring

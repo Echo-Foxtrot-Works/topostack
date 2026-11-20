@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Contínua",
   "trailPatternOption.dashed": "Tracejada",
   "trailPatternOption.dotted": "Pontilhada",
+  "rail": "Ferrovias",
+  "railHint": "Linhas de superfície com a largura das vias locais. Túneis, pátios e desvios ficam de fora.",
   "transportationLabels": "Rótulos de vias",
   "stateProvinceBoundariesName": "Divisas de estados e províncias",
   "stateProvinceBoundaries": "Divisas de estados/províncias",
