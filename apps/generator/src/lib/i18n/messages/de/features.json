@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Durchgehend",
   "trailPatternOption.dashed": "Gestrichelt",
   "trailPatternOption.dotted": "Gepunktet",
+  "rail": "Bahnstrecken",
+  "railHint": "Oberirdische Strecken in der Breite lokaler Straßen. Tunnel, Rangierbahnhöfe und Abstellgleise entfallen.",
   "transportationLabels": "Verkehrsbeschriftung",
   "stateProvinceBoundariesName": "Staats- und Provinzgrenzen",
   "stateProvinceBoundaries": "Staats-/Provinzgrenzen",

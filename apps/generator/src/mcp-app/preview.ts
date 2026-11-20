@@ -48,6 +48,7 @@ export function previewConfig(project: ProjectConfigV1): ProjectConfigV1 {
     ...rest,
     showRoads: false,
     showTrails: false,
+    showRail: false,
     showTransportationLabels: false,
     showBoundaries: false,
     showCoordinateGrid: false,

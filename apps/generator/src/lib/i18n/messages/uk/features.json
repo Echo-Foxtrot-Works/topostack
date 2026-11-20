@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Суцільна",
   "trailPatternOption.dashed": "Штрихова",
   "trailPatternOption.dotted": "Крапкова",
+  "rail": "Залізниці",
+  "railHint": "Наземні лінії завширшки як місцеві дороги. Тунелі, сортувальні станції та під’їзні колії не включаються.",
   "transportationLabels": "Підписи доріг",
   "stateProvinceBoundariesName": "Межі штатів і провінцій",
   "stateProvinceBoundaries": "Межі штатів/провінцій",
