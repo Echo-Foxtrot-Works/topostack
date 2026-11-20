@@ -2,7 +2,7 @@ import type { GeoBounds } from "@topostack/core/project";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
 import { aviationCovers, type AviationSources } from "@topostack/data-contracts/aviation-tiles";
 import { landSourcesCovering, type LandsSources } from "@topostack/data-contracts/land-tiles";
-import { aviationSources, bathymetryArchives, landsSources, terrainArchives } from "../routes/archive";
+import { aviationSources, landsSources, servedBathymetryArchives, servedTerrainArchives } from "../routes/archive";
 
 /** Which of TopoStack's data sources reach a crop, so an agent can say what detail to expect. */
 export interface AreaCoverage {
@@ -37,7 +37,7 @@ const worldCopies = (bounds: GeoBounds): GeoBounds[] =>
   [0, -360, 360].map((shift) => ({ ...bounds, west: bounds.west + shift, east: bounds.east + shift }));
 
 /** Whether a lake survey's box holds this point, to flag search results with surveyed depths nearby. */
-export function surveyedLakeAt(lat: number, lon: number, surveys: ReadonlyArray<{ source: Pick<SurveySource, "bounds"> }> = bathymetryArchives): boolean {
+export function surveyedLakeAt(lat: number, lon: number, surveys: ReadonlyArray<{ source: Pick<SurveySource, "bounds"> }> = servedBathymetryArchives()): boolean {
   return surveys.some(({ source }) => {
     const [west, south, east, north] = source.bounds;
     return lon >= west && lon <= east && lat >= south && lat <= north;
@@ -51,9 +51,9 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   lands?: LandsSources;
 } = {}): AreaCoverage {
   const copies = worldCopies(bounds);
-  const terrain = (sources.terrain ?? terrainArchives).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
+  const terrain = (sources.terrain ?? servedTerrainArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, resolutionM: source.nativeResolutionM, license: source.license }));
-  const surveys = (sources.surveys ?? bathymetryArchives).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
+  const surveys = (sources.surveys ?? servedBathymetryArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, license: source.license }));
   const faa = sources.aviation ?? aviationSources;
   const aviation = copies.some((copy) => aviationCovers(faa, copy)) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;

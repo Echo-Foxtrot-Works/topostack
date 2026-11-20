@@ -6,8 +6,9 @@ import { latToWorldY, lonToWorldX } from "$lib/domain/tile-math";
 import rawSurveyCatalog from "../../../../../scripts/data/lake-bathymetry.json";
 import { validateSurveyCatalog, type SurveySource } from "@topostack/data-contracts/source-catalog";
 import catalog from "../../../../../scripts/data/noaa-great-lakes.json";
+import { servedSources } from "$lib/domain/data-environment";
 
-const registry = validateSurveyCatalog(rawSurveyCatalog);
+const registry = { sources: servedSources(validateSurveyCatalog(rawSurveyCatalog).sources) };
 
 const NOAA_DATASET_VERSION = catalog.dataset;
 const NOAA_ATTRIBUTION = {

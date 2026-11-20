@@ -14,6 +14,9 @@ import tempfile
 from urllib.parse import urlsplit
 
 
+# Mirrors packages/data-contracts/src/source-catalog.ts.
+VERTICAL_DATUMS = ('CGVD2013', 'JP-TP', 'MSL')
+SOURCE_KINDS = ('lidar-dtm', 'national-dtm', 'bathymetry-grid')
 TOKENS = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9]\d*$')
 HASH = re.compile(r'^[a-f0-9]{64}$')
 
@@ -41,9 +44,18 @@ def validate_candidate(source, pin):
     bounds = source.get('bounds')
     if not same_bounds(bounds, bounds or []) or not (-180 <= bounds[0] < bounds[2] <= 180 and -85.0511 <= bounds[1] < bounds[3] <= 85.0511):
         raise ValueError('Invalid terrain bounds')
-    if (source.get('encoding') != 'elevation-terrarium-v1' or source.get('verticalDatum') != 'CGVD2013'
-            or pin.get('verticalDatum') != source['verticalDatum'] or source.get('kind') not in ('lidar-dtm', 'national-dtm')):
+    if (source.get('encoding') != 'elevation-terrarium-v1' or source.get('verticalDatum') not in VERTICAL_DATUMS
+            or pin.get('verticalDatum') != source['verticalDatum'] or source.get('kind') not in SOURCE_KINDS):
         raise ValueError('Unsupported terrain encoding, semantics or datum')
+    availability = source.get('availability', 'all')
+    approval = source.get('approval')
+    if availability not in ('all', 'development'):
+        raise ValueError('Invalid terrain availability')
+    if approval is not None and (not isinstance(approval, dict) or approval.get('required') is not True
+                                 or ('reference' in approval and (not isinstance(approval['reference'], str) or not approval['reference'].strip()))):
+        raise ValueError('Invalid terrain approval')
+    if approval is not None and availability == 'all' and 'reference' not in approval:
+        raise ValueError('Terrain needs an approval reference before it is available to all')
     if (type(source.get('minZoom')) is not int or type(source.get('maxZoom')) is not int
             or not 0 <= source['minZoom'] <= source['maxZoom'] <= 15):
         raise ValueError('Invalid terrain zoom range')

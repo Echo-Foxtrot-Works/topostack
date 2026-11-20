@@ -1,13 +1,29 @@
 import { describe, expect, it } from "vitest";
 import terrainCatalog from "../../../scripts/data/terrain-sources.json";
-import { rankTerrainSources, validateSurveyCatalog, validateTerrainArchiveBounds, validateTerrainCatalog } from "./source-catalog";
+import { rankTerrainSources, sourceAvailableIn, terrainValueRange, validateSurveyCatalog, validateTerrainArchiveBounds, validateTerrainCatalog } from "./source-catalog";
 
 const source = { id: "survey-v1", name: "Survey", url: "https://example.test/source", license: "CC BY 4.0", bounds: [-10, 40, 10, 50], encoding: "depth-terrarium-v1", maxZoom: 12 };
 
 describe("survey catalog contract", () => {
   it("preserves provider precedence and accepts both supported encodings", () => {
     const sources = [source, { ...source, id: "second-v2", encoding: "elevation-terrarium-v1" }];
-    expect(validateSurveyCatalog({ sources }).sources).toEqual(sources);
+    expect(validateSurveyCatalog({ sources }).sources).toEqual(sources.map((item) => ({ ...item, availability: "all" })));
+  });
+  it("keeps development-only sources and their approval state", () => {
+    const pending = { ...source, availability: "development", approval: { required: true } };
+    const granted = { ...source, id: "granted-v1", availability: "all", approval: { required: true, reference: "国地公第123号" } };
+    expect(validateSurveyCatalog({ sources: [pending, granted] }).sources).toEqual([pending, granted]);
+    expect(sourceAvailableIn(validateSurveyCatalog({ sources: [pending] }).sources[0]!, "production")).toBe(false);
+    expect(sourceAvailableIn(validateSurveyCatalog({ sources: [pending] }).sources[0]!, "development")).toBe(true);
+    expect(sourceAvailableIn(validateSurveyCatalog({ sources: [pending] }).sources[0]!, undefined)).toBe(false);
+    expect(sourceAvailableIn(validateSurveyCatalog({ sources: [granted] }).sources[0]!, undefined)).toBe(true);
+  });
+  it.each([
+    { availability: "staging" }, { approval: { required: false } }, { approval: { required: true, reference: " " } },
+    // Approval required but not yet granted: never available to all.
+    { approval: { required: true } }, { availability: "all", approval: { required: true } },
+  ])("rejects an unsafe availability: %j", (patch) => {
+    expect(() => validateSurveyCatalog({ sources: [{ ...source, ...patch }] })).toThrow();
   });
   it.each([
     { id: "../survey-v1" }, { id: "unversioned" }, { name: " " }, { license: "" },
@@ -26,7 +42,17 @@ describe("survey catalog contract", () => {
 
 describe("terrain catalog contract", () => {
   it("accepts registered bare-earth terrain sources", () => {
-    expect(validateTerrainCatalog(terrainCatalog).sources).toEqual(terrainCatalog.sources);
+    expect(validateTerrainCatalog(terrainCatalog).sources).toEqual(terrainCatalog.sources.map((item) => ({ ...item, availability: "all" })));
+  });
+  it("accepts Japanese heights and ocean grids with their own value ranges", () => {
+    const base = terrainCatalog.sources[0]!;
+    const [japan, ocean] = validateTerrainCatalog({ sources: [
+      { ...base, id: "gsi-test-v1", verticalDatum: "JP-TP", availability: "development", approval: { required: true } },
+      { ...base, id: "gebco-test-v1", verticalDatum: "MSL", kind: "bathymetry-grid", minZoom: 0, maxZoom: 9 },
+    ] }).sources;
+    expect(japan).toMatchObject({ verticalDatum: "JP-TP", availability: "development" });
+    expect(terrainValueRange(ocean!.kind)).toEqual([-11000, 10]);
+    expect(terrainValueRange(japan!.kind)).toEqual([-500, 9000]);
   });
   it.each([{ priority: 0 }, { priority: 1.5 }, { nativeResolutionM: 0 }, { nativeResolutionM: NaN }, { acquisitionYear: "2020" }, { kind: "dsm" }, { minZoom: -1 }, { minZoom: 16 }, { minZoom: 1.5 }, { verticalDatum: "unknown" }, { encoding: "depth-terrarium-v1" }])("rejects unsafe terrain metadata: %j", (patch) => {
     expect(() => validateTerrainCatalog({ sources: [{ ...terrainCatalog.sources[0], ...patch }] })).toThrow();

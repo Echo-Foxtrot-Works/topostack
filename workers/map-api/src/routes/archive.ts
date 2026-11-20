@@ -4,7 +4,7 @@ import rawAviationSources from "../../../../scripts/data/faa-aviation-sources.js
 import rawLandsSources from "../../../../scripts/data/public-lands-sources.json";
 import { validateAviationSources } from "@topostack/data-contracts/aviation-tiles";
 import { validateLandsSources } from "@topostack/data-contracts/land-tiles";
-import { validateSurveyCatalog, validateTerrainCatalog } from "@topostack/data-contracts/source-catalog";
+import { sourceAvailableIn, validateSurveyCatalog, validateTerrainCatalog, type SurveySource } from "@topostack/data-contracts/source-catalog";
 import { cachedArchiveHead, evictArchiveHead } from "../archive-head";
 import { edgeCacheKey, matchEdge, teeToEdge } from "../edge-cache";
 import { etagMatches, json } from "../http";
@@ -27,7 +27,12 @@ const AVIATION_ARCHIVE_KEY = "aviation/current.pmtiles";
 // Optional too: requested only when a project paints or draws public lands.
 const LANDS_ARCHIVE_KEY = "lands/current.pmtiles";
 
-export interface ArchiveRoute { key: string; label: string }
+export interface ArchiveRoute {
+  key: string;
+  label: string;
+  /** The registered source behind a terrain or survey archive, whose availability gates the route. */
+  source?: Pick<SurveySource, "availability">;
+}
 
 const terrainCatalog = validateTerrainCatalog(rawTerrainCatalog);
 const bathymetryCatalog = validateSurveyCatalog(rawSurveyCatalog);
@@ -40,14 +45,39 @@ export const landsSources = validateLandsSources(rawLandsSources);
 
 export const bathymetryArchives = bathymetryCatalog.sources.map((source) => ({ source, path: `/v1/bathymetry/${source.id}.pmtiles`, key: `bathymetry/${source.id}.pmtiles` }));
 
+/**
+ * The deployment's environment, set once per request from `env.ENVIRONMENT`.
+ * It is a deployment constant, so an isolate never sees two values. Until it is
+ * set the most restrictive answer applies: only sources available to all.
+ */
+let archiveEnvironment: string | undefined;
+export function configureArchiveEnvironment(environment: string | undefined): void {
+  archiveEnvironment = environment;
+}
+
+/** True when this deployment may serve an archive route. */
+export function archiveServed(route: ArchiveRoute, environment: string | undefined = archiveEnvironment): boolean {
+  return !route.source || sourceAvailableIn(route.source, environment);
+}
+
+/** Registered terrain archives this deployment serves and advertises. */
+export function servedTerrainArchives(environment: string | undefined = archiveEnvironment): typeof terrainArchives {
+  return terrainArchives.filter(({ source }) => sourceAvailableIn(source, environment));
+}
+
+/** Registered survey archives this deployment serves and advertises. */
+export function servedBathymetryArchives(environment: string | undefined = archiveEnvironment): typeof bathymetryArchives {
+  return bathymetryArchives.filter(({ source }) => sourceAvailableIn(source, environment));
+}
+
 /** Every public PMTiles path and the logical R2 key it resolves through. */
 export const ARCHIVE_ROUTES: ReadonlyMap<string, ArchiveRoute> = new Map<string, ArchiveRoute>([
   ["/v1/osm.pmtiles", { key: VECTOR_ARCHIVE_KEY, label: "OSM" }],
   ["/v1/lakes.pmtiles", { key: LAKE_ARCHIVE_KEY, label: "Lake bathymetry" }],
   ["/v1/aviation.pmtiles", { key: AVIATION_ARCHIVE_KEY, label: "FAA aviation" }],
   ["/v1/lands.pmtiles", { key: LANDS_ARCHIVE_KEY, label: "Public lands" }],
-  ...terrainArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "High-resolution terrain" }]),
-  ...bathymetryArchives.map(({ path, key }): [string, ArchiveRoute] => [path, { key, label: "Lake survey bathymetry" }]),
+  ...terrainArchives.map(({ path, key, source }): [string, ArchiveRoute] => [path, { key, label: "High-resolution terrain", source }]),
+  ...bathymetryArchives.map(({ path, key, source }): [string, ArchiveRoute] => [path, { key, label: "Lake survey bathymetry", source }]),
 ]);
 
 type ParsedRange =

@@ -128,6 +128,21 @@ class RegisterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             terrain_release.validate_candidate(entry['source'], entry['pin'])
 
+    def test_accepts_new_datums_and_gates_unapproved_sources(self):
+        import terrain_release
+        entry = self.entry()
+        for datum, kind in (('JP-TP', 'national-dtm'), ('MSL', 'bathymetry-grid')):
+            source = {**entry['source'], 'verticalDatum': datum, 'kind': kind}
+            terrain_release.validate_candidate(source, {**entry['pin'], 'verticalDatum': datum})
+        pending = {**entry['source'], 'availability': 'development', 'approval': {'required': True}}
+        terrain_release.validate_candidate(pending, entry['pin'])
+        granted = {**pending, 'availability': 'all', 'approval': {'required': True, 'reference': 'GSI-123'}}
+        terrain_release.validate_candidate(granted, entry['pin'])
+        for change in ({'availability': 'all'}, {'availability': 'staging'}, {'approval': {'required': False}},
+                       {'approval': {'required': True, 'reference': ' '}}):
+            with self.assertRaises(ValueError):
+                terrain_release.validate_candidate({**pending, **change}, entry['pin'])
+
     def test_rejects_tampered_immutable_manifest(self):
         import terrain_release
         mod.register([self.entry()], self.catalog, self.pins)
