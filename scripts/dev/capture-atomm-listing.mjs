@@ -10,12 +10,12 @@ import { featureProjects, listingPlaces } from "./atomm-listing-places.mjs";
 import { engravingSvg, matte, openStudio } from "./atomm-listing-render.mjs";
 import { backdrop, card, contourLines, cutout, engravingArtwork, escapeHtml, model, renderCard, screenshot } from "./atomm-listing-compose.mjs";
 
-// Atomm listing media, v10: a cover built for the 272 × 204 grid card and nine
+// Atomm listing media, v11: a cover built for the 272 × 204 grid card and nine
 // gallery cards. Every model is the studio's own render of live terrain; every
 // interface image is a screenshot of the embedded studio. Backdrops are the
 // place's flat-engraving artwork. Run against `npm run dev` (or
 // TOPOSTACK_CAPTURE_URL) with @topostack/core built.
-const VERSION = "v10";
+const VERSION = "v11";
 const { atommVersion } = await readVersions();
 const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const root = new URL("../../atomm/", import.meta.url);
@@ -78,7 +78,11 @@ try {
         const exploded = await matte(session.frame, { explode: 0.45, azimuth: -76, elevation: 32, fill: 1.12 });
         const svg = await engravingSvg(session);
         await session.studio.getByRole("button", { name: /Choose location/ }).click();
-        await session.studio.getByRole("textbox", { name: "Search places", exact: true }).waitFor();
+        // Show a search for the card's place: the unfiltered lake list opens on survey ids.
+        await session.studio.getByRole("textbox", { name: "Search places", exact: true }).fill("Crater Lake");
+        await session.studio.locator(".lake-search-results .location-option").first().waitFor();
+        await session.studio.locator(".search-results:not(.lake-search-results) .location-option").first().waitFor({ timeout: 30_000 });
+        await session.page.waitForTimeout(400);
         const location = await session.studio.getByRole("dialog").screenshot();
         await session.page.keyboard.press("Escape");
         await session.settled();
@@ -158,7 +162,7 @@ try {
 
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
   await writeFile(new URL(`media-projects-${VERSION}.json`, root), JSON.stringify(projects, null, 2) + "\n");
-  const archive = new URL("media-provenance-v9.json", root);
+  const archive = new URL(`media-provenance-v${Number(VERSION.slice(1)) - 1}.json`, root);
   try { await access(archive); } catch { await copyFile(new URL("media-provenance.json", root), archive); }
   await writeFile(new URL("media-provenance.json", root), JSON.stringify({
     schemaVersion: 8, capturedAt: new Date().toISOString(), reusedRenders: reuse, sourceCommit, sourceDiffSha256,
