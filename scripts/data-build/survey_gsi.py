@@ -73,11 +73,12 @@ def fetch(url, path, attempts=3):
             time.sleep(10 * (attempt + 1))
 
 
-def grid_member(archive):
-    names = [info.filename for info in archive.infolist() if info.filename.endswith('_ras.tif')]
-    if len(names) != 1:
-        raise ValueError(f'Expected one depth grid, found {len(names)}')
-    return names[0]
+def grid_members(archive):
+    """Depth grid members; a ZIP covering paired lakes (Izunuma and Uchinuma) holds one per lake."""
+    names = sorted(info.filename for info in archive.infolist() if info.filename.endswith('_ras.tif'))
+    if not names:
+        raise ValueError('No GSI depth grid')
+    return names
 
 
 def open_zip(path):
@@ -85,14 +86,18 @@ def open_zip(path):
 
 
 def read_depths(path):
-    """Depths in metres with NaN off the water, plus the grid's transform and CRS."""
-    with open_zip(path) as archive, rasterio.MemoryFile(archive.read(grid_member(archive))) as memory, memory.open() as src:
-        if src.count != 1 or abs(src.res[0] - 10) > 1e-6 or not src.crs:
-            raise ValueError('Unexpected GSI depth grid')
-        values = src.read(1).astype(np.float32)
-        nodata = src.nodata if src.nodata is not None else -9999
-        values = np.where((values == nodata) | ~np.isfinite(values) | (values < 0) | (values > 1500), np.nan, values)
-        return values, src.transform, src.crs
+    """Each grid's depths in metres with NaN off the water, with its transform and CRS: [(name, values, transform, crs)]."""
+    grids = []
+    with open_zip(path) as archive:
+        for member in grid_members(archive):
+            with rasterio.MemoryFile(archive.read(member)) as memory, memory.open() as src:
+                if src.count != 1 or abs(src.res[0] - 10) > 1e-6 or not src.crs:
+                    raise ValueError('Unexpected GSI depth grid')
+                values = src.read(1).astype(np.float32)
+                nodata = src.nodata if src.nodata is not None else -9999
+                values = np.where((values == nodata) | ~np.isfinite(values) | (values < 0) | (values > 1500), np.nan, values)
+                grids.append((Path(member).name.removesuffix('_ras.tif'), values, src.transform, src.crs))
+    return grids
 
 
 def pin_lake(url, lake, year, cache):
@@ -100,12 +105,16 @@ def pin_lake(url, lake, year, cache):
     if not path.exists():
         fetch(url, path)
         time.sleep(1)  # one ZIP at a time, a second apart
-    values, transform, crs = read_depths(path)
-    rows, columns = values.shape
-    west, south, east, north = transform_bounds(crs, 'EPSG:4326', *rasterio.transform.array_bounds(rows, columns, transform))
-    return {'id': f'gsi_{lake}', 'url': url, 'sha256': file_sha256(path), 'bbox': [round(v, 7) for v in (west, south, east, north)],
-            'dataset': SOURCE['id'], 'file': f'gsi/{lake}-{year}.zip', 'surveyYear': int(year), 'crs': crs.to_string(),
-            'maxDepthM': round(float(np.nanmax(values)), 2), 'verticalReference': 'Depth below the surveyed water level, metres'}
+    grids = []
+    for name, values, transform, crs in read_depths(path):
+        rows, columns = values.shape
+        bounds = transform_bounds(crs, 'EPSG:4326', *rasterio.transform.array_bounds(rows, columns, transform))
+        grids.append({'name': name, 'bbox': [round(v, 7) for v in bounds], 'crs': crs.to_string(), 'maxDepthM': round(float(np.nanmax(values)), 2)})
+    bbox = [min(g['bbox'][0] for g in grids), min(g['bbox'][1] for g in grids), max(g['bbox'][2] for g in grids), max(g['bbox'][3] for g in grids)]
+    return {'id': f'gsi_{lake}', 'url': url, 'sha256': file_sha256(path), 'bbox': bbox, 'dataset': SOURCE['id'],
+            'file': f'gsi/{lake}-{year}.zip', 'surveyYear': int(year), 'crs': grids[0]['crs'],
+            'maxDepthM': max(g['maxDepthM'] for g in grids), 'grids': grids,
+            'verticalReference': 'Depth below the surveyed water level, metres'}
 
 
 def pin(cache, html=None, out=CANDIDATE):
@@ -130,11 +139,13 @@ def gsi(source, pins, cache, writer, download, write_grid):
         if not (cache / item['file']).exists():
             fetch(item['url'], cache / item['file'])
         path = download(item, cache)  # verifies the pinned SHA-256
-        prepared = cache / 'gsi-prepared' / f"{item['id']}.tif"
-        if not prepared.exists():
-            values, transform, crs = read_depths(path)
-            write_grid(prepared, values, transform, crs)
-        writer.add(prepared, item['id'])
+        grids = read_depths(path)
+        for name, values, transform, crs in grids:
+            label = item['id'] if len(grids) == 1 else f"{item['id']}/{name}"
+            prepared = cache / 'gsi-prepared' / f"{label.replace('/', '-')}.tif"
+            if not prepared.exists():
+                write_grid(prepared, values, transform, crs)
+            writer.add(prepared, label)
         print(f'GSI lakes: {index}/{len(pins)} {item["id"]}', flush=True)
 
 

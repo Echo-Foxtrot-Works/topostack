@@ -43,7 +43,8 @@ class SurveyGsiTest(unittest.TestCase):
         self.temp.cleanup()
 
     def test_reads_depths_from_the_shift_jis_member(self):
-        values, transform, crs = survey_gsi.read_depths(self.zip)
+        [(name, values, transform, crs)] = survey_gsi.read_depths(self.zip)
+        self.assertEqual(name, 'ashinoko-dem-2021')
         self.assertEqual(crs.to_epsg(), 6677)
         self.assertEqual(transform.a, 10)
         self.assertTrue(np.isnan(values[:, :5]).all())
@@ -73,6 +74,17 @@ class SurveyGsiTest(unittest.TestCase):
         source = found['source']
         self.assertEqual((source['availability'], source['approval'], source['encoding']), ('development', {'required': True}, 'depth-terrarium-v1'))
         self.assertLess(source['bounds'][0], west)
+
+    def test_reads_every_grid_of_a_paired_lake_zip(self):
+        path = self.root / 'pair.zip'
+        memory = io.BytesIO()
+        with rasterio.open(memory, 'w', driver='GTiff', height=4, width=4, count=1, dtype='float32', crs='EPSG:6678',
+                           transform=from_origin(0, 0, 10, 10), nodata=-9999) as dst:
+            dst.write(np.full((4, 4), 2.0, dtype=np.float32), 1)
+        with zipfile.ZipFile(path, 'w') as archive:
+            for lake in ('izunuma', 'uchinuma'):
+                archive.writestr(ShiftJisInfo(f'pair/{lake}-2017/湖沼データ_TIFF/水深グリッド/{lake}-dem-2017_ras.tif'), memory.getvalue())
+        self.assertEqual([name for name, *_ in survey_gsi.read_depths(path)], ['izunuma-dem-2017', 'uchinuma-dem-2017'])
 
     def test_has_no_candidate_before_pinning(self):
         self.assertEqual(survey_gsi.candidate(self.root / 'missing.json'), (None, []))
