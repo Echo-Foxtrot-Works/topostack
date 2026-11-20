@@ -897,6 +897,10 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
    * "Minimalistyczna"): let them hyphenate by the document language, and break if they still do not fit. */
   .line-presets button, .swatch-options button { min-width: 0; }
   :is(.line-presets, .swatch-options) button :is(span, b), .ldt-toggle-group__item { min-width: 0; max-width: 100%; hyphens: auto; overflow-wrap: anywhere; text-align: center; }
+  /* In the rails a segment shares its row equally and grows a line taller only when its label does not
+   * fit (a long word in a wider fallback font), instead of clipping it. The view switch keeps one line. */
+  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group { height: auto; }
+  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group__item { flex: 1 1 0; height: auto; padding-inline: 6px; white-space: normal; line-height: 14px; }
   /* A help button in a parameter card wraps its longer translations instead of widening the rail. */
   .gen-rail-params .lake-depth-help { max-width: 100%; height: auto; min-height: var(--control-sm); padding-block: 4px; white-space: normal; text-align: start; }
   .line-presets button, .swatch-options button { border: 1px solid transparent; }

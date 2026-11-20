@@ -125,7 +125,7 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
           const rect = element.getBoundingClientRect();
           if (!rect.width || element.closest("[hidden]")) continue;
           if (rect.right > box.right + 1 || rect.left < box.left - 1) out.push(`${element.textContent?.trim().slice(0, 40) || element.getAttribute("aria-label")} overflows its rail`);
-          if (element.scrollWidth > element.clientWidth + 2 && getComputedStyle(element).overflowX === "visible" && element.matches("button, .ldt-toggle-group__item")) out.push(`${element.textContent?.trim().slice(0, 40)} text overflows its control`);
+          if (element.scrollWidth > element.clientWidth + 2 && getComputedStyle(element).overflowX === "visible" && element.matches("button, .ldt-toggle-group__item")) out.push(`${element.textContent?.trim().slice(0, 40)} text overflows its control (${element.scrollWidth} > ${element.clientWidth})`);
         }
       }
       return [...new Set(out)];
