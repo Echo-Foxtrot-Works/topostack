@@ -12,6 +12,7 @@
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
 - [Studio settings panels](studio-panels.md) — the seven rail panels, which subject each one owns, and where a new control goes.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).
+- [Japan data fidelity spike](reports/japan-fidelity-spike-2026-11.md) — GSI 5 m against Mapzen at Fuji, Hakone and Kamikochi, GEBCO_2026 against Mapzen offshore, GSI's 57 lake surveys, OSM rail names, the licences, and the draft Survey Act application.
 - [3D airspace implementation review](reports/airspace-review-2026-10-09.md) — corrected source, altitude, support and export defects, performance measurements, validation and release prerequisites.
 - [Acrylic water inserts](water-inserts.md) — cutting each lake out of its waterline sheet, the fitted acrylic piece and its ledge, map detail on the acrylic, and its own files, nesting and guide steps.
 - [Engraving fonts](fonts.md) — the font kinds, the glyph build, adding a typeface, and why glyph data is immutable.
