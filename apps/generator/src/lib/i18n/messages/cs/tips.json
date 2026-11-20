@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Tipy pro výrobu",
+  "stepAnnouncement": "Krok {step} z {count}: {title}",
+  "close": "Zavřít tipy pro výrobu",
+  "back": "Zpět",
+  "next": "Další",
+  "done": "Hotovo",
+  "placeTitle": "Vyberte místo",
+  "placeBody": "Vyberte místo nebo navrhované místo, případně zvolte Upravit oblast mapy a přetáhněte výběr. Terén se pro novou oblast načte sám, takže nemusíte myslet na generování.",
+  "layersTitle": "Vrstvy terénu",
+  "layersBody": "Počet vrstev se řídí převýšením, velikostí řezu a tloušťkou materiálu. Stoh používá celé desky, alespoň dvě. Malé změny mohou počet zachovat; karta Vrstvy terénu ukazuje skutečně použité měřítko.",
+  "sizeTitle": "Skutečná velikost",
+  "sizeBody": "Exportovaná grafika je v milimetrech ve skutečné velikosti, i když ovládací prvky ukazují palce. Před řezáním zkontrolujte velikost a šířku řezu laseru.",
+  "processingTitle": "Zpracování ve Studiu",
+  "processingBody": "Modré čáry nastavte na Rytí linek a červené na Řezání. Rytí linek sleduje každou dráhu; Gravírování vyplňuje uzavřené tvary, proto jej používejte jen pro záměrně vyplněné značky, například plné značky.",
+  "lakesTitle": "Jak fungují hloubky jezer",
+  "lakesBodySources": "Naměřená dna pocházejí z podvodních měření nebo z dat terénu. Kde jezero žádná nemá, jeho dno se modeluje z břehové čáry, okolních svahů a publikovaných odhadů hloubky. Ani jedno neodráží dnešní hladinu vody.",
+  "lakesBodyControls": "Převýšení hloubky prohlubuje dna jezer vůči kopcům. Omezit hloubkové vrstvy určuje, kolik desek jde pod nejnižší pevninu, a Přizpůsobit hloubku jezer stlačí každé jezero do tohoto limitu se zachováním břehové čáry.",
+  "exportTitle": "Zkontrolujte export",
+  "exportBody": "U vrstvených reliéfů nastavte šířku a výšku materiálu v Exportu. Díly se rozmístí automaticky s okraji 3 mm a rozestupy 2 mm; pro dřívější dokončení zvolte Použít aktuální rozvržení. Otevřít ve Studiu odešle jedno upravitelné SVG celého rozvržení. Stáhnout obsahuje grafiku, nastavení a zdroje dat a u vrstvených reliéfů i montážní průvodce.",
+  "assemblyTitle": "Sestavení",
+  "assemblyBody": "Rozmístěné díly ponechte u jejich desek a lepte od nejnižší vrstvy nahoru podle montážního průvodce. Před řezáním celého projektu vyzkoušejte usazení malého dílu."
+}

@@ -48,5 +48,7 @@ export function addPieceLabels({ config, flatEngraving, warnings }: GenerationCo
   if (omitted.length) warnings.push({
     code: "LABEL_OMITTED",
     message: `Assembly ids were omitted from ${omitted.length} piece${omitted.length === 1 ? "" : "s"} (${omitted.slice(0, 4).join(", ")}) because no position stayed hidden under the layer above.`,
+    messageKey: "assemblyIdsOmitted",
+    params: { count: omitted.length, pieces: omitted.slice(0, 4) },
   });
 }

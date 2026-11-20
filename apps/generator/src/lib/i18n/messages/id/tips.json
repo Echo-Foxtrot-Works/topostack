@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Tips fabrikasi",
+  "stepAnnouncement": "Langkah {step} dari {count}: {title}",
+  "close": "Tutup tips fabrikasi",
+  "back": "Kembali",
+  "next": "Berikutnya",
+  "done": "Selesai",
+  "placeTitle": "Pilih tempat",
+  "placeBody": "Pilih lokasi, tempat yang disarankan, atau pilih Edit area peta untuk menyeret pilihan. Medan dimuat ulang sendiri untuk area baru, jadi tidak ada langkah Buat yang perlu diingat.",
+  "layersTitle": "Lapisan medan",
+  "layersBody": "Jumlah lapisan mengikuti eksagerasi vertikal, ukuran potong, dan ketebalan bahan. Tumpukan memakai lembar utuh, minimal dua. Perubahan kecil bisa mempertahankan jumlah yang sama; kartu Lapisan medan menunjukkan skala yang benar-benar diterapkan.",
+  "sizeTitle": "Ukuran sebenarnya",
+  "sizeBody": "Karya yang diekspor dalam milimeter pada ukuran sebenarnya, meskipun kontrol menampilkan inci. Periksa ukuran dan lebar potong laser Anda sebelum memotong.",
+  "processingTitle": "Pemrosesan di Studio",
+  "processingBody": "Atur garis biru ke Gores dan garis merah ke Potong. Gores mengikuti tiap jalur; Grafir mengisi bentuk tertutup, jadi gunakan hanya untuk tanda yang sengaja diisi seperti penanda padat.",
+  "lakesTitle": "Cara kerja kedalaman danau",
+  "lakesBodySources": "Dasar terukur berasal dari pengukuran bawah air atau data medan. Jika danau tidak memilikinya, dasarnya dimodelkan dari garis pantai, lereng di sekitarnya, dan perkiraan kedalaman yang dipublikasikan. Keduanya tidak mencerminkan permukaan air saat ini.",
+  "lakesBodyControls": "Eksagerasi kedalaman memperdalam dasar danau relatif terhadap bukit. Batasi lapisan kedalaman membatasi jumlah lembar di bawah daratan terendah, dan Sesuaikan kedalaman danau memampatkan tiap danau ke batas itu sambil mempertahankan garis pantainya.",
+  "exportTitle": "Periksa ekspor",
+  "exportBody": "Untuk relief berlapis, atur lebar dan tinggi bahan di Ekspor. Bagian ditata otomatis dengan margin 3 mm dan jarak 2 mm; pilih Gunakan tata letak saat ini untuk selesai lebih awal. Buka di Studio mengirim satu SVG yang dapat diedit dari seluruh tata letak. Unduh mencakup karya, pengaturan, dan kredit data, ditambah panduan perakitan untuk relief berlapis.",
+  "assemblyTitle": "Perakitan",
+  "assemblyBody": "Simpan bagian yang ditata bersama lembarnya dan lem dari lapisan terendah ke atas, mengikuti panduan perakitan. Coba pasang bagian kecil sebelum memotong seluruh proyek."
+}

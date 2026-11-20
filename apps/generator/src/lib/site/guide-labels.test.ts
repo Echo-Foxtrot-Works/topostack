@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FONT_CATALOG } from "@topostack/core";
+import { en } from "$lib/i18n/messages/en/index";
 
 const src = join(import.meta.dirname, "..", "..");
 
@@ -36,6 +37,13 @@ function studioStrings(): Set<string> {
   }
   // The font pickers list the catalog's names.
   for (const entry of FONT_CATALOG) strings.add(entry.name);
+  // Copy moved into the message catalog (docs/localization.md): the English text, and its plain parts around placeholders.
+  for (const message of Object.values(en) as string[]) {
+    for (const part of [message, ...message.split(/\{[^{}]*\}/)]) {
+      const text = part.trim().replace(/[.:]$/, "").replace(/\s*\($/, "");
+      if (text && !text.includes("{")) strings.add(text);
+    }
+  }
   return strings;
 }
 

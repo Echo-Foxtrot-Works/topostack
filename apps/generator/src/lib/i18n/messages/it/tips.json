@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Suggerimenti di fabbricazione",
+  "stepAnnouncement": "Passo {step} di {count}: {title}",
+  "close": "Chiudi suggerimenti di fabbricazione",
+  "back": "Indietro",
+  "next": "Avanti",
+  "done": "Fine",
+  "placeTitle": "Scegli un luogo",
+  "placeBody": "Scegli una località, un luogo suggerito, oppure Modifica area della mappa per trascinare la selezione. Il terreno si ricarica da solo per la nuova area, quindi non c’è alcun passo Genera da ricordare.",
+  "layersTitle": "Strati del terreno",
+  "layersBody": "Il numero di strati segue l’esagerazione verticale, le dimensioni di taglio e lo spessore del materiale. La pila usa lastre intere, almeno due. Piccole modifiche possono mantenere lo stesso numero; la scheda Strati del terreno mostra la scala effettivamente applicata.",
+  "sizeTitle": "Dimensioni reali",
+  "sizeBody": "La grafica esportata è in millimetri a grandezza reale, anche quando i controlli mostrano pollici. Controlla le dimensioni e la larghezza di taglio del tuo laser prima di tagliare.",
+  "processingTitle": "Lavorazione in Studio",
+  "processingBody": "Imposta le linee blu su Tracciatura e quelle rosse su Taglio. La tracciatura segue ogni percorso; l’Incisione riempie le forme chiuse, quindi usala per segni pieni voluti, come i segnaposto pieni.",
+  "lakesTitle": "Come funzionano le profondità dei laghi",
+  "lakesBodySources": "I fondali rilevati provengono da misurazioni subacquee o dai dati del terreno. Dove un lago non ne ha, il fondale è modellato dalla riva, dai pendii circostanti e da stime di profondità pubblicate. Nessuno dei due riflette il livello attuale dell’acqua.",
+  "lakesBodyControls": "L’esagerazione della profondità rende i fondali più profondi rispetto alle colline. Limita strati di profondità fissa quante lastre scendono sotto la terra più bassa, e Adatta profondità dei laghi comprime ogni lago in quel margine mantenendone la riva.",
+  "exportTitle": "Controlla l’esportazione",
+  "exportBody": "Per i rilievi a strati, imposta larghezza e altezza del materiale in Esporta. I pezzi si dispongono automaticamente con margini di 3 mm e spaziatura di 2 mm; scegli Usa il layout attuale per finire prima. Apri in Studio invia un SVG modificabile dell’intero layout. Scarica include la grafica, le impostazioni e i crediti dei dati, più una guida di montaggio per i rilievi a strati.",
+  "assemblyTitle": "Montaggio",
+  "assemblyBody": "Tieni i pezzi con le rispettive lastre e incolla dallo strato più basso verso l’alto, seguendo la guida di montaggio. Prova l’incastro di un pezzo piccolo prima di tagliare l’intero progetto."
+}

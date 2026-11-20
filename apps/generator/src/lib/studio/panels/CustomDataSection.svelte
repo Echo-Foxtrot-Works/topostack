@@ -4,6 +4,7 @@
   import PathTools from "$lib/studio/customdata/PathTools.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  import { t } from "$lib/i18n/i18n.svelte";
 
   /**
    * Markers and paths inside the platform embed, whose rails are the
@@ -18,8 +19,8 @@
   const studio = getStudio();
 </script>
 
-<PanelFrame id="customData" title={studio.embeddedInPlatform ? "Markers & paths" : "Custom Data"} class="custom-data-section" disclosure>
-  <p class="custom-data-intro">Add your own geographic annotations. Coordinates stay attached to the project and are clipped to the selected map area during engraving.</p>
+<PanelFrame id="customData" title={studio.embeddedInPlatform ? t("customdata.sectionTitleEmbed") : t("customdata.sectionTitle")} class="custom-data-section" disclosure>
+  <p class="custom-data-intro">{t("customdata.intro")}</p>
   <ImportTools />
   <MarkerTools />
   <PathTools />

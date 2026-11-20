@@ -2,6 +2,7 @@
   import { getEmbedded } from "$lib/studio/embed-context";
   import type { HTMLInputAttributes } from "svelte/elements";
   import { NumberField } from "@loidolt/theme-svelte";
+  import { formatNumber, t } from "$lib/i18n/i18n.svelte";
   let { value = 0, min = -Infinity, max = Infinity, step = 1, label, disabled = false, boxed = false, onValueChange, oninput, ...rest }: Pick<HTMLInputAttributes, "id" | "oninput" | "aria-describedby"> & {
     value?: number; min?: number; max?: number; step?: number; label: string; disabled?: boolean; boxed?: boolean; onValueChange?: (value: number) => void;
   } = $props();
@@ -11,9 +12,11 @@
   let error = $state("");
   $effect(() => { void value; error = ""; });
   const describedBy = $derived([rest["aria-describedby"], error ? errorId : undefined].filter(Boolean).join(" ") || undefined);
+  // A limit in full precision, without grouping, as the field accepts it.
+  const bound = (limit: number) => formatNumber(limit, { maximumFractionDigits: 20, useGrouping: false });
   function validate(field: HTMLInputElement): boolean {
     const next = field.valueAsNumber;
-    error = field.value === "" || !Number.isFinite(next) ? "Enter a number." : next < min ? `Use ${min} or more.` : next > max ? `Use ${max} or less.` : "";
+    error = field.value === "" || !Number.isFinite(next) ? t("terrain.enterNumber") : next < min ? t("terrain.numberAtLeast", { min: bound(min) }) : next > max ? t("terrain.numberAtMost", { max: bound(max) }) : "";
     return !error;
   }
   // Step controls gestures, not valid typed values: min may not align with the step grid.

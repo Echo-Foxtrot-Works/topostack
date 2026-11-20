@@ -1,6 +1,14 @@
-# Atomm review revision — 0.12.2 — 2026-11-19
+# Atomm review revision — 0.13.0 — 2026-11-19
 
-0.12.2 replaces 0.12.0 and 0.12.1 for this review. 0.12.2 only adds the Export view and 3D fixes below to 0.12.1.
+0.13.0 replaces 0.12.0–0.12.2 for this review. It adds the platform's 18 languages to everything 0.12.2 contained.
+
+## Languages in 0.13.0
+
+The platform requires every user-visible string in all 18 languages and switches through each during review. 0.13.0 reads `atomm.app.getLocale()` once before the workbench renders and shows the whole embed in that language: zh, en, zh-hant, de, es, fr, it, ja, ko, ru, uk, sl, th, pl, cs, id, vi and pt-BR. Every parameter label, hint, aria-label, tooltip, status line, warning, export message and Tips slide is translated, numbers use the locale's format and `<html lang>` follows the locale. There is no language switcher in the generator, as the platform asks. The Tips images carry no interface text (only map labels such as place names). Downloaded files (README, assembly guide, SVG titles) remain English.
+
+Checked before submission: a pseudo-locale run of the embed with every section expanded and every switch on finds no English copy; each of the 17 translated locales opens with translated section titles and no control or rail overflowing; every message in every locale renders with correct plural forms. Exercise it with the DevTool Simulator's Preview language, as the platform documents. The translations are reviewed for structure and terminology (`docs/localization-review.md`); native-speaker review is pending.
+
+0.12.2 replaced 0.12.0 and 0.12.1. It only added the Export view and 3D fixes below to 0.12.1.
 
 0.12.1 replaced 0.12.0. 0.12.0 was tested inside the live platform (Developer Console › Local debug) before submission and two platform specs published after our design sync were found unmet; 0.12.1 meets them. Everything below about 0.12.0 still applies.
 
@@ -17,7 +25,7 @@
 - **Controls.** The two airspace rod settings are segmented controls like Road appearance, not native selects that truncated their options. Switch descriptions sit under their labels. Helper text meant to be read uses the secondary text colour (4.5:1).
 - **Messages.** Unnamed lakes are "Lake 1", "Lake 2" everywhere instead of map ids; Airspace in 3D says why nothing was built; the Open in Studio note ends the layout line as a sentence; the Export file list keeps the end of each file name visible.
 
-Localization: the platform now lists it as required and reviews 18 languages. The generator reads `atomm.app.getLocale()` and sets the document language, but its interface copy is English only, as in the accepted 0.7.1. Full translation is a separate project.
+Localization: see "Languages in 0.13.0" above.
 
 ## What changed since 0.7.1
 
@@ -49,7 +57,7 @@ Use only the v10 media named in `listing.md` and `media-provenance.json`. There 
 
 ## Platform handoff
 
-Upload `topostack-atomm-v0.12.2.zip` from the `atomm-v0.12.2` GitHub release as the application and `topostack-listing-upload-v0.12.2.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
+Upload `topostack-atomm-v0.13.0.zip` from the `atomm-v0.13.0` GitHub release as the application and `topostack-listing-upload-v0.13.0.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
 
 ## Validation completed
 

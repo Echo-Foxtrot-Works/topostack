@@ -479,6 +479,8 @@ export function splitLayersForWorkArea(config: ProjectConfigV1, layers: LayerIR[
     warnings.push({
       code: "WORK_AREA_UNSPLIT",
       message: `This work area would cut the model into about ${worstCells * layers.length} pieces, more than the ${MAX_WORK_AREA_PIECES} this tool emits. Use a larger work area or a smaller model.`,
+      messageKey: "workAreaUnsplit",
+      params: { pieces: worstCells * layers.length, limit: MAX_WORK_AREA_PIECES },
     });
     return undefined;
   }
@@ -503,17 +505,23 @@ export function splitLayersForWorkArea(config: ProjectConfigV1, layers: LayerIR[
   if (slivers) warnings.push({
     code: "SMALL_FEATURES",
     message: `${slivers} cut piece${slivers === 1 ? " is" : "s are"} narrower than the minimum feature size. Glue the offcut in place with its neighbour, or raise the work area so the seam misses it.`,
+    messageKey: "seamSlivers",
+    params: { count: slivers },
   });
   if (tablessLayers.size) {
     const numbers = [...tablessLayers].sort((a, b) => a - b).map((index) => index + 1);
     warnings.push({
       code: "SEAM_TABS_OMITTED",
       message: `Alignment tabs could not be placed along some seams on layer${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")}; those pieces meet edge to edge. Glue them against a straight edge.`,
+      messageKey: "seamTabsOmitted",
+      params: { count: numbers.length, layers: numbers.map(String) },
     });
   }
   if (oversize.length) warnings.push({
     code: "WORK_AREA_OVERSIZE",
     message: `${oversize.length} piece${oversize.length === 1 ? "" : "s"} (${oversize.slice(0, 4).join(", ")}) remain larger than the work area. The seam grid stops at ${MAX_SEAM_DIVISIONS} divisions per axis; use a larger work area or a smaller model.`,
+    messageKey: "workAreaOversize",
+    params: { count: oversize.length, pieces: oversize.slice(0, 4), divisions: MAX_SEAM_DIVISIONS },
   });
   return grid;
 }

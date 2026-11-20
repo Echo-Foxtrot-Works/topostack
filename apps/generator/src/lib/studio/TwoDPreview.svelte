@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import AirspaceCutPreview from "$lib/studio/AirspaceCutPreview.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
-  import { displayElevation, elevationUnit, PAINT_REGION_LABELS, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
+  import { displayElevation, elevationUnit, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
   import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { PAINT_COLORS } from "$lib/studio/paint-colors";
@@ -38,7 +39,7 @@
   <AirspaceCutPreview {geometry} level={airspaceLevel} />
 {:else if layer}
   <div class="two-d-stage">
-    <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="cut" svgLabel={`Cut preview for layer ${layer.index + 1}`} controlsLabel="Cut layers zoom controls" resetLabel="Reset cut view">
+    <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="cut" svgLabel={t("preview.cutPreviewForLayer", { number: layer.index + 1 })} controlsLabel={t("preview.cutZoomControls")} resetLabel={t("preview.resetCutView")}>
       <defs><filter id="paper-shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2" /></filter></defs>
       <g data-preview-shadow filter="url(#paper-shadow)">
         {#each layer.polygons as polygon}
@@ -87,13 +88,13 @@
         {/each}
       {/if}
     </SvgViewport>
-    <div class="axis layer-elevation">{Math.round(displayElevation(layer.elevationM, geometry.units)).toLocaleString()} {elevationUnit(geometry.units)}</div>
+    <div class="axis layer-elevation">{t("preview.layerElevation", { value: Math.round(displayElevation(layer.elevationM, geometry.units)), unit: elevationUnit(geometry.units) })}</div>
     {#if (geometry.paintRegions ?? []).length}
       <div class="axis paint-template-toggle">
-        <Switch checked={showTemplate} disabled={!paint.length} onCheckedChange={(checked) => { showTemplate = checked; }} aria-label="Show paint template">{paint.length ? "Paint template" : "No paint template on this layer"}</Switch>
+        <Switch checked={showTemplate} disabled={!paint.length} onCheckedChange={(checked) => { showTemplate = checked; }} aria-label={t("preview.showPaintTemplate")}>{paint.length ? t("preview.paintTemplate") : t("preview.noPaintTemplateOnLayer")}</Switch>
         {#if showTemplate && paintKinds.length > 1}
-          <select aria-label="Paint template kind" value={shownKind} onchange={(event) => { templateKind = event.currentTarget.value as PaintRegionKind; }}>
-            {#each paintKinds as kind (kind)}<option value={kind}>{PAINT_REGION_LABELS[kind]}</option>{/each}
+          <select aria-label={t("preview.paintTemplateKind")} value={shownKind} onchange={(event) => { templateKind = event.currentTarget.value as PaintRegionKind; }}>
+            {#each paintKinds as kind (kind)}<option value={kind}>{t(`preview.paintKind.${kind}` as MessageKey)}</option>{/each}
           </select>
         {/if}
       </div>

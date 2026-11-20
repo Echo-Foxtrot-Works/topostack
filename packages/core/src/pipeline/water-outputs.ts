@@ -57,10 +57,12 @@ export function waterOutputs({ config, source, flatEngraving, clip, warnings }: 
   if (lakes.some((surface) => surface.depthSource !== "surveyed" && surface.bathymetryOrigin !== "chart")) warnings.push({
     code: "LAKE_DEPTH_PREDICTED",
     message: "Some lake depths are estimated rather than surveyed. Modeled lake floors may differ from the actual underwater terrain.",
+    messageKey: "lakeDepthPredicted",
   });
   if (lakes.some((surface) => surface.bathymetryOrigin === "chart")) warnings.push({
     code: "LAKE_DEPTH_FROM_CHART",
     message: "Some lake floors come from a traced depth chart. They are only as accurate as the chart and its tracing.",
+    messageKey: "lakeDepthFromChart",
   });
 
   const waterPatternAreas = flatEngraving && config.showWater && config.waterFillPattern !== "none"

@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Astuces de fabrication",
+  "stepAnnouncement": "Étape {step} sur {count} : {title}",
+  "close": "Fermer les astuces de fabrication",
+  "back": "Retour",
+  "next": "Suivant",
+  "done": "Terminé",
+  "placeTitle": "Choisir un lieu",
+  "placeBody": "Choisissez un lieu, un lieu suggéré, ou choisissez Modifier la zone de la carte pour faire glisser la sélection. Le terrain se recharge tout seul pour la nouvelle zone : pas d’étape Générer à retenir.",
+  "layersTitle": "Couches du terrain",
+  "layersBody": "Le nombre de couches dépend de l’exagération verticale, de la taille de découpe et de l’épaisseur du matériau. L’empilement utilise des plaques entières, deux au minimum. De petits changements peuvent garder le même nombre ; la carte Couches du terrain indique l’échelle réellement appliquée.",
+  "sizeTitle": "Taille réelle",
+  "sizeBody": "Le motif exporté est en millimètres à sa taille réelle, même si les commandes affichent des pouces. Vérifiez la taille et la saignée de votre laser avant de découper.",
+  "processingTitle": "Traitement dans Studio",
+  "processingBody": "Réglez les lignes bleues sur Traçage et les lignes rouges sur Découpe. Le traçage suit chaque tracé ; la gravure remplit les formes fermées, réservez-la donc aux marques volontairement pleines comme les marqueurs pleins.",
+  "lakesTitle": "Fonctionnement de la profondeur des lacs",
+  "lakesBodySources": "Les fonds relevés proviennent de mesures sous-marines ou des données de terrain. Quand un lac n’en a pas, son fond est modélisé à partir de la rive, des pentes environnantes et d’estimations de profondeur publiées. Aucun ne reflète le niveau d’eau actuel.",
+  "lakesBodyControls": "L’exagération de profondeur creuse les fonds des lacs par rapport aux collines. Limiter les couches de profondeur plafonne le nombre de plaques sous la terre la plus basse, et Ajuster la profondeur des lacs comprime chaque lac dans cette marge en conservant sa rive.",
+  "exportTitle": "Vérifier l’export",
+  "exportBody": "Pour les reliefs en couches, réglez la largeur et la hauteur du matériau dans Export. Les pièces se disposent automatiquement avec des marges de 3 mm et un espacement de 2 mm ; choisissez Utiliser la disposition actuelle pour terminer plus tôt. Ouvrir dans Studio envoie un SVG modifiable de toute la disposition. Télécharger inclut le motif, les réglages et les crédits des données, ainsi qu’un guide d’assemblage pour les reliefs en couches.",
+  "assemblyTitle": "Assemblage",
+  "assemblyBody": "Gardez les pièces imbriquées avec leurs plaques et collez à partir de la couche la plus basse en suivant le guide d’assemblage. Faites un essai d’ajustement sur une petite pièce avant de découper tout le projet."
+}

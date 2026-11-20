@@ -1,0 +1,23 @@
+{
+  "dialogTitle": "Dicas de fabricação",
+  "stepAnnouncement": "Etapa {step} de {count}: {title}",
+  "close": "Fechar dicas de fabricação",
+  "back": "Voltar",
+  "next": "Próximo",
+  "done": "Concluído",
+  "placeTitle": "Escolha um lugar",
+  "placeBody": "Escolha um local, um lugar sugerido, ou Editar área do mapa para arrastar a seleção. O terreno recarrega sozinho para a nova área, então não há etapa Gerar para lembrar.",
+  "layersTitle": "Camadas do terreno",
+  "layersBody": "O número de camadas depende do exagero vertical, do tamanho do corte e da espessura do material. A pilha usa chapas inteiras, no mínimo duas. Pequenas mudanças podem manter o mesmo número; o cartão Camadas do terreno mostra a escala realmente aplicada.",
+  "sizeTitle": "Tamanho real",
+  "sizeBody": "A arte exportada está em milímetros no tamanho real, mesmo quando os controles mostram polegadas. Confira o tamanho e o kerf do seu laser antes de cortar.",
+  "processingTitle": "Processamento no Studio",
+  "processingBody": "Defina as linhas azuis como Riscagem e as vermelhas como Corte. A riscagem segue cada traço; a gravação preenche formas fechadas, então use-a só para marcas preenchidas de propósito, como marcadores sólidos.",
+  "lakesTitle": "Como funcionam as profundidades dos lagos",
+  "lakesBodySources": "Os fundos medidos vêm de medições subaquáticas ou dos dados de terreno. Quando um lago não tem, o fundo é modelado a partir da margem, das encostas ao redor e de estimativas de profundidade publicadas. Nenhum deles reflete o nível atual da água.",
+  "lakesBodyControls": "O exagero de profundidade aprofunda o fundo dos lagos em relação aos morros. Limitar camadas de profundidade define quantas chapas ficam abaixo da terra mais baixa, e Ajustar profundidade do lago comprime cada lago nesse limite mantendo sua margem.",
+  "exportTitle": "Confira a exportação",
+  "exportBody": "Para relevos em camadas, defina a largura e a altura do material em Exportar. As peças são organizadas automaticamente com margens de 3 mm e espaçamento de 2 mm; escolha Usar layout atual para terminar antes. Abrir no Studio envia um SVG editável com o layout inteiro. Baixar inclui a arte, as configurações e os créditos dos dados, além de um guia de montagem para relevos em camadas.",
+  "assemblyTitle": "Montagem",
+  "assemblyBody": "Mantenha as peças encaixadas com suas chapas e cole da camada mais baixa para cima, seguindo o guia de montagem. Teste o encaixe de uma peça pequena antes de cortar o projeto inteiro."
+}

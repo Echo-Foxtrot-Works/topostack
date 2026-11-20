@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import { getEmbedded } from "$lib/studio/embed-context";
   import type { FeatureCollection } from "geojson";
   import { onMount, untrack } from "svelte";
@@ -13,7 +14,7 @@
   type MapErrorEvent = MapEventType["error"] & { sourceId?: string; tile?: unknown };
   /** Camera moves the studio makes pass this as event data, so they are not mistaken for the user's. */
   type MapMoveEndEvent = MapEventType["moveend"] & { topostackProgrammatic?: boolean };
-  let { lakeSelection, onLakeViewportChange, onLakeMapClick, project, aspectLocked = $bindable(false), placingMarker = false, drawingLine = false, draftPoints = [], framing = true, hint = "Drag the map to choose your terrain", onLocationChange, onSelectionResize, onUnavailable, onPlaceMarker, onMoveMarker, onStopPlacing, onDrawPoint, onFinishDraw, onCancelDraw }: {
+  let { lakeSelection, onLakeViewportChange, onLakeMapClick, project, aspectLocked = $bindable(false), placingMarker = false, drawingLine = false, draftPoints = [], framing = true, hint = t("preview.mapHintDefault"), onLocationChange, onSelectionResize, onUnavailable, onPlaceMarker, onMoveMarker, onStopPlacing, onDrawPoint, onFinishDraw, onCancelDraw }: {
     lakeSelection?: { bounds?: GeoBounds; activeId?: string; lakes: { id: string; name: string; outline: [number, number][] }[] };
     onLakeViewportChange?: (bounds: GeoBounds) => void;
     onLakeMapClick?: (lat: number, lon: number, lakeId?: string) => void;
@@ -304,7 +305,7 @@
     if (!isEmbedded()) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     initialZoom = map.getZoom(); initialCenter = [project.location.lon, project.location.lat];
     map.on("zoom", () => { if (map) zoomScale = 2 ** (map.getZoom() - initialZoom); });
-    map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="${base}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}" target="_blank" rel="noopener noreferrer">All sources</a>` }), "bottom-left");
+    map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="${base}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}" target="_blank" rel="noopener noreferrer">${t("preview.allSources")}</a>` }), "bottom-left");
     let viewportTimer: ReturnType<typeof setTimeout> | undefined;
     let moveFrame = 0;
     const reportLakeViewport = () => {
@@ -507,15 +508,15 @@
   <div bind:this={container} class="map-canvas" class:placing-marker={placingMarker || drawingLine} class:closing-draft={closable}></div>
   {#if !isEmbedded() && framing}
   <div class="selection-tools">
-    <label><input type="checkbox" bind:checked={aspectLocked} disabled={isCircle} /> {isCircle ? "Circle proportions locked" : "Lock aspect ratio"}</label>
-    <span>Drag handles to resize · Hold Shift to lock · Esc to cancel</span>
+    <label><input type="checkbox" bind:checked={aspectLocked} disabled={isCircle} /> {isCircle ? t("preview.circleProportionsLocked") : t("preview.lockAspectRatio")}</label>
+    <span>{t("preview.resizeInstructions")}</span>
   </div>
   {/if}
   <div bind:this={guide} class="crop-guide" class:crop-guide--idle={!framing} class:crop-circle={isCircle}>
     {#if framing}
     {#if isCircle}<div class="circle-outline" style:width={`${100 * Math.min(project.widthMm, project.heightMm) / project.widthMm}%`} style:height={`${100 * Math.min(project.widthMm, project.heightMm) / project.heightMm}%`}></div>{/if}
     {#each handles as handle}
-      <button type="button" class="resize-handle" aria-label={`Resize selection ${handle.name}`} title={`Resize ${handle.name} (arrow keys supported)`}
+      <button type="button" class="resize-handle" aria-label={t("preview.resizeSelection", { handle: handle.name.replace(" ", "-") })} title={t("preview.resizeHandleTitle", { handle: handle.name.replace(" ", "-") })}
         style:left={`${(handle.x + 1) * 50}%`} style:top={`${(handle.y + 1) * 50}%`}
         style:cursor={handle.x === 0 ? "ns-resize" : handle.y === 0 ? "ew-resize" : handle.x === handle.y ? "nwse-resize" : "nesw-resize"}
         onpointerdown={(event) => startResize(event, handle)} onpointermove={moveResize}
@@ -534,11 +535,11 @@
   {#if framing}<div class="map-crosshair"><span></span><span></span></div>{/if}
   {#if isEmbedded()}<AtommZoom value={zoomScale} min={0.125} max={16} onZoom={setZoomScale} onFit={resetMapView} />{/if}
   {#if drawingLine}
-    <div class="map-caption map-caption--placing" role="status"><Spline size={14} /> {draftPoints.length < 2 ? "Click the map to start the path" : draftPoints.length < 3 ? "Keep clicking · Enter to finish" : "Click the first point to close a boundary · Enter to finish"} · Esc to cancel</div>
+    <div class="map-caption map-caption--placing" role="status"><Spline size={14} /> {draftPoints.length < 2 ? t("preview.drawStart") : draftPoints.length < 3 ? t("preview.drawContinue") : t("preview.drawClose")}</div>
   {:else if placingMarker}
-    <div class="map-caption map-caption--placing" role="status"><MapPin size={14} /> Click to place · drag to move · Esc when done</div>
+    <div class="map-caption map-caption--placing" role="status"><MapPin size={14} /> {t("preview.placeMarkerHint")}</div>
   {:else}
-    <div class="map-caption" role="status"><LocateFixed size={14} /> {basemapReady ? hint : "Loading map…"}</div>
+    <div class="map-caption" role="status"><LocateFixed size={14} /> {basemapReady ? hint : t("preview.loadingMap")}</div>
   {/if}
 </div>
 

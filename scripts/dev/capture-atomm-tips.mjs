@@ -144,9 +144,9 @@ try {
   // A wider canvas keeps the contents card beside the sheets rather than over them.
   await page.setViewportSize({ width: 1440, height: 800 });
   await settle();
-  await frame().addStyleTag({ content: ".atomm-workbench .export-manifest { display: flex !important; }" });
+  // The contents card stays hidden: its English would show in every language, and the Tip's text
+  // describes it. The sheets alone read the same in all 18 locales.
   await save("export", { x: 0, y: 0, width: 1440, height: 800 });
-  await frame().addStyleTag({ content: ".atomm-workbench .export-manifest { display: none !important; }" });
   await page.setViewportSize(VIEWPORT);
   await settle();
   await zoomTo(1);

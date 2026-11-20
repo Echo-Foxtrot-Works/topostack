@@ -2,6 +2,7 @@ import type { GeoBounds } from "@topostack/core";
 import { apiBase } from "$lib/domain/api-base";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
 import { networkSignal } from "$lib/domain/network";
+import { t } from "$lib/i18n/i18n.svelte";
 
 // Place search on its own: the studio offers it from first paint, while the
 // terrain and map-data loaders are only needed once something is generated.
@@ -11,9 +12,9 @@ export interface PlaceResult { id: string; label: string; lat: number; lon: numb
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {
   if (query.trim().length < 2) return [];
   const response = await fetch(`${apiBase()}/v1/geocode?q=${encodeURIComponent(query.trim())}&limit=5`, { signal: networkSignal(signal) });
-  if (!response.ok) throw new Error("Place search is temporarily unavailable.");
+  if (!response.ok) throw new Error(t("domain.placeSearchUnavailable"));
   const value: unknown = await response.json();
-  if (!Array.isArray(value)) throw new Error("Place search returned an unexpected response.");
+  if (!Array.isArray(value)) throw new Error(t("domain.placeSearchUnexpected"));
   return value.flatMap((item): PlaceResult[] => {
     if (!item || typeof item !== "object") return [];
     const record = item as Record<string, unknown>;

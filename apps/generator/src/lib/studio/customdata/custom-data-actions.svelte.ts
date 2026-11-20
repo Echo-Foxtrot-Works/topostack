@@ -1,7 +1,9 @@
-import { MAX_CUSTOM_GRAPHICS, type GeoPoint, type ProjectConfigV1, type UserDepthChartRefV1 } from "@topostack/core";
+import { MAX_CUSTOM_GRAPHICS, MAX_MARKER_ICONS, type GeoPoint, type ProjectConfigV1, type UserDepthChartRefV1 } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 import { isSupportedCoordinate } from "$lib/domain/coordinates";
 import * as edits from "$lib/studio/project-edits";
+import { t } from "$lib/i18n/i18n.svelte";
+import { errorText } from "$lib/i18n/errors";
 
 /**
  * What the maker brings to a project, as edits: placing markers, drawing
@@ -65,14 +67,14 @@ export class CustomDataActions {
       const { icon, warnings } = await importSvgIcon(file, crypto.randomUUID());
       const project = this.host.project();
       const added = edits.addMarkerIcon(project, icon);
-      if (!added) { this.host.setStatus("A project holds at most 24 marker icons. Remove one before adding another."); return; }
+      if (!added) { this.host.setStatus(t("customdata.markerIconLimit", { max: MAX_MARKER_ICONS })); return; }
       const withIcon = { ...project, ...added.patch };
       const assigned = markerId ? edits.updateMarker(withIcon, markerId, { symbol: "custom", iconId: added.iconId }) : undefined;
       await this.host.updateFabrication({ ...added.patch, ...assigned });
       const name = withIcon.markerIcons?.find(({ id }) => id === added.iconId)?.name ?? icon.name;
-      this.host.setStatus([`Marker icon “${name}” added`, ...warnings].join(" · "));
+      this.host.setStatus([t("customdata.markerIconAdded", { name }), ...warnings].join(" · "));
     } catch (error) {
-      this.host.setStatus(error instanceof Error ? error.message : "Could not read this SVG.");
+      this.host.setStatus(errorText(error, t("customdata.svgReadFailed")));
     }
   }
 
@@ -88,12 +90,12 @@ export class CustomDataActions {
       const { graphic, warnings } = await importSvgGraphic(file, crypto.randomUUID());
       const project = this.host.project();
       const added = edits.addCustomGraphic(project, graphic);
-      if (!added) { this.host.setStatus(`A project holds at most ${MAX_CUSTOM_GRAPHICS} graphics. Remove one before adding another.`); return; }
+      if (!added) { this.host.setStatus(t("customdata.graphicLimit", { max: MAX_CUSTOM_GRAPHICS })); return; }
       await this.host.updateFabrication(added.patch);
       const name = added.patch.customGraphics?.find(({ id }) => id === added.graphicId)?.name ?? graphic.name;
-      this.host.setStatus([`Graphic “${name}” added · Place it on the piece`, ...warnings].join(" · "));
+      this.host.setStatus([t("customdata.graphicAdded", { name }), ...warnings].join(" · "));
     } catch (error) {
-      this.host.setStatus(error instanceof Error ? error.message : "Could not read this SVG.");
+      this.host.setStatus(errorText(error, t("customdata.svgReadFailed")));
     }
   }
 
@@ -122,8 +124,8 @@ export class CustomDataActions {
     // A double-click to finish arrives as two clicks on the same spot first.
     const last = draft.points.at(-1);
     if (last && last.lat === point.lat && last.lon === point.lon) return;
-    if (!isSupportedCoordinate(point.lat, point.lon)) { this.host.setStatus("That point is beyond the latitudes TopoStack maps."); return; }
-    if (!edits.canExtendDrawnLine(this.host.project(), draft.points.length)) { this.host.setStatus("This path holds as many points as it can · press Enter to finish it"); return; }
+    if (!isSupportedCoordinate(point.lat, point.lon)) { this.host.setStatus(t("customdata.pointOutOfRange")); return; }
+    if (!edits.canExtendDrawnLine(this.host.project(), draft.points.length)) { this.host.setStatus(t("customdata.pathFull")); return; }
     this.lineDraft = { points: [...draft.points, point] };
   }
 
@@ -137,7 +139,7 @@ export class CustomDataActions {
     if (!draft) return;
     const patch = edits.addDrawnCustomLine(this.host.project(), crypto.randomUUID(), draft.points, closed);
     if (!patch) {
-      this.host.setStatus(closed ? "A boundary needs at least three points" : "A trail needs at least two points · keep clicking, or press Escape to stop");
+      this.host.setStatus(closed ? t("customdata.boundaryTooShort") : t("customdata.trailTooShort"));
       return;
     }
     this.lineDraft = undefined;
@@ -154,10 +156,10 @@ export class CustomDataActions {
    * build charts long before they frame a map.
    */
   async saveChartToLibrary(record: UserChartBathymetryV1): Promise<UserDepthChartRefV1> {
-    if (!record.review) throw new Error("Complete contour, alignment, and layer review before saving a chart.");
+    if (!record.review) throw new Error(t("customdata.chartReviewRequired"));
     const { saveUserChart } = await import("$lib/storage/user-charts");
     const reference = await saveUserChart(record);
-    this.host.setStatus(`Depth chart kept · use it for ${record.lake.name ?? "its lake"} when you are ready`);
+    this.host.setStatus(record.lake.name ? t("customdata.chartKept", { lake: record.lake.name }) : t("customdata.chartKeptUnnamed"));
     return reference;
   }
 
@@ -168,14 +170,14 @@ export class CustomDataActions {
   async useChartForLake(lakeKey: string, reference: UserDepthChartRefV1): Promise<void> {
     const { loadUserChart } = await import("$lib/storage/user-charts");
     const loaded = await loadUserChart(reference.id);
-    if (!loaded?.chart.review) { this.host.setStatus("This chart needs contour, alignment, and layer review. Recreate it from the source chart before using it."); return; }
+    if (!loaded?.chart.review) { this.host.setStatus(t("customdata.chartNeedsReview")); return; }
     const project = this.host.project();
     // A charted lake offers no maximum-depth override, so one set before would
     // keep shaping the chart's gaps where nothing shows it. It goes with the switch.
     const waterDepthOverrides = { ...project.waterDepthOverrides };
     delete waterDepthOverrides[lakeKey];
     await this.host.updateFabrication({ userDepthCharts: { ...project.userDepthCharts, [lakeKey]: reference }, waterDepthOverrides });
-    this.host.setStatus("Depth chart in use · regenerate terrain to carve it");
+    this.host.setStatus(t("customdata.chartInUse"));
   }
 
   /** Forgets a lake's chart reference; the saved chart stays for another project. */

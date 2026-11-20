@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-11-18T21:39:17.259Z",
-  "sourceCommit": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
+  "capturedAt": "2026-11-20T00:21:54.537Z",
+  "sourceCommit": "46c9813d872cc1b2df385f50debda8b965539fb7",
   "origin": "http://localhost:5273",
   "method": "Real-data embedded studio captures; no fixtures. Artwork crops, resized to the Tips media band. Files replaced only after every capture completes.",
   "images": [
@@ -32,13 +32,13 @@
       "file": "export.webp",
       "width": 960,
       "height": 534,
-      "sha256": "d97e79dffeaa774e5972bd81b0c1a9a2509d77bd2d73832200845fadabd2c35f"
+      "sha256": "fdc02265c5ffd816259211560cc76c7b7081124fb5e2329e718cb7f091046aa7"
     },
     {
       "file": "processing.webp",
       "width": 960,
       "height": 534,
-      "sha256": "efec37a6b4b36822cad558e92d34ef40261a5cbb0051336b9a49beb9a7ea3995"
+      "sha256": "16df7df03a0798a39ecc63fbf829acde67e693d12dbfccb91b5341b8b8c79d5b"
     },
     {
       "file": "assembly.webp",

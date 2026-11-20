@@ -1,4 +1,5 @@
 import { AIRSPACE_STACK_LIMITS, DEFAULT_PLAQUE_SIZE_MM, PLAQUE_MAX_LINE_LENGTH, PLAQUE_MAX_LINES, PLAQUE_MAX_SIZE_MM, PLAQUE_MIN_SIZE_MM, type PlaqueV1, type TextFont, MAP_MARKER_SIZE_MM, MAP_MARKER_MIN_SIZE_MM, MAP_MARKER_MAX_SIZE_MM, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_DATA_POINTS, MAX_CUSTOM_LINE_POINTS, MAX_CUSTOM_LINES, MAX_MAP_MARKERS, type CustomLineFeatureV1, type GeoPoint, type MapMarkerV1, type MarkerIconV1, MAX_MARKER_ICONS, type ProjectConfigV1, GRAPHIC_MAX_SIZE_MM, GRAPHIC_MIN_SIZE_MM, MAX_CUSTOM_GRAPHICS, MAX_PLACED_GRAPHICS, type CustomGraphicV1, type PlacedGraphicV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import { clampLongitude, isSupportedCoordinate } from "$lib/domain/coordinates";
 
 /**
@@ -98,7 +99,7 @@ export function addMarkerIcon(project: Pick<ProjectConfigV1, "markers" | "marker
   const existing = project.markerIcons?.find((candidate) => sameShapes(candidate, icon) && (candidate.anchor ?? "center") === (icon.anchor ?? "center"));
   if (existing) return { patch: { markers: project.markers, markerIcons: project.markerIcons }, iconId: existing.id };
   if (!canAddMarkerIcon(project)) return undefined;
-  const name = storedName(icon.name) ?? "Icon";
+  const name = storedName(icon.name) ?? t("app.defaultIconName");
   return { patch: { markers: project.markers, markerIcons: [...project.markerIcons ?? [], { ...icon, name }] }, iconId: icon.id };
 }
 
@@ -158,7 +159,7 @@ export function addCustomGraphic(project: Pick<ProjectConfigV1, "customGraphics"
   const existing = project.customGraphics?.find((candidate) => JSON.stringify(candidate.shapes) === JSON.stringify(graphic.shapes));
   if (existing) return { patch: { customGraphics: project.customGraphics, placedGraphics: project.placedGraphics }, graphicId: existing.id };
   if (!canAddCustomGraphic(project)) return undefined;
-  const name = storedName(graphic.name) ?? "Graphic";
+  const name = storedName(graphic.name) ?? t("app.defaultGraphicName");
   return { patch: { customGraphics: [...project.customGraphics ?? [], { ...graphic, name }], placedGraphics: project.placedGraphics }, graphicId: graphic.id };
 }
 

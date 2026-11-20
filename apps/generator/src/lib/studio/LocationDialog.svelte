@@ -11,6 +11,7 @@
   import { searchPlaces, type PlaceResult } from "$lib/domain/geocode";
   import { clampLatitude, clampLongitude, isSupportedCoordinate, MAX_LATITUDE, MAX_LONGITUDE } from "$lib/domain/coordinates";
   import { loadLocationLakes } from "$lib/studio/lake-directory-cache";
+  import { t } from "$lib/i18n/i18n.svelte";
   const base = basePath();
 
   let { project, presets, onChoose, onCoordinates, onClose }: { project: ProjectConfigV1; presets: PlaceResult[]; onChoose: (place: PlaceResult) => void; onCoordinates: (lat: number, lon: number) => void; onClose: () => void } = $props();
@@ -33,6 +34,11 @@
   const currentLakePage = $derived(Math.min(lakePage, lakePageCount));
   const shownLakes = $derived(matchedLakes.slice((currentLakePage - 1) * lakePageSize, currentLakePage * lakePageSize));
   let lakeRequest = 0;
+  // Copy around a link: the message places the link, so translations can move it.
+  const LINK = "\u0000";
+  const aroundLink = (message: string): [string, string] => { const [before = "", after = ""] = message.split(LINK); return [before, after]; };
+  const lakeNote = $derived(aroundLink(t("place.lakeSearchNote", { link: LINK })));
+  const attribution = $derived(aroundLink(t("place.placeSearchBy", { provider: LINK })));
 
   async function loadLakes(): Promise<void> {
     // The shared directory load keeps running after close so the next open reuses it.
@@ -74,7 +80,7 @@
     if (locating) return;
     locationError = "";
     if (!navigator.geolocation) {
-      locationError = "Current location is unavailable in this browser. Enter coordinates instead.";
+      locationError = t("place.geolocationUnavailable");
       return;
     }
     locating = true;
@@ -84,7 +90,7 @@
       if (!isCurrent()) return;
       locating = false;
       if (!isSupportedCoordinate(coords.latitude, coords.longitude)) {
-        locationError = "Your location is outside the supported map area. Enter coordinates instead.";
+        locationError = t("place.geolocationOutside");
         return;
       }
       onCoordinates(coords.latitude, coords.longitude);
@@ -93,10 +99,10 @@
       if (!isCurrent()) return;
       locating = false;
       locationError = error.code === 1
-        ? "Location access was denied. Allow location access in your browser or enter coordinates."
+        ? t("place.geolocationDenied")
         : error.code === 3
-          ? "Finding your location timed out. Try again or enter coordinates."
-          : "Your location could not be determined. Try again or enter coordinates.";
+          ? t("place.geolocationTimeout")
+          : t("place.geolocationFailed");
     }, { timeout: 10000, maximumAge: 60000 });
   }
 
@@ -121,9 +127,9 @@
     placesLoading = true;
     const timeout = window.setTimeout(() => {
       void searchPlaces(term, controller.signal).then((items) => {
-        if (!controller.signal.aborted) { results = items; searchError = items.length ? "" : "No other places found."; }
+        if (!controller.signal.aborted) { results = items; searchError = items.length ? "" : t("place.noOtherPlaces"); }
       }).catch(() => {
-        if (!controller.signal.aborted) searchError = "Other place search is unavailable. You can still search surveyed lakes or enter coordinates.";
+        if (!controller.signal.aborted) searchError = t("place.placeSearchUnavailable");
       }).finally(() => { if (!controller.signal.aborted) placesLoading = false; });
     }, 300);
     return () => { window.clearTimeout(timeout); controller.abort(); };
@@ -131,67 +137,67 @@
 </script>
 
 <dialog bind:this={dialog} class="ldt-dialog ldt-dialog--lg search-modal" aria-labelledby="location-dialog-title" aria-describedby="location-dialog-description" onclose={onClose} onmousedown={closeFromBackdrop}>
-  <header class="ldt-dialog__header"><div><h2 id="location-dialog-title" class="ldt-dialog__title">Choose anywhere</h2><p id="location-dialog-description" class="ldt-dialog__description">Search for a mountain, lake, park, city, or address.</p></div><IconButton label="Close dialog" onclick={() => dialog.close()}>×</IconButton></header>
+  <header class="ldt-dialog__header"><div><h2 id="location-dialog-title" class="ldt-dialog__title">{t("place.chooseAnywhere")}</h2><p id="location-dialog-description" class="ldt-dialog__description">{t("place.chooseAnywhereDescription")}</p></div><IconButton label={t("place.closeDialog")} onclick={() => dialog.close()}>×</IconButton></header>
   <div class="ldt-dialog__body">
-    <label class="search-input"><Search size={19} /><Input autofocus aria-label="Search places" bind:value={query} oninput={() => lakePage = 1} placeholder="Lake, place or survey ID" boxed /></label>
+    <label class="search-input"><Search size={19} /><Input autofocus aria-label={t("place.searchPlaces")} bind:value={query} oninput={() => lakePage = 1} placeholder={t("place.searchPlaceholder")} boxed /></label>
     <div class="coordinate-row">
-      <Field label="Latitude">{#snippet children({ id })}<NumberField {id} label="Latitude" min={-MAX_LATITUDE} max={MAX_LATITUDE} step={0.0001} value={project.location.lat} boxed oninput={cancelLocationRequest} onValueChange={(value) => commitCoordinate(value, "lat")} />{/snippet}</Field>
-      <Field label="Longitude">{#snippet children({ id })}<NumberField {id} label="Longitude" min={-MAX_LONGITUDE} max={MAX_LONGITUDE} step={0.0001} value={project.location.lon} boxed oninput={cancelLocationRequest} onValueChange={(value) => commitCoordinate(value, "lon")} />{/snippet}</Field>
-      <IconButton label={locating ? "Locating…" : "Use current location"} title={locating ? "Finding your current location…" : "Use current location"} disabled={locating} onclick={useCurrentLocation}><LocateFixed size={18} /></IconButton>
-      <Button onclick={() => dialog.close()}>Use coordinates</Button>
+      <Field label={t("place.latitude")}>{#snippet children({ id })}<NumberField {id} label={t("place.latitude")} min={-MAX_LATITUDE} max={MAX_LATITUDE} step={0.0001} value={project.location.lat} boxed oninput={cancelLocationRequest} onValueChange={(value) => commitCoordinate(value, "lat")} />{/snippet}</Field>
+      <Field label={t("place.longitude")}>{#snippet children({ id })}<NumberField {id} label={t("place.longitude")} min={-MAX_LONGITUDE} max={MAX_LONGITUDE} step={0.0001} value={project.location.lon} boxed oninput={cancelLocationRequest} onValueChange={(value) => commitCoordinate(value, "lon")} />{/snippet}</Field>
+      <IconButton label={locating ? t("place.locating") : t("place.useCurrentLocation")} title={locating ? t("place.findingLocation") : t("place.useCurrentLocation")} disabled={locating} onclick={useCurrentLocation}><LocateFixed size={18} /></IconButton>
+      <Button onclick={() => dialog.close()}>{t("place.useCoordinates")}</Button>
     </div>
-    {#if locating}<p class="location-feedback" role="status">Finding your current location…</p>{/if}
+    {#if locating}<p class="location-feedback" role="status">{t("place.findingLocation")}</p>{/if}
     {#if locationError}<p class="location-feedback" role="alert">{locationError}</p>{/if}
     <section class="surveyed-lake-search" aria-labelledby="surveyed-lake-search-title" aria-busy={lakesLoading}>
-      <h3 id="surveyed-lake-search-title">Surveyed lakes</h3>
+      <h3 id="surveyed-lake-search-title">{t("place.surveyedLakes")}</h3>
       {#if lakesLoading}
-        <p role="status">Loading surveyed lakes…</p>
+        <p role="status">{t("place.loadingLakes")}</p>
       {:else if lakesFailed}
-        <p role="alert">The surveyed lake list could not load.</p><Button onclick={() => void loadLakes()}>Retry lake search</Button>
+        <p role="alert">{t("place.lakesFailed")}</p><Button onclick={() => void loadLakes()}>{t("place.retryLakes")}</Button>
       {:else}
-        <p class="lake-search-summary" tabindex="-1" role="status">{matchedLakes.length.toLocaleString("en-US")} {matchedLakes.length === 1 ? "lake or basin" : "lakes and basins"}{query.trim() ? ` matching “${query.trim()}”` : " available"}</p>
+        <p class="lake-search-summary" tabindex="-1" role="status">{query.trim() ? t("place.lakesMatching", { count: matchedLakes.length, query: query.trim() }) : t("place.lakesAvailable", { count: matchedLakes.length })}</p>
         <div class="search-results lake-search-results">
           {#each shownLakes as lake (lake.id)}
             <button class="location-option" data-lake-id={lake.id} onclick={() => chooseLake(lake)}>
               <span class="location-option__icon"><MapIcon size={17} /></span>
-              <span class="location-option__copy"><strong>{lake.name}</strong><small>{lake.region} · {lake.source.name} · Survey {lake.surveyId}</small></span>
+              <span class="location-option__copy"><strong data-i18n-skip>{lake.name}</strong><small>{t("place.lakeDetail", { region: lake.region, source: lake.source.name, surveyId: lake.surveyId })}</small></span>
             </button>
           {/each}
         </div>
         {#if lakePageCount > 1}
-          <nav class="lake-search-pagination" aria-label="Surveyed lake pages">
-            <Button disabled={currentLakePage === 1} onclick={() => changeLakePage(currentLakePage - 1)}>Previous lakes</Button>
-            <span>Page {currentLakePage} of {lakePageCount}</span>
-            <Button disabled={currentLakePage === lakePageCount} onclick={() => changeLakePage(currentLakePage + 1)}>Next lakes</Button>
+          <nav class="lake-search-pagination" aria-label={t("place.lakePages")}>
+            <Button disabled={currentLakePage === 1} onclick={() => changeLakePage(currentLakePage - 1)}>{t("place.previousLakes")}</Button>
+            <span>{t("place.pageOf", { page: currentLakePage, count: lakePageCount })}</span>
+            <Button disabled={currentLakePage === lakePageCount} onclick={() => changeLakePage(currentLakePage + 1)}>{t("place.nextLakes")}</Button>
           </nav>
         {/if}
-        <p class="lake-search-note">Search by name, region, source or survey ID. Depth coverage varies by lake. <a href={`${base}/guides/lake-depth-data`}>Browse the lake directory</a>.</p>
+        <p class="lake-search-note">{lakeNote[0]}<a href={`${base}/guides/lake-depth-data`}>{t("place.browseLakeDirectory")}</a>{lakeNote[1]}</p>
       {/if}
     </section>
     <div class="search-results">
-      {#if query.trim().length >= 2}<h3>Other places</h3>{/if}
+      {#if query.trim().length >= 2}<h3>{t("place.otherPlaces")}</h3>{/if}
       {#each otherPlaces as result (result.id)}
         <button class="location-option" onclick={() => onChoose(result)}>
           <span class="location-option__icon"><MapIcon size={17} /></span>
-          <span class="location-option__copy"><strong>{result.label.split(",")[0]}</strong><small>{result.label.split(",").slice(1).join(",")}</small></span>
+          <span class="location-option__copy" data-i18n-skip><strong>{result.label.split(",")[0]}</strong><small>{result.label.split(",").slice(1).join(",")}</small></span>
         </button>
       {/each}
-      {#if placesLoading}<p role="status">Searching other places…</p>{:else if searchError}<p role="status">{searchError}</p>{/if}
+      {#if placesLoading}<p role="status">{t("place.searchingOtherPlaces")}</p>{:else if searchError}<p role="status">{searchError}</p>{/if}
       {#if !query}
         <details class="preset-locations">
-          <summary>Example locations</summary>
+          <summary>{t("place.exampleLocations")}</summary>
           <div class="preset-grid">
             {#each presets as preset (preset.id)}
               <button class="location-option" onclick={() => onChoose(preset)}>
                 <span class="location-option__icon"><Mountain size={19} /></span>
-                <span class="location-option__copy"><strong>{preset.label.split(",")[0]}</strong><small>{preset.label.split(",").slice(1).join(",")}</small></span>
+                <span class="location-option__copy" data-i18n-skip><strong>{preset.label.split(",")[0]}</strong><small>{preset.label.split(",").slice(1).join(",")}</small></span>
               </button>
             {/each}
           </div>
         </details>
       {/if}
     </div>
-    <small class="provider-attribution">Place search by <a href="https://www.geoapify.com/" target="_blank" rel="noreferrer">Geoapify</a> · © OpenStreetMap contributors</small>
+    <small class="provider-attribution">{attribution[0]}<a href="https://www.geoapify.com/" target="_blank" rel="noreferrer" data-i18n-skip>Geoapify</a>{attribution[1]}</small>
   </div>
 </dialog>
 

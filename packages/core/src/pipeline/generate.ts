@@ -63,7 +63,7 @@ function dedupeMarkingIds(layers: LayerIR[], inserts: WaterInsertIR[] = []): voi
 const buildAirspace: NonNullable<ReturnType<typeof registeredAirspaceStage>> = (config, source, layers, ladder, clip, inserts, warnings, memo) => {
   const stage = registeredAirspaceStage();
   if (stage) return stage(config, source, layers, ladder, clip, inserts, warnings, memo);
-  warnings.push({ code: "AIRSPACE_NOT_LOADED", message: "Airspace in 3D is not built in this preview; open the project in the studio to see it." });
+  warnings.push({ code: "AIRSPACE_NOT_LOADED", message: "Airspace in 3D is not built in this preview; open the project in the studio to see it.", messageKey: "airspaceNotLoadedPreview" });
   return undefined;
 };
 
@@ -292,6 +292,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
   if (transportationLabels.size && !placedTransportationLabels) context.warnings.push({
     code: "LABEL_OMITTED",
     message: "Transportation labels do not fit the exposed material. Reduce Text size or Vertical exaggeration, or increase the artwork size.",
+    messageKey: "transportationLabelsOmitted",
   });
   placeAviationLabels(context, surfaceClips);
   placeLandLabels(context, surfaceClips);
