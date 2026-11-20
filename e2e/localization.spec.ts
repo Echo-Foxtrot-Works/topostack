@@ -131,5 +131,14 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
       return [...new Set(out)];
     });
     expect(overflow, `layout problems in ${locale}`).toEqual([]);
+    // The Export view's contents card wraps its longer lines instead of scrolling sideways.
+    const exportView = studio.locator(".mode-switch [role='radio']").last();
+    if (await exportView.isEnabled()) {
+      await exportView.click();
+      const manifest = studio.locator(".export-manifest");
+      if (await manifest.isVisible({ timeout: 30_000 }).catch(() => false)) {
+        expect(await manifest.evaluate((card) => card.scrollWidth - card.clientWidth), `export card scrolls sideways in ${locale}`).toBeLessThanOrEqual(1);
+      }
+    }
   });
 }

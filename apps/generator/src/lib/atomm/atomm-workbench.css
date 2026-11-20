@@ -993,7 +993,7 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .export-manifest .export-file-stem { min-width: 1ch; overflow: hidden; text-overflow: ellipsis; }
   .export-manifest .export-file-stem:empty { display: none; }
   .export-manifest .export-file-end { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .export-manifest small { flex: none; white-space: nowrap; }
+  .export-manifest li small { flex: none; white-space: nowrap; }
   .export-key { display: flex; align-items: center; gap: var(--space-50); margin: 0; padding-top: var(--space-100); border-top: 1px solid var(--color-stroke-divider); color: var(--color-text-secondary); }
   .export-key i { width: 12px; height: 2px; border-radius: 1px; }
   .export-key i + i, .export-key-score { margin-inline-start: var(--space-100); }
