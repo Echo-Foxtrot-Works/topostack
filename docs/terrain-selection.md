@@ -32,8 +32,14 @@ remains tied to the map zoom and each archive's limits.
 
 ## Coverage and failure behavior
 
-Bounding boxes and zoom limits are candidate filters. Only valid decoded pixels
-claim coverage. Higher-ranked valid pixels are never overwritten; missing tiles
+Bounding boxes and the archive's minZoom are candidate filters. A request finer
+than an archive's maxZoom reads the ancestor tiles at that zoom once each and
+upsamples them bilinearly; a corner the archive leaves transparent takes the
+base value, so a coarse grid feathers into the base terrain over one source cell.
+Ocean grids (`bathymetry-grid`) only replace pixels that both they and the base
+terrain put below sea level, and are never fetched for tiles whose base terrain
+is all above it: they deepen the sea but never move the coastline or lift land.
+Only valid decoded pixels claim coverage. Higher-ranked valid pixels are never overwritten; missing tiles
 and transparent pixels fall through. A malformed or unavailable archive is
 rejected atomically, leaving the next source and base terrain available. The base
 service is still required to load successfully before overlays are applied.
