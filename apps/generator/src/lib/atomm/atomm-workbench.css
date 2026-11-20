@@ -893,6 +893,12 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .swatch-options button, .line-presets button { min-height: 32px; padding: 6px 4px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
   .swatch-options svg, .line-presets svg { width: 24px; height: 24px; flex: none; }
   .line-presets small { display: none; }
+  /* Choice labels are one word in English but can be one long word elsewhere ("Сбалансированные",
+   * "Minimalistyczna"): let them hyphenate by the document language, and break if they still do not fit. */
+  .line-presets button, .swatch-options button { min-width: 0; }
+  :is(.line-presets, .swatch-options) button :is(span, b), .ldt-toggle-group__item { min-width: 0; max-width: 100%; hyphens: auto; overflow-wrap: anywhere; text-align: center; }
+  /* A help button in a parameter card wraps its longer translations instead of widening the rail. */
+  .gen-rail-params .lake-depth-help { max-width: 100%; height: auto; min-height: var(--control-sm); padding-block: 4px; white-space: normal; text-align: start; }
   .line-presets button, .swatch-options button { border: 1px solid transparent; }
   .line-presets button:hover, .swatch-options button:hover { background: var(--color-bg-hover); }
   .line-presets button[data-state="on"], .swatch-options button[data-state="on"] { background: var(--color-bg-default); color: var(--color-text-primary); border-color: var(--color-stroke-active); }

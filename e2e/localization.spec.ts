@@ -98,3 +98,38 @@ test("every string the Atomm embed shows goes through the message catalog", asyn
   await collect();
   expect([...leftovers].sort(), "English copy that bypasses t()").toEqual([]);
 });
+
+// Every platform language: the copy is that language, the document says so,
+// and the longest translations (German, Russian, Thai…) still fit the rails.
+const LOCALE_TAGS: Record<string, string> = { zh: "zh", "zh-hant": "zh-Hant", de: "de", es: "es", fr: "fr", it: "it", ja: "ja", ko: "ko", ru: "ru", uk: "uk", sl: "sl", th: "th", pl: "pl", cs: "cs", id: "id", vi: "vi", "pt-BR": "pt-BR" };
+
+for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
+  test(`the embed runs in ${locale} and fits its rails`, async ({ page }) => {
+    test.setTimeout(120_000);
+    const studio = await openEmbed(page, locale);
+    await expect(studio.locator("html")).toHaveAttribute("lang", tag);
+    await expandEverything(studio);
+    // The parameter rail's section titles are translated, not English.
+    const titles = await studio.locator(".gen-params-content .section-disclosure").allInnerTexts();
+    expect(titles.length).toBeGreaterThan(4);
+    // Some titles are spelled the same in English ("Aviation", French "Fabrication"); most must not be.
+    const english = ["Cut size", "Terrain layers", "Map features", "Water", "Aviation (US)", "Labels and marks", "Fabrication"];
+    expect(titles.filter((title) => english.includes(title.trim())).length, `English section titles in ${locale}: ${titles.join(" | ")}`).toBeLessThanOrEqual(1);
+    // Nothing spills sideways out of either 320 px rail or out of a control row.
+    const overflow = await studio.locator("body").evaluate(() => {
+      const out: string[] = [];
+      for (const rail of document.querySelectorAll<HTMLElement>(".gen-rail-lead, .gen-rail-params")) {
+        if (rail.scrollWidth > rail.clientWidth + 1) out.push(`${rail.className} scrolls sideways (${rail.scrollWidth} > ${rail.clientWidth})`);
+        const box = rail.getBoundingClientRect();
+        for (const element of rail.querySelectorAll<HTMLElement>("button, label, input, select, .field-row, .atomm-switch-row, .ldt-toggle-group__item")) {
+          const rect = element.getBoundingClientRect();
+          if (!rect.width || element.closest("[hidden]")) continue;
+          if (rect.right > box.right + 1 || rect.left < box.left - 1) out.push(`${element.textContent?.trim().slice(0, 40) || element.getAttribute("aria-label")} overflows its rail`);
+          if (element.scrollWidth > element.clientWidth + 2 && getComputedStyle(element).overflowX === "visible" && element.matches("button, .ldt-toggle-group__item")) out.push(`${element.textContent?.trim().slice(0, 40)} text overflows its control`);
+        }
+      }
+      return [...new Set(out)];
+    });
+    expect(overflow, `layout problems in ${locale}`).toEqual([]);
+  });
+}
