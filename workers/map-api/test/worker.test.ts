@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv, exports } from "cloudflare:workers";
 import mapWorker from "../src/index";
 import { isAllowedOrigin } from "../src/http";
-import { parseRangeHeader } from "../src/routes/archive";
+import { archiveServed, ARCHIVE_ROUTES, configureArchiveEnvironment, parseRangeHeader, servedBathymetryArchives, servedTerrainArchives, terrainArchives } from "../src/routes/archive";
 import { geocodeLimit, isGeocoderConfigured, normalizeGeoapify } from "../src/routes/geocode";
 import { validTile } from "../src/routes/terrain";
 import { resetArchiveHeadCache } from "../src/archive-head";
@@ -476,6 +476,24 @@ describe.each(["noaa-great-lakes-v1", "usgs-crater-lake-v1", "usgs-lake-tahoe-v1
     expect((await exports.default.fetch(url, { headers: origin })).status).toBe(400);
     expect((await exports.default.fetch(url, { method: "HEAD", headers: origin })).headers.get("content-length")).toBe("4");
     await workerEnv.VECTOR_DATA.delete(key);
+  });
+});
+
+describe("development-only data", () => {
+  afterEach(() => configureArchiveEnvironment(workerEnv.ENVIRONMENT));
+  const pending = { key: "terrain-sources/pending-v1.pmtiles", label: "High-resolution terrain", source: { availability: "development" as const } };
+  it("serves a source awaiting approval only from the development deployment", () => {
+    expect(archiveServed(pending, "development")).toBe(true);
+    expect(archiveServed(pending, "production")).toBe(false);
+    expect(archiveServed({ ...pending, source: { availability: "all" } }, "production")).toBe(true);
+    expect(archiveServed({ key: "osm/current.pmtiles", label: "OSM" }, "production")).toBe(true);
+  });
+  it("keeps every source available to all on production routes and manifests", () => {
+    const routed = [...ARCHIVE_ROUTES.values()].filter((route) => route.source);
+    expect(routed.length).toBe(terrainArchives.length + servedBathymetryArchives("development").length);
+    configureArchiveEnvironment("production");
+    expect(servedTerrainArchives().map(({ source }) => source.id)).toEqual(terrainArchives.filter(({ source }) => source.availability === "all").map(({ source }) => source.id));
+    expect(servedBathymetryArchives().every(({ source }) => source.availability === "all")).toBe(true);
   });
 });
 

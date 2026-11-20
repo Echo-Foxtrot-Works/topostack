@@ -8,7 +8,7 @@ import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
 import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
-import { ARCHIVE_ROUTES, aviationSources, bathymetryArchives, type ArchiveRoute, isArchiveMetadataRequest, landsSources, pmtilesResponse, terrainArchives } from "./routes/archive";
+import { ARCHIVE_ROUTES, archiveServed, aviationSources, configureArchiveEnvironment, type ArchiveRoute, isArchiveMetadataRequest, landsSources, pmtilesResponse, servedBathymetryArchives, servedTerrainArchives } from "./routes/archive";
 import { API_CATALOG_PATH, apiCatalogResponse, ARD_PATHS, ardResponse, SKILL_PATH, skillResponse, SKILLS_INDEX_PATH, skillsIndexResponse } from "./routes/discovery";
 import { feedbackResponse } from "./routes/feedback";
 import { geocodeResponse } from "./routes/geocode";
@@ -113,7 +113,7 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/ready", limited("root", (_request, env) => readinessResponse(env))],
   ["/v1/upstream-health", limited("upstream-health", (_request, env) => upstreamHealth(env))],
   ["/v1/manifest", limited("manifest", (_request, env) => json(
-    buildManifest(env.DATASET_VERSION, terrainArchives, bathymetryArchives, aviationSources, landsSources),
+    buildManifest(env.DATASET_VERSION, servedTerrainArchives(env.ENVIRONMENT), servedBathymetryArchives(env.ENVIRONMENT), aviationSources, landsSources),
     { headers: { "cache-control": PUBLIC_HOUR_CACHE } },
   ))],
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],
@@ -144,7 +144,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const exact = EXACT_ROUTES.get(url.pathname);
   if (exact) return exact(request, env, ctx, url);
   const archive = ARCHIVE_ROUTES.get(url.pathname);
-  if (archive) return archiveResponse(request, env, ctx, archive);
+  // Unserved archives answer exactly like unknown paths, so production never reveals them.
+  if (archive && archiveServed(archive, env.ENVIRONMENT)) return archiveResponse(request, env, ctx, archive);
   if (OUTLINE_PATH.test(url.pathname)) return limited("lake-outlines", outlineResponse)(request, env, ctx, url);
   if (PREVIEW_PATH.test(url.pathname)) return limited("lake-previews", previewResponse)(request, env, ctx, url);
   const terrainMatch = TERRAIN_TILE_PATH.exec(url.pathname);
@@ -169,6 +170,7 @@ export default {
     await probeUpstreams(env, ctx);
   },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    configureArchiveEnvironment(env.ENVIRONMENT);
     const url = new URL(request.url);
     // Site pages are static assets with their own headers; they skip the API's
     // routing, budgets and CORS. If negotiation fails, the page is still served.

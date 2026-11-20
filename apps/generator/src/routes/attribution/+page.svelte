@@ -5,6 +5,8 @@
   import { REPOSITORY_URL } from "$lib/site/seo";
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { sources as terrainCatalogSources } from "../../../../../scripts/data/terrain-sources.json";
+  import { validateTerrainCatalog } from "@topostack/data-contracts/source-catalog";
+  import { servedSources } from "$lib/domain/data-environment";
   import aviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
   import landsSources from "../../../../../scripts/data/public-lands-sources.json";
   import type { PageData } from "./$types";
@@ -21,7 +23,7 @@
   };
   const terrainContributors = MAP_DATA_ATTRIBUTION.filter((source) => !uses[source.name]);
   // Several catalog entries can come from one published dataset; credit each once.
-  const terrainSources = terrainCatalogSources.filter((source, index, all) => all.findIndex((other) => other.name === source.name && other.license === source.license) === index);
+  const terrainSources = servedSources(validateTerrainCatalog({ sources: terrainCatalogSources }).sources).filter((source, index, all) => all.findIndex((other) => other.name === source.name && other.license === source.license) === index);
   const sections = [
     { id: "terrain", title: "Terrain and elevation" },
     { id: "features", title: "Roads, trails, water, and boundaries" },

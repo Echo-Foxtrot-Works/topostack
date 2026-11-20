@@ -48,3 +48,21 @@ test("accepts the migrated registry and rejects manifest or active snapshot edit
   assert.throws(() => validateTerrainRegistrySnapshot({ ...catalog, sources: [] }, manifest), /mismatch/);
   assert.throws(() => validateTerrainRegistrySnapshot(catalog, Buffer.from("{}")), /mismatch/);
 });
+
+test("refuses to provision a development-only source to production", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { spawnSync } = await import("node:child_process");
+  const directory = mkdtempSync(join(tmpdir(), "terrain-gate-"));
+  const catalog = join(directory, "terrain-sources.json");
+  const pending = { ...source, id: "pending-terrain-v1", availability: "development", approval: { required: true } };
+  writeFileSync(catalog, JSON.stringify({ sources: [pending] }));
+  const script = new URL("../provision/provision-lake-data.mjs", import.meta.url).pathname;
+  const run = (...flags) => spawnSync(process.execPath, [script, join(directory, "missing.pmtiles"), `--terrain-catalog=${catalog}`, "--source=pending-terrain-v1", ...flags], { encoding: "utf8", env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: "", CLOUDFLARE_API_TOKEN: "" } });
+  const production = run("--provision", "--prod", "--skip-digest-check");
+  assert.notEqual(production.status, 0);
+  assert.match(production.stderr, /development only until its publisher's approval is recorded; refusing --prod/);
+  // The development bucket gets past the gate (and fails later only for missing credentials).
+  assert.doesNotMatch(run("--provision", "--skip-digest-check").stderr, /refusing --prod/);
+});

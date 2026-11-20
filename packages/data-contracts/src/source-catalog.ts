@@ -1,5 +1,20 @@
 import { isMercatorBoundsTuple } from "./geo-bounds.ts";
 
+/**
+ * Who may be served a registered source. "development" keeps a source off
+ * production and Atomm builds and the production Worker, for data whose
+ * licence still waits on an approval (docs/terrain-selection.md).
+ */
+export const SOURCE_AVAILABILITY = ["all", "development"] as const;
+export type SourceAvailability = typeof SOURCE_AVAILABILITY[number];
+
+/** A publisher's permission a source needs before it may reach every visitor. */
+export interface SourceApproval {
+  required: true;
+  /** The approval number once granted; required before availability "all". */
+  reference?: string;
+}
+
 /** Contract shared by the browser, gateway, and offline survey provisioning. */
 export interface SurveySource {
   id: string;
@@ -9,6 +24,24 @@ export interface SurveySource {
   bounds: [number, number, number, number];
   encoding: "depth-terrarium-v1" | "elevation-terrarium-v1";
   maxZoom: number;
+  availability: SourceAvailability;
+  approval?: SourceApproval;
+}
+
+/** True when an environment's visitors may be served `source`. Unknown environments see only "all". */
+export function sourceAvailableIn(source: Pick<SurveySource, "availability">, environment: string | undefined): boolean {
+  return source.availability === "all" || environment === "development";
+}
+
+function approvalValue(id: string, value: unknown, availability: SourceAvailability): SourceApproval | undefined {
+  if (value === undefined) return undefined;
+  const approval = value as Record<string, unknown> | null;
+  if (!approval || typeof approval !== "object" || approval.required !== true ||
+      (approval.reference !== undefined && (typeof approval.reference !== "string" || !approval.reference.trim()))) {
+    throw new Error(`Invalid source approval: ${id}`);
+  }
+  if (availability === "all" && approval.reference === undefined) throw new Error(`Source needs an approval reference before it is available to all: ${id}`);
+  return { required: true, ...(approval.reference === undefined ? {} : { reference: approval.reference as string }) };
 }
 
 /** Fail at startup/build time rather than silently selecting the wrong decoder. */
@@ -37,15 +70,34 @@ export function validateSurveyCatalog(value: unknown): { sources: SurveySource[]
     if (encoding !== "depth-terrarium-v1" && encoding !== "elevation-terrarium-v1") throw new Error(`Unsupported survey encoding: ${id}`);
     const maxZoom = source.maxZoom;
     if (typeof maxZoom !== "number" || !Number.isInteger(maxZoom) || maxZoom < 0 || maxZoom > 15) throw new Error(`Invalid survey maxZoom: ${id}`);
-    return { id, name: text("name"), url, license: text("license"), bounds: [...bounds], encoding, maxZoom };
+    const availability = source.availability ?? "all";
+    if (!SOURCE_AVAILABILITY.includes(availability as SourceAvailability)) throw new Error(`Invalid source availability: ${id}`);
+    const approval = approvalValue(id, source.approval, availability as SourceAvailability);
+    return { id, name: text("name"), url, license: text("license"), bounds: [...bounds], encoding, maxZoom, availability: availability as SourceAvailability, ...(approval ? { approval } : {}) };
   });
   return { sources };
 }
 
+/**
+ * Height systems a terrain archive may carry. All are orthometric heights in
+ * metres near mean sea level; their offsets (under a metre) are far below what
+ * a laser-cut layer resolves, so they mix without transformation:
+ * CGVD2013 (Canada), JP-TP (Japan's Tokyo Peil heights, JGD2011 and the April
+ * 2025 JGD2024 revision alike) and MSL (GEBCO's ocean depths).
+ */
+export const TERRAIN_VERTICAL_DATUMS = ["CGVD2013", "JP-TP", "MSL"] as const;
+export const TERRAIN_SOURCE_KINDS = ["lidar-dtm", "national-dtm", "bathymetry-grid"] as const;
+
+/** Valid samples per kind: land models stay in land range; ocean grids reach the deepest trench. */
+export function terrainValueRange(kind: TerrainSource["kind"]): readonly [number, number] {
+  return kind === "bathymetry-grid" ? [-11000, 10] : [-500, 9000];
+}
+
 export interface TerrainSource extends SurveySource {
   minZoom: number;
-  verticalDatum: "CGVD2013";
-  kind: "lidar-dtm" | "national-dtm";
+  verticalDatum: typeof TERRAIN_VERTICAL_DATUMS[number];
+  /** "bathymetry-grid" sources only fill ocean the base terrain already has below sea level. */
+  kind: typeof TERRAIN_SOURCE_KINDS[number];
   priority: number;
   nativeResolutionM: number;
   acquisitionYear?: number;
@@ -57,15 +109,15 @@ export function validateTerrainCatalog(value: unknown): { sources: TerrainSource
   const raw = (value as { sources: Record<string, unknown>[] }).sources;
   return { sources: validated.sources.map((source, index) => {
     const item = raw[index]!;
-    if (source.encoding !== "elevation-terrarium-v1" || item.verticalDatum !== "CGVD2013" ||
+    if (source.encoding !== "elevation-terrarium-v1" || !(TERRAIN_VERTICAL_DATUMS as readonly unknown[]).includes(item.verticalDatum) ||
         typeof item.minZoom !== "number" || !Number.isInteger(item.minZoom) || item.minZoom < 0 || item.minZoom > source.maxZoom ||
-        !["lidar-dtm", "national-dtm"].includes(String(item.kind)) ||
+        !(TERRAIN_SOURCE_KINDS as readonly unknown[]).includes(item.kind) ||
         typeof item.priority !== "number" || !Number.isInteger(item.priority) || item.priority < 1 || item.priority > 1000 ||
         typeof item.nativeResolutionM !== "number" || !Number.isFinite(item.nativeResolutionM) || item.nativeResolutionM <= 0 || item.nativeResolutionM > 1000 ||
         (item.acquisitionYear !== undefined && (typeof item.acquisitionYear !== "number" || !Number.isInteger(item.acquisitionYear) || item.acquisitionYear < 1900 || item.acquisitionYear > 2100))) {
       throw new Error(`Invalid terrain source: ${source.id}`);
     }
-    return { ...source, minZoom: item.minZoom, verticalDatum: item.verticalDatum, kind: item.kind as TerrainSource["kind"], priority: item.priority, nativeResolutionM: item.nativeResolutionM, ...(item.acquisitionYear === undefined ? {} : { acquisitionYear: item.acquisitionYear as number }) };
+    return { ...source, minZoom: item.minZoom, verticalDatum: item.verticalDatum as TerrainSource["verticalDatum"], kind: item.kind as TerrainSource["kind"], priority: item.priority, nativeResolutionM: item.nativeResolutionM, ...(item.acquisitionYear === undefined ? {} : { acquisitionYear: item.acquisitionYear as number }) };
   }) };
 }
 

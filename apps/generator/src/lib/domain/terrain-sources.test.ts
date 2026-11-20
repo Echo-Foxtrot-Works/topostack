@@ -186,3 +186,18 @@ it("rejects changed archive extent before reading any elevation tiles", async ()
   expect(original.values[0]).toBe(100);
   expect(mocks.getZxy).not.toHaveBeenCalled();
 });
+
+it("accepts trench depths only from ocean grids", async () => {
+  const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+  const land = validateTerrainCatalog(terrainCatalog).sources[0]!;
+  const ocean = { ...land, id: "ocean-test-v1", kind: "bathymetry-grid" as const, verticalDatum: "MSL" as const };
+  const trench = elevationPng(() => -8000);
+  mocks.getZxy.mockResolvedValue({ data: trench });
+  for (const [source, applied] of [[land, false], [ocean, true]] as const) {
+    mocks.getMetadata.mockResolvedValue({ topostack_dataset: source.id, topostack_encoding: source.encoding, topostack_vertical_datum: source.verticalDatum });
+    const target = tile();
+    const result = await applyPreferredTerrain("", bounds, [target], undefined, [source]);
+    expect(result.unavailable).toBe(!applied);
+    expect(target.values[0]).toBe(applied ? -8000 : 100);
+  }
+});

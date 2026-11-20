@@ -1,12 +1,13 @@
 import type { GeoBounds, SourceAttribution } from "@topostack/core";
 import { sources } from "../../../../../scripts/data/terrain-sources.json";
-import { validateTerrainCatalog, validateTerrainArchiveBounds, rankTerrainSources, type TerrainSource } from "@topostack/data-contracts/source-catalog";
+import { validateTerrainCatalog, validateTerrainArchiveBounds, rankTerrainSources, terrainValueRange, type TerrainSource } from "@topostack/data-contracts/source-catalog";
+import { servedSources } from "$lib/domain/data-environment";
 import { createArchive } from "$lib/domain/archive";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
 import { mapTiles } from "$lib/domain/tile-requests";
 import { latToWorldY, lonToWorldX, TILE_SIZE, worldXToLon, worldYToLat } from "$lib/domain/tile-math";
 
-const registeredTerrainSources = validateTerrainCatalog({ sources }).sources;
+const registeredTerrainSources = servedSources(validateTerrainCatalog({ sources }).sources);
 interface TerrainTile { z: number; x: number; y: number; values: Float32Array }
 
 /**
@@ -60,13 +61,14 @@ export async function applyPreferredTerrain(apiBase: string, bounds: GeoBounds, 
       validateTerrainArchiveBounds([header.minLon, header.minLat, header.maxLon, header.maxLat], source.bounds);
       const metadata = await archive.getMetadata() as Record<string, unknown>;
       if (metadata.topostack_dataset !== source.id || metadata.topostack_encoding !== source.encoding || metadata.topostack_vertical_datum !== source.verticalDatum) throw new Error("Invalid terrain archive metadata.");
+      const [lowest, highest] = terrainValueRange(source.kind);
       const preferred = await mapTiles(selected, async (tile, signal) => {
         const result = await archive.getZxy(tile.z, tile.x, tile.y, signal);
         signal.throwIfAborted();
         if (!result) return undefined;
         const values = decodeTerrainPng(new Uint8Array(result.data), true);
         for (const value of values) {
-          if (!Number.isNaN(value) && (!Number.isFinite(value) || value < -500 || value > 9000)) throw new Error("Invalid terrain elevation.");
+          if (!Number.isNaN(value) && (!Number.isFinite(value) || value < lowest || value > highest)) throw new Error("Invalid terrain elevation.");
         }
         return values;
       }, signal);
