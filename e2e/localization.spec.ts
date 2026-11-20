@@ -130,6 +130,11 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
       }
       return [...new Set(out)];
     });
+    // The view switch and the unit switch keep each label whole on one line.
+    const switches = await studio.locator("body").evaluate(() => [...document.querySelectorAll<HTMLElement>(".mode-switch .ldt-toggle-group__item, .unit-switch .ldt-toggle-group__item")]
+      .filter((item) => item.getBoundingClientRect().width && (item.scrollWidth > item.clientWidth + 1 || item.getBoundingClientRect().height > 30))
+      .map((item) => `${item.textContent?.trim()} does not fit its switch segment`));
+    overflow.push(...switches);
     expect(overflow, `layout problems in ${locale}`).toEqual([]);
     // The Export view's contents card wraps its longer lines instead of scrolling sideways.
     const exportView = studio.locator(".mode-switch [role='radio']").last();
@@ -142,3 +147,29 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
     }
   });
 }
+
+test("English segment labels stay on one line in the rails", async ({ page }) => {
+  test.setTimeout(120_000);
+  const studio = await openEmbed(page, "en");
+  await expandEverything(studio);
+  await studio.locator(".gen-params-content").evaluate((content) => content.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not(:checked):not(:disabled)').forEach((box) => box.click()));
+  await page.waitForTimeout(1500);
+  await expandEverything(studio);
+  // Wrapping is for translations that cannot fit; English labels ("Imperial", "Dotted") never need it.
+  const wrapped = await studio.locator("body").evaluate(() => [...document.querySelectorAll<HTMLElement>(".gen-rail-lead .ldt-toggle-group__item, .gen-rail-params .ldt-toggle-group__item")]
+    .filter((item) => {
+      if (!item.getBoundingClientRect().width) return false;
+      // A label on one line yields one line box per text node; a wrapped one yields more.
+      const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+        if (lines.size > 1) return true;
+      }
+      return false;
+    })
+    .map((item) => item.textContent?.trim()));
+  expect(wrapped).toEqual([]);
+});

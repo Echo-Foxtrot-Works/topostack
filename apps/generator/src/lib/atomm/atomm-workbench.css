@@ -896,11 +896,14 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   /* Choice labels are one word in English but can be one long word elsewhere ("Сбалансированные",
    * "Minimalistyczna"): let them hyphenate by the document language, and break if they still do not fit. */
   .line-presets button, .swatch-options button { min-width: 0; }
-  :is(.line-presets, .swatch-options) button :is(span, b), .ldt-toggle-group__item { min-width: 0; max-width: 100%; hyphens: auto; overflow-wrap: anywhere; text-align: center; }
+  /* break-word, not anywhere: a word only breaks when it cannot fit at all, so short labels keep their natural width. */
+  :is(.line-presets, .swatch-options) button :is(span, b), .ldt-toggle-group__item { min-width: 0; max-width: 100%; hyphens: auto; overflow-wrap: break-word; text-align: center; }
   /* In the rails a segment shares its row equally and grows a line taller only when its label does not
    * fit (a long word in a wider fallback font), instead of clipping it. The view switch keeps one line. */
   :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group { height: auto; }
-  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group__item { flex: 1 1 0; height: auto; padding-inline: 6px; white-space: normal; line-height: 14px; }
+  /* Full-width rows split their width equally; a label that still cannot fit (German "Durchgehend" in a
+   * wider fallback font) breaks as a last resort rather than overrunning. Compact switches are excluded. */
+  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group:not(.unit-switch, .mode-switch) .ldt-toggle-group__item { flex: 1 1 0; height: auto; padding-inline: 6px; white-space: normal; line-height: 14px; overflow-wrap: anywhere; }
   /* A help button in a parameter card wraps its longer translations instead of widening the rail. */
   .gen-rail-params .lake-depth-help { max-width: 100%; height: auto; min-height: var(--control-sm); padding-block: 4px; white-space: normal; text-align: start; }
   .line-presets button, .swatch-options button { border: 1px solid transparent; }
@@ -1016,6 +1019,9 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .gen-canvas { container: atomm-canvas / inline-size; min-width: 0; }
   .preview-toolbar { inset-inline: 0; }
   .mode-switch .ldt-toggle-group__item { flex-shrink: 0; }
+  /* The view and unit switches size each segment to its own label on one line: "Export" fits 64px,
+   * "エクスポート" or "Imperial" in a narrower basis did not, and overran or split mid-word. */
+  :is(.mode-switch, .unit-switch) .ldt-toggle-group__item { flex: 1 0 auto; white-space: nowrap; }
   .atomm-edit-map { width: 100%; margin-top: var(--space-100); }
   .atomm-font-picker { margin: 0; }
   .atomm-font-picker > small { display: block; margin: 0 var(--gutter) var(--space-100); }
