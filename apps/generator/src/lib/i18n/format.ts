@@ -85,7 +85,7 @@ export function formatNumber(value: number, locale: string, options: Intl.Number
   return format.format(value);
 }
 
-export function formatList(values: readonly string[], locale: string): string {
+function formatList(values: readonly string[], locale: string): string {
   let format = listFormats.get(locale);
   if (!format) listFormats.set(locale, format = new Intl.ListFormat(locale, { style: "long", type: "conjunction" }));
   return format.format(values);
