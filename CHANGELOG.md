@@ -4,6 +4,12 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.13.0 (2026-11-20)
+
+### New
+
+- **TopoStack in Atomm speaks your language**: Inside Atomm, TopoStack now follows the platform's language: Simplified and Traditional Chinese, German, Spanish, French, Italian, Japanese, Korean, Russian, Ukrainian, Slovenian, Thai, Polish, Czech, Indonesian, Vietnamese and Brazilian Portuguese, as well as English. Every setting, hint, warning and export message is translated, and numbers use your language's format. The website stays in English, and downloaded files are still in English. ([#294](https://github.com/Echo-Foxtrot-Works/topostack/pull/294))
+
 ## 0.12.2 (2026-11-19)
 
 ### Fixed

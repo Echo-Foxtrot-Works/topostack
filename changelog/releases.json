@@ -2,6 +2,18 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.13.0",
+      "date": "2026-11-20",
+      "entries": [
+        {
+          "type": "feature",
+          "title": "TopoStack in Atomm speaks your language",
+          "body": "Inside Atomm, TopoStack now follows the platform's language: Simplified and Traditional Chinese, German, Spanish, French, Italian, Japanese, Korean, Russian, Ukrainian, Slovenian, Thai, Polish, Czech, Indonesian, Vietnamese and Brazilian Portuguese, as well as English. Every setting, hint, warning and export message is translated, and numbers use your language's format. The website stays in English, and downloaded files are still in English.",
+          "pr": 294
+        }
+      ]
+    },
+    {
       "version": "0.12.2",
       "date": "2026-11-19",
       "entries": [
