@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 8,
+  "capturedAt": "2026-11-18T23:56:55.508Z",
+  "reusedRenders": false,
+  "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+  "sourceDiffSha256": "1f202bebd2f7505be6e3a79431fb4d35964b2f304c0fcec8ef1debe66398fb36",
+  "developmentBase": "5bce26f7098e926bc4f4c2241a2573ece28d6ebe",
+  "version": "0.11.1",
+  "origin": "http://localhost:5273",
+  "projectFile": "media-projects-v10.json",
+  "method": "Embedded studio with live terrain and survey data, through an SDK stand-in. Models are the studio's own Three.js meshes and materials, rendered twice (over white and over black) so their alpha can be recovered; only the camera and the key light's angle and colour are set for capture. Backdrops are each card's flat-engraving SVG from the same studio, restyled as faint lines. Interface images are unedited screenshots of the embedded studio at 2x. Cards are composed in HTML; no AI imagery, photo compositing or fabricated interface. Historical media remains on disk and is excluded from this upload set.",
+  "surveyResponses": [
+    "https://topostack.app/v1/bathymetry/usgs-crater-lake-v1.pmtiles"
+  ],
+  "attribution": [
+    {
+      "name": "Mapzen Terrain Tiles",
+      "url": "https://registry.opendata.aws/terrain-tiles/",
+      "license": "Composite terrain dataset; source-specific notices follow"
+    },
+    {
+      "name": "ArcticDEM",
+      "url": "https://www.pgc.umn.edu/data/arcticdem/",
+      "license": "Created from DigitalGlobe imagery and funded under NSF awards 1043681, 1559691, and 1542736"
+    },
+    {
+      "name": "Geoscience Australia",
+      "url": "https://www.ga.gov.au/",
+      "license": "© Commonwealth of Australia (Geoscience Australia) 2017"
+    },
+    {
+      "name": "Open Data Austria",
+      "url": "https://www.data.gv.at/",
+      "license": "© offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich"
+    },
+    {
+      "name": "Government of Canada",
+      "url": "https://open.canada.ca/",
+      "license": "Contains information licensed under the Open Government Licence – Canada"
+    },
+    {
+      "name": "EU-DEM",
+      "url": "https://land.copernicus.eu/",
+      "license": "Produced using Copernicus data and information funded by the European Union"
+    },
+    {
+      "name": "NOAA ETOPO1",
+      "url": "https://www.ncei.noaa.gov/products/etopo-global-relief-model",
+      "license": "Terrain data courtesy of NOAA/NCEI"
+    },
+    {
+      "name": "INEGI",
+      "url": "https://www.inegi.org.mx/",
+      "license": "Source: INEGI, Continental relief, 2016"
+    },
+    {
+      "name": "Land Information New Zealand",
+      "url": "https://www.linz.govt.nz/",
+      "license": "Copyright 2011 Crown copyright © LINZ and the New Zealand Government"
+    },
+    {
+      "name": "Kartverket",
+      "url": "https://www.kartverket.no/",
+      "license": "© Kartverket"
+    },
+    {
+      "name": "UK Environment Agency",
+      "url": "https://www.gov.uk/government/organisations/environment-agency",
+      "license": "© Environment Agency copyright and/or database right 2015"
+    },
+    {
+      "name": "U.S. Geological Survey",
+      "url": "https://www.usgs.gov/",
+      "license": "3DEP, GMTED2010, and SRTM terrain data courtesy of the U.S. Geological Survey"
+    },
+    {
+      "name": "HydroLAKES v1.0",
+      "url": "https://www.hydrosheds.org/products/hydrolakes",
+      "license": "CC BY 4.0 — Messager, M.L., Lehner, B., Grill, G., Nedeva, I., Schmitt, O. (2016)"
+    },
+    {
+      "name": "GLOBathy",
+      "url": "https://doi.org/10.1038/s41597-022-01132-9",
+      "license": "CC0 1.0 — Khazaei, B., Read, L.K., Casali, M., Sampson, K.M., Yates, D.N. (2022)"
+    },
+    {
+      "name": "Protomaps Basemap 20260905",
+      "url": "https://protomaps.com",
+      "license": "ODbL Produced Work based on OpenStreetMap data"
+    },
+    {
+      "name": "OpenStreetMap contributors",
+      "url": "https://www.openstreetmap.org/copyright",
+      "license": "ODbL"
+    },
+    {
+      "name": "USGS Crater Lake multibeam bathymetry",
+      "url": "https://pubs.usgs.gov/dds/dds-72/",
+      "license": "Public domain; acknowledge source."
+    },
+    {
+      "name": "USGS Protected Areas Database of the United States (PAD-US) 4.1",
+      "url": "https://doi.org/10.5066/P96WBCHS",
+      "license": "Public domain (U.S. Government work). U.S. Geological Survey Gap Analysis Project, 2025, PAD-US 4.1."
+    },
+    {
+      "name": "FAA Aeronautical Information Services, NASR cycle 2026-10-01",
+      "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/",
+      "license": "Public domain (U.S. Government work). FAA Aeronautical Information Services; not for navigation."
+    }
+  ],
+  "media": [
+    {
+      "file": "assets/topostack-cover-v10.png",
+      "bytes": 6259164,
+      "sha256": "d30611860f972fb94e4efbcd0e539f6f240d92027a65d7e68de0a4e1faf157ec",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Crater Lake",
+      "subtitle": "Cover: software render on its own engraving artwork",
+      "place": "Crater Lake"
+    },
+    {
+      "file": "assets/topostack-gallery-01-places-v10.png",
+      "bytes": 5897802,
+      "sha256": "5fc7e070b7cb3543406691e2e0bf8d051cc3ee99a554fbf3a0cea3d2c387ba58",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Any place on Earth.",
+      "places": [
+        "Crater Lake",
+        "Grand Canyon",
+        "Mount Rainier",
+        "Grand Teton",
+        "Mount Fuji",
+        "Matterhorn"
+      ]
+    },
+    {
+      "file": "assets/topostack-gallery-02-layers-v10.png",
+      "bytes": 4355525,
+      "sha256": "a121cc15ba8fe860d120a84c49a6a1dfceef6c3a1558c5f0222f203c25848aaf",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Built layer by layer."
+    },
+    {
+      "file": "assets/topostack-gallery-03-relief-engraving-v10.png",
+      "bytes": 3637389,
+      "sha256": "c348f179367c7441367fd22fa56c4365ec0eef8fa9be3749dd7911bfd5ba9e85",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Relief or engraving."
+    },
+    {
+      "file": "assets/topostack-gallery-04-acrylic-v10.png",
+      "bytes": 5277871,
+      "sha256": "e3edfd51b3aa961a07cbca09c5c4b66647e14470d1572d73dd9840c173f76105",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Cut lakes from acrylic."
+    },
+    {
+      "file": "assets/topostack-gallery-05-public-lands-v10.png",
+      "bytes": 4273185,
+      "sha256": "5c5b64a72d73ab326aca36d29a032067ee1435857fd55e119fb97b4dc6163bce",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Paint the parks."
+    },
+    {
+      "file": "assets/topostack-gallery-06-airspace-v10.png",
+      "bytes": 3927811,
+      "sha256": "2c36c48331bf99008f327ad204692ee5f30868df31051fd6d38a59e07c49a227",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Airspace you can hold."
+    },
+    {
+      "file": "assets/topostack-gallery-07-three-steps-v10.png",
+      "bytes": 2127483,
+      "sha256": "26d7686edd67c29c76c0497fa0adae54b74180405a6c9e06f18d8917928b9685",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Three steps to a cut file."
+    },
+    {
+      "file": "assets/topostack-gallery-08-ready-to-cut-v10.png",
+      "bytes": 1995854,
+      "sha256": "3fb06025f6ee90fcd4f417859052ed9ddc0894c6ea35a92ea13e0019ddebc06a",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Ready to cut."
+    },
+    {
+      "file": "assets/topostack-gallery-09-make-it-yours-v10.png",
+      "bytes": 2199601,
+      "sha256": "42aeba82bc2e6ae035657fb5571f38eb8e01deefd01e62b74417db5aa4f45bfc",
+      "width": 3200,
+      "height": 2400,
+      "sourceCommit": "12a45dc5e4b6d9687925da175cde21fb7a999a6e",
+      "title": "Make it yours."
+    }
+  ]
+}

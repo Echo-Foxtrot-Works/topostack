@@ -430,6 +430,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     smoothing: record.smoothing === undefined ? DEFAULT_PROJECT.smoothing : numberValue(record.smoothing),
     showRoads: booleanValue(record.showRoads, "showRoads"),
     showTrails: record.showTrails === undefined ? booleanValue(record.showRoads, "showRoads") : booleanValue(record.showTrails, "showTrails"),
+    showRail: record.showRail === undefined ? false : booleanValue(record.showRail, "showRail"),
     showTransportationLabels: record.showTransportationLabels === undefined ? false : booleanValue(record.showTransportationLabels, "showTransportationLabels"),
     showWater: booleanValue(record.showWater, "showWater"),
     waterFillPattern: waterFillPatternValue(record.waterFillPattern),

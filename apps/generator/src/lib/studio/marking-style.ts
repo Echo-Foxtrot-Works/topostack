@@ -1,7 +1,7 @@
 import { aviationStroke, landStroke, type LineStyleV1, type OperationPath } from "@topostack/core";
 
 /** The visual class a marking is drawn with, shared by the 2D, engraving, and 3D previews. */
-export type MarkingStyleKey = "score" | "major-road" | "local-road" | "trail" | "boundary" | "grid" | "aviation" | "aviation-dashed" | "special-use" | "land" | "engrave";
+export type MarkingStyleKey = "score" | "major-road" | "local-road" | "trail" | "rail" | "boundary" | "grid" | "aviation" | "aviation-dashed" | "special-use" | "land" | "engrave";
 
 type StyledMarking = Pick<OperationPath, "operation" | "kind" | "transportationClass" | "aviationClass" | "landClass">;
 
@@ -11,6 +11,7 @@ export function markingStyleKey(marking: StyledMarking): MarkingStyleKey {
   if (marking.transportationClass === "major-road") return "major-road";
   if (marking.transportationClass === "local-road") return "local-road";
   if (marking.transportationClass === "trail") return "trail";
+  if (marking.transportationClass === "rail") return "rail";
   if (marking.kind === "boundary") return "boundary";
   if (marking.kind === "land") return "land";
   if (marking.kind === "grid") return "grid";
@@ -22,6 +23,7 @@ export const MARKING_COLORS: Record<MarkingStyleKey, string> = {
   "major-road": "#24180f",
   "local-road": "#62442f",
   trail: "#8a5e35",
+  rail: "#3b3550",
   boundary: "#6f4057",
   grid: "#34404b",
   // Muted stand-ins for the sectional's blue and magenta, dark enough to read as engraving.
@@ -41,7 +43,7 @@ export function markingWidth(marking: Pick<OperationPath, "kind" | "transportati
   if (marking.kind === "aviation" && marking.aviationClass) return aviationStroke(marking.aviationClass, style).widthMm;
   if (marking.kind === "land" && marking.landClass) return landStroke(marking.landClass, style).widthMm;
   if (marking.transportationClass === "major-road") return style.majorRoadMm;
-  if (marking.transportationClass === "local-road") return style.localRoadMm;
+  if (marking.transportationClass === "local-road" || marking.transportationClass === "rail") return style.localRoadMm;
   if (marking.transportationClass === "trail") return style.trailMm;
   if (marking.kind === "water") return style.waterMm;
   if (marking.kind === "boundary") return style.boundaryMm;

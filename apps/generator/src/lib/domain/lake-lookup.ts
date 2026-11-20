@@ -62,7 +62,7 @@ type MapWaterLoader = (bounds: GeoBounds, zoom: number, config: typeof DEFAULT_P
 
 /** Lakes on the map that no lake dataset lists, mostly small ones. Only water is read. */
 const loadMapWater: MapWaterLoader = async (bounds, zoom, config, signal) =>
-  (await loadVectorMarkings(bounds, zoom, { ...config, showWater: true, showRoads: false, showTrails: false, showBoundaries: false }, signal)).inland;
+  (await loadVectorMarkings(bounds, zoom, { ...config, showWater: true, showRoads: false, showTrails: false, showRail: false, showBoundaries: false }, signal)).inland;
 
 /**
  * Map water HydroLAKES does not list is dissolved: a river and its oxbows come

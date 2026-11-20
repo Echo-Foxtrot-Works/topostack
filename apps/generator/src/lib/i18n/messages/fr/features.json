@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Plein",
   "trailPatternOption.dashed": "Tirets",
   "trailPatternOption.dotted": "Pointillés",
+  "rail": "Voies ferrées",
+  "railHint": "Lignes en surface à la largeur des routes locales. Les tunnels, gares de triage et voies de garage sont omis.",
   "transportationLabels": "Étiquettes de transport",
   "stateProvinceBoundariesName": "Limites d’États et de provinces",
   "stateProvinceBoundaries": "Limites d’États/provinces",

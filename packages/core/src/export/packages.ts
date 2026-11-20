@@ -570,6 +570,7 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
   const details = [
     config.showRoads ? "roads" : "",
     config.showTrails ? "trails" : "",
+    config.showRail ? "railways" : "",
     config.showWater ? `water outlines${config.waterFillPattern !== "none" ? ` with ${config.waterFillPattern} fill` : ""}` : "",
     config.showBoundaries ? "state/province boundaries" : "",
     config.showCoordinateGrid ? "latitude/longitude grid" : "",
