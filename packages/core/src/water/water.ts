@@ -596,6 +596,77 @@ function carveModeledLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Ar
   }, areaIndexes);
 }
 
+/** How far either side of sea level a coastline fit moves disagreeing cells, in metres. */
+export const COASTLINE_MARGIN_M = 0.5;
+
+export interface CoastlineFit {
+  grid: ElevationGrid;
+  /** Cells inside the vector sea that the DEM had above sea level. */
+  loweredCells: number;
+  /** Low land cells, connected to the sea, that the DEM had at or below sea level. */
+  raisedCells: number;
+}
+
+/**
+ * Make the DEM agree with the vector coastline before layers are sliced.
+ *
+ * A layered model cuts its coast at the DEM's sea-level contour, but a coarse or
+ * dated DEM puts that contour somewhere else: Mapzen's coast at Hiroshima Bay
+ * marks a fifth of the mapped sea as land and leaves reclaimed port land as
+ * sea. Lakes never had this problem because their shores come from their
+ * outlines; this gives the ocean the same treatment.
+ *
+ * Sea cells above `-margin` drop to `-margin`. Land cells at or below
+ * `+margin` rise to `+margin`, but only where they reach the sea through other
+ * such cells: a polder behind a dike the DEM resolves keeps its depth. The
+ * contour at sea level then falls between the two margins, on the vector shore.
+ */
+export function fitTerrainToCoastline(grid: ElevationGrid, config: ProjectConfigV1, areas: readonly WaterAreaV1[], margin = COASTLINE_MARGIN_M): CoastlineFit {
+  const oceans = areas.filter((area) => area.kind === "ocean");
+  if (!oceans.length) return { grid, loweredCells: 0, raisedCells: 0 };
+  const cellCount = grid.width * grid.height;
+  const sea = new Uint8Array(cellCount);
+  const water = new Uint8Array(cellCount);
+  for (const area of areas) {
+    const cells = polygonCells(area.polygon, grid, config);
+    for (const index of cells) {
+      water[index] = 1;
+      if (area.kind === "ocean") sea[index] = 1;
+    }
+  }
+  const values = Float32Array.from(grid.values);
+  let loweredCells = 0;
+  for (let index = 0; index < cellCount; index += 1) {
+    if (sea[index] && values[index]! > -margin) { values[index] = -margin; loweredCells += 1; }
+  }
+  // Breadth-first from the shore through low land only.
+  const queued = new Uint8Array(cellCount);
+  const queue = new Int32Array(cellCount);
+  let head = 0, tail = 0;
+  const lowLand = (index: number) => !water[index] && values[index]! <= margin;
+  for (let index = 0; index < cellCount; index += 1) {
+    if (!sea[index]) continue;
+    const column = index % grid.width;
+    for (const neighbor of [column > 0 ? index - 1 : -1, column < grid.width - 1 ? index + 1 : -1, index - grid.width, index + grid.width]) {
+      if (neighbor >= 0 && neighbor < cellCount && !queued[neighbor] && lowLand(neighbor)) { queued[neighbor] = 1; queue[tail++] = neighbor; }
+    }
+  }
+  let raisedCells = 0;
+  while (head < tail) {
+    const index = queue[head++]!;
+    values[index] = margin;
+    raisedCells += 1;
+    const column = index % grid.width;
+    for (const neighbor of [column > 0 ? index - 1 : -1, column < grid.width - 1 ? index + 1 : -1, index - grid.width, index + grid.width]) {
+      if (neighbor >= 0 && neighbor < cellCount && !queued[neighbor] && lowLand(neighbor)) { queued[neighbor] = 1; queue[tail++] = neighbor; }
+    }
+  }
+  if (!loweredCells && !raisedCells) return { grid, loweredCells, raisedCells };
+  let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
+  for (const value of values) { if (value < min) min = value; if (value > max) max = value; }
+  return { grid: { ...grid, values, min, max }, loweredCells, raisedCells };
+}
+
 /**
  * Write surveyed or modeled lake beds into a copy of the elevation grid.
  *

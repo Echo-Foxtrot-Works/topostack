@@ -9,6 +9,15 @@ Sea floors come from the [GEBCO_2026 Grid](https://www.gebco.net/data-products/g
 - **Closer views:** requests finer than z9 are upsampled bilinearly from z9. Where GEBCO has no data, the base value stands in at the corners, so the coast feathers into the base over one GEBCO cell.
 - **Depth in the model:** ocean depth reaches the model through the DEM, as before. `keepDemBasin` in `packages/core/src/water/water.ts` scales depths below sea level by the water depth exaggeration, so nothing in core changed.
 
+## The coastline
+
+A layered model's coast is its sea-level cut. Before slicing, `fitTerrainToCoastline` (`packages/core/src/water/water.ts`) makes the DEM agree with the OpenStreetMap ocean outline:
+
+- Mapped sea the DEM has above sea level drops to −0.5 m.
+- Land at or below sea level rises to +0.5 m where it reaches the sea through other such cells. This catches reclaimed land a dated DEM still shows as sea, while a polder behind a dike the DEM resolves keeps its depth.
+
+The sea-level contour then runs between the two margins, on the vector shore. At Hiroshima Bay this moved the coast for 19% of the mapped sea and 1.8% of the land. Flat engravings draw the shore from the outline already and keep the DEM unchanged.
+
 ## The archive
 
 - **Contents:**

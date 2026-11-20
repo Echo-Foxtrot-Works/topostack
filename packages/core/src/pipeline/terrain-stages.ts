@@ -5,7 +5,7 @@ import { contours } from "d3-contour";
 import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
 import { close, mercatorWorldY, simplify, toPoint } from "../primitives/geometry2d.js";
 import { MIN_LAYER_COUNT, SEA_LEVEL_M, type ElevationGrid, type LayerIR, type WaterAreaV1 } from "../types.js";
-import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder } from "../water/water.js";
+import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, fitTerrainToCoastline } from "../water/water.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
 
 /** Land relief below this many meters gets the LOW_RELIEF warning. */
@@ -40,8 +40,12 @@ export function measuredElevationGrid(grid: ElevationGrid): ElevationGrid {
  * downstream then produces the recess on its own: the contour rings become
  * holes, and holes are already honoured by clipping, nesting, and labelling.
  */
-export function carveWater(context: GenerationContext, grid: ElevationGrid): { waterAreas: WaterAreaV1[]; carved: CarvedWater } {
+export function carveWater(context: GenerationContext, input: ElevationGrid): { waterAreas: WaterAreaV1[]; carved: CarvedWater } {
   const { config, source } = context;
+  // A layered model's coast is its sea-level cut, so it follows the vector
+  // coastline rather than wherever the DEM puts sea level. Engravings draw the
+  // shore from the vector outline already and keep the DEM as supplied.
+  const grid = context.flatEngraving ? input : fitTerrainToCoastline(input, config, source.waterAreas ?? []).grid;
   const waterAreas: WaterAreaV1[] = context.usesWaterDepth
     ? (source.waterAreas ?? []).map((area) => {
         const override = area.hylakId === undefined ? undefined : config.waterDepthOverrides[String(area.hylakId)];
