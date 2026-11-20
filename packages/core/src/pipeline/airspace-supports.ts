@@ -486,10 +486,14 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   if (unsupported.length) warnings.push({
     code: "AIRSPACE_PIECE_UNSUPPORTED",
     message: `${unsupported.length} airspace ${unsupported.length === 1 ? "piece was" : "pieces were"} left out because no rod could hold ${unsupported.length === 1 ? "it" : "them"} clear of the terrain and the pieces below. A thinner rod helps.`,
+    messageKey: "airspacePieceUnsupported",
+    params: { count: unsupported.length },
   });
   if (overhanging.length) warnings.push({
     code: "AIRSPACE_OVERHANG",
     message: `${overhanging.length} airspace ${overhanging.length === 1 ? "sheet reaches" : "sheets reach"} past the rods that could stand under ${overhanging.length === 1 ? "it" : "them"}. Reduce the model size or add supports under ${overhanging.length === 1 ? "it" : "them"} before assembly.`,
+    messageKey: "airspaceOverhang",
+    params: { count: overhanging.length },
   });
   if (context.rods) {
     for (const entry of context.rods.values()) standing.push({ point: entry.point, seat: entry.seat, bottomMm: entry.bottomMm, headPieceId: entry.headPieceId, topMm: entry.topMm, ...(entry.throughPieceIds.length ? { throughPieceIds: entry.throughPieceIds } : {}) });

@@ -9,6 +9,7 @@
   import { NORTH_ARROW_OPTIONS } from "$lib/studio/options";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import { getStudio } from "$lib/studio/studio-context";
+  import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { clampPlaqueSize, DEFAULT_PLAQUE_PLACEMENT, plaqueSettings, plaqueText, plaqueWithFont } from "$lib/studio/project-edits";
 
   /** The text the laser writes and the marks placed on the map: font, elevation labels, north arrow, scale bar and title. */
@@ -23,100 +24,100 @@
   const { startPlacement, navigateChoice, previewMarkingPath, shownTextSize, storedLength, updateFabrication, updateMapDetails } = studio;
 </script>
 
-<PanelFrame id="labels" title="Labels and marks" class="labels-panel">
+<PanelFrame id="labels" title={t("labels.title")} class="labels-panel">
   <div class="detail-group">
-    <p class="subgroup-heading">Text</p>
-    <FontPicker label="Engraving font" value={studio.project.textStyle.font} onSelect={(font) => font && void updateFabrication({ textStyle: { ...studio.project.textStyle, font } })} />
+    <p class="subgroup-heading">{t("labels.text")}</p>
+    <FontPicker label={t("labels.engravingFont")} value={studio.project.textStyle.font} onSelect={(font) => font && void updateFabrication({ textStyle: { ...studio.project.textStyle, font } })} />
     <div class="range-field">
-      <span class="range-field__label"><b>Text size</b></span>
+      <span class="range-field__label"><b>{t("labels.textSize")}</b></span>
       <div class="range-field__row">
-        <input aria-label="Text size slider" type="range" min={displayLength(2, studio.project.units)} max={displayLength(10, studio.project.units)} step={studio.project.units === "imperial" ? 0.005 : 0.1} value={displayLength(studio.project.textStyle.sizeMm, studio.project.units)} oninput={(event) => void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm: storedLength(event.currentTarget.valueAsNumber) } })} />
-        <span class="number-input number-input--compact"><NumberField label="Text size" value={shownTextSize(studio.project.textStyle.sizeMm)} min={displayLength(2, studio.project.units)} max={displayLength(10, studio.project.units)} step={studio.project.units === "imperial" ? 0.005 : 0.1} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm: storedLength(event.currentTarget.valueAsNumber) } })} onValueChange={(value) => { const sizeMm = storedLength(value); if (sizeMm !== studio.project.textStyle.sizeMm) void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm } }); }} /><em>{studio.shownLengthUnit}</em></span>
+        <input aria-label={t("labels.textSizeSlider")} type="range" min={displayLength(2, studio.project.units)} max={displayLength(10, studio.project.units)} step={studio.project.units === "imperial" ? 0.005 : 0.1} value={displayLength(studio.project.textStyle.sizeMm, studio.project.units)} oninput={(event) => void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm: storedLength(event.currentTarget.valueAsNumber) } })} />
+        <span class="number-input number-input--compact"><NumberField label={t("labels.textSize")} value={shownTextSize(studio.project.textStyle.sizeMm)} min={displayLength(2, studio.project.units)} max={displayLength(10, studio.project.units)} step={studio.project.units === "imperial" ? 0.005 : 0.1} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm: storedLength(event.currentTarget.valueAsNumber) } })} onValueChange={(value) => { const sizeMm = storedLength(value); if (sizeMm !== studio.project.textStyle.sizeMm) void updateFabrication({ textStyle: { ...studio.project.textStyle, sizeMm } }); }} /><em>{studio.shownLengthUnit}</em></span>
       </div>
       <small><span>{shownTextSize(2)} {studio.shownLengthUnit}</span><span>{shownTextSize(10)} {studio.shownLengthUnit}</span></small>
     </div>
-    <div class="field-stack"><LineWidthField label="Label and guide lines" fieldLabel="Annotation width" key="annotationMm" /></div>
+    <div class="field-stack"><LineWidthField label={t("labels.labelAndGuideLines")} fieldLabel={t("labels.annotationWidth")} key="annotationMm" /></div>
   </div>
 
   <div class="detail-group">
-    <p class="subgroup-heading">Marks</p>
+    <p class="subgroup-heading">{t("labels.marks")}</p>
     <div class="toggle-stack">
       <div class="toggle-control">
-        <Switch checked={studio.project.showElevationLabels} onCheckedChange={(showElevationLabels) => void updateMapDetails({ showElevationLabels })} aria-label="Elevation labels"><span class="toggle-label"><Mountain size={16} />Elevation labels</span></Switch>
+        <Switch checked={studio.project.showElevationLabels} onCheckedChange={(showElevationLabels) => void updateMapDetails({ showElevationLabels })} aria-label={t("labels.elevationLabels")}><span class="toggle-label"><Mountain size={16} />{t("labels.elevationLabels")}</span></Switch>
         {#if studio.project.showElevationLabels}
           <div class="toggle-settings">
-            <p class="subgroup-heading">Preferred position</p>
+            <p class="subgroup-heading">{t("labels.preferredPosition")}</p>
             <div class="field-stack field-stack--offsets">
-              <Field label="Label X" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Label X" value={Math.round(studio.project.elevationLabelPosition.x * 100)} min={-90} max={90} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, x: event.currentTarget.valueAsNumber / 100 } })} onValueChange={(x) => x !== Math.round(studio.project.elevationLabelPosition.x * 100) && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, x: x / 100 } })} /><em>%</em></span>{/snippet}</Field>
-              <Field label="Label Y" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Label Y" value={Math.round(studio.project.elevationLabelPosition.y * 100)} min={-90} max={90} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, y: event.currentTarget.valueAsNumber / 100 } })} onValueChange={(y) => y !== Math.round(studio.project.elevationLabelPosition.y * 100) && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, y: y / 100 } })} /><em>%</em></span>{/snippet}</Field>
+              <Field label={t("labels.labelX")} class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label={t("labels.labelX")} value={Math.round(studio.project.elevationLabelPosition.x * 100)} min={-90} max={90} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, x: event.currentTarget.valueAsNumber / 100 } })} onValueChange={(x) => x !== Math.round(studio.project.elevationLabelPosition.x * 100) && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, x: x / 100 } })} /><em>%</em></span>{/snippet}</Field>
+              <Field label={t("labels.labelY")} class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label={t("labels.labelY")} value={Math.round(studio.project.elevationLabelPosition.y * 100)} min={-90} max={90} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, y: event.currentTarget.valueAsNumber / 100 } })} onValueChange={(y) => y !== Math.round(studio.project.elevationLabelPosition.y * 100) && void updateFabrication({ elevationLabelPosition: { ...studio.project.elevationLabelPosition, y: y / 100 } })} /><em>%</em></span>{/snippet}</Field>
             </div>
           </div>
         {/if}
       </div>
 
       <div class="toggle-control">
-        <Switch checked={studio.project.showNorthArrow} onCheckedChange={(showNorthArrow) => void updateMapDetails({ showNorthArrow })} aria-label="North arrow"><span class="toggle-label"><Compass size={16} />North arrow</span></Switch>
+        <Switch checked={studio.project.showNorthArrow} onCheckedChange={(showNorthArrow) => void updateMapDetails({ showNorthArrow })} aria-label={t("labels.northArrow")}><span class="toggle-label"><Compass size={16} />{t("labels.northArrow")}</span></Switch>
         {#if studio.project.showNorthArrow}
           <div class="toggle-settings">
-            <p class="subgroup-heading">Compass design</p>
-            <div class="swatch-options" role="radiogroup" aria-label="North arrow design">
+            <p class="subgroup-heading">{t("labels.compassDesign")}</p>
+            <div class="swatch-options" role="radiogroup" aria-label={t("labels.northArrowDesign")}>
               {#each NORTH_ARROW_OPTIONS as option}
                 <button type="button" role="radio" aria-checked={studio.project.northArrowStyle === option.value} data-state={studio.project.northArrowStyle === option.value ? "on" : "off"} tabindex={studio.project.northArrowStyle === option.value ? 0 : -1} onclick={() => void updateFabrication({ northArrowStyle: option.value })} onkeydown={navigateChoice}>
                   <svg viewBox="-52 -52 104 104" aria-hidden="true">{#each option.markings as marking}<path d={previewMarkingPath(marking)} />{/each}</svg>
-                  <span>{option.label}</span>
+                  <span>{t(`labels.northArrowStyle.${option.value}` as MessageKey)}</span>
                 </button>
               {/each}
             </div>
             <div class="range-field">
-              <span class="range-field__label"><b>Diameter</b></span>
+              <span class="range-field__label"><b>{t("labels.diameter")}</b></span>
               <div class="range-field__row">
-                <input aria-label="North arrow size slider" type="range" min={displayLength(NORTH_ARROW_MIN_SIZE_MM, studio.project.units)} max={displayLength(studio.northArrowSizeLimitMm, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 1} value={displayLength(studio.project.northArrowSizeMm, studio.project.units)} oninput={(event) => void updateFabrication({ northArrowSizeMm: storedLength(event.currentTarget.valueAsNumber) })} />
-                <span class="number-input number-input--compact"><NumberField label="North arrow size" value={shownTextSize(studio.project.northArrowSizeMm)} min={displayLength(NORTH_ARROW_MIN_SIZE_MM, studio.project.units)} max={displayLength(studio.northArrowSizeLimitMm, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 1} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ northArrowSizeMm: storedLength(event.currentTarget.valueAsNumber) })} onValueChange={(value) => { const sizeMm = storedLength(value); if (sizeMm !== studio.project.northArrowSizeMm) void updateFabrication({ northArrowSizeMm: sizeMm }); }} /><em>{studio.shownLengthUnit}</em></span>
+                <input aria-label={t("labels.northArrowSizeSlider")} type="range" min={displayLength(NORTH_ARROW_MIN_SIZE_MM, studio.project.units)} max={displayLength(studio.northArrowSizeLimitMm, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 1} value={displayLength(studio.project.northArrowSizeMm, studio.project.units)} oninput={(event) => void updateFabrication({ northArrowSizeMm: storedLength(event.currentTarget.valueAsNumber) })} />
+                <span class="number-input number-input--compact"><NumberField label={t("labels.northArrowSize")} value={shownTextSize(studio.project.northArrowSizeMm)} min={displayLength(NORTH_ARROW_MIN_SIZE_MM, studio.project.units)} max={displayLength(studio.northArrowSizeLimitMm, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 1} oninput={(event) => event.currentTarget.value !== "" && void updateFabrication({ northArrowSizeMm: storedLength(event.currentTarget.valueAsNumber) })} onValueChange={(value) => { const sizeMm = storedLength(value); if (sizeMm !== studio.project.northArrowSizeMm) void updateFabrication({ northArrowSizeMm: sizeMm }); }} /><em>{studio.shownLengthUnit}</em></span>
               </div>
               <small><span>{shownTextSize(NORTH_ARROW_MIN_SIZE_MM)} {studio.shownLengthUnit}</span><span>{shownTextSize(studio.northArrowSizeLimitMm)} {studio.shownLengthUnit}</span></small>
             </div>
             <div class="subgroup-heading subgroup-heading--action">
-              <p>Placement</p>
-              <button type="button" onclick={() => void updateFabrication({ northArrowPlacement: structuredClone(DEFAULT_PROJECT.northArrowPlacement) })}>Reset position</button>
+              <p>{t("labels.placement")}</p>
+              <button type="button" onclick={() => void updateFabrication({ northArrowPlacement: structuredClone(DEFAULT_PROJECT.northArrowPlacement) })}>{t("labels.resetPosition")}</button>
             </div>
-            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "north"} onclick={() => startPlacement("north")}><Move size={14} />{studio.placement?.selected === "north" ? "Placing on preview" : "Move on preview"}</button>
+            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "north"} onclick={() => startPlacement("north")}><Move size={14} />{studio.placement?.selected === "north" ? t("labels.placingOnPreview") : t("labels.moveOnPreview")}</button>
           </div>
         {/if}
       </div>
 
       <div class="toggle-control">
-        <Switch checked={studio.project.showScaleBar} onCheckedChange={(showScaleBar) => void updateMapDetails({ showScaleBar })} aria-label="Scale bar"><span class="toggle-label"><Minus size={16} />Scale bar</span></Switch>
+        <Switch checked={studio.project.showScaleBar} onCheckedChange={(showScaleBar) => void updateMapDetails({ showScaleBar })} aria-label={t("labels.scaleBar")}><span class="toggle-label"><Minus size={16} />{t("labels.scaleBar")}</span></Switch>
         {#if studio.project.showScaleBar}
           <div class="toggle-settings">
             <div class="subgroup-heading subgroup-heading--action">
-              <p>Placement</p>
-              {#if studio.project.scaleBarPlacement}<button type="button" onclick={() => void updateFabrication({ scaleBarPlacement: undefined })}>Reset position</button>{/if}
+              <p>{t("labels.placement")}</p>
+              {#if studio.project.scaleBarPlacement}<button type="button" onclick={() => void updateFabrication({ scaleBarPlacement: undefined })}>{t("labels.resetPosition")}</button>{/if}
             </div>
-            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "scale"} onclick={() => startPlacement("scale")}><Move size={14} />{studio.placement?.selected === "scale" ? "Placing on preview" : "Move on preview"}</button>
+            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "scale"} onclick={() => startPlacement("scale")}><Move size={14} />{studio.placement?.selected === "scale" ? t("labels.placingOnPreview") : t("labels.moveOnPreview")}</button>
           </div>
         {/if}
       </div>
 
       <div class="toggle-control">
-        <Switch checked={plaque?.enabled ?? false} onCheckedChange={(enabled) => void updateMapDetails({ plaque: plaqueSettings(studio.project, { enabled }) })} aria-label="Title"><span class="toggle-label"><Type size={16} />Title</span></Switch>
+        <Switch checked={plaque?.enabled ?? false} onCheckedChange={(enabled) => void updateMapDetails({ plaque: plaqueSettings(studio.project, { enabled }) })} aria-label={t("labels.titleToggle")}><span class="toggle-label"><Type size={16} />{t("labels.titleToggle")}</span></Switch>
         {#if plaque?.enabled}
           <div class="toggle-settings plaque-settings">
             <div class="subgroup-heading subgroup-heading--action">
-              <p>Text</p>
-              <button type="button" onclick={() => void updateFabrication({ plaque: plaqueSettings(studio.project, { text: plaqueText(studio.project.name) }) })}>Use project name</button>
+              <p>{t("labels.text")}</p>
+              <button type="button" onclick={() => void updateFabrication({ plaque: plaqueSettings(studio.project, { text: plaqueText(studio.project.name) }) })}>{t("labels.useProjectName")}</button>
             </div>
             <!-- The built-in fonts engrave capitals, so the field previews them; typefaces keep the case as typed. -->
-            <textarea class="plaque-text" style:text-transform={isBitmapFont(titleFont) ? undefined : "none"} aria-label="Title text" aria-describedby="plaque-text-hint" rows={PLAQUE_MAX_LINES} spellcheck="false" value={plaque.text} oninput={(event) => { const text = plaqueText(event.currentTarget.value); if (text !== event.currentTarget.value) event.currentTarget.value = text; void updateFabrication({ plaque: plaqueSettings(studio.project, { text }) }); }}></textarea>
-            <small id="plaque-text-hint">Up to {PLAQUE_MAX_LINES} lines of {PLAQUE_MAX_LINE_LENGTH} characters, {isBitmapFont(titleFont) ? "engraved in capitals" : "engraved as typed"} in {fontEntry(titleFont).name}.</small>
-            {#if unsupportedTitleCharacters.length}<small class="plaque-warning" role="status">Not in {fontEntry(titleFont).name}, shown as “?”: {unsupportedTitleCharacters.join(" ")}</small>{/if}
-            <Field label="Letter height" class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label="Title size" value={shownTextSize(plaque.sizeMm)} min={displayLength(PLAQUE_MIN_SIZE_MM, studio.project.units)} max={displayLength(PLAQUE_MAX_SIZE_MM, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 0.5} onValueChange={(value) => { const sizeMm = clampPlaqueSize(storedLength(value)); if (sizeMm !== plaque.sizeMm) void updateFabrication({ plaque: plaqueSettings(studio.project, { sizeMm }) }); }} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
-            <p class="subgroup-heading">Title font</p>
-            <FontPicker label="Title font" value={plaque.font} inherited={{ label: "Same as labels", font: studio.project.textStyle.font }} onSelect={(font) => void updateFabrication({ plaque: plaqueWithFont(studio.project, font) })} />
+            <textarea class="plaque-text" style:text-transform={isBitmapFont(titleFont) ? undefined : "none"} aria-label={t("labels.titleText")} aria-describedby="plaque-text-hint" rows={PLAQUE_MAX_LINES} spellcheck="false" value={plaque.text} oninput={(event) => { const text = plaqueText(event.currentTarget.value); if (text !== event.currentTarget.value) event.currentTarget.value = text; void updateFabrication({ plaque: plaqueSettings(studio.project, { text }) }); }}></textarea>
+            <small id="plaque-text-hint">{t("labels.titleTextHint", { lines: PLAQUE_MAX_LINES, length: PLAQUE_MAX_LINE_LENGTH, letterCase: isBitmapFont(titleFont) ? "capitals" : "typed", font: fontEntry(titleFont).name })}</small>
+            {#if unsupportedTitleCharacters.length}<small class="plaque-warning" role="status">{t("labels.unsupportedCharacters", { font: fontEntry(titleFont).name, characters: unsupportedTitleCharacters.join(" ") })}</small>{/if}
+            <Field label={t("labels.letterHeight")} class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label={t("labels.titleSize")} value={shownTextSize(plaque.sizeMm)} min={displayLength(PLAQUE_MIN_SIZE_MM, studio.project.units)} max={displayLength(PLAQUE_MAX_SIZE_MM, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 0.5} onValueChange={(value) => { const sizeMm = clampPlaqueSize(storedLength(value)); if (sizeMm !== plaque.sizeMm) void updateFabrication({ plaque: plaqueSettings(studio.project, { sizeMm }) }); }} /><em>{studio.shownLengthUnit}</em></span>{/snippet}</Field>
+            <p class="subgroup-heading">{t("labels.titleFont")}</p>
+            <FontPicker label={t("labels.titleFont")} value={plaque.font} inherited={{ label: t("labels.sameAsLabels"), font: studio.project.textStyle.font }} onSelect={(font) => void updateFabrication({ plaque: plaqueWithFont(studio.project, font) })} />
             <div class="subgroup-heading subgroup-heading--action">
-              <p>Placement</p>
-              <button type="button" onclick={() => void updateFabrication({ plaque: plaqueSettings(studio.project, { placement: structuredClone(DEFAULT_PLAQUE_PLACEMENT) }) })}>Reset position</button>
+              <p>{t("labels.placement")}</p>
+              <button type="button" onclick={() => void updateFabrication({ plaque: plaqueSettings(studio.project, { placement: structuredClone(DEFAULT_PLAQUE_PLACEMENT) }) })}>{t("labels.resetPosition")}</button>
             </div>
-            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "plaque"} onclick={() => startPlacement("plaque")}><Move size={14} />{studio.placement?.selected === "plaque" ? "Placing on preview" : "Move on preview"}</button>
+            <button type="button" class="placement-start" aria-pressed={studio.placement?.selected === "plaque"} onclick={() => startPlacement("plaque")}><Move size={14} />{studio.placement?.selected === "plaque" ? t("labels.placingOnPreview") : t("labels.moveOnPreview")}</button>
           </div>
         {/if}
       </div>

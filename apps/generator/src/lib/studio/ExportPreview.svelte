@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, t } from "$lib/i18n/i18n.svelte";
   import { getEmbedded, getAutomaticNesting } from "$lib/studio/embed-context";
   import GenerationProgress from "$lib/studio/GenerationProgress.svelte";
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
@@ -34,14 +35,14 @@
   const narrow = $derived(canvasWidth < NARROW_CANVAS_PX);
   let manifestChoice = $state<boolean | undefined>(undefined);
   const manifestOpen = $derived(manifestChoice ?? !narrow);
-  let preparing = $state("Preparing export preview…");
+  let preparing = $state(t("preview.exportPreparing"));
 
-  type Built = { layoutNote: string; url: string; filename: string; bytes: number; width: number; height: number; cut: boolean; score: boolean; fill: boolean; files: Array<{ filename: string; bytes: number }> };
+  type Built = { layoutNote: string; sheetCount: number; url: string; filename: string; bytes: number; width: number; height: number; cut: boolean; score: boolean; fill: boolean; files: Array<{ filename: string; bytes: number }> };
   let built = $state.raw<Built | undefined>();
   let failure = $state("");
 
   function formatBytes(bytes: number): string {
-    return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return bytes < 1024 ? t("preview.bytes", { value: formatNumber(bytes, { useGrouping: false }) }) : bytes < 1024 * 1024 ? t("preview.kilobytes", { value: formatNumber(Math.round(bytes / 1024), { useGrouping: false }) }) : t("preview.megabytes", { value: formatNumber(bytes / 1024 / 1024, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
   }
 
   // The shown artwork's object URL, released when a newer build replaces it or the view closes.
@@ -64,7 +65,7 @@
     progress = { running: false, previews: [], sheetCount: 0, utilization: 0, updates: 0 };
     show(undefined);
     failure = "";
-    preparing = isEmbedded() && project.outputMode === "stack" ? "Step 1 of 2 · Arranging sheets…" : "Preparing export preview…";
+    preparing = isEmbedded() && project.outputMode === "stack" ? t("preview.exportStepArranging") : t("preview.exportPreparing");
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -72,7 +73,7 @@
           const layout = isEmbedded() && automaticNesting ? await automaticNesting.prepare(current.geometry, current.project) : undefined;
           if (cancelled) return;
           packaging = true;
-          preparing = "Step 2 of 2 · Preparing export preview…";
+          preparing = t("preview.exportStepPreparing");
           const guideFonts = await loadGuideFonts();
           if (cancelled) return;
           const output = isEmbedded()
@@ -85,11 +86,11 @@
           // Real line widths (0.1 mm and up) rasterize to faint dots at fit zoom,
           // so the on-screen copy draws every line as a hairline. The file itself is unchanged.
           const display = svg.replace(/<svg\b[^>]*>/, (open) => `${open}<style>*{vector-effect:non-scaling-stroke;stroke-width:1px}</style>`);
-          show({ layoutNote: layout?.layoutNote ?? "", url: URL.createObjectURL(new Blob([display], { type: "image/svg+xml" })), filename: output.master.filename, bytes: output.master.blob.size, width, height,
+          show({ layoutNote: layout?.layoutNote ?? "", sheetCount: layout?.sheetPlan?.sheets.length ?? 0, url: URL.createObjectURL(new Blob([display], { type: "image/svg+xml" })), filename: output.master.filename, bytes: output.master.blob.size, width, height,
             cut: /stroke="#FE0002"/i.test(svg), score: /stroke="#2366FF"/i.test(svg), fill: /fill="#2366FF"/i.test(svg), files: output.files.map((file) => ({ filename: file.filename, bytes: file.blob.size })) });
           failure = "";
         } catch (error) {
-          if (!cancelled) { show(undefined); failure = error instanceof Error ? error.message : "The export preview could not be prepared."; }
+          if (!cancelled) { show(undefined); failure = error instanceof Error ? error.message : t("preview.exportPreviewFailed"); }
         }
       })();
     }, 60);
@@ -107,49 +108,49 @@
 <div class="export-preview" aria-busy={!built && !failure && !blocked} bind:clientWidth={canvasWidth} data-narrow={narrow ? "" : undefined} data-manifest={manifestOpen ? "open" : "folded"}>
   {#if built}
     <div class="export-sheet">
-      <SvgViewport widthMm={built.width} heightMm={built.height} topLeft label="export" svgLabel={`Export preview of ${built.filename}`} controlsLabel="Export preview zoom controls" resetLabel="Reset export view">
+      <SvgViewport widthMm={built.width} heightMm={built.height} topLeft label="export" svgLabel={t("preview.exportPreviewOf", { filename: built.filename })} controlsLabel={t("preview.exportZoomControls")} resetLabel={t("preview.resetExportView")}>
         <rect x="0" y="0" width={built.width} height={built.height} fill="#fff" />
         <image href={built.url} x="0" y="0" width={built.width} height={built.height} />
       </SvgViewport>
     </div>
-    <section class="export-manifest" id="export-manifest" aria-label="Export contents">
+    <section class="export-manifest" id="export-manifest" aria-label={t("preview.exportContents")}>
       <div class="export-manifest-head">
-        <h2>Export contents</h2>
+        <h2>{t("preview.exportContents")}</h2>
         {#if narrow}
-          <span class="export-manifest-summary">{[/\b\d+ sheets?\b/.exec(built.layoutNote)?.[0], `${built.files.length} files`].filter(Boolean).join(" · ")}</span>
-          <button type="button" class="btn-icon btn-icon-sm export-manifest-toggle" aria-expanded={manifestOpen} aria-controls="export-manifest-body" aria-label={manifestOpen ? "Fold export contents" : "Show export contents"} onclick={() => { manifestChoice = !manifestOpen; }}><ChevronDown size={16} aria-hidden="true" /></button>
+          <span class="export-manifest-summary">{built.sheetCount ? t("preview.exportSummarySheets", { sheets: built.sheetCount, files: built.files.length }) : t("preview.exportSummaryFiles", { files: built.files.length })}</span>
+          <button type="button" class="btn-icon btn-icon-sm export-manifest-toggle" aria-expanded={manifestOpen} aria-controls="export-manifest-body" aria-label={manifestOpen ? t("preview.foldExportContents") : t("preview.showExportContents")} onclick={() => { manifestChoice = !manifestOpen; }}><ChevronDown size={16} aria-hidden="true" /></button>
         {/if}
       </div>
       <div class="export-manifest-body" id="export-manifest-body" hidden={!manifestOpen}>
-      {#if built.layoutNote}<p class="export-layout-note">{built.layoutNote}</p><p class="export-layout-credit">Nesting by <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noreferrer">sparrow</a></p>{/if}
-      <p class="export-manifest-row"><span>Open in Studio</span><strong>1 editable SVG</strong><small>{woodOnly ? "Wood layout · acrylic is in Download" : "Entire layout"} · {formatBytes(built.bytes)}</small></p>
+      {#if built.layoutNote}<p class="export-layout-note">{built.layoutNote}</p><p class="export-layout-credit">{t("preview.nestingBy")} <a href="https://github.com/JeroenGar/sparrow" target="_blank" rel="noreferrer">sparrow</a></p>{/if}
+      <p class="export-manifest-row"><span>{t("preview.openInStudio")}</span><strong>{t("preview.oneEditableSvg")}</strong><small>{woodOnly ? t("preview.studioWoodOnly", { size: formatBytes(built.bytes) }) : t("preview.studioEntireLayout", { size: formatBytes(built.bytes) })}</small></p>
       <details>
-        <summary><span>Download</span><strong>Complete project bundle</strong><small>{built.files.length} files · {formatBytes(totalBytes)} total</small><span class="export-files-toggle">View included files <span aria-hidden="true">⌄</span></span></summary>
+        <summary><span>{t("preview.download")}</span><strong>{t("preview.completeBundle")}</strong><small>{t("preview.bundleSize", { count: built.files.length, size: formatBytes(totalBytes) })}</small><span class="export-files-toggle">{t("preview.viewIncludedFiles")} <span aria-hidden="true">⌄</span></span></summary>
         <ul>{#each built.files as file (file.filename)}{@const [stem, end] = splitFilename(file.filename, built.filename)}<li><span class="export-file-name" title={file.filename}><span class="export-file-stem">{stem}</span><span class="export-file-end">{end}</span></span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>
       </details>
-      <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>Red line · Cut</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>Blue line · Score</span>{/if}{#if built.fill}<span><i class="export-key-fill" aria-hidden="true"></i>Blue fill · Engrave</span>{/if}</div>
+      <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>{t("preview.keyCut")}</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>{t("preview.keyScore")}</span>{/if}{#if built.fill}<span><i class="export-key-fill" aria-hidden="true"></i>{t("preview.keyEngrave")}</span>{/if}</div>
     </div>
     </section>
   {:else if !failure && !blocked && !busy && isEmbedded()}
     {#if progress.previews.length}
-      <div class="atomm-nesting-drafts" aria-label="Nesting layout in progress">
+      <div class="atomm-nesting-drafts" aria-label={t("preview.nestingInProgress")}>
         {#each progress.previews as sheet, index (index)}
           <figure>
-            <svg viewBox={`0 0 ${sheet.widthMm} ${sheet.heightMm}`} role="img" aria-label={`Sheet ${index + 1}: ${sheet.parts.length} pieces${sheet.provisional ? ", pending optimization" : ""}`}>
+            <svg viewBox={`0 0 ${sheet.widthMm} ${sheet.heightMm}`} role="img" aria-label={sheet.provisional ? t("preview.nestingSheetPending", { number: index + 1, count: sheet.parts.length }) : t("preview.nestingSheet", { number: index + 1, count: sheet.parts.length })}>
               <rect width={sheet.widthMm} height={sheet.heightMm} fill="white" />
               {#each sheet.parts as part, partIndex (partIndex)}<path d={part.path}><title>{part.label}</title></path>{/each}
             </svg>
-            <figcaption>Sheet {index + 1}{sheet.provisional ? " · pending" : ""}</figcaption>
+            <figcaption>{sheet.provisional ? t("preview.sheetCaptionPending", { number: index + 1 }) : t("preview.sheetCaption", { number: index + 1 })}</figcaption>
           </figure>
         {/each}
       </div>
     {/if}
     <GenerationProgress class={progress.previews.length ? "nesting-progress has-drafts" : "nesting-progress"}
-      title={!packaging && project.outputMode === "stack" ? "Arranging sheets" : "Preparing export preview"}
-      detail={!packaging && project.outputMode === "stack" ? (progress.sheetCount ? `${progress.sheetCount} sheets · ${Math.round(progress.utilization * 100)}% material used · layout ${progress.updates}` : "Preparing pieces for your material size…") : "Building the artwork and download files…"}
+      title={!packaging && project.outputMode === "stack" ? t("preview.arrangingSheets") : t("preview.preparingExportPreview")}
+      detail={!packaging && project.outputMode === "stack" ? (progress.sheetCount ? t("preview.nestingProgress", { sheets: progress.sheetCount, percent: Math.round(progress.utilization * 100), layout: progress.updates }) : t("preview.preparingPieces")) : t("preview.buildingArtwork")}
       step={project.outputMode === "stack" ? (packaging ? 2 : 1) : undefined} total={2}
-      onCancel={progress.running && progress.sheetCount ? () => automaticNesting?.stop() : undefined} cancelLabel="Use current layout" />
+      onCancel={progress.running && progress.sheetCount ? () => automaticNesting?.stop() : undefined} cancelLabel={t("preview.useCurrentLayout")} />
   {:else}
-    <p class="export-preview-state" role="status">{failure || blocked || (busy ? "The export preview appears once the terrain is ready." : preparing)}</p>
+    <p class="export-preview-state" role="status">{failure || blocked || (busy ? t("preview.exportWaitsForTerrain") : preparing)}</p>
   {/if}
 </div>

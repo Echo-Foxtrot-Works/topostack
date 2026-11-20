@@ -1,4 +1,5 @@
 import { acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lakeDisplayNames, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { formatNumber, t } from "$lib/i18n/i18n.svelte";
 import { LINE_PRESETS } from "$lib/studio/options";
 
 /** Pure summaries of a project and its preview geometry, shown in the sidebar and preview. */
@@ -7,7 +8,15 @@ import { LINE_PRESETS } from "$lib/studio/options";
 export type PanelId = "place" | "terrain" | "features" | "water" | "aviation" | "labels" | "make";
 export const PANEL_IDS: PanelId[] = ["place", "terrain", "features", "water", "aviation", "labels", "make"];
 /** Rail labels: short enough to sit under an icon. */
-export const PANEL_LABELS: Record<PanelId, string> = { place: "Place", terrain: "Terrain", features: "Features", water: "Water", aviation: "Aviation", labels: "Labels", make: "Fabricate" };
+export const PANEL_LABELS: Readonly<Record<PanelId, string>> = Object.freeze({
+  get place() { return t("app.panelPlace"); },
+  get terrain() { return t("app.panelTerrain"); },
+  get features() { return t("app.panelFeatures"); },
+  get water() { return t("app.panelWater"); },
+  get aviation() { return t("app.panelAviation"); },
+  get labels() { return t("app.panelLabels"); },
+  get make() { return t("app.panelMake"); },
+});
 /** Everything that can be a collapsible block: the panels, as the platform embed shows them, and the embed's lead rail. */
 export type DisclosureId = PanelId | "setup" | "customData";
 
@@ -92,7 +101,7 @@ export function modeledLakes(waterSurfaces: readonly WaterSurfaceIR[] | undefine
     .map((surface, index) => ({
       id: surface.id,
       hylakId: surface.hylakId!,
-      name: names.get(waterInsertLakeKey(surface)) ?? surface.name ?? `Lake ${index + 1}`,
+      name: names.get(waterInsertLakeKey(surface)) ?? surface.name ?? t("app.lakeNumber", { number: index + 1 }),
       maxDepthM: surface.maxDepthM ?? surface.surfaceElevationM - surface.bedElevationM,
       depthSource: surface.depthSource,
     }))
@@ -180,46 +189,46 @@ export function activeLinePreset(lineStyle: ProjectConfigV1["lineStyle"]): strin
   return LINE_PRESETS.find((preset) => JSON.stringify(preset.style) === style)?.value;
 }
 
-function shownLength(valueMm: number, units: ProjectConfigV1["units"]): number {
-  return Number(displayLength(valueMm, units).toFixed(3));
+/** A length in display units, up to three decimals, without digit grouping ("1200 × 200 mm"). */
+function shownLength(valueMm: number, units: ProjectConfigV1["units"]): string {
+  return formatNumber(Number(displayLength(valueMm, units).toFixed(3)), { maximumFractionDigits: 3, useGrouping: false });
 }
-
-const plural = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`;
 
 /** One-line summary under each panel's title. */
 export function panelSummary(panel: DisclosureId, project: ProjectConfigV1, stackLayerCount: number): string {
   const unit = lengthUnit(project.units);
   const stack = project.outputMode === "stack";
   switch (panel) {
-    case "setup": return `${stack ? "Layered relief" : "Flat engraving"} · ${project.location.label.split(",")[0]}`;
-    case "place": return `${project.cropShape === "circle" ? "Circle" : "Rectangle"} · ${shownLength(project.widthMm, project.units)} × ${shownLength(project.heightMm, project.units)} ${unit}`;
-    case "terrain": return stack ? `${stackLayerCount} layers · ${shownLength(project.materialThicknessMm, project.units)} ${unit} material` : project.showEngravingContours ? `${project.engravingContourCount} contours · index every ${project.engravingIndexInterval}` : "Contours off";
+    case "setup": return t("app.summarySetup", { mode: stack ? "stack" : "engraving", place: project.location.label.split(",")[0] });
+    case "place": return t("app.summaryPlace", { shape: project.cropShape === "circle" ? "circle" : "rectangle", width: shownLength(project.widthMm, project.units), height: shownLength(project.heightMm, project.units), unit });
+    case "terrain": return stack ? t("app.summaryTerrainStack", { count: stackLayerCount, thickness: shownLength(project.materialThicknessMm, project.units), unit }) : project.showEngravingContours ? t("app.summaryTerrainContours", { count: project.engravingContourCount, interval: project.engravingIndexInterval }) : t("app.summaryTerrainContoursOff");
     case "features": {
       const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder, Boolean(project.lands?.boundaries.length), stack && project.paintTemplates.some((kind) => kind !== "water")].filter(Boolean).length;
       const preset = activeLinePreset(project.lineStyle);
-      return `${plural(count, "feature")} on · ${preset ? `${LINE_PRESETS.find((option) => option.value === preset)?.label ?? preset} lines` : "Custom lines"}`;
+      return t("app.summaryFeatures", { count, preset: preset && LINE_PRESETS.some((option) => option.value === preset) ? preset : "custom" });
     }
     case "water": {
-      const parts = [stack && project.showWaterDepth ? "Carved depth" : project.showWater ? "Outlines" : "Off"];
-      if (stack && project.waterInserts) parts.push("Acrylic inserts");
-      if (stack && project.paintTemplates.length) parts.push("Paint templates");
+      const parts = [stack && project.showWaterDepth ? t("app.summaryWaterCarvedDepth") : project.showWater ? t("app.summaryWaterOutlines") : t("app.summaryOff")];
+      if (stack && project.waterInserts) parts.push(t("app.summaryWaterAcrylicInserts"));
+      if (stack && project.paintTemplates.length) parts.push(t("app.summaryWaterPaintTemplates"));
       return parts.join(" · ");
     }
     case "aviation": {
       const count = AVIATION_DATA_DETAILS.filter((detail) => project.aviation?.[detail] === true).length;
-      const parts = [count ? `${plural(count, "layer")} on` : "Off"];
-      if (stack && project.airspaceStack) parts.push("Airspace in 3D");
+      const parts = [count ? t("app.summaryAviationLayers", { count }) : t("app.summaryOff")];
+      if (stack && project.airspaceStack) parts.push(t("app.summaryAviationAirspace3d"));
       return parts.join(" · ");
     }
     case "labels": {
       const count = [project.showElevationLabels, project.showNorthArrow, project.showScaleBar, project.plaque?.enabled === true].filter(Boolean).length;
-      return `${plural(count, "mark")} on · ${shownLength(project.textStyle.sizeMm, project.units)} ${unit} text`;
+      return t("app.summaryLabels", { count, size: shownLength(project.textStyle.sizeMm, project.units), unit });
     }
     case "make": {
-      if (!stack) return `${shownLength(project.minimumFeatureMm, project.units)} ${unit} minimum feature`;
+      if (!stack) return t("app.summaryMakeEngraving", { size: shownLength(project.minimumFeatureMm, project.units), unit });
       const seams = planSeamGrid(project);
-      return `${shownLength(project.laserKerfMm, project.units)} ${unit} kerf · ${seams ? `${seams.columns} × ${seams.rows} sheets per layer` : "One piece per layer"}`;
+      const kerf = shownLength(project.laserKerfMm, project.units);
+      return seams ? t("app.summaryMakeSeams", { kerf, unit, columns: seams.columns, rows: seams.rows }) : t("app.summaryMakeOnePiece", { kerf, unit });
     }
-    case "customData": return `${plural(project.markers.length, "marker")} · ${plural(project.customLines.length, "path")}`;
+    case "customData": return t("app.summaryCustomData", { markers: project.markers.length, paths: project.customLines.length });
   }
 }

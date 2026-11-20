@@ -92,7 +92,9 @@
   --color-red-subtlest: var(--red-100);
 
   /* type — the export names a style by its metrics; the role each one carries is in design.md */
-  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Inter covers the Latin and Cyrillic locales; the platform's other scripts (Chinese, Japanese, Korean, Thai)
+   * fall through to each system's UI font rather than to a generic face. */
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'PingFang TC', 'Hiragino Sans', 'Apple SD Gothic Neo', 'Microsoft YaHei', 'Microsoft JhengHei', 'Yu Gothic UI', 'Malgun Gothic', 'Leelawadee UI', Thonburi, 'Noto Sans CJK SC', 'Noto Sans Thai', sans-serif;
   --font-16-semibold: 600 16px / 22px var(--font-sans);   /* dialog titles */
   --font-14-medium: 500 14px / 20px var(--font-sans);     /* buttons, rail headings */
   --font-14-regular: 400 14px / 20px var(--font-sans);   /* the register a generator moves up to */
@@ -891,6 +893,16 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .swatch-options button, .line-presets button { min-height: 32px; padding: 6px 4px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
   .swatch-options svg, .line-presets svg { width: 24px; height: 24px; flex: none; }
   .line-presets small { display: none; }
+  /* Choice labels are one word in English but can be one long word elsewhere ("Сбалансированные",
+   * "Minimalistyczna"): let them hyphenate by the document language, and break if they still do not fit. */
+  .line-presets button, .swatch-options button { min-width: 0; }
+  :is(.line-presets, .swatch-options) button :is(span, b), .ldt-toggle-group__item { min-width: 0; max-width: 100%; hyphens: auto; overflow-wrap: anywhere; text-align: center; }
+  /* In the rails a segment shares its row equally and grows a line taller only when its label does not
+   * fit (a long word in a wider fallback font), instead of clipping it. The view switch keeps one line. */
+  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group { height: auto; }
+  :is(.gen-rail-lead, .gen-rail-params) .ldt-toggle-group__item { flex: 1 1 0; height: auto; padding-inline: 6px; white-space: normal; line-height: 14px; }
+  /* A help button in a parameter card wraps its longer translations instead of widening the rail. */
+  .gen-rail-params .lake-depth-help { max-width: 100%; height: auto; min-height: var(--control-sm); padding-block: 4px; white-space: normal; text-align: start; }
   .line-presets button, .swatch-options button { border: 1px solid transparent; }
   .line-presets button:hover, .swatch-options button:hover { background: var(--color-bg-hover); }
   .line-presets button[data-state="on"], .swatch-options button[data-state="on"] { background: var(--color-bg-default); color: var(--color-text-primary); border-color: var(--color-stroke-active); }
@@ -985,7 +997,7 @@ html:has(.atomm-workbench), body:has(.atomm-workbench) { height: 100%; margin: 0
   .export-manifest .export-file-stem { min-width: 1ch; overflow: hidden; text-overflow: ellipsis; }
   .export-manifest .export-file-stem:empty { display: none; }
   .export-manifest .export-file-end { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .export-manifest small { flex: none; white-space: nowrap; }
+  .export-manifest li small { flex: none; white-space: nowrap; }
   .export-key { display: flex; align-items: center; gap: var(--space-50); margin: 0; padding-top: var(--space-100); border-top: 1px solid var(--color-stroke-divider); color: var(--color-text-secondary); }
   .export-key i { width: 12px; height: 2px; border-radius: 1px; }
   .export-key i + i, .export-key-score { margin-inline-start: var(--space-100); }

@@ -8,7 +8,7 @@ const world = { west: -180, east: 180, south: -85, north: 85 };
 
 describe("marker helpers", () => {
   it("labels a marker by name, symbol and position", () => {
-    expect(markerLabel(pin, undefined)).toBe("pin marker at 44.12346, -110.50000");
+    expect(markerLabel(pin, undefined)).toBe("Pin marker at 44.12346, -110.50000");
     expect(markerLabel({ ...pin, name: "Camp", symbol: "custom", iconId: "flag" }, [flag])).toBe("Camp, Flag marker at 44.12346, -110.50000");
   });
 

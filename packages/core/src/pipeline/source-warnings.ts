@@ -6,62 +6,76 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
   if (source.terrainSourceUnavailable) warnings.push({
     code: "TERRAIN_SOURCE_FALLBACK",
     message: "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
+    messageKey: "terrainSourceFallback",
   });
   if ((source.elevationRepairCount ?? 0) > 0) warnings.push({
     code: "ELEVATION_REPAIRED",
     message: "Isolated depth spikes in the elevation data were replaced with estimates from nearby terrain. Review the terrain before cutting.",
+    messageKey: "elevationRepaired",
   });
   const wantsVectorData = sourceRequirements(config).vectors;
   if (source.vectorStatus === "partial" && wantsVectorData) warnings.push({
     code: "VECTOR_DATA_PARTIAL",
     message: "The map detail feature limit was reached, so some roads, trails, water lines, or boundaries may be missing.",
+    messageKey: "vectorDataPartial",
   });
   if (source.vectorStatus === "unavailable" && wantsVectorData) warnings.push({
     code: "VECTOR_DATA_UNAVAILABLE",
     message: "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
+    messageKey: "vectorDataUnavailable",
   });
   if (aviationRequested(config)) {
     if (source.aviationStatus === "partial") warnings.push({
       code: "AVIATION_DATA_PARTIAL",
       message: "The aviation feature limit was reached, so some airspace, airports, navaids, or obstacles may be missing. Narrow the map area or turn off some aviation details.",
+      messageKey: "aviationDataPartial",
     });
     if (source.aviationStatus === "unavailable") warnings.push({
       code: "AVIATION_DATA_UNAVAILABLE",
       message: "FAA aviation data is unavailable. This project cannot be exported until the data is restored or aviation details are turned off.",
+      messageKey: "aviationDataUnavailable",
     });
     if (source.aviationStatus === "not-covered") warnings.push({
       code: "AVIATION_NOT_COVERED",
       message: "FAA aviation data covers only the United States and its territories, so this area has no aviation detail.",
+      messageKey: "aviationNotCovered",
     });
     if (aviationSymbolsFillIn(config.lineStyle) && aviation.lines.some((line) => line.aviationClass === "airport" || line.aviationClass === "navaid" || line.aviationClass === "obstacle")) warnings.push({
       code: "AVIATION_SYMBOLS_FILLED",
       message: "Aviation symbols are less than ten aviation line widths across, so their inner detail engraves solid and airports, navaids and obstacles look alike. Enlarge the symbol size or thin the aviation line width.",
+      messageKey: "aviationSymbolsFilled",
     });
   }
   if (sourceRequirements(config).lands) {
     if (source.landsStatus === "partial") warnings.push({
       code: "LANDS_DATA_PARTIAL",
       message: "The public lands feature limit was reached, so some parks, forests, or preserves may be missing. Narrow the map area or turn off some land kinds.",
+      messageKey: "landsDataPartial",
     });
     if (source.landsStatus === "unavailable" || source.landsStatus === undefined) warnings.push({
       code: "LANDS_DATA_UNAVAILABLE",
       message: "Public lands data is unavailable. This project cannot be exported until the data is restored or public land paint and boundaries are turned off.",
+      messageKey: "landsDataUnavailable",
     });
     if (source.landsStatus === "not-covered") warnings.push({
       code: "LANDS_NOT_COVERED",
       message: "Neither PAD-US nor OpenStreetMap has public land of the asked-for kinds here, so this area has no public land paint or boundaries.",
+      messageKey: "landsNotCovered",
     });
     if (source.landsSources?.includes("openstreetmap")) warnings.push({
       code: "LANDS_FROM_OPENSTREETMAP",
       message: "Outside the United States and Canada, public land comes from OpenStreetMap: national parks, nature reserves (as preserves) and military land only, unnamed, and only as completely as they are mapped.",
+      messageKey: "landsFromOpenStreetMap",
     });
   }
   if (source.lakeDataStatus === "unavailable" && usesWaterDepth) warnings.push({
     code: "LAKE_DATA_UNAVAILABLE",
     message: "Lake depth data is unavailable. Disable water depth or regenerate after the service is restored before exporting.",
+    messageKey: "lakeDataUnavailable",
   });
   if ((source.bathymetryStatus === "unavailable" || source.bathymetryStatus === "partial") && usesWaterDepth) warnings.push({
     code: "BATHYMETRY_FALLBACK",
     message: "Some surveyed lake-floor data is unavailable. Gaps use existing terrain or modeled basins instead.",
+    messageKey: "bathymetryFallback",
   });
 }

@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import { getEmbedded } from "$lib/studio/embed-context";
   import { onMount, untrack } from "svelte";
   import * as THREE from "three";
@@ -678,6 +679,6 @@
   }
 </script>
 
-<button type="button" class="three-stage" bind:this={container} onkeydown={handleKeyDown} aria-label="Interactive 3D preview. Drag or use left and right arrows to orbit; scroll or use up and down arrows to zoom."></button>
+<button type="button" class="three-stage" bind:this={container} onkeydown={handleKeyDown} aria-label={t("preview.interactiveThree")}></button>
 
 {#if isEmbedded()}<AtommZoom value={zoom} min={0.25} max={Infinity} onZoom={setZoom} onFit={fitView} />{/if}

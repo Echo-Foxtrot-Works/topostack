@@ -8,6 +8,7 @@
 - [Atomm automatic nesting validation](reports/atomm-automatic-nesting-20260924.md) — shared export layouts without additional embedded controls.
 - [Atomm performance integration verification](reports/atomm-performance-integration-20260924.md) — regression results after integrating terrain performance and sheet nesting for the next Atomm review.
 - [The Atomm embed](atomm-embed.md) — what the platform build shows differently (automatic terrain, Export view, no depth charts) and why.
+- [Localization](localization.md) — the embed in Atomm's 18 languages: catalogs, `t()`, message format, tests and how to write copy; [the native-review checklist](localization-review.md).
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
 - [Studio settings panels](studio-panels.md) — the seven rail panels, which subject each one owns, and where a new control goes.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).

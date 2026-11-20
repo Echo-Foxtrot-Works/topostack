@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/i18n.svelte";
   import { onMount } from "svelte";
   import { isFontLoaded, projectFonts, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import type { PlacementPhase } from "$lib/studio/studio-context";
@@ -43,7 +44,7 @@
     void ensureFonts(fonts).then(() => {
       if (active) loadedKey = key;
     }, (error: unknown) => {
-      if (active) fontError = error instanceof Error ? error.message : "Could not load the engraving font.";
+      if (active) fontError = error instanceof Error ? error.message : t("preview.engravingFontFailed");
     });
     return () => { active = false; };
   });
@@ -62,9 +63,9 @@
   <PlacementLayer {geometry} {hiddenPrefixes} {project} {context} {session} widthMm={geometry.widthMm} heightMm={geometry.heightMm} {marginMm} interactive={phase === "editing"} {onChange} {onDone} {onCancel} />
   {:else}
     <div class="placement-toolbar" role="status">
-      <span>{fontError || "Loading engraving font…"}</span>
-      {#if fontError}<button type="button" onclick={() => retry += 1}>Retry</button>{/if}
-      <button type="button" onclick={onCancel}>Cancel</button>
+      <span>{fontError || t("preview.loadingEngravingFont")}</span>
+      {#if fontError}<button type="button" onclick={() => retry += 1}>{t("preview.retry")}</button>{/if}
+      <button type="button" onclick={onCancel}>{t("preview.cancel")}</button>
     </div>
   {/if}
 </div>

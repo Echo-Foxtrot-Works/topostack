@@ -1,4 +1,5 @@
 import { buildMarkerIcon, flattenSvgPath, MAX_CUSTOM_DATA_NAME_LENGTH, MAX_CUSTOM_GRAPHIC_POINTS, type CustomGraphicV1, type MarkerIconPaint, type MarkerIconV1, type PathPolyline } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 
 /**
  * Reading an SVG the maker uploads as a marker icon. The file is parsed as
@@ -115,10 +116,10 @@ function number(value: string | null | undefined, fallback = 0): number {
 }
 
 const IGNORED = new Set(["defs", "clipPath", "mask", "symbol", "marker", "pattern", "linearGradient", "radialGradient", "filter", "title", "desc", "metadata", "style", "script"]);
-const UNSUPPORTED: Record<string, string> = {
-  text: "Text is left out; convert it to outlines first.",
-  image: "Embedded images are left out; only vector shapes are used.",
-  foreignObject: "Embedded HTML is left out.",
+const UNSUPPORTED: Record<string, () => string> = {
+  text: () => t("domain.svgTextIgnored"),
+  image: () => t("domain.svgImageIgnored"),
+  foreignObject: () => t("domain.svgHtmlIgnored"),
 };
 
 /** A basic shape as path data, so every shape flattens the same way. */
@@ -171,7 +172,7 @@ function drawingExtent(root: Element): number {
 export function svgIconFromText(text: string, options: { id: string; name: string; maxPoints?: number; noun?: string }): SvgIconImport {
   const document = new DOMParser().parseFromString(text, "image/svg+xml");
   const root = document.documentElement;
-  if (!root || root.localName !== "svg" || document.getElementsByTagName("parsererror").length) throw new Error("This file is not a readable SVG.");
+  if (!root || root.localName !== "svg" || document.getElementsByTagName("parsererror").length) throw new Error(t("domain.svgNotReadable"));
   const rules = parseStylesheet(document);
   const warnings = new Set<string>();
   const paints: MarkerIconPaint[] = [];
@@ -230,7 +231,7 @@ export function svgIconFromText(text: string, options: { id: string; name: strin
   const paintKind = (color: string, opacity: number): "none" | "ink" | "erase" => {
     const value = color.trim();
     if (!value || value === "none" || value === "transparent" || opacity <= 0) return "none";
-    if (value.startsWith("url(")) warnings.add("Gradients and patterns are engraved as solid shapes.");
+    if (value.startsWith("url(")) warnings.add(t("domain.svgGradients"));
     return isWhite(value) ? "erase" : "ink";
   };
 
@@ -238,10 +239,10 @@ export function svgIconFromText(text: string, options: { id: string; name: strin
     if (depth > 32) return;
     const name = element.localName;
     if (IGNORED.has(name)) return;
-    if (UNSUPPORTED[name]) { warnings.add(UNSUPPORTED[name]!); return; }
+    if (UNSUPPORTED[name]) { warnings.add(UNSUPPORTED[name]!()); return; }
     const style = styleFor(element, parentStyle);
     if (!style) return;
-    if (element.hasAttribute("clip-path") || element.hasAttribute("mask")) warnings.add("Clipping paths and masks are ignored; the whole shape is used.");
+    if (element.hasAttribute("clip-path") || element.hasAttribute("mask")) warnings.add(t("domain.svgClipping"));
     let matrix = multiply(parentMatrix, parseTransform(element.getAttribute("transform")));
     if (name === "svg" && element !== root) matrix = multiply(matrix, [1, 0, 0, 1, number(element.getAttribute("x")), number(element.getAttribute("y"))]);
     if (name === "svg" || name === "g" || name === "a" || name === "switch") {
@@ -251,7 +252,7 @@ export function svgIconFromText(text: string, options: { id: string; name: strin
     if (name === "use") {
       const reference = (element.getAttribute("href") ?? element.getAttributeNS("http://www.w3.org/1999/xlink", "href") ?? "").trim();
       const target = reference.startsWith("#") ? byId.get(reference.slice(1)) : undefined;
-      if (!target) { if (reference) warnings.add("References to other files are ignored."); return; }
+      if (!target) { if (reference) warnings.add(t("domain.svgExternalReferences")); return; }
       const placed = multiply(matrix, [1, 0, 0, 1, number(element.getAttribute("x")), number(element.getAttribute("y"))]);
       // A referenced symbol draws its children, like a group.
       if (target.localName === "symbol") for (const child of target.children) walk(child, style, placed, depth + 1);
@@ -288,7 +289,7 @@ export function iconNameFromFile(fileName: string, fallback = "Icon"): string {
 
 /** Reads an uploaded file into a marker icon, or throws with a message for the maker. */
 export async function importSvgIcon(file: Pick<File, "size" | "name" | "text">, id: string): Promise<SvgIconImport> {
-  if (file.size > MAX_SVG_ICON_BYTES) throw new Error("SVG icons must be 1 MB or smaller.");
+  if (file.size > MAX_SVG_ICON_BYTES) throw new Error(t("domain.svgIconTooLarge", { sizeMb: MAX_SVG_ICON_BYTES / 1_000_000 }));
   return svgIconFromText(await file.text(), { id, name: iconNameFromFile(file.name) });
 }
 
@@ -299,7 +300,7 @@ export interface SvgGraphicImport {
 
 /** Reads an uploaded file into a custom graphic: the same reading as an icon, with a logo's point budget. */
 export async function importSvgGraphic(file: Pick<File, "size" | "name" | "text">, id: string): Promise<SvgGraphicImport> {
-  if (file.size > MAX_SVG_ICON_BYTES) throw new Error("SVG graphics must be 1 MB or smaller.");
+  if (file.size > MAX_SVG_ICON_BYTES) throw new Error(t("domain.svgGraphicTooLarge", { sizeMb: MAX_SVG_ICON_BYTES / 1_000_000 }));
   const { icon, warnings } = svgIconFromText(await file.text(), { id, name: iconNameFromFile(file.name, "Graphic"), maxPoints: MAX_CUSTOM_GRAPHIC_POINTS, noun: "a graphic" });
   return { graphic: { id: icon.id, name: icon.name, shapes: icon.shapes }, warnings };
 }

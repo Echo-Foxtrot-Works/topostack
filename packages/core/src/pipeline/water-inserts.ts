@@ -204,21 +204,30 @@ export function cutWaterInserts(config: ProjectConfigV1, layers: LayerIR[], wate
     .map(({ areaMm2: _area, ...piece }, index) => ({ id: `W${index + 1}`, ...piece }));
 
   const listed = (names: string[]) => `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` and ${names.length - 3} more` : ""}`;
-  const stay = (names: string[], reason: string) => {
-    if (names.length) warnings.push({ code: "WATER_INSERT_SKIPPED", message: `${listed(names)} stay${names.length === 1 ? "s" : ""} wood: ${reason}` });
+  const stay = (names: string[], reason: string, messageKey: string, params: Record<string, number> = {}) => {
+    if (names.length) warnings.push({
+      code: "WATER_INSERT_SKIPPED",
+      message: `${listed(names)} stay${names.length === 1 ? "s" : ""} wood: ${reason}`,
+      messageKey,
+      params: { names: names.slice(0, 3), more: Math.max(0, names.length - 3), count: names.length, ...params },
+    });
   };
-  stay(skipped.onBottom, "the waterline sits on the bottom sheet, so nothing would hold an acrylic insert.");
-  stay(skipped.tooSmall, `too small or narrow for an acrylic insert (under ${WATER_INSERT_MIN_WIDTH_MM} mm across).`);
-  stay(skipped.wholeSheet, "the water covers its whole sheet, which would leave no wood to hold the acrylic.");
-  stay(skipped.failed, "the shoreline could not be cut cleanly.");
+  stay(skipped.onBottom, "the waterline sits on the bottom sheet, so nothing would hold an acrylic insert.", "waterInsertOnBottom");
+  stay(skipped.tooSmall, `too small or narrow for an acrylic insert (under ${WATER_INSERT_MIN_WIDTH_MM} mm across).`, "waterInsertTooSmall", { minWidth: WATER_INSERT_MIN_WIDTH_MM });
+  stay(skipped.wholeSheet, "the water covers its whole sheet, which would leave no wood to hold the acrylic.", "waterInsertWholeSheet");
+  stay(skipped.failed, "the shoreline could not be cut cleanly.", "waterInsertFailed");
   if (inserts.length && material.thicknessMm > config.materialThicknessMm + 1e-6) warnings.push({
     code: "WATER_INSERT_PROUD",
     message: `The acrylic is ${(material.thicknessMm - config.materialThicknessMm).toFixed(1)} mm thicker than the wood, so the water will stand proud of its shore. Use acrylic no thicker than ${config.materialThicknessMm} mm for a flush surface.`,
+    messageKey: "waterInsertProud",
+    params: { excess: material.thicknessMm - config.materialThicknessMm, wood: config.materialThicknessMm },
   });
   const oversize = inserts.filter((insert) => !fitsWorkArea(acrylicCutBounds([insert], material), config));
   if (oversize.length) warnings.push({
     code: "WATER_INSERT_OVERSIZE",
     message: `Acrylic insert${oversize.length === 1 ? "" : "s"} ${oversize.map((insert) => insert.id).join(", ")} ${oversize.length === 1 ? "is" : "are"} larger than the machine work area. Acrylic is never split, since a seam would show in the water; exclude the lake or use a larger machine.`,
+    messageKey: "waterInsertOversize",
+    params: { count: oversize.length, ids: oversize.map((insert) => insert.id) },
   });
   return { inserts, material };
 }

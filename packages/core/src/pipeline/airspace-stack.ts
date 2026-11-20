@@ -51,10 +51,12 @@ const CLASS_SETTING_NAMES: Record<AirspaceVolumeV1["aviationClass"], string> = {
  * classes that are nearby as the thing to try, else say none reaches the area.
  */
 function emptyAirspaceWarning(all: readonly AirspaceVolumeV1[], classes: AirspaceStackSettingsV1["classes"]): GeometryWarning {
-  const off = [...new Set(all.filter((volume) => !classEnabled(volume, classes)).map((volume) => volume.aviationClass))].map((aviationClass) => CLASS_SETTING_NAMES[aviationClass]);
+  const offClasses = [...new Set(all.filter((volume) => !classEnabled(volume, classes)).map((volume) => volume.aviationClass))];
+  const off = offClasses.map((aviationClass) => CLASS_SETTING_NAMES[aviationClass]);
+  // `airspaceClasses` carries the class ids; the studio names them in its language.
   return off.length
-    ? { code: "AIRSPACE_EMPTY", message: `No airspace pieces were made over this map area. ${off.join(" and ")} airspace nearby is switched off: turn it on under Airspace in acrylic to build it.` }
-    : { code: "AIRSPACE_EMPTY", message: "No airspace pieces were made: no Class B, C, D or special use airspace reaches over this map area. Move the area over an airport or restricted area to build some." };
+    ? { code: "AIRSPACE_EMPTY", message: `No airspace pieces were made over this map area. ${off.join(" and ")} airspace nearby is switched off: turn it on under Airspace in acrylic to build it.`, messageKey: "airspaceEmptyClassesOff", params: { airspaceClasses: offClasses } }
+    : { code: "AIRSPACE_EMPTY", message: "No airspace pieces were made: no Class B, C, D or special use airspace reaches over this map area. Move the area over an airport or restricted area to build some.", messageKey: "airspaceEmpty" };
 }
 
 /** One prism of airspace after its limits are resolved: altitudes in metres MSL, a null floor standing on the ground. */
@@ -352,7 +354,7 @@ function sliceLevels(builder: Builder, parts: Part[], warnings: GeometryWarning[
     const top = Math.max(...solid.map((part) => scale.z(part.ceilingM)));
     const sheets = Math.ceil((top - bottom - 1e-6) / thicknessMm);
     if (sheets > MAX_AIRSPACE_VOLUME_SHEETS) {
-      warnings.push({ code: "AIRSPACE_TOO_COMPLEX", message: `Solid airspace would require ${sheets} acrylic sheets, exceeding the ${MAX_AIRSPACE_VOLUME_SHEETS}-sheet limit. Use plates or tiers, thicker acrylic, or a lower ceiling cap, then regenerate.` });
+      warnings.push({ code: "AIRSPACE_TOO_COMPLEX", message: `Solid airspace would require ${sheets} acrylic sheets, exceeding the ${MAX_AIRSPACE_VOLUME_SHEETS}-sheet limit. Use plates or tiers, thicker acrylic, or a lower ceiling cap, then regenerate.`, messageKey: "airspaceTooComplex", params: { sheets, limit: MAX_AIRSPACE_VOLUME_SHEETS } });
       return undefined;
     }
     // Adjacent slabs often have identical sectors and terrain clearance. Reuse
@@ -464,10 +466,10 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
   const material = airspaceMaterial(config);
   if (!settings || !material) return undefined;
   if (!source.airspaceVolumes) {
-    warnings.push({ code: "AIRSPACE_NOT_LOADED", message: "Airspace was not loaded for this area, so no airspace pieces were made. Airspace data covers the US and its territories." });
+    warnings.push({ code: "AIRSPACE_NOT_LOADED", message: "Airspace was not loaded for this area, so no airspace pieces were made. Airspace data covers the US and its territories.", messageKey: "airspaceNotLoaded" });
     return undefined;
   }
-  if (source.airspaceStatus === "partial") warnings.push({ code: "AIRSPACE_DATA_PARTIAL", message: "Airspace data is incomplete. Narrow the map area or turn off some airspace classes, then regenerate before exporting." });
+  if (source.airspaceStatus === "partial") warnings.push({ code: "AIRSPACE_DATA_PARTIAL", message: "Airspace data is incomplete. Narrow the map area or turn off some airspace classes, then regenerate before exporting.", messageKey: "airspaceDataPartial" });
   const volumes = source.airspaceVolumes.filter((volume) => classEnabled(volume, settings.classes));
   const key = memo && [
     JSON.stringify([settings, material, config.materialThicknessMm, config.minimumFeatureMm, ladder.ladderBase, ladder.stack.metersPerLayer]),
@@ -504,6 +506,8 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
   if (topMm > AIRSPACE_TALL_MM) warnings.push({
     code: "AIRSPACE_TALL",
     message: `The airspace stands ${Math.round(topMm)} mm tall. Lower the airspace ceiling cap or Vertical exaggeration for a model that is easier to build and display.`,
+    messageKey: "airspaceTall",
+    params: { height: Math.round(topMm) },
   });
   if (settings.form === "volumes") {
     const area = levels.reduce((sum, level) => sum + level.pieces.reduce((pieceSum, entry) => pieceSum + totalArea(entry.polygons), 0), 0);
@@ -511,6 +515,8 @@ export function buildAirspaceStack(config: ProjectConfigV1, source: SourceBundle
     if (footprints > AIRSPACE_HEAVY_FOOTPRINTS) warnings.push({
       code: "AIRSPACE_ACRYLIC_HEAVY",
       message: `Solid airspace takes acrylic covering the model ${footprints.toFixed(1)} times over. Plates or tiers use far less.`,
+      messageKey: "airspaceAcrylicHeavy",
+      params: { footprints },
     });
   }
   return stack;
@@ -556,6 +562,8 @@ function piecesAndRods(config: ProjectConfigV1, source: SourceBundleV1, layers: 
     if (merged.length) warnings.push({
       code: "AIRSPACE_LEVELS_MERGED",
       message: `${merged.length} airspace ${merged.length === 1 ? "level was" : "levels were"} merged into the level below, because no rod fits between pieces closer than ${gapMm.toFixed(1)} mm. Raise Vertical exaggeration to separate them.`,
+      messageKey: "airspaceLevelsMerged",
+      params: { count: merged.length, gap: gapMm },
     });
   }
   const ceilingCapped = (volume: AirspaceVolumeV1): boolean => {
@@ -580,13 +588,17 @@ function piecesAndRods(config: ProjectConfigV1, source: SourceBundleV1, layers: 
   if (terracedNames.length) warnings.push({
     code: "AIRSPACE_TERRACED",
     message: `${terracedNames.slice(0, 3).join(", ")}${terracedNames.length > 3 ? ` and ${terracedNames.length - 3} more` : ""} ${terracedNames.length === 1 ? "has" : "have"} a floor given above ground, built as steps over the terrain.`,
+    messageKey: "airspaceTerraced",
+    params: { names: terracedNames.slice(0, 3), more: Math.max(0, terracedNames.length - 3), count: terracedNames.length },
   });
   if (builder.dropped.count) warnings.push({
     code: "AIRSPACE_PIECES_DROPPED",
     message: `${builder.dropped.count} airspace ${builder.dropped.count === 1 ? "piece was" : "pieces were"} left out because ${builder.dropped.count === 1 ? "it was" : "they were"} smaller than 10 cm² after overlap partitioning, terrain and cropping cut ${builder.dropped.count === 1 ? "it" : "them"}.`,
+    messageKey: "airspacePiecesDropped",
+    params: { count: builder.dropped.count },
   });
   // Retain the fabrication guard if numerical clipping leaves a conflict.
-  if (piecesOverlap(levels, material.thicknessMm)) warnings.push({ code: "AIRSPACE_PIECES_OVERLAP", message: "Airspace acrylic pieces overlap at the same height. Use plates or disable overlapping airspace classes, then regenerate before exporting." });
+  if (piecesOverlap(levels, material.thicknessMm)) warnings.push({ code: "AIRSPACE_PIECES_OVERLAP", message: "Airspace acrylic pieces overlap at the same height. Use plates or disable overlapping airspace classes, then regenerate before exporting.", messageKey: "airspacePiecesOverlap" });
   const stack: AirspaceStackIR = { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm: 0, levels, sectors, rod: { ...settings.rod }, ...(source.airspaceCycle ? { cycle: source.airspaceCycle } : {}), columns: [], cutList: [], backingSheet: false };
   // Rods hold the pieces, and their sockets become holes in the sheets; a piece no rod can hold is left out.
   placeAirspaceSupports(stack, layers, inserts, t, config.minimumFeatureMm, warnings);

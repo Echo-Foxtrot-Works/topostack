@@ -328,7 +328,7 @@ describe("machine work-area splitting", () => {
     } finally {
       refuse.mockRestore();
     }
-    expect(warnings.filter(({ code }) => code === "SEAM_TABS_OMITTED")).toEqual([{ code: "SEAM_TABS_OMITTED", message: expect.stringMatching(/on layer 1;/) }]);
+    expect(warnings.filter(({ code }) => code === "SEAM_TABS_OMITTED")).toEqual([{ code: "SEAM_TABS_OMITTED", message: expect.stringMatching(/on layer 1;/), messageKey: "seamTabsOmitted", params: { count: 1, layers: ["1"] } }]);
   });
 
   it("leaves seams that nothing covers straight", () => {

@@ -4,6 +4,7 @@
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
   import { hiddenByPrefix } from "./placeables";
   import { placementViewBox } from "./viewport";
+  import { t } from "$lib/i18n/i18n.svelte";
 
   /**
    * The finished piece seen from above without WebGL: every sheet painted
@@ -32,7 +33,7 @@
   })));
 </script>
 
-<svg class="stack-top-view" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} role="img" aria-label="Top-down view of the piece">
+<svg class="stack-top-view" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} role="img" aria-label={t("water.topDownView")}>
   {#if outputMode === "engraving"}
     {#if cropShape === "circle"}<circle cx="0" cy="0" r={cropRadiusMm(geometry)} fill="#e8cfaa" />{:else}<rect x={-geometry.widthMm / 2} y={-geometry.heightMm / 2} width={geometry.widthMm} height={geometry.heightMm} fill="#e8cfaa" />{/if}
     {#if !bare}<g fill="none" stroke="#6b4a2d" stroke-width={geometry.lineStyle.contourMm}>

@@ -11,7 +11,7 @@ describe("markerElement", () => {
     expect(element.className).toBe("topostack-map-marker");
     expect(element.dataset).toMatchObject({ symbol: "pin", drawing: "pin" });
     expect(element.getAttribute("role")).toBe("img");
-    expect(element.getAttribute("aria-label")).toBe("Camp, pin marker at 44.50000, -110.50000");
+    expect(element.getAttribute("aria-label")).toBe("Camp, Pin marker at 44.50000, -110.50000");
     expect(element.title).toBe("Camp");
     const path = element.querySelector("svg[aria-hidden=true] path");
     expect(path?.getAttribute("d")).toMatch(/^M/);

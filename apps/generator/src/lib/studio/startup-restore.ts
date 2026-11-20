@@ -1,6 +1,8 @@
 import { DEFAULT_PROJECT, MAX_PROJECT_NAME_LENGTH, parseProject, type ProjectConfigV1 } from "@topostack/core";
+import { t } from "$lib/i18n/i18n.svelte";
 import { UnreadableSavedProjectError } from "$lib/storage/storage";
 import { starterById, type StarterId } from "$lib/site/starters";
+import { localMessage } from "$lib/i18n/errors";
 
 /** Example slugs are lowercase words joined by hyphens; anything else never reaches the network. */
 const EXAMPLE_SLUG = /^[a-z0-9-]+$/;
@@ -64,13 +66,13 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
       if (!(error instanceof UnreadableSavedProjectError)) throw error;
       if (host.isCancelled()) return { autosave };
       console.error("TopoStack could not restore the saved project.", error);
-      host.setStatus(`${error.message} · starting from the sample preview`);
+      host.setStatus(t("status.savedProjectUnreadable", { reason: localMessage(error.message) }));
       autosave = error.backupKey !== undefined;
     }
     if (host.isCancelled()) return { autosave };
     if (saved) {
       host.restoreSaved(saved);
-      host.setStatus("Local project restored · generate to refresh terrain");
+      host.setStatus(t("status.localProjectRestored"));
     }
     // Checked without the share module so ordinary visits never load it.
     if (/^#?p=/.test(host.hash)) {
@@ -78,15 +80,15 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
       if (host.isCancelled()) return { autosave };
       let shared: ProjectConfigV1 | undefined;
       try { shared = projectFromShareLink(host.hash); }
-      catch (error) { host.setStatus(`${error instanceof Error ? error.message : "Share link could not be opened."} · your saved project is unchanged`); }
+      catch (error) { host.setStatus(t("status.shareLinkFailed", { reason: error instanceof Error ? error.message : t("status.shareLinkCouldNotOpen") })); }
       await host.consumeShareLink();
       if (host.isCancelled() || !shared) return { autosave };
       host.openSharedProject(shared, host.currentProject());
       if (new URLSearchParams(host.search).get("generate") === "1") {
-        host.setStatus("Shared design opened · generating its terrain · Undo returns to your previous project");
+        host.setStatus(t("status.sharedDesignGenerating"));
         host.generate();
       } else {
-        host.setStatus("Shared design opened · generate terrain to preview it · Undo returns to your previous project");
+        host.setStatus(t("status.sharedDesignOpened"));
       }
       return { autosave };
     }
@@ -97,10 +99,10 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
       const next = starterProject(starter);
       await host.consumeStarterLink();
       if (host.isCancelled()) return { autosave };
-      if (!next) { host.setStatus("Starter not found · your project is unchanged"); return { autosave }; }
+      if (!next) { host.setStatus(t("status.starterNotFound")); return { autosave }; }
       host.openExample(next, host.currentProject());
       host.onStarterOpened(starterById(starter)!.id);
-      host.setStatus("Starter opened · review the size and material, then generate terrain · Undo returns to your previous project");
+      host.setStatus(t("status.starterOpened"));
       return { autosave };
     }
     const example = new URLSearchParams(host.search).get("example");
@@ -117,13 +119,13 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
     const previous = host.currentProject();
     const next: ProjectConfigV1 = { ...previous, name: linkedLake.label.slice(0, MAX_PROJECT_NAME_LENGTH), location: linkedLake, outputMode: "stack", showWaterDepth: true };
     host.openLinkedLake(next, previous);
-    host.setStatus("Lake selected from the depth directory · loading survey data");
+    host.setStatus(t("status.directoryLakeSelected"));
     // A directory link promises that lake's terrain, so build it on arrival.
     host.generate();
   } catch (error) {
     if (host.isCancelled()) return { autosave };
     console.error("TopoStack could not restore the saved project.", error);
-    host.setStatus("Saved project could not be restored · starting from the sample preview");
+    host.setStatus(t("status.savedProjectNotRestored"));
   }
   return { autosave };
 }
@@ -135,7 +137,7 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
  */
 async function openExampleLink(host: StartupRestoreHost, slug: string): Promise<void> {
   let example: ProjectConfigV1 | undefined;
-  let failure = "Example not found · your project is unchanged";
+  let failure = t("status.exampleNotFound");
   if (slug === DEFAULT_EXAMPLE_SLUG) example = DEFAULT_PROJECT;
   else if (EXAMPLE_SLUG.test(slug) && slug.length <= 80) {
     try {
@@ -144,7 +146,7 @@ async function openExampleLink(host: StartupRestoreHost, slug: string): Promise<
     } catch (error) {
       if (host.isCancelled()) return;
       console.error("TopoStack could not open the example.", error);
-      failure = "Example could not be opened · your project is unchanged";
+      failure = t("status.exampleCouldNotOpen");
     }
   }
   if (host.isCancelled()) return;
@@ -152,7 +154,7 @@ async function openExampleLink(host: StartupRestoreHost, slug: string): Promise<
   if (host.isCancelled()) return;
   if (!example) { host.setStatus(failure); return; }
   host.openExample(example, host.currentProject());
-  host.setStatus("Example opened · loading its terrain · Undo returns to your previous project");
+  host.setStatus(t("status.exampleOpened"));
   // Like a directory lake, the link promises the pictured terrain, so build it on arrival.
   host.generate();
 }

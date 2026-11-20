@@ -1,7 +1,10 @@
-import { exportBlockReason, type GeometryIRV1, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { exportBlockMessage, type GeometryIRV1, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { exportBlockText } from "$lib/i18n/warnings";
 import { createSubscriber } from "svelte/reactivity";
 import type { ExportUpdate } from "$lib/atomm/atomm-bridge";
+import { t } from "$lib/i18n/i18n.svelte";
 import { prepareProjectSettings, prepareSelectedDownload, startBrowserDownload, type DownloadOption } from "$lib/studio/native-export";
+import { errorText } from "$lib/i18n/errors";
 
 export type ExportPhase = "idle" | "preparing" | "ready" | "error";
 
@@ -11,16 +14,15 @@ const EXPORT_NOTICE_MS = 8_000;
 /** The notice describing an export, shared by the browser download and the Atomm handoff. */
 export function describeExport(update: ExportUpdate): { title: string; detail: string; status: string } {
   if (update.phase === "preparing") {
-    const title = update.intent === "openInStudio" ? "Preparing Studio artwork" : "Building your download";
-    return { title, detail: update.intent === "openInStudio" ? "Creating one editable master SVG…" : "Preparing your selected files…", status: title };
+    const title = update.intent === "openInStudio" ? t("status.exportPreparingStudioTitle") : t("status.exportPreparingDownloadTitle");
+    return { title, detail: update.intent === "openInStudio" ? t("status.exportPreparingStudioDetail") : t("status.exportPreparingDownloadDetail"), status: title };
   }
   if (update.phase === "ready") {
-    const files = `${update.fileCount} ${update.fileCount === 1 ? "file" : "files"}`;
     return update.intent === "openInStudio"
-      ? { title: "Artwork ready", detail: ["The master SVG is prepared for Atomm to open in Studio.", update.layoutNote].filter(Boolean).join(" "), status: "Master SVG prepared for Studio" }
-      : { title: "Download ready", detail: [`${files} prepared. Your browser should save them as one download.`, update.layoutNote].filter(Boolean).join(" "), status: `Download prepared · ${files}` };
+      ? { title: t("status.exportArtworkReadyTitle"), detail: [t("status.exportArtworkReadyDetail"), update.layoutNote].filter(Boolean).join(" "), status: t("status.exportArtworkReadyStatus") }
+      : { title: t("status.exportDownloadReadyTitle"), detail: [t("status.exportDownloadReadyDetail", { count: update.fileCount }), update.layoutNote].filter(Boolean).join(" "), status: t("status.exportDownloadReadyStatus", { count: update.fileCount }) };
   }
-  return { title: "Export failed", detail: update.message, status: update.message };
+  return { title: t("status.exportFailedTitle"), detail: update.message, status: update.message };
 }
 
 /**
@@ -83,7 +85,7 @@ export interface DownloadRequest {
 export async function downloadProject({ option, geometry, project, sheetPlan, acrylicSheetPlan, notice, track, nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve())) }: DownloadRequest): Promise<void> {
   if (notice.phase === "preparing") return;
   const tracked = option !== "project" && option !== "assembly";
-  const reason = option === "project" ? undefined : exportBlockReason(geometry, project);
+  const reason = option === "project" ? undefined : exportBlockText(exportBlockMessage(geometry, project));
   if (reason) {
     notice.apply({ phase: "error", intent: "download", message: reason });
     track("export_failed");
@@ -109,6 +111,6 @@ export async function downloadProject({ option, geometry, project, sheetPlan, ac
     notice.apply({ phase: "ready", intent: "download", fileCount: download.fileCount });
   } catch (error) {
     if (tracked) track("export_failed");
-    notice.apply({ phase: "error", intent: "download", message: error instanceof Error ? error.message : "TopoStack could not prepare this download." });
+    notice.apply({ phase: "error", intent: "download", message: errorText(error, t("status.exportDownloadFailed")) });
   }
 }
