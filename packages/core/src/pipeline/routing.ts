@@ -62,7 +62,8 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
   const transportationClass = transportationClassOf(feature);
   return feature.id.startsWith("custom-data-line-") ||
     (transportationClass === "trail" && config.showTrails) ||
-    (transportationClass !== undefined && transportationClass !== "trail" && config.showRoads) ||
+    (transportationClass === "rail" && config.showRail) ||
+    ((transportationClass === "major-road" || transportationClass === "local-road") && config.showRoads) ||
     (feature.kind === "water" && config.showWater) ||
     (feature.kind === "boundary" && config.showBoundaries) ||
     (feature.kind === "grid" && config.showCoordinateGrid) ||

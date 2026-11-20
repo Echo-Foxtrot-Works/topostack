@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Utuh",
   "trailPatternOption.dashed": "Putus-putus",
   "trailPatternOption.dotted": "Titik-titik",
+  "rail": "Rel kereta",
+  "railHint": "Jalur di atas tanah dengan lebar jalan lokal. Terowongan, emplasemen, dan sepur simpan tidak disertakan.",
   "transportationLabels": "Label jalan",
   "stateProvinceBoundariesName": "Batas negara bagian dan provinsi",
   "stateProvinceBoundaries": "Batas negara bagian/provinsi",

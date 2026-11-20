@@ -749,7 +749,7 @@
     return refreshPreview(updatesCustomData ? "customData" : "fabrication", delayMs);
   }
 
-  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showTransportationLabels", "showBoundaries", "aviation", "lands", "landExclusions", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
+  const MAP_DETAIL_KEYS = new Set<string>(["showWater", "showWaterDepth", "showRoads", "showTrails", "showRail", "showTransportationLabels", "showBoundaries", "aviation", "lands", "landExclusions", "showCoordinateGrid", "showElevationLabels", "showNorthArrow", "showScaleBar"]);
 
   /** An agent's settings change, applied the way the matching controls apply it. */
   function applyAgentPatch(patch: Partial<ProjectConfigV1>): Promise<void> {
@@ -840,7 +840,7 @@
       trackUsage(exportBlockReason(completedGeometry, completedProject) ? "generation_failed" : "generation_succeeded", completedProject.outputMode);
       const outcome = {
         fallback: loaded.fallback, fallbackReason: loaded.fallbackReason, waterWarning: loaded.waterWarning,
-        vectorUnavailable: (next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)))
+        vectorUnavailable: (next.vectorStatus !== "available" && (generationProject.showRoads || generationProject.showTrails || generationProject.showRail || generationProject.showWater || generationProject.showBoundaries || (generationProject.outputMode === "stack" && generationProject.showWaterDepth)))
           || (sourceRequirements(generationProject).aviation && (next.aviationStatus === "unavailable" || next.aviationStatus === "partial")),
         lakeUnavailable: generationProject.outputMode === "stack" && generationProject.showWaterDepth && next.lakeDataStatus !== "available",
       };

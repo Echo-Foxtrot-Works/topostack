@@ -50,7 +50,7 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   let next = source;
   // Loaded vectors hold only enabled layers, and generation filters by flag, so
   // disabling a layer needs no reload unless a truncated load may now fit more.
-  const reloadsLayer = (["showRoads", "showTrails", "showBoundaries"] as const).some((key) => key in patch && (patch[key] === true || source.vectorStatus === "partial"));
+  const reloadsLayer = (["showRoads", "showTrails", "showRail", "showBoundaries"] as const).some((key) => key in patch && (patch[key] === true || source.vectorStatus === "partial"));
   // A water paint stencil needs the outlines even with every water drawing off.
   const enablesPaintWater = "paintTemplates" in patch && sourceRequirements(nextProject).water && !sourceRequirements(sourceProject).water;
   const changesVectorDetails = reloadsLayer || "showWater" in patch || (patch.showWaterDepth === true && !sourceProject.showWater) || enablesPaintWater;
@@ -179,7 +179,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
 /** Only the settings that change what `refreshRequiredMapData` loads or assembles. */
 function preparationKey(config: ProjectConfigV1): string {
-  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showBoundaries, config.aviation ?? null, config.airspaceStack?.classes ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
+  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showRail, config.showBoundaries, config.aviation ?? null, config.airspaceStack?.classes ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
 }
 
 /**

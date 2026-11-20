@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Ciągła",
   "trailPatternOption.dashed": "Przerywana",
   "trailPatternOption.dotted": "Kropkowana",
+  "rail": "Koleje",
+  "railHint": "Linie naziemne o szerokości dróg lokalnych. Tunele, stacje rozrządowe i bocznice są pomijane.",
   "transportationLabels": "Etykiety dróg",
   "stateProvinceBoundariesName": "Granice stanów i prowincji",
   "stateProvinceBoundaries": "Granice stanów/prowincji",

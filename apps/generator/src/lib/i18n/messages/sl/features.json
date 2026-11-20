@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Polna",
   "trailPatternOption.dashed": "Črtkana",
   "trailPatternOption.dotted": "Pikčasta",
+  "rail": "Železnice",
+  "railHint": "Nadzemne proge v širini lokalnih cest. Predori, ranžirne postaje in stranski tiri so izpuščeni.",
   "transportationLabels": "Napisi prometnic",
   "stateProvinceBoundariesName": "Meje držav in provinc",
   "stateProvinceBoundaries": "Meje držav/provinc",

@@ -18,6 +18,7 @@ export function starterProject(id: string): ProjectConfigV1 | undefined {
     showWaterDepth: lake,
     showRoads: false,
     showTrails: false,
+    showRail: false,
     showElevationLabels: false,
     showNorthArrow: false,
     showScaleBar: false,

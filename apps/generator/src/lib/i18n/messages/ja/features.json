@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "実線",
   "trailPatternOption.dashed": "破線",
   "trailPatternOption.dotted": "点線",
+  "rail": "鉄道",
+  "railHint": "地上の路線を一般道路の幅で描きます。トンネル、操車場、側線は含みません。",
   "transportationLabels": "交通ラベル",
   "stateProvinceBoundariesName": "州・省の境界",
   "stateProvinceBoundaries": "州・省の境界",

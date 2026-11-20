@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Сплошная",
   "trailPatternOption.dashed": "Штриховая",
   "trailPatternOption.dotted": "Точечная",
+  "rail": "Железные дороги",
+  "railHint": "Наземные линии шириной местных дорог. Тоннели, сортировочные станции и подъездные пути не включаются.",
   "transportationLabels": "Подписи дорог",
   "stateProvinceBoundariesName": "Границы штатов и провинций",
   "stateProvinceBoundaries": "Границы штатов/провинций",

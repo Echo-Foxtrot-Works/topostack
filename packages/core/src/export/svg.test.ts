@@ -29,6 +29,20 @@ describe("SVG export", () => {
     expect(await fabrication.master.blob.text()).toContain("master layout");
   });
 
+  it("engraves rail in its own group only when railways are on", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving", showRoads: true, lineStyle: { ...DEFAULT_PROJECT.lineStyle, localRoadMm: 0.3 } };
+    const source = {
+      ...realSource(project),
+      markings: [{ id: "rail-flat", kind: "road" as const, operation: "engrave" as const, transportationClass: "rail" as const, points: [{ x: -120, y: 20 }, { x: 120, y: -20 }] }],
+    };
+    expect(engravingToSvg(generateGeometry(project, source), project)).not.toContain("rail-flat");
+    const withRail = { ...project, showRail: true };
+    const svg = engravingToSvg(generateGeometry(withRail, source), withRail);
+    expect(svg).toContain('id="ENGRAVE-rail" stroke-width="0.3" stroke-linecap="round"');
+    expect(svg).toContain("rail-flat");
+    expect(svg).not.toContain('id="ENGRAVE-local-roads"');
+  });
+
   it("builds one physical-size engrave-only graphic with contours and optional map details", async () => {
     const project: ProjectConfigV1 = {
       ...DEFAULT_PROJECT,

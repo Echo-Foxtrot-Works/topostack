@@ -14,7 +14,8 @@ export type UnitSystem = "metric" | "imperial";
  */
 export const TEXT_FONTS = ["technical", "rounded", "stencil", "hershey-sans", "hershey-serif", "hershey-script", "relief", "jost", "oswald", "lora", "roboto-slab"] as const;
 export type TextFont = typeof TEXT_FONTS[number];
-export type TransportationClass = "major-road" | "local-road" | "trail";
+/** Rail lines ride with roads (kind "road") but have their own toggle, stroke group and no junction rings. */
+export type TransportationClass = "major-road" | "local-road" | "trail" | "rail";
 /** FAA aviation detail, each drawn and grouped separately in exports. */
 export type AviationClass = "class-b" | "class-c" | "class-d" | "special-use" | "runway" | "airport" | "navaid" | "obstacle";
 /**
@@ -397,6 +398,8 @@ export interface ProjectConfigV1 {
   smoothing: number;
   showRoads: boolean;
   showTrails: boolean;
+  /** Railways from the OSM basemap; off unless asked for, so older projects keep their linework. */
+  showRail: boolean;
   showTransportationLabels: boolean;
   showWater: boolean;
   /** Optional vector pattern engraved inside water areas in flat mode. */
@@ -1373,6 +1376,7 @@ export const DEFAULT_PROJECT: ProjectConfigV1 = {
   smoothing: 1,
   showRoads: true,
   showTrails: true,
+  showRail: false,
   showTransportationLabels: false,
   showWater: true,
   waterFillPattern: "none",

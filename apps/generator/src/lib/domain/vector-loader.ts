@@ -12,12 +12,23 @@ const RAW_VECTOR_MARKING_BUDGET_MULTIPLIER = 4;
 const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"]);
 const LOCAL_ROAD_DETAILS = new Set(["tertiary", "tertiary_link", "residential", "service", "unclassified", "road", "raceway", "driveway", "parking_aisle", "alley", "drive-through", "emergency_access"]);
 const TRAIL_DETAILS = new Set(["pedestrian", "track", "path", "cycleway", "bridleway", "steps", "corridor", "sidewalk", "crossing"]);
-const EXCLUDED_TRANSPORT_KINDS = new Set(["rail", "aerialway", "ferry", "pier", "aeroway"]);
+const EXCLUDED_TRANSPORT_KINDS = new Set(["aerialway", "ferry", "pier", "aeroway"]);
+/** Passenger and freight lines; yards, sidings, spurs and disused track would only clutter the engraving. */
+const RAIL_DETAILS = new Set(["rail", "subway", "light_rail", "tram", "narrow_gauge", "monorail", "funicular", "preserved"]);
+const RAIL_SERVICES = new Set(["yard", "siding", "spur", "crossover"]);
+/** Letters the engraving fonts can draw; names in other scripts fall back to a romanized name. */
+const ENGRAVABLE_SCRIPT = /[\p{Script=Latin}\p{Script=Cyrillic}]/u;
+const ROMANIZED_NAME_KEYS = ["name:en", "name:ja-Latn", "name:ja_rm", "name:zh-Latn-pinyin", "name:ko-Latn", "int_name"] as const;
 
 export function classifyTransportation(properties: Record<string, unknown>): TransportationClass | undefined {
   const kind = typeof properties.kind === "string" ? properties.kind : "";
   const detail = typeof properties.kind_detail === "string" ? properties.kind_detail : "";
   if (EXCLUDED_TRANSPORT_KINDS.has(kind)) return undefined;
+  if (kind === "rail") {
+    // Underground lines would engrave across terrain they never touch.
+    if (properties.is_tunnel === true || RAIL_SERVICES.has(String(properties.service ?? ""))) return undefined;
+    return RAIL_DETAILS.has(detail || "rail") ? "rail" : undefined;
+  }
   if (kind === "path" || TRAIL_DETAILS.has(detail)) return "trail";
   if (kind === "highway" || kind === "major_road" || MAJOR_ROAD_DETAILS.has(detail)) return "major-road";
   if (kind === "minor_road" || LOCAL_ROAD_DETAILS.has(detail)) return "local-road";
@@ -25,11 +36,19 @@ export function classifyTransportation(properties: Record<string, unknown>): Tra
 }
 
 export function transportationLabel(properties: Record<string, unknown>): string | undefined {
-  for (const key of ["name", "ref", "shield_text"] as const) {
+  const text = (key: string) => {
     const value = properties[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  };
+  const name = text("name");
+  if (name && !ENGRAVABLE_SCRIPT.test(name)) {
+    // 東海道本線 has no glyphs to engrave; "Tokaido Main Line" does.
+    for (const key of ROMANIZED_NAME_KEYS) {
+      const romanized = text(key);
+      if (romanized && ENGRAVABLE_SCRIPT.test(romanized)) return romanized;
+    }
   }
-  return undefined;
+  return name ?? text("ref") ?? text("shield_text");
 }
 
 /** Protomaps normalizes first-level administrative lines to kind=region. */
@@ -104,7 +123,7 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
           transportationClass = classifyTransportation(properties);
           if (!transportationClass) continue;
           kind = transportationClass === "trail" ? "trail" : "road";
-          if ((kind === "trail" && !config.showTrails) || (kind === "road" && !config.showRoads)) continue;
+          if (transportationClass === "trail" ? !config.showTrails : transportationClass === "rail" ? !config.showRail : !config.showRoads) continue;
         } else {
           if (!config.showWater) continue;
           kind = "water";
@@ -147,13 +166,14 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   const rawMarkings = perTile.flatMap((tile) => tile.markings);
   const boundaries = cleanBoundaryMarkings(rawMarkings.filter((marking) => marking.kind === "boundary"), config.minimumFeatureMm);
   const transportation = stitchTransportationMarkings(rawMarkings.filter((marking) => marking.kind === "road" || marking.kind === "trail"));
-  const roads = transportation.filter((marking) => marking.kind === "road");
+  const roads = transportation.filter((marking) => marking.kind === "road" && marking.transportationClass !== "rail");
+  const rails = transportation.filter((marking) => marking.transportationClass === "rail");
   const trails = transportation.filter((marking) => marking.kind === "trail");
   const waterways = cleanWaterwayMarkings(rawMarkings.filter((marking) => marking.kind === "water"), config.minimumFeatureMm);
   const inland = dissolveWaterAreas(perTile.flatMap((tile) => tile.waterPolygons), config.minimumFeatureMm);
   const ocean = dissolveWaterAreas(perTile.flatMap((tile) => tile.oceanPolygons), config.minimumFeatureMm);
   const shorelines = config.showWater ? shorelineMarkings([...ocean, ...inland]) : [];
-  const limited = limitVectorMarkingGroups([boundaries, roads, trails, shorelines, waterways]);
+  const limited = limitVectorMarkingGroups([boundaries, roads, rails, trails, shorelines, waterways]);
   return {
     markings: limited.markings,
     inland,

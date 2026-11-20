@@ -32,6 +32,8 @@
   "trailPatternOption.solid": "Solid",
   "trailPatternOption.dashed": "Dashed",
   "trailPatternOption.dotted": "Dotted",
+  "rail": "Railways",
+  "railHint": "Above-ground lines at the local road width. Tunnels, yards and sidings are left out.",
   "transportationLabels": "Transportation labels",
   "stateProvinceBoundariesName": "State and province boundaries",
   "stateProvinceBoundaries": "State / province boundaries",
