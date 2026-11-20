@@ -15,7 +15,7 @@ import survey_gsi
 class ShiftJisInfo(zipfile.ZipInfo):
     """Writes its name in Shift_JIS without the UTF-8 flag, as GSI's archives do."""
     def _encodeFilenameFlags(self):
-        return self.filename.encode('cp932'), self.flag_bits
+        return self.filename.encode('cp932'), self.flag_bits & ~0x800  # no UTF-8 name flag
 
 
 def lake_zip(path, depths):
