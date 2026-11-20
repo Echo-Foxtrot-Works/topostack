@@ -1,4 +1,4 @@
-import { formatList as formatListFor, formatMessage, formatNumber as formatNumberFor, type MessageParams } from "$lib/i18n/format";
+import { formatMessage, formatNumber as formatNumberFor, type MessageParams } from "$lib/i18n/format";
 import { en, type MessageKey } from "$lib/i18n/messages/en/index";
 
 export type { MessageKey, MessageParams };
@@ -100,8 +100,4 @@ export function hasMessage(key: string): key is MessageKey {
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return formatNumberFor(value, currentLocale(), options);
-}
-
-export function formatList(values: readonly string[]): string {
-  return formatListFor(values, currentLocale());
 }
