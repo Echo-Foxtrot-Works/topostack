@@ -24,7 +24,7 @@
   const missingSubject = $derived.by(() => {
     if (!candidate) return false;
     const { geometry } = candidate;
-    if (choice === "streets") return !geometry.layers.some(layer => layer.markings.some(mark => mark.kind === "road"));
+    if (choice === "streets") return !geometry.layers.some(layer => layer.markings.some(mark => mark.kind === "road" || mark.kind === "building"));
     if (choice === "shoreline") return !geometry.waterPatternAreas.length && !geometry.layers.some(layer => layer.markings.some(mark => mark.kind === "water"));
     return false;
   });
@@ -53,7 +53,7 @@
     dialog.showModal();
     const counts = studio.detailCounts;
     const hasWater = counts.water > 0 || studio.geometry.waterSurfaces.length > 0 || studio.geometry.waterPatternAreas.length > 0;
-    const preferred = counts.road || counts.rail ? "streets" : hasWater ? "shoreline" : "terrain";
+    const preferred = counts.road || counts.rail || counts.building ? "streets" : hasWater ? "shoreline" : "terrain";
     const sameDesign = projectFingerprint(composeMap(original, preferred)) === studio.geometry.configFingerprint;
     compare(sameDesign ? (preferred === "terrain" ? "streets" : "terrain") : preferred);
   });

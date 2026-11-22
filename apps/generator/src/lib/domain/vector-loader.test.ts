@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@topostack/core";
 import { boundsForProject } from "@topostack/core";
-import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { classifyTransportation, isStateProvinceBoundary, loadVectorMarkings, transportationLabel } from "$lib/domain/vector-loader";
 import { applyLakeShorelines, combineWaterAreas } from "$lib/domain/water-assembly";
 import { fittingTileWindow } from "$lib/domain/tile-math";
@@ -139,7 +139,7 @@ describe("water geometry cleanup", () => {
   });
 
   it("keeps the filled shape, wound as the geometry engine expects", () => {
-    const areas = dissolveWaterAreas([
+    const areas = dissolveTilePolygons([
       { outer: ring(0, 0, 20, 20), holes: [ring(5, 5, 15, 15)] },
     ], 0.8);
     expect(areas).toHaveLength(1);
@@ -201,7 +201,19 @@ vi.mock("pmtiles", async (importOriginal) => ({
 vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
   ...await importOriginal<typeof import("@mapbox/vector-tile")>(),
   VectorTile: class {
-    layers = { roads: { length: vectorFixture.outsideRoads + vectorFixture.insideRoads, feature: (index: number) => ({ type: 2, extent: 4096, properties: { kind: "major_road", name: vectorFixture.uniqueNames ? `Road ${index}` : "Rim Drive" }, loadGeometry: () => [[{ x: 0, y: index < vectorFixture.outsideRoads ? 0 : 2048 }, { x: 4096, y: index < vectorFixture.outsideRoads ? 0 : 2048 }]] }) } };
+    layers = {
+      buildings: { length: 2, feature: (index: number) => ({
+        type: 3, extent: 4096, properties: { kind: index === 0 ? "building" : "building_part" },
+        loadGeometry: () => {
+          const square = (x: number, y: number, size: number) => [
+            { x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y },
+          ];
+          if (index === 1) return [square(2150, 2020, 20)];
+          return [square(1950, 1950, 100), square(1980, 1980, 40).reverse(), square(2130, 2020, 1), square(100, 100, 50)];
+        },
+      }) },
+      roads: { length: vectorFixture.outsideRoads + vectorFixture.insideRoads, feature: (index: number) => ({ type: 2, extent: 4096, properties: { kind: "major_road", name: vectorFixture.uniqueNames ? `Road ${index}` : "Rim Drive" }, loadGeometry: () => [[{ x: 0, y: index < vectorFixture.outsideRoads ? 0 : 2048 }, { x: 4096, y: index < vectorFixture.outsideRoads ? 0 : 2048 }]] }) },
+    };
   },
 }));
 
@@ -251,6 +263,23 @@ describe("vector marking zoom", () => {
     getHeaderMock.mockReset();
     getZxyMock.mockReset();
     getZxyMock.mockResolvedValue(undefined);
+  });
+
+  it("loads printable footprints and courtyards at display zoom 13 even when the archive ends at 12", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const load = (zoom: number, showBuildings: boolean) => loadVectorMarkings(
+      { west: 0.04, east: 0.05, south: 0.04, north: 0.05 }, 13,
+      { ...DEFAULT_PROJECT, location: { ...DEFAULT_PROJECT.location, zoom }, showBuildings, showRoads: false, minimumFeatureMm: 1 },
+    );
+    expect((await load(13, false)).markings).toEqual([]);
+    expect((await load(12.99, true)).markings).toEqual([]);
+    const { markings, truncated } = await load(13, true);
+    expect(truncated).toBe(false);
+    expect(markings.map(({ id, kind, operation }) => [id, kind, operation])).toEqual([
+      ["building-0-0", "building", "engrave"], ["building-0-1", "building", "engrave"],
+    ]);
+    expect(markings.every(({ points }) => points.length === 5 && points[0]!.x === points[4]!.x && points[0]!.y === points[4]!.y)).toBe(true);
   });
 
   it("does not let off-crop roads exhaust the feature budget", async () => {

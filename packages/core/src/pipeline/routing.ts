@@ -1,3 +1,4 @@
+import { buildingOutlinesEnabled } from "./source-requirements.js";
 import { layerForElevation, sampleElevation } from "./contours.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
 import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
@@ -64,6 +65,7 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
     (transportationClass === "trail" && config.showTrails) ||
     (transportationClass === "rail" && config.showRail) ||
     ((transportationClass === "major-road" || transportationClass === "local-road") && config.showRoads) ||
+    (feature.kind === "building" && buildingOutlinesEnabled(config)) ||
     (feature.kind === "water" && config.showWater) ||
     (feature.kind === "boundary" && config.showBoundaries) ||
     (feature.kind === "grid" && config.showCoordinateGrid) ||
@@ -157,7 +159,7 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
   // path against each exposed layer footprint makes adjacent pieces meet at
   // the exact contour intersection, independent of source vertex spacing.
   // Aviation detail and public land lie on the ground wherever they are, so they take the same path.
-  if ((feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || feature.kind === "land" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
+  if ((feature.kind === "building" || feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || feature.kind === "land" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
     clips.forEach(({ layer, material, covering }) => {
       clipPolyline(feature.points, material, covering).forEach((points, clipIndex) => layer.markings.push({
         id: `${featureId}-${layer.index}-terrain-${clipIndex}`,

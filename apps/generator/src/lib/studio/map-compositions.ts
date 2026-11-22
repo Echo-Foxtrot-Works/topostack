@@ -20,6 +20,7 @@ export function composeMap(project: ProjectConfigV1, composition: MapComposition
     showElevationLabels: terrain,
     showRoads: streets,
     showRail: streets,
+    showBuildings: streets,
     showTrails: false,
     showTransportationLabels: false,
     showWater: true,

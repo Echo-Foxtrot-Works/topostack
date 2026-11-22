@@ -225,8 +225,13 @@ export interface TextStyleV1 {
   sizeMm: number;
 }
 
+/** Show footprint engravings at neighbourhood scale and closer. */
+export const BUILDING_MIN_ZOOM = 13;
+export const DEFAULT_BUILDING_WIDTH_MM = 0.15;
+
 /** Physical stroke hierarchy shared by previews and machine SVGs. */
 export interface LineStyleV1 {
+  buildingMm?: number;
   contourMm: number;
   indexContourMm: number;
   majorRoadMm: number;
@@ -400,6 +405,7 @@ export interface ProjectConfigV1 {
   showTrails: boolean;
   /** Railways from the OSM basemap; off unless asked for, so older projects keep their linework. */
   showRail: boolean;
+  showBuildings: boolean;
   showTransportationLabels: boolean;
   showWater: boolean;
   /** Optional vector pattern engraved inside water areas in flat mode. */
@@ -626,7 +632,7 @@ export interface SourceAttribution {
 
 export interface MarkingFeature {
   id: string;
-  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
+  kind: "building" | "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
   operation: Exclude<Operation, "cut">;
   points: Point2D[];
   label?: string;
@@ -1377,6 +1383,7 @@ export const DEFAULT_PROJECT: ProjectConfigV1 = {
   showRoads: true,
   showTrails: true,
   showRail: false,
+  showBuildings: false,
   showTransportationLabels: false,
   showWater: true,
   waterFillPattern: "none",

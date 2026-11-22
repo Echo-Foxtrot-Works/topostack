@@ -7,6 +7,8 @@ function stableProjectValue(config: ProjectConfigV1): unknown {
   const { explodedPreview: _previewOnly, name: _packageMetadata, sheetNesting: _exportOnly, waterInsertSheetNesting: _acrylicExportOnly, ...fabricationConfig } = config;
   return {
     ...fabricationConfig,
+    // With buildings off, older designs retain their fabrication fingerprint.
+    showBuildings: config.showBuildings || undefined,
     // A marker's or path's name is what the maker calls it, never anything the
     // geometry reads, so renaming one must not restate the design. Projects
     // without names hash exactly as they did before names existed.

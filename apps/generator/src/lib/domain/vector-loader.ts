@@ -1,12 +1,12 @@
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
-import { sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
+import { boundsOverlap, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
 import { createArchive } from "$lib/domain/archive";
 import { classifyRings, VectorTile, type VectorTileFeature } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { archiveTileWindow } from "$lib/domain/tile-math";
-import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 
 const RAW_VECTOR_MARKING_BUDGET_MULTIPLIER = 4;
 const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"]);
@@ -82,30 +82,51 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   signal?.throwIfAborted();
   const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
   const { water: usesWaterAreas } = sourceRequirements(config);
+  const usesBuildings = buildingOutlinesEnabled(config);
+  const crop = { minX: -config.widthMm / 2, maxX: config.widthMm / 2, minY: -config.heightMm / 2, maxY: config.heightMm / 2 };
   // Share cleanup headroom across the selection. Fixed per-tile/category
   // quotas can discard a dense tile while empty neighbors leave room unused.
   let rawMarkingCount = 0;
-  type TileVectors = { markings: MarkingFeature[]; waterPolygons: Polygon2D[]; oceanPolygons: Polygon2D[]; truncated: boolean };
+  type TileVectors = { markings: MarkingFeature[]; waterPolygons: Polygon2D[]; oceanPolygons: Polygon2D[]; buildingPolygons: Polygon2D[]; truncated: boolean };
   const consumeGeometry = createFeatureBudget();
   const perTile = await mapTiles(window.tiles, async (tile, signal): Promise<TileVectors> => {
     const markings: MarkingFeature[] = [];
     const waterPolygons: Polygon2D[] = [];
     const oceanPolygons: Polygon2D[] = [];
+    const buildingPolygons: Polygon2D[] = [];
     let truncated = false;
     const response = await vectorArchive.getZxy(tile.z, tile.x, tile.y, signal);
-    if (!response) return { markings, waterPolygons, oceanPolygons, truncated };
+    if (!response) return { markings, waterPolygons, oceanPolygons, buildingPolygons, truncated };
     const vectorTile = new VectorTile(new PbfReader(new Uint8Array(response.data)));
     for (const [layerName, layer] of Object.entries(vectorTile.layers)) {
       const lowered = layerName.toLowerCase();
       const isRoad = lowered.includes("road") || lowered.includes("transportation");
       const isWater = lowered === "water" || lowered.includes("waterway");
       const isBoundary = lowered === "boundaries" || lowered.includes("boundary");
-      if (!isRoad && !isWater && !isBoundary) continue;
+      const isBuilding = usesBuildings && lowered === "buildings";
+      if (!isRoad && !isWater && !isBoundary && !isBuilding) continue;
       for (let featureIndex = 0; featureIndex < layer.length; featureIndex += 1) {
         if (featureIndex % 64 === 0) await yieldForCancellation(signal);
         const feature = layer.feature(featureIndex);
-        if (feature.type !== 2 && !(isWater && feature.type === 3)) continue;
         const properties = feature.properties as Record<string, unknown>;
+        if (isBuilding) {
+          if (feature.type !== 3 || properties.kind !== "building") continue;
+          const project = (point: Point2D) => projectPoint(tile, feature.extent, point);
+          // Generalized tiles pack many unrelated footprints in a single feature.
+          // Only project and union the polygons that can reach the artwork.
+          for (const rings of classifyRings(feature.loadGeometry())) {
+            const [outer, ...holes] = rings;
+            if (!outer) continue;
+            const box = ringBounds(outer);
+            const min = project({ x: box.minX, y: box.minY });
+            const max = project({ x: box.maxX, y: box.maxY });
+            if (!boundsOverlap(crop, { minX: min.x, minY: min.y, maxX: max.x, maxY: max.y })) continue;
+            consumeGeometry(rings, true);
+            buildingPolygons.push({ outer: outer.map(project), holes: holes.map((ring) => ring.map(project)) });
+          }
+          continue;
+        }
+        if (feature.type !== 2 && !(isWater && feature.type === 3)) continue;
         if (isWater && feature.type === 3) {
           if (!usesWaterAreas) continue;
           const isOcean = properties.kind === "ocean";
@@ -160,7 +181,7 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
         });
       }
     }
-    return { markings, waterPolygons, oceanPolygons, truncated };
+    return { markings, waterPolygons, oceanPolygons, buildingPolygons, truncated };
   }, signal);
   await yieldForCancellation(signal);
   const rawMarkings = perTile.flatMap((tile) => tile.markings);
@@ -170,10 +191,14 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   const rails = transportation.filter((marking) => marking.transportationClass === "rail");
   const trails = transportation.filter((marking) => marking.kind === "trail");
   const waterways = cleanWaterwayMarkings(rawMarkings.filter((marking) => marking.kind === "water"), config.minimumFeatureMm);
-  const inland = dissolveWaterAreas(perTile.flatMap((tile) => tile.waterPolygons), config.minimumFeatureMm);
-  const ocean = dissolveWaterAreas(perTile.flatMap((tile) => tile.oceanPolygons), config.minimumFeatureMm);
+  const inland = dissolveTilePolygons(perTile.flatMap((tile) => tile.waterPolygons), config.minimumFeatureMm);
+  const ocean = dissolveTilePolygons(perTile.flatMap((tile) => tile.oceanPolygons), config.minimumFeatureMm);
   const shorelines = config.showWater ? shorelineMarkings([...ocean, ...inland]) : [];
-  const limited = limitVectorMarkingGroups([boundaries, roads, rails, trails, shorelines, waterways]);
+  const footprints = dissolveTilePolygons(perTile.flatMap((tile) => tile.buildingPolygons), config.minimumFeatureMm);
+  const buildings = footprints.flatMap((polygon, index) => [polygon.outer, ...polygon.holes].map((points, ring): MarkingFeature => ({
+    id: `building-${index}-${ring}`, kind: "building", operation: "engrave", points,
+  })));
+  const limited = limitVectorMarkingGroups([boundaries, roads, rails, trails, shorelines, waterways, buildings]);
   return {
     markings: limited.markings,
     inland,

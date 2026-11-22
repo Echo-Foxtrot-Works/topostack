@@ -12,6 +12,7 @@
   <p>In the <strong>Features</strong> panel, the switches under <strong>On the map</strong> turn on data from OpenStreetMap. A feature's width and style settings appear under its switch while it is on.</p>
   <ul>
     <li><strong>Roads</strong> and <strong>Trails</strong> (on by default).</li>
+    <li><strong>Building outlines</strong> engrave mapped footprints at zoom 13 and closer. Use them alongside <strong>Railways</strong> to show the buildings around a station. Adjust the outline width under its switch.</li>
     <li><strong>Transportation labels</strong>: road and trail names, where they fit.</li>
     <li><strong>State / province boundaries</strong>, drawn dashed.</li>
     <li><strong>Latitude / longitude grid</strong>, drawn dotted.</li>
@@ -47,7 +48,7 @@
   <p>To fine-tune one line, adjust its width where the feature lives, each from 0.05 to 1.5 mm. Changing a width marks the preset as custom; picking a preset again resets every line.</p>
   <ul>
     <li><strong>Terrain</strong> panel (flat only): <strong>Minor contours</strong> and <strong>Index contours</strong>.</li>
-    <li><strong>Features</strong> panel, under each switch: <strong>Major roads</strong> and <strong>Local roads</strong>, and a <strong>Width</strong> for trails, boundaries, the grid and the border.</li>
+    <li><strong>Features</strong> panel, under each switch: <strong>Major roads</strong> and <strong>Local roads</strong>, and a <strong>Width</strong> for trails, buildings, boundaries, the grid and the border.</li>
     <li><strong>Road appearance</strong>, under <strong>Roads</strong>: <strong>Centerline</strong>, or <strong>Outlined</strong> major roads drawn as two parallel lines with an <strong>Outline spacing</strong> of 0.2–4 mm; <strong>Round</strong> or <strong>Square</strong> road ends.</li>
     <li><strong>Trail pattern</strong>, under <strong>Trails</strong>: <strong>Solid</strong>, <strong>Dashed</strong> or <strong>Dotted</strong>.</li>
     <li><strong>Water</strong> panel: a <strong>Width</strong> under <strong>Water outlines</strong>.</li>

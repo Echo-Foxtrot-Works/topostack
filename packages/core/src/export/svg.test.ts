@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, type ProjectConfigV1 } from "../index.js";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, parseProject, projectFingerprint, sourceRequirements, type ProjectConfigV1 } from "../index.js";
 import { engravingToSvg } from "./engraving-svg.js";
 import { buildEngravingPackage } from "./packages.js";
 import { masterToSvg } from "./svg.js";
@@ -41,6 +41,30 @@ describe("SVG export", () => {
     expect(svg).toContain('id="ENGRAVE-rail" stroke-width="0.3" stroke-linecap="round"');
     expect(svg).toContain("rail-flat");
     expect(svg).not.toContain('id="ENGRAVE-local-roads"');
+  });
+
+  it("saves optional footprints, clips them to the artwork and exports a separate engraving group", () => {
+    const { showBuildings: _oldSetting, ...legacy } = DEFAULT_PROJECT;
+    expect(parseProject(legacy).showBuildings).toBe(false);
+    expect(projectFingerprint(parseProject(legacy))).toBe(projectFingerprint(DEFAULT_PROJECT));
+    const project = parseProject({ ...legacy, outputMode: "engraving", showRoads: false, showTrails: false, showWater: false,
+      location: { ...legacy.location, zoom: 13 }, showBuildings: true, lineStyle: { ...legacy.lineStyle, buildingMm: 0.12 } });
+    const points = [{ x: 130, y: 10 }, { x: 180, y: 10 }, { x: 180, y: 50 }, { x: 130, y: 50 }, { x: 130, y: 10 }];
+    const source = { ...realSource(project), markings: [{ id: "terminal", kind: "building" as const, operation: "engrave" as const, points }] };
+    expect(sourceRequirements(project).vectors).toBe(true);
+    for (const hidden of [{ ...project, showBuildings: false }, { ...project, location: { ...project.location, zoom: 12.99 } }]) {
+      expect(sourceRequirements(hidden).vectors).toBe(false);
+      expect(engravingToSvg(generateGeometry(hidden, source), hidden)).not.toContain("terminal");
+    }
+    const result = generateGeometry(project, source);
+    const paths = result.layers.flatMap(layer => layer.markings.filter(mark => mark.kind === "building"));
+    expect(paths.length).toBeGreaterThan(0);
+    expect(paths.flatMap(path => path.points).every(point => point.x <= 150)).toBe(true);
+    expect(engravingToSvg(result, project)).toContain('id="ENGRAVE-buildings" stroke-width="0.12"');
+    const stack = generateGeometry({ ...project, outputMode: "stack" }, source);
+    const sheets = stack.layers.map(layer => layerToSvg(stack, layer));
+    expect(sheets.some(svg => operationBody(svg, "ENGRAVE").includes("terminal"))).toBe(true);
+    expect(sheets.every(svg => !operationBody(svg, "CUT").includes("terminal"))).toBe(true);
   });
 
   it("builds one physical-size engrave-only graphic with contours and optional map details", async () => {

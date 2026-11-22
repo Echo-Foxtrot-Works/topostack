@@ -19,6 +19,7 @@ export function starterProject(id: string): ProjectConfigV1 | undefined {
     showRoads: false,
     showTrails: false,
     showRail: false,
+    showBuildings: false,
     showElevationLabels: false,
     showNorthArrow: false,
     showScaleBar: false,

@@ -11,9 +11,11 @@ the workflow.
 2. Select a location and the physical artwork size/crop.
 3. Set contour density (4–40 lines) and the index-contour cadence, or turn
    **Contour lines** off for a map of roads, water and labels only.
-4. Add or remove roads, trails, transportation labels, lakes/rivers,
+4. Add or remove roads, trails, railways, building outlines, transportation labels, lakes/rivers,
    state/province boundaries, latitude/longitude grid lines, elevation
    labels, compass, scale bar, and the engraved border.
+   Building outlines appear at map zoom 13 and closer. Footprints and courtyards
+   smaller than the project’s minimum feature size are omitted.
    Water areas can optionally use Lines, Ripples, or Dots while None preserves
    outline-only engraving.
 5. Choose a Fine, Balanced, or Bold linework preset, then optionally customize

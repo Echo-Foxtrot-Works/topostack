@@ -4,7 +4,7 @@ import { labelSvgPaths, roundText } from "../annotate/labels.js";
 import { offsetClosedRing } from "../primitives/offset.js";
 import { aviationStroke } from "../pipeline/aviation.js";
 import { landStroke } from "../pipeline/lands.js";
-import { LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type LineStyleV1, type Point2D } from "../types.js";
+import { DEFAULT_BUILDING_WIDTH_MM, LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type LineStyleV1, type Point2D } from "../types.js";
 
 
 export const CUT = "#FE0002";
@@ -22,7 +22,7 @@ export const ASSEMBLY = "#00A651";
 export const MAX_EXPORT_PACKAGE_BYTES = 100_000_000;
 /** Engraving groups in output order; `engravingCategory` maps each marking to one. */
 const LAND_CATEGORIES = LAND_CLASSES.map((landClass) => `land-${landClass}` as const);
-const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "rail", "transport-labels", "water", "boundaries", ...LAND_CATEGORIES, "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
+const ENGRAVING_CATEGORIES = ["buildings", "major-roads", "local-roads", "trails", "rail", "transport-labels", "water", "boundaries", ...LAND_CATEGORIES, "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
 type EngravingCategory = (typeof ENGRAVING_CATEGORIES)[number];
 /** Assembly ids ride in their own top-level group, so the artwork categories exclude them. */
 export const ARTWORK_CATEGORIES = ENGRAVING_CATEGORIES.filter((category) => category !== "assembly-labels");
@@ -72,6 +72,7 @@ export function engravingCategory(mark: LayerIR["markings"][number]): EngravingC
   if (mark.transportationClass === "local-road") return "local-roads";
   if (mark.transportationClass === "trail") return "trails";
   if (mark.transportationClass === "rail") return "rail";
+  if (mark.kind === "building") return "buildings";
   if (mark.kind === "water") return "water";
   if (mark.kind === "boundary") return "boundaries";
   if (mark.kind === "grid") return "coordinate-grid";
@@ -81,6 +82,7 @@ export function engravingCategory(mark: LayerIR["markings"][number]): EngravingC
 
 export function categoryStrokeAttributes(category: EngravingCategory, style: LineStyleV1): string {
   const width = category === "major-roads" ? style.majorRoadMm :
+    category === "buildings" ? (style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM) :
     category === "local-roads" || category === "rail" ? style.localRoadMm :
     category === "trails" ? style.trailMm :
     category === "water" ? style.waterMm :
