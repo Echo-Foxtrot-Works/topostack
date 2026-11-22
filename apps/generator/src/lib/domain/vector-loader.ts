@@ -1,8 +1,8 @@
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
-import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
+import { createFeatureBudget, FeatureBudgetExceededError, yieldForCancellation } from "$lib/domain/feature-budget";
 import { sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
-import { createArchive } from "$lib/domain/archive";
+import { createArchive, type Archive } from "$lib/domain/archive";
 import { classifyRings, VectorTile, type VectorTileFeature } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { archiveTileWindow } from "$lib/domain/tile-math";
@@ -80,7 +80,29 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   const vectorArchive = createArchive(`${apiBase()}/v1/osm.pmtiles`, signal);
   const header = await vectorArchive.getHeader();
   signal?.throwIfAborted();
-  const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
+  let zoom = Math.round(requestedZoom) + 1;
+  while (true) {
+    const tileWindow = archiveTileWindow(header, bounds, zoom, config);
+    const canDownshift = tileWindow.window.zoom > header.minZoom;
+    try {
+      const data = await loadVectorWindow(vectorArchive, tileWindow, config, signal);
+      if (!data.truncated || !canDownshift) return data;
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (!canDownshift || !(error instanceof FeatureBudgetExceededError)) throw error;
+    }
+    // Try a complete coarser tile level when the available detail overloads
+    // the export. Read the same crop and keep polygons and lines at one zoom.
+    zoom = tileWindow.window.zoom - 1;
+  }
+}
+
+async function loadVectorWindow(
+  vectorArchive: Archive,
+  { window, projectPoint }: ReturnType<typeof archiveTileWindow>,
+  config: ProjectConfigV1,
+  signal?: AbortSignal,
+): Promise<VectorData> {
   const { water: usesWaterAreas } = sourceRequirements(config);
   // Share cleanup headroom across the selection. Fixed per-tile/category
   // quotas can discard a dense tile while empty neighbors leave room unused.

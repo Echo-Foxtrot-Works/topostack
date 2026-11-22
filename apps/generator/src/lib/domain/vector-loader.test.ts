@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@topostack/core";
 import { boundsForProject } from "@topostack/core";
-import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+import type { PbfReader } from "pbf";
+import { MAX_SOURCE_RINGS } from "$lib/domain/feature-budget";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { classifyTransportation, isStateProvinceBoundary, loadVectorMarkings, transportationLabel } from "$lib/domain/vector-loader";
 import { applyLakeShorelines, combineWaterAreas } from "$lib/domain/water-assembly";
 import { fittingTileWindow } from "$lib/domain/tile-math";
@@ -189,7 +191,7 @@ describe("water geometry cleanup", () => {
 
 const getHeaderMock = vi.hoisted(() => vi.fn());
 const getZxyMock = vi.hoisted(() => vi.fn());
-const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false }));
+const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false, waterRings: 0 }));
 vi.mock("pmtiles", async (importOriginal) => ({
   ...await importOriginal<typeof import("pmtiles")>(),
   PMTiles: class {
@@ -201,7 +203,40 @@ vi.mock("pmtiles", async (importOriginal) => ({
 vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
   ...await importOriginal<typeof import("@mapbox/vector-tile")>(),
   VectorTile: class {
-    layers = { roads: { length: vectorFixture.outsideRoads + vectorFixture.insideRoads, feature: (index: number) => ({ type: 2, extent: 4096, properties: { kind: "major_road", name: vectorFixture.uniqueNames ? `Road ${index}` : "Rim Drive" }, loadGeometry: () => [[{ x: 0, y: index < vectorFixture.outsideRoads ? 0 : 2048 }, { x: 4096, y: index < vectorFixture.outsideRoads ? 0 : 2048 }]] }) } };
+    layers;
+
+    constructor(reader: PbfReader) {
+      const coarser = reader.buf[0] === 1;
+      const roadY = coarser ? 3072 : 2048;
+      const outsideRoads = coarser ? 0 : vectorFixture.outsideRoads;
+      const insideRoads = coarser ? 1 : vectorFixture.insideRoads;
+      const waterRings = coarser && vectorFixture.waterRings ? 1 : vectorFixture.waterRings;
+      const shore = [
+        { x: 0, y: roadY - 500 }, { x: 4096, y: roadY - 500 },
+        { x: 4096, y: roadY + 500 }, { x: 0, y: roadY + 500 },
+        { x: 0, y: roadY - 500 },
+      ];
+      this.layers = {
+        roads: {
+          length: outsideRoads + insideRoads,
+          feature: (index: number) => ({
+            type: 2, extent: 4096,
+            properties: { kind: "major_road", name: vectorFixture.uniqueNames ? `Road ${index}` : "Rim Drive" },
+            loadGeometry: () => {
+              const y = index < outsideRoads ? 0 : roadY;
+              return [[{ x: 0, y }, { x: 4096, y }]];
+            },
+          }),
+        },
+        water: {
+          length: waterRings ? 1 : 0,
+          feature: () => ({
+            type: 3, extent: 4096, properties: { kind: "ocean" },
+            loadGeometry: () => Array.from({ length: waterRings }, () => shore),
+          }),
+        },
+      };
+    }
   },
 }));
 
@@ -248,6 +283,7 @@ describe("vector marking zoom", () => {
     vectorFixture.outsideRoads = 0;
     vectorFixture.insideRoads = 1;
     vectorFixture.uniqueNames = false;
+    vectorFixture.waterRings = 0;
     getHeaderMock.mockReset();
     getZxyMock.mockReset();
     getZxyMock.mockResolvedValue(undefined);
@@ -276,11 +312,43 @@ describe("vector marking zoom", () => {
 
   it("bounds raw linework even when repeated fragments collapse during cleanup", async () => {
     vectorFixture.insideRoads = 7400;
-    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getHeaderMock.mockResolvedValue({ minZoom: 12, maxZoom: 12 });
     getZxyMock.mockResolvedValueOnce({ data: new ArrayBuffer(0) });
     const result = await loadVectorMarkings({ west: 0.001, east: 0.17, south: 0.001, north: 0.08 }, 12, DEFAULT_PROJECT);
     expect(result.markings).toHaveLength(1);
     expect(result.truncated).toBe(true);
+  });
+
+  it.each([
+    { limit: "export marks", roads: MAX_VECTOR_MARKINGS, rings: 1 },
+    { limit: "source rings", roads: 1, rings: MAX_SOURCE_RINGS + 1 },
+  ])("uses the next tile level when adding water exceeds the $limit limit", async ({ roads, rings }) => {
+    vectorFixture.insideRoads = roads;
+    vectorFixture.uniqueNames = true;
+    vectorFixture.waterRings = rings;
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockImplementation(async (zoom: number) => ({ data: Uint8Array.of(zoom === 11 ? 1 : 0).buffer }));
+    const bounds = { west: 0.04, east: 0.05, south: 0.04, north: 0.05 };
+    const config = { ...DEFAULT_PROJECT, outputMode: "engraving" as const };
+
+    const withWater = await loadVectorMarkings(bounds, 11, config);
+    expect(getZxyMock.mock.calls.map(([zoom]) => zoom)).toEqual([12, 11]);
+    expect(withWater.truncated).toBe(false);
+    expect(withWater.ocean).toHaveLength(1);
+    expect(withWater.markings.map((marking) => marking.kind)).toEqual(["road", "water"]);
+
+    getZxyMock.mockClear();
+    const withoutWater = await loadVectorMarkings(bounds, 11, { ...config, showWater: false });
+    expect(getZxyMock.mock.calls.map(([zoom]) => zoom)).toEqual([12]);
+    expect(withoutWater.markings).toHaveLength(roads);
+  });
+
+  it("propagates tile failures without retrying at a different zoom", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    const failure = new Error("Archive changed during generation. Try generating again.");
+    getZxyMock.mockRejectedValue(failure);
+    await expect(loadVectorMarkings({ west: 0.04, east: 0.05, south: 0.04, north: 0.05 }, 11, DEFAULT_PROJECT)).rejects.toBe(failure);
+    expect(getZxyMock).toHaveBeenCalledTimes(1);
   });
 
   it("retains transportation names when their display is initially disabled", async () => {
