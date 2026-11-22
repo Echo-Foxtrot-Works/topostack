@@ -12,6 +12,7 @@
   <p>In the <strong>Features</strong> panel, the switches under <strong>On the map</strong> turn on data from OpenStreetMap. A feature's width and style settings appear under its switch while it is on.</p>
   <ul>
     <li><strong>Roads</strong> and <strong>Trails</strong> (on by default).</li>
+    <li><strong>Railways</strong> draw open track as a solid line and covered track as fine dashes. Where a tile only identifies a tunnel, a short section near a mapped station can qualify when both ends connect to surface tracks.</li>
     <li><strong>Building outlines</strong> engrave mapped footprints at zoom 13 and closer. Use them alongside <strong>Railways</strong> to show the buildings around a station. Adjust the outline width under its switch.</li>
     <li><strong>Transportation labels</strong>: road and trail names, where they fit.</li>
     <li><strong>State / province boundaries</strong>, drawn dashed.</li>

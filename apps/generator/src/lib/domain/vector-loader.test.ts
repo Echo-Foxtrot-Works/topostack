@@ -29,7 +29,7 @@ describe("transportation metadata", () => {
     expect(classifyTransportation({ kind: "ferry", kind_detail: "path" })).toBeUndefined();
   });
 
-  it("keeps running rail lines and drops tunnels, yards and sidings", () => {
+  it("keeps running rail lines and drops underground subways, yards and sidings", () => {
     expect(classifyTransportation({ kind: "rail", kind_detail: "rail" })).toBe("rail");
     expect(classifyTransportation({ kind: "rail", kind_detail: "light_rail" })).toBe("rail");
     expect(classifyTransportation({ kind: "rail" })).toBe("rail");
@@ -202,6 +202,14 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
   ...await importOriginal<typeof import("@mapbox/vector-tile")>(),
   VectorTile: class {
     layers = {
+      pois: { length: 1, feature: () => ({ type: 1, extent: 4096, properties: { kind: "station" }, loadGeometry: () => [[{ x: 2048, y: 2048 }]] }) },
+      transportation: { length: 3, feature: (index: number) => ({
+        type: 2, extent: 4096, properties: { kind: "rail", kind_detail: "rail", is_tunnel: index === 1 },
+        loadGeometry: () => {
+          const x = [1850, 1998, 2098, 2200];
+          return [[{ x: x[index], y: 2048 }, { x: x[index + 1], y: 2048 }]];
+        },
+      }) },
       buildings: { length: 2, feature: (index: number) => ({
         type: 3, extent: 4096, properties: { kind: index === 0 ? "building" : "building_part" },
         loadGeometry: () => {
@@ -263,6 +271,19 @@ describe("vector marking zoom", () => {
     getHeaderMock.mockReset();
     getZxyMock.mockReset();
     getZxyMock.mockResolvedValue(undefined);
+  });
+
+  it("recognizes a station passage even when both portals are outside the crop and crops the real geometry", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const bounds = { west: 0.0437, east: 0.0442, south: 0.0437, north: 0.0442 };
+    const config = { ...DEFAULT_PROJECT, showRail: true, showRoads: false, widthMm: 100, heightMm: 100 };
+    const data = await loadVectorMarkings(bounds, 15, config);
+    expect(data.markings).toHaveLength(1);
+    expect(data.markings[0]).toMatchObject({ kind: "road", transportationClass: "covered-rail", operation: "engrave" });
+    expect(data.markings[0]!.points[0]!.x).toBeCloseTo(-54);
+    expect(data.markings[0]!.points.at(-1)!.x).toBeCloseTo(54);
+    expect((await loadVectorMarkings(bounds, 15, { ...config, showRail: false })).markings).toEqual([]);
   });
 
   it("loads printable footprints and courtyards at display zoom 13 even when the archive ends at 12", async () => {

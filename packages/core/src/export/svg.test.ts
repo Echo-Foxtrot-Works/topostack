@@ -43,6 +43,26 @@ describe("SVG export", () => {
     expect(svg).not.toContain('id="ENGRAVE-local-roads"');
   });
 
+  it("engraves covered rail as physical dash paths in both output modes, controlled only by Railways", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving", showRail: true, showRoads: false, showEngravingContours: false,
+      lineStyle: { ...DEFAULT_PROJECT.lineStyle, localRoadMm: 0.2 } };
+    const source = { ...realSource(project), markings: [{ id: "platform", kind: "road" as const, transportationClass: "covered-rail" as const, operation: "engrave" as const,
+      points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 7 }] }] };
+    const generated = generateGeometry(project, source);
+    const dashes = generated.layers.flatMap(layer => layer.markings.filter(mark => mark.transportationClass === "covered-rail"));
+    expect(dashes.length).toBeGreaterThan(4);
+    expect(dashes[0]!.points).toEqual([{ x: 0, y: 0 }, { x: 1.2, y: 0 }]);
+    expect(dashes[1]!.points[0]!.x).toBeCloseTo(1.9);
+    const flat = engravingToSvg(generated, project);
+    expect(flat).toContain('id="ENGRAVE-covered-rail" stroke-width="0.12"');
+    expect(flat.match(/id="platform-flat-transport-/g)).toHaveLength(dashes.length);
+    const stack = generateGeometry({ ...project, outputMode: "stack" }, source);
+    const sheets = stack.layers.map(layer => layerToSvg(stack, layer));
+    expect(sheets.some(svg => operationBody(svg, "ENGRAVE").includes("-ENGRAVE-covered-rail"))).toBe(true);
+    expect(sheets.every(svg => !operationBody(svg, "CUT").includes("platform"))).toBe(true);
+    expect(generateGeometry({ ...project, showRail: false, showRoads: true }, source).layers.flatMap(l => l.markings).some(m => m.transportationClass === "covered-rail")).toBe(false);
+  });
+
   it("saves optional footprints, clips them to the artwork and exports a separate engraving group", () => {
     const { showBuildings: _oldSetting, ...legacy } = DEFAULT_PROJECT;
     expect(parseProject(legacy).showBuildings).toBe(false);

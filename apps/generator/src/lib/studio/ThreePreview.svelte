@@ -15,7 +15,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
+  import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -413,6 +413,7 @@
       const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial, rail: railMaterial,
+        "covered-rail": new THREE.LineBasicMaterial({ color: MARKING_COLORS.rail, linewidth: coveredRailWidthMm(style) }),
         building: new THREE.LineBasicMaterial({ color: MARKING_COLORS.building, linewidth: style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM }),
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
         "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,

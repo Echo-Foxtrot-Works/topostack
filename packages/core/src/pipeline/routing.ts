@@ -1,7 +1,8 @@
+import { isRailClass } from "../types.js";
 import { buildingOutlinesEnabled } from "./source-requirements.js";
 import { layerForElevation, sampleElevation } from "./contours.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
-import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
+import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationStrokePaths } from "./transportation.js";
 import { clipPolyline, polylineLength, pointInPreparedPolygons, type PreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
 import { placeLinearLabel } from "../annotate/label-placement.js";
 import { geoPointToMapPoint } from "../annotate/markers.js";
@@ -63,7 +64,7 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
   const transportationClass = transportationClassOf(feature);
   return feature.id.startsWith("custom-data-line-") ||
     (transportationClass === "trail" && config.showTrails) ||
-    (transportationClass === "rail" && config.showRail) ||
+    (isRailClass(transportationClass) && config.showRail) ||
     ((transportationClass === "major-road" || transportationClass === "local-road") && config.showRoads) ||
     (feature.kind === "building" && buildingOutlinesEnabled(config)) ||
     (feature.kind === "water" && config.showWater) ||
@@ -115,7 +116,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
     const clipped = clipPolyline(feature.points, baseMaterial);
-    styledTransportationPaths(transportationOutlines(feature.points, transportationClass, config), clipped, baseMaterial).forEach((points, styleIndex) => baseLayer.markings.push({
+    styledTransportationPaths(transportationStrokePaths(feature.points, transportationClass, config), clipped, baseMaterial).forEach((points, styleIndex) => baseLayer.markings.push({
       id: `${featureId}-flat-transport-${styleIndex}`,
       operation: "engrave",
       kind: transportationClass === "trail" ? "trail" : "road",
@@ -137,7 +138,7 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
 function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], layers: LayerIR[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
-    const outlines = transportationOutlines(feature.points, transportationClass, config);
+    const outlines = transportationStrokePaths(feature.points, transportationClass, config);
     const label = feature.label && config.showTransportationLabels ? fabricationLabel(feature.label, config.textStyle.font) : undefined;
     clips.forEach(({ layer, material, covering }) => {
       const clipped = clipPolyline(feature.points, material, covering);

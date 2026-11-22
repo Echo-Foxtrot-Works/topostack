@@ -36,7 +36,7 @@
   "buildingWidth": "Šířka obrysu budov",
   "buildingsHint": "Obrysy budov se gravírují od přiblížení mapy {zoom}.",
   "rail": "Železnice",
-  "railHint": "Nadzemní tratě v šířce místních silnic. Tunely, seřaďovací nádraží a vlečky se vynechávají.",
+  "railHint": "Povrchové koleje mají šířku místních silnic. Zakryté úseky se zobrazují tenčí přerušovanou čarou.",
   "transportationLabels": "Popisky dopravy",
   "stateProvinceBoundariesName": "Hranice států a provincií",
   "stateProvinceBoundaries": "Hranice států/provincií",

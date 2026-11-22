@@ -36,7 +36,7 @@
   "buildingWidth": "건물 윤곽선 너비",
   "buildingsHint": "지도 확대 수준 {zoom} 이상에서 건물 윤곽선을 새깁니다.",
   "rail": "철도",
-  "railHint": "지상 노선을 지방 도로 폭으로 그립니다. 터널, 조차장, 측선은 제외됩니다.",
+  "railHint": "지상 선로는 일반 도로와 같은 굵기로, 덮개가 있는 구간은 더 가는 파선으로 표시합니다.",
   "transportationLabels": "교통 라벨",
   "stateProvinceBoundariesName": "주/도 경계",
   "stateProvinceBoundaries": "주/도 경계",

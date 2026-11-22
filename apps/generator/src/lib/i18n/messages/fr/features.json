@@ -36,7 +36,7 @@
   "buildingWidth": "Épaisseur du contour des bâtiments",
   "buildingsHint": "Les contours sont gravés à partir du niveau de zoom {zoom} de la carte.",
   "rail": "Voies ferrées",
-  "railHint": "Lignes en surface à la largeur des routes locales. Les tunnels, gares de triage et voies de garage sont omis.",
+  "railHint": "Les voies en surface ont la largeur des rues locales. Les tronçons couverts apparaissent en tirets plus fins.",
   "transportationLabels": "Étiquettes de transport",
   "stateProvinceBoundariesName": "Limites d’États et de provinces",
   "stateProvinceBoundaries": "Limites d’États/provinces",

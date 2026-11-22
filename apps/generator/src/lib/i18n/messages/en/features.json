@@ -36,7 +36,7 @@
   "buildingWidth": "Building outline width",
   "buildingsHint": "Engrave building footprints at map zoom {zoom} and closer.",
   "rail": "Railways",
-  "railHint": "Above-ground lines at the local road width. Tunnels, yards and sidings are left out.",
+  "railHint": "Surface tracks use the local road width. Covered tracks appear as thinner dashes.",
   "transportationLabels": "Transportation labels",
   "stateProvinceBoundariesName": "State and province boundaries",
   "stateProvinceBoundaries": "State / province boundaries",

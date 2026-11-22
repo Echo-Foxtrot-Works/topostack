@@ -36,7 +36,7 @@
   "buildingWidth": "Širina obrisa stavb",
   "buildingsHint": "Obrisi stavb se gravirajo od stopnje povečave zemljevida {zoom} naprej.",
   "rail": "Železnice",
-  "railHint": "Nadzemne proge v širini lokalnih cest. Predori, ranžirne postaje in stranski tiri so izpuščeni.",
+  "railHint": "Tiri na površju imajo enako širino kot lokalne ceste. Pokriti odseki so prikazani s tanjšo črtkano črto.",
   "transportationLabels": "Napisi prometnic",
   "stateProvinceBoundariesName": "Meje držav in provinc",
   "stateProvinceBoundaries": "Meje držav/provinc",

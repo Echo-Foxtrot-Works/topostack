@@ -15,7 +15,16 @@ export type UnitSystem = "metric" | "imperial";
 export const TEXT_FONTS = ["technical", "rounded", "stencil", "hershey-sans", "hershey-serif", "hershey-script", "relief", "jost", "oswald", "lora", "roboto-slab"] as const;
 export type TextFont = typeof TEXT_FONTS[number];
 /** Rail lines ride with roads (kind "road") but have their own toggle, stroke group and no junction rings. */
-export type TransportationClass = "major-road" | "local-road" | "trail" | "rail";
+export type TransportationClass = "major-road" | "local-road" | "trail" | "rail" | "covered-rail";
+
+export function isRailClass(value: string | undefined): value is "rail" | "covered-rail" {
+  return value === "rail" || value === "covered-rail";
+}
+
+/** Covered rail uses a lighter physical stroke than the open track on either side. */
+export function coveredRailWidthMm(style: LineStyleV1): number {
+  return Math.max(0.05, Math.round(style.localRoadMm * 60) / 100);
+}
 /** FAA aviation detail, each drawn and grouped separately in exports. */
 export type AviationClass = "class-b" | "class-c" | "class-d" | "special-use" | "runway" | "airport" | "navaid" | "obstacle";
 /**

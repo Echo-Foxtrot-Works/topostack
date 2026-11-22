@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildProjectPackage, DEFAULT_PROJECT, generateGeometry, layerToSvg, type ProjectConfigV1 } from "../index.js";
 import { realSource } from "../test-support/sources.js";
-import { dashPolyline, LIGHTBURN_LAYERS, parseTransform, svgToLightBurn } from "./lightburn.js";
+import { dashPolyline } from "../primitives/dash.js";
+import { LIGHTBURN_LAYERS, parseTransform, svgToLightBurn } from "./lightburn.js";
 
 interface ReadShape { cutIndex: number; points: { x: number; y: number }[]; closed: boolean; depth: number }
 

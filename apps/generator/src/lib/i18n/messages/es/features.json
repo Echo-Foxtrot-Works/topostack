@@ -36,7 +36,7 @@
   "buildingWidth": "Grosor del contorno de los edificios",
   "buildingsHint": "Los contornos se graban a partir del nivel de zoom {zoom} del mapa.",
   "rail": "Ferrocarriles",
-  "railHint": "Líneas en superficie con el ancho de las carreteras locales. Se omiten túneles, playas de vías y apartaderos.",
+  "railHint": "Las vías en superficie tienen el grosor de las calles locales. Los tramos cubiertos se dibujan con líneas discontinuas más finas.",
   "transportationLabels": "Etiquetas de transporte",
   "stateProvinceBoundariesName": "Límites de estados y provincias",
   "stateProvinceBoundaries": "Límites estatales/provinciales",
