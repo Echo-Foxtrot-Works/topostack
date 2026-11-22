@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "เปรียบเทียบองค์ประกอบ",
+  "currentDesign": "แบบปัจจุบัน",
+  "composition.streets": "ภาพสลักถนน",
+  "composition.shoreline": "ภาพสลักแนวชายฝั่ง",
+  "composition.terrain": "แบบจำลองภูมิประเทศ",
+  "applyComposition": "ใช้องค์ประกอบนี้",
+  "noCompositionFeatures": "ไม่ปรากฏองค์ประกอบแผนที่ที่เลือกในพื้นที่นี้",
   "artworkSize": "ขนาดชิ้นงานศิลป์",
   "cutSize": "ขนาดตัด",
   "placeAndSize": "สถานที่และขนาด",

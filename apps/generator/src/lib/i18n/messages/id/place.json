@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Bandingkan komposisi",
+  "currentDesign": "Desain saat ini",
+  "composition.streets": "Ukiran jalan",
+  "composition.shoreline": "Ukiran garis pantai",
+  "composition.terrain": "Relief medan",
+  "applyComposition": "Terapkan komposisi",
+  "noCompositionFeatures": "Fitur peta yang dipilih tidak tampak dalam area ini.",
   "artworkSize": "Ukuran karya",
   "cutSize": "Ukuran potong",
   "placeAndSize": "Tempat dan ukuran",

@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "구도 비교",
+  "currentDesign": "현재 디자인",
+  "composition.streets": "도로 각인",
+  "composition.shoreline": "물가 각인",
+  "composition.terrain": "지형 부조",
+  "applyComposition": "구도 적용",
+  "noCompositionFeatures": "이 영역에는 선택한 지도 요소가 표시되지 않습니다.",
   "artworkSize": "작품 크기",
   "cutSize": "커팅 크기",
   "placeAndSize": "장소와 크기",

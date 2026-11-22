@@ -31,6 +31,7 @@
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { formatNumber, t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { ProjectHistory } from "$lib/studio/history";
+  import type { CompositionPreview } from "$lib/studio/map-compositions";
   import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
   import { autosaveProject } from "$lib/studio/autosave.svelte";
@@ -574,6 +575,23 @@
     void updateFabrication({ verticalExaggeration });
   }
 
+  /** Adopt the exact preview the maker chose, with one discrete undo step. */
+  function applyComposition(base: ProjectConfigV1, preview: CompositionPreview): void {
+    if (project !== base || previewBusy || placement.session || terrainDataStale) return;
+    invalidatePendingPreview();
+    projectHistory.push(project);
+    project = preview.project;
+    sourceProject = preview.project;
+    activeSource = preview.source;
+    geometry = preview.geometry;
+    selectedAirspaceLevel = undefined;
+    selectedLayer = featuredLayerIndex(geometry);
+    mode = defaultModeFor(project.outputMode);
+    previewNotice = "";
+    generationState = "ready";
+    status = previewUpdatedStatus("fabrication", activeSource, project, sourceRequirements(project));
+  }
+
   function updateDepthLayerLimit(value: number): void {
     if (!Number.isFinite(value)) return;
     const waterDepthLayerLimit = Math.max(1, Math.round(value));
@@ -934,6 +952,7 @@
 
   // The sidebar panels and preview read App state through this object; see StudioContext.
   provideStudio({
+    applyComposition,
     get project() { return project; },
     get sourceProject() { return sourceProject; },
     get activeSource() { return activeSource; },

@@ -1012,6 +1012,53 @@ describe("TopoStack Svelte shell", () => {
     expect(loadTerrainMock).toHaveBeenCalledOnce();
   });
 
+  it("compares alternatives on the generated crop and only records the applied design in history", async () => {
+    const source = { ...createSyntheticSource(DEFAULT_PROJECT, 32), sourceKind: "real" as const, vectorStatus: "available" as const };
+    loadTerrainMock.mockResolvedValue({ source, fallback: false });
+    loadVectorMarkingsMock.mockResolvedValue({ markings: source.markings, ocean: [], inland: [], truncated: false });
+    loadLakeAreasMock.mockResolvedValue([]);
+    const target = document.createElement("div");
+    document.body.append(target);
+    onTestFinished(() => target.remove());
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    const button = (text: string) => [...target.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent?.trim() === text);
+    await tick();
+    expect(button("Compare compositions")).toBeUndefined();
+    target.querySelector<HTMLButtonElement>(".generate-button")!.click();
+    await vi.waitFor(() => expect(button("Compare compositions")?.disabled).toBe(false));
+    const undo = target.querySelector<HTMLButtonElement>('button[aria-label="Undo"]')!;
+    const flat = target.querySelector<HTMLButtonElement>('[role="radio"][aria-label="Flat engraving"]')!;
+    button("Compare compositions")!.click();
+    await vi.waitFor(() => expect(button("Apply composition")?.disabled).toBe(false), { timeout: 5_000 });
+    expect(target.querySelectorAll(".composition-art svg[role=img]")).toHaveLength(2);
+    expect(undo.disabled).toBe(true);
+    expect(flat.getAttribute("aria-checked")).toBe("false");
+    button("Cancel")!.click();
+    await tick();
+    expect(target.querySelector(".composition-dialog")).toBeNull();
+    expect(undo.disabled).toBe(true);
+
+    button("Compare compositions")!.click();
+    await vi.waitFor(() => expect(button("Apply composition")?.disabled).toBe(false));
+    const select = target.querySelector<HTMLSelectElement>(".composition-dialog select")!;
+    select.value = "terrain";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    select.value = "shoreline";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await tick();
+    await vi.waitFor(() => expect(button("Apply composition")?.disabled).toBe(false));
+    button("Apply composition")!.click();
+    await tick();
+    expect(target.querySelector(".composition-dialog")).toBeNull();
+    expect(flat.getAttribute("aria-checked")).toBe("true");
+    expect(target.querySelector('[role="switch"][aria-label="Roads"]')?.getAttribute("aria-checked")).toBe("false");
+    undo.click();
+    await vi.waitFor(() => expect(flat.getAttribute("aria-checked")).toBe("false"));
+    expect(target.querySelector('[role="switch"][aria-label="Roads"]')?.getAttribute("aria-checked")).toBe("true");
+    expect(undo.disabled).toBe(true);
+    expect(loadTerrainMock).toHaveBeenCalledOnce();
+  });
+
   it("explains automatic sidebar updates and flags a manually selected map area", async () => {
     const target = document.createElement("div");
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });

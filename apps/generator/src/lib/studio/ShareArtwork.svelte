@@ -8,5 +8,5 @@
 {#if project.outputMode === "stack"}
   <StackTopView {geometry} outputMode="stack" cropShape={project.cropShape} marginMm={5} hiddenPrefixes={[]} />
 {:else}
-  <EngravingPreview {geometry} {project} cropShape={project.cropShape} />
+  <EngravingPreview {geometry} {project} cropShape={project.cropShape} artworkOnly />
 {/if}

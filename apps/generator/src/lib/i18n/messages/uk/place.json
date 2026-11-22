@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Порівняти композиції",
+  "currentDesign": "Поточний проєкт",
+  "composition.streets": "Гравіювання вулиць",
+  "composition.shoreline": "Гравіювання берегів",
+  "composition.terrain": "Рельєф місцевості",
+  "applyComposition": "Застосувати композицію",
+  "noCompositionFeatures": "На цій ділянці не видно вибраних об’єктів карти.",
   "artworkSize": "Розмір гравіювання",
   "cutSize": "Розмір виробу",
   "placeAndSize": "Місце й розмір",

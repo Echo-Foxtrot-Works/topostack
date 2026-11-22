@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "比較構圖",
+  "currentDesign": "目前的設計",
+  "composition.streets": "街道雕刻",
+  "composition.shoreline": "岸線雕刻",
+  "composition.terrain": "地形浮雕",
+  "applyComposition": "套用構圖",
+  "noCompositionFeatures": "此範圍內未顯示所選的地圖圖徵。",
   "artworkSize": "作品尺寸",
   "cutSize": "切割尺寸",
   "placeAndSize": "地點和尺寸",

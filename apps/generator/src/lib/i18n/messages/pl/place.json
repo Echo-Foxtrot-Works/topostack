@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Porównaj kompozycje",
+  "currentDesign": "Bieżący projekt",
+  "composition.streets": "Grawer ulic",
+  "composition.shoreline": "Grawer linii brzegowej",
+  "composition.terrain": "Model terenu",
+  "applyComposition": "Zastosuj kompozycję",
+  "noCompositionFeatures": "Wybrane elementy mapy nie są widoczne w tym kadrze.",
   "artworkSize": "Rozmiar grafiki",
   "cutSize": "Rozmiar cięcia",
   "placeAndSize": "Miejsce i rozmiar",

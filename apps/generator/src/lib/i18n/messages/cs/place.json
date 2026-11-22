@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Porovnat kompozice",
+  "currentDesign": "Současný návrh",
+  "composition.streets": "Rytina ulic",
+  "composition.shoreline": "Rytina pobřeží",
+  "composition.terrain": "Reliéf terénu",
+  "applyComposition": "Použít kompozici",
+  "noCompositionFeatures": "Ve výřezu nejsou vidět vybrané mapové prvky.",
   "artworkSize": "Velikost grafiky",
   "cutSize": "Velikost řezu",
   "placeAndSize": "Místo a velikost",

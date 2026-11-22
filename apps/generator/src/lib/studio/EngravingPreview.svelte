@@ -4,12 +4,14 @@
   import { cropRadiusMm, waterPatternStrokes, type GeometryIRV1, type Point2D, type ProjectConfigV1 } from "@topostack/core";
   import { markingDash, markingWidth } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath as linePath } from "$lib/studio/svg-path";
+  import { placementViewBox } from "$lib/studio/placement/viewport";
 
   // `cropShape` comes from the project the geometry was built for: a width,
   // height or shape edit leaves the map area stale, so drawing the surface and
   // border from the live project would frame old contours at the new size and
   // stop `onBoundary` recognizing the crop edges it clipped them to.
-  let { geometry, project, cropShape }: { geometry: GeometryIRV1; project: ProjectConfigV1; cropShape: ProjectConfigV1["cropShape"] } = $props();
+  let { geometry, project, cropShape, artworkOnly = false }: { geometry: GeometryIRV1; project: ProjectConfigV1; cropShape: ProjectConfigV1["cropShape"]; artworkOnly?: boolean } = $props();
+  const shadowId = $props.id();
   // A rename or slider tick replaces `project` and `geometry` without changing
   // any of these, so reading them through narrow derivations keeps polygon
   // clipping and path building out of every keystroke.
@@ -55,13 +57,12 @@
 
 </script>
 
-<div class="engraving-stage">
-  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="engraving" svgLabel={t("preview.flatEngravingPreview")} controlsLabel={t("preview.engravingZoomControls")} resetLabel={t("preview.resetEngravingView")}>
-    <defs><filter id="engraving-shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2" /></filter></defs>
+{#snippet artwork()}
+    <defs><filter id={shadowId}><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2" /></filter></defs>
     {#if crop.cropShape === "circle"}
-      <circle cx="0" cy="0" r={cropRadiusMm(crop)} class="engraving-surface" data-preview-shadow filter="url(#engraving-shadow)" />
+      <circle cx="0" cy="0" r={cropRadiusMm(crop)} class="engraving-surface" data-preview-shadow filter={`url(#${shadowId})`} />
     {:else}
-      <rect x={-crop.widthMm / 2} y={-crop.heightMm / 2} width={crop.widthMm} height={crop.heightMm} class="engraving-surface" data-preview-shadow filter="url(#engraving-shadow)" />
+      <rect x={-crop.widthMm / 2} y={-crop.heightMm / 2} width={crop.widthMm} height={crop.heightMm} class="engraving-surface" data-preview-shadow filter={`url(#${shadowId})`} />
     {/if}
     {#if waterPattern.length}
       <g class="engraving-water-pattern" data-water-pattern={project.waterFillPattern} stroke-width={geometry.lineStyle.waterMm}>
@@ -88,6 +89,14 @@
     {#if project.showEngravingBorder}
       {#if crop.cropShape === "circle"}<circle cx="0" cy="0" r={cropRadiusMm(crop)} class="engraving-border" stroke-width={geometry.lineStyle.borderMm} />{:else}<rect x={-crop.widthMm / 2} y={-crop.heightMm / 2} width={crop.widthMm} height={crop.heightMm} class="engraving-border" stroke-width={geometry.lineStyle.borderMm} />{/if}
     {/if}
-  </SvgViewport>
+{/snippet}
+
+{#if artworkOnly}
+  {@const box = placementViewBox(widthMm, heightMm, 5)}
+  <svg class="stack-top-view" viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`} role="img" aria-label={t("preview.flatEngravingPreview")}>{@render artwork()}</svg>
+{:else}
+<div class="engraving-stage">
+  <SvgViewport widthMm={geometry.widthMm} heightMm={geometry.heightMm} label="engraving" svgLabel={t("preview.flatEngravingPreview")} controlsLabel={t("preview.engravingZoomControls")} resetLabel={t("preview.resetEngravingView")}>{@render artwork()}</SvgViewport>
   <div class="engraving-legend">{#if project.showEngravingContours}<span><i style:--sample-width={`${Math.max(1, geometry.lineStyle.contourMm * 5)}px`}></i> {t("preview.legendMinorContour")}</span><span><i class="index" style:--sample-width={`${Math.max(1, geometry.lineStyle.indexContourMm * 5)}px`}></i> {t("preview.legendIndexEvery", { interval: project.engravingIndexInterval })}</span><span>{t("preview.legendContourCount", { count: project.engravingContourCount })}</span>{:else}<span>{t("preview.legendNoContours")}</span>{/if}{#if project.showWater && project.waterFillPattern !== "none"}<span>{t("preview.legendWaterPattern", { pattern: project.waterFillPattern })}</span>{/if}</div>
 </div>
+{/if}
