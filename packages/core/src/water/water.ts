@@ -421,7 +421,7 @@ interface LakeLevels {
  * false when no survey cell lands inside the lake, so the lake falls through
  * to the other carves.
  */
-function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM, interiorSpreadM }: LakeLevels): boolean {
+function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM: surfaceElevationM, interiorSpreadM }: LakeLevels): boolean {
   const { grid, values, cells, warnings, normalized } = run;
   const survey = area.bathymetry!;
   const chart = area.bathymetryOrigin === "chart";
@@ -444,12 +444,6 @@ function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32A
     surveyedCount += 1;
   }
   if (surveyedCount === 0) return false;
-  // Depths are relative to their dataset waterline, not absolute elevations. Anchor
-  // them to the flat terrain waterline. If the DEM already has a basin,
-  // use the lake's published surface elevation instead of its bed median.
-  const surfaceElevationM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
-    ? area.surfaceElevationM!
-    : surfaceLevelM;
   const missing = surveyedCount < cells.length;
   const shore = missing ? measureShore(run, area) : undefined;
   const radiusM = shore && interiorSpreadM <= BATHYMETRIC_RELIEF_M ? normalizeBasin(run, area, shore, surfaceElevationM) : 0;
@@ -735,16 +729,14 @@ export function carveWaterDepth(
     if (count === 0) continue;
 
     const sorted = interior.slice(0, count).sort();
-    const levels: LakeLevels = {
-      sorted,
-      surfaceLevelM: quantile(sorted, count, 0.5),
-      // Judge "does the DEM already know this basin?" on the middle of the
-      // distribution, not its extremes. A lake outline traced by HydroLAKES never
-      // lands exactly on Terrarium's rendering of the same shoreline, and a
-      // handful of steep rim cells caught inside the polygon would otherwise
-      // condemn the whole lake to being read as surveyed and left flat.
-      interiorSpreadM: quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1),
-    };
+    // Ignore stray rim cells when deciding whether the DEM already contains a basin.
+    const interiorSpreadM = quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1);
+    // A flat lake's median is its local waterline. A varying bed needs the
+    // published waterline, whether its depths come from the DEM or a survey.
+    const surfaceLevelM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
+      ? area.surfaceElevationM!
+      : quantile(sorted, count, 0.5);
+    const levels = { sorted, surfaceLevelM, interiorSpreadM };
 
     if (area.bathymetry && area.kind === "lake" && carveSurveyedLake(run, area, areaIndexes, levels)) continue;
     // A fallback shoreline is not evidence that DEM relief is a surveyed bed.

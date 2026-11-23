@@ -21,5 +21,5 @@ export function sheetNestJobKey(parts: NestPartV1[], settings: ResolvedSheetNest
   };
   // Two differently salted 32-bit hashes: a cached plan is only reused on a match, so collisions matter here.
   const text = stableStringify(content);
-  return `nest1-${fnv1aHex(text)}${fnv1aHex(`#${text}`)}`;
+  return `nest2-${fnv1aHex(text)}${fnv1aHex(`#${text}`)}`;
 }

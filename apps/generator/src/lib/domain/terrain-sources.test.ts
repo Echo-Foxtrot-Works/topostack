@@ -74,6 +74,8 @@ describe("preferred terrain archives", () => {
 import { readFileSync } from "node:fs";
 import { DEFAULT_PROJECT, generateGeometry } from "@topostack/core";
 import { loadTerrain } from "$lib/domain/data-provider";
+import { loadElevation } from "$lib/domain/elevation-loader";
+import { worldXToLon, worldYToLat } from "$lib/domain/tile-math";
 import fixture from "$lib/domain/fixtures/hrdem-alexander-z14.json";
 import edgeFixture from "$lib/domain/fixtures/hrdem-alexander-edge-z14.json";
 import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
@@ -130,6 +132,8 @@ it("selects by priority regardless of registration order and fills only uncovere
   const low = { ...template, id: "low-v1", priority: 200 };
   const edge = readFileSync(new URL("./fixtures/hrdem-alexander-edge-z14.png", import.meta.url));
   const decoded = decodeTerrainPng(edge, true);
+  const expectedValues = decoded.map(value => Number.isFinite(value) ? value : 1);
+  const expectedOwners = Uint16Array.from(decoded, value => Number.isFinite(value) ? 1 : 2);
   mocks.createArchive.mockImplementation((url: string) => {
     const source = url.includes("high-v1") ? high : low;
     return {
@@ -142,10 +146,8 @@ it("selects by priority regardless of registration order and fills only uncovere
     const target = tile();
     const result = await applyPreferredTerrain("", bounds, [target], undefined, sources);
     expect(result.datasetVersions).toEqual([high.id, low.id]);
-    for (let index = 0; index < decoded.length; index += 1) {
-      expect(target.values[index]).toBe(Number.isFinite(decoded[index]) ? decoded[index] : 1);
-      expect(result.owners[0]![index]).toBe(Number.isFinite(decoded[index]) ? 1 : 2);
-    }
+    expect(target.values).toEqual(expectedValues);
+    expect(result.owners[0]).toEqual(expectedOwners);
   }
 });
 
@@ -223,6 +225,25 @@ describe("ocean grids", () => {
     expect(coast.values[200]).toBe(-300);
     expect(result.owners[0]![10]).toBe(0);
     expect(result.owners[0]![200]).toBe(1);
+  });
+
+  it("keeps the archived Monterey Bay sounding through mosaic repair and resampling", async () => {
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const tile = { z: 9, x: 82, worldX: 82, y: 199 };
+    const png = readFileSync(new URL("./fixtures/gebco-monterey-z9.png", import.meta.url));
+    expect(decodeTerrainPng(png, true)[147 * 256 + 132]).toBe(-314);
+    mocks.getHeader.mockResolvedValue({ tileType: 2, minZoom: 0, maxZoom: 9, minLon: -180, minLat: -85.0511, maxLon: 180, maxLat: 85.0511 });
+    mocks.getMetadata.mockResolvedValue({ topostack_dataset: "gebco-2026-ocean-v1", topostack_encoding: "elevation-terrarium-v1", topostack_vertical_datum: "MSL" });
+    mocks.getZxy.mockImplementation(async (z, x, y) => z === 9 && x === 82 && y === 199 ? { data: png } : undefined);
+    vi.stubGlobal("fetch", async () => new Response(elevationPng(() => -50), { headers: { "x-topostack-dataset": "mapzen-fixture" } }));
+    // Start on the sounding's pixel center so its exact depth reaches the final grid.
+    const westX = 82 * 256 + 132.5, northY = 199 * 256 + 147.5;
+    const window = { zoom: 9, tiles: [tile], westX, northY, eastX: westX + 64, southY: northY + 64 };
+    const bounds = { west: worldXToLon(westX, 9), east: worldXToLon(window.eastX, 9), north: worldYToLat(northY, 9), south: worldYToLat(window.southY, 9) };
+    const result = await loadElevation(window, bounds);
+    expect(result.elevation.values[0]).toBe(-314);
+    expect(result.elevationRepairCount).toBe(0);
+    expect(result.terrainSelection.sources).toContainEqual(expect.objectContaining({ id: "gebco-2026-ocean-v1" }));
   });
 });
 

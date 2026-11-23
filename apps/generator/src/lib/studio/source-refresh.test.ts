@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, type AirspaceVolumeV1, type LandAreaV1, type MarkingFeature, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { dissolveTilePolygons } from "$lib/domain/vector-cleanup";
+import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
+import { assembleWater } from "$lib/domain/water-assembly";
 import { dataZoom } from "$lib/domain/tile-math";
 import { markStaleSourceData, refreshRequiredMapData, resizeSource, SourcePreparationCache, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
 
@@ -478,11 +481,33 @@ describe("source preparation cache", () => {
     expect(deps.loadVectorMarkings).toHaveBeenCalledTimes(1);
   });
 
+  it("restores the same printable water as a full load after lowering the minimum", async () => {
+    const before = { ...project, showWater: true, showBuildings: false, minimumFeatureMm: 2 };
+    const after = { ...before, minimumFeatureMm: 0.5 };
+    const pond = square(0, 0, 1);
+    const deps = dependencies({
+      loadVectorMarkings: vi.fn(async (_bounds, _zoom, config) => ({
+        inland: dissolveTilePolygons([pond], config.minimumFeatureMm), ocean: [], markings: [], truncated: false,
+      })), resolveLakeOutlines, assembleWater,
+    });
+    const cache = new SourcePreparationCache(deps);
+    const empty = loaded({ markings: [], inlandWaterAreas: [], waterAreas: [], vectorStatus: "not-requested", lakeDataStatus: "not-requested" });
+    const original = await cache.prepare(empty, before, before, before, signal());
+    expect(original.waterAreas).toHaveLength(0);
+    const refreshed = await cache.prepare(original, before, after, after, signal());
+    const fresh = await new SourcePreparationCache(deps).prepare(empty, after, after, after, signal());
+    expect(refreshed.waterAreas).toHaveLength(1);
+    expect(refreshed.waterAreas).toEqual(fresh.waterAreas);
+    expect(refreshed.markings).toEqual(fresh.markings);
+    expect(deps.loadLakeAreas).toHaveBeenCalledTimes(3);
+  });
+
   it("resizes the source to the previewed size before preparing it", async () => {
     const deps = dependencies();
     const cache = new SourcePreparationCache(deps);
-    const wider = { ...project, widthMm: 600 };
-    const prepared = await cache.prepare(loaded({ markings: [line("road-1", "road")] }), project, wider, wider, signal());
+    const roadsOnly = { ...project, showWater: false, showBoundaries: false, showBuildings: false, showRail: false, paintTemplates: [] };
+    const wider = { ...roadsOnly, widthMm: 600 };
+    const prepared = await cache.prepare(loaded({ markings: [line("road-1", "road")] }), roadsOnly, wider, wider, signal());
     expect(prepared.markings[0]!.points[1]).toEqual({ x: 20, y: 5 });
   });
 

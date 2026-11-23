@@ -58,6 +58,21 @@ describe("geometry generation", () => {
     })).toThrow(/longitude span/i);
   });
 
+  it("engraves only the continuous dateline trail copies that intersect the crop", () => {
+    const trail = { id: "dateline", kind: "trail" as const, points: [{ lon: 179.9, lat: 0 }, { lon: -179.9, lat: 0 }] };
+    const exportTrail = (west: number, east: number) => {
+      const bounds = { west, east, south: -0.05, north: 0.05 };
+      const project = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, widthMm: 100, heightMm: 100, customLines: [trail], location: { ...DEFAULT_PROJECT.location, lat: 0, lon: (west + east) / 2, bounds } };
+      const svg = engravingToSvg(generateGeometry(project, realSource(project)), project);
+      return [...svg.matchAll(/<path id="custom-data-line-[^"]+" d="([^"]+)"/g)].map((match) => parsePathPoints(match[1]!));
+    };
+    expect(exportTrail(-0.05, 0.05)).toEqual([]);
+    expect(exportTrail(179.8, 180.2)).toEqual([[{ x: -25, y: 0 }, { x: 25, y: 0 }]]);
+    const copies = exportTrail(-180, 180);
+    expect(copies).toHaveLength(2);
+    expect(copies.flat().map(({ x }) => Math.abs(x))).toEqual([50, 49.972, 49.972, 50]);
+  });
+
   it("projects custom trails and boundaries independently of built-in map-detail toggles", () => {
     const center = DEFAULT_PROJECT.location;
     const customLines = [

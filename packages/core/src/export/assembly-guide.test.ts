@@ -51,6 +51,13 @@ describe("assembly guide booklet", () => {
     expect(html).toContain("jigsaw tabs");
   });
 
+  it.each([[180, 0, "180 mm work area width"], [0, 120, "120 mm work area height"]] as const)(
+    "describes the constrained axis of a %s × %s work area", async (workAreaWidthMm, workAreaHeightMm, expected) => {
+      const { html } = await guideFor({ ...DEFAULT_PROJECT, workAreaWidthMm, workAreaHeightMm });
+      expect(html).toContain(`that fit your ${expected}</li>`);
+    },
+  );
+
   it("leaves painting out when templates are enabled but none were written", async () => {
     const { pkg, html } = await guideFor({ ...DEFAULT_PROJECT, paintTemplates: ["water"] });
     expect(pkg.files.some((entry) => entry.filename.includes("-paint-"))).toBe(false);

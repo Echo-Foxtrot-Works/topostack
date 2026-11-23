@@ -15,7 +15,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
+  import { DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, coveredRailWidthMm, fittedWaterInsert, labelGeometry, visibleMarkings, type GeometryIRV1, type OperationPath } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -429,6 +429,35 @@
         side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
       runtime.sceneResources.push(...Object.values(lineMaterials), labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
+      function drawFaceMarkings(markings: OperationPath[], layerIndex: number, faceZ: number, thickness: number, seams: number[] = []) {
+        const top = faceZ + markingLift(thickness);
+        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+        const labelBatch: LineBatch = { positions: [] };
+        const fills: THREE.Shape[] = [];
+        const shown = omitMarkings ? [] : markings.filter(({ id }) => !hiddenByPrefix(id, hiddenPrefixes));
+        for (const marking of visibleMarkings(shown)) {
+          if (marking.label && marking.points[0]) {
+            const glyphs = labelGeometry(marking.label, marking.points[0], 0, 0, marking.labelRotationRad, marking.textStyle);
+            for (const glyph of glyphs.fills) fills.push(shapeFromPolygon(glyph));
+            glyphs.strokes.forEach((stroke) => appendPolyline(labelBatch, stroke));
+          } else if (marking.filled && marking.points.length > 2) {
+            fills.push(shapeFromPolygon({ outer: marking.points, holes: marking.holes ?? [] }));
+          } else if (marking.points.length > 1) {
+            const material = lineMaterials[markingStyleKey(marking)];
+            let batch = lineBatches.get(material);
+            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
+            appendPolyline(batch, marking.points);
+          }
+        }
+        if (fills.length) {
+          const mesh = new THREE.Mesh(new THREE.ShapeGeometry(fills), markerFillMaterial);
+          mesh.renderOrder = 3;
+          addStacked(runtime!.content, mesh, layerIndex, top);
+        }
+        if (seams.length) lineBatches.set(seamMaterial, { positions: [...seams] });
+        for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layerIndex, top);
+        if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layerIndex, top + markingLift(thickness) * 0.5);
+      }
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
@@ -449,34 +478,11 @@
           // butted bodies alone showed a curved joint's side walls but hid
           // straight ones, so some joints read as stray outlines.
           const seams = layer.pieces.length ? sharedPieceEdges(layer.polygons).flatMap(([start, end]) => [start.x, start.y, 0, end.x, end.y, 0]) : [];
-          cached = { key: keys.get(layer.id)!, meshes, seams, face, resources: [grain, face, side] };
+          cached = { key: keys.get(layer.id)!, meshes, seams, resources: [grain, face, side] };
           runtime!.layerMeshes.set(layer.id, cached);
         }
-        const { face } = cached;
-        // Every line on a layer that shares a material becomes one draw call.
-        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
-        const labelBatch: LineBatch = { positions: [] };
         for (const mesh of cached.meshes) addStacked(runtime!.content, mesh, layer.index, baseZ);
-        layer.markings.forEach((marking) => {
-          if (omitMarkings || hiddenByPrefix(marking.id, hiddenPrefixes)) return;
-          if (marking.filled && marking.points.length > 2) {
-            const marker = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPolygon({ outer: marking.points, holes: marking.holes ?? [] })), marking.knockout ? face : markerFillMaterial);
-            marker.renderOrder = marking.knockout ? 2 : 3;
-            const lift = markingLift(layer.materialThicknessMm) * (marking.knockout ? 1 : 1.25);
-            addStacked(runtime!.content, marker, layer.index, baseZ + layer.materialThicknessMm + lift);
-          } else if (marking.points.length > 1) {
-            const material = lineMaterials[markingStyleKey(marking)];
-            let batch = lineBatches.get(material);
-            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
-            appendPolyline(batch, marking.points);
-          }
-          if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
-        });
-        if (cached.seams.length) lineBatches.set(seamMaterial, { positions: [...cached.seams] });
-        for (const [material, batch] of lineBatches) {
-          if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, baseZ + layer.materialThicknessMm + markingLift(layer.materialThicknessMm));
-        }
-        if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, baseZ + layer.materialThicknessMm + markingLift(layer.materialThicknessMm) * 1.5);
+        drawFaceMarkings(layer.markings, layer.index, baseZ + layer.materialThicknessMm, layer.materialThicknessMm, cached.seams);
       });
       // Acrylic inserts fill their opening from the ledge below, riding the
       // layer they replace when the stack is exploded. Map detail engraved on
@@ -486,29 +492,15 @@
         if (!layer) return;
         const thickness = activeGeometry.waterInsertMaterial?.thicknessMm ?? layer.materialThicknessMm;
         const baseZ = layer.index * layer.materialThicknessMm;
-        insert.polygons.forEach((polygon) => {
+        const fitted = fittedWaterInsert(insert, activeGeometry.waterInsertMaterial?.fitClearanceMm ?? 0, !omitMarkings);
+        fitted.polygons.forEach((polygon) => {
           const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFromPolygon(polygon), { depth: thickness, bevelEnabled: false, curveSegments: 8 }), acrylicMaterial);
           mesh.castShadow = false;
           mesh.receiveShadow = false;
           mesh.renderOrder = 1;
           addStacked(runtime!.content, mesh, layer.index, baseZ);
         });
-        if (omitMarkings) return;
-        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
-        const labelBatch: LineBatch = { positions: [] };
-        insert.markings.forEach((marking) => {
-          if (marking.knockout || hiddenByPrefix(marking.id, hiddenPrefixes)) return;
-          if (marking.points.length > 1 && !marking.filled) {
-            const material = lineMaterials[markingStyleKey(marking)];
-            let batch = lineBatches.get(material);
-            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
-            appendPolyline(batch, marking.points);
-          }
-          if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);
-        });
-        const top = baseZ + thickness + markingLift(thickness);
-        for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layer.index, top);
-        if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layer.index, top + markingLift(thickness) * 0.5);
+        drawFaceMarkings(fitted.markings, layer.index, baseZ + thickness, thickness);
       });
       // Airspace pieces float at their true height on their rods, tinted as the
       // sectional colours them; clear plates show their frost. Each level rides

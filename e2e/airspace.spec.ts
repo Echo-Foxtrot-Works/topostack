@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { unzipSync } from "fflate";
 
 test("keeps supported acrylic stock while changing thin and thick terrain material", async ({ page }) => {
@@ -75,6 +76,59 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   expect(manifest.project.airspaceStack).toMatchObject({ form: "tiers", tint: "chart" });
   expect(manifest.result.fabrication.airspaceStack.sectors.length).toBeGreaterThan(0);
   expect(manifest.result.fabrication.airspaceStack.levels.length).toBeGreaterThan(0);
+});
+
+test("adds blue acrylic plates to the downloaded share PNG", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  await page.goto("/studio");
+  await page.getByRole("tab", { name: "Aviation", exact: true }).click();
+
+  async function downloadPreview(filename: string) {
+    await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
+    await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Save preview image" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/-preview\.png$/);
+    const path = testInfo.outputPath(filename);
+    await download.saveAs(path);
+    await page.keyboard.press("Escape");
+    return (await readFile(path)).toString("base64");
+  }
+
+  const terrain = await downloadPreview("terrain-preview.png");
+  await page.getByRole("switch", { name: "Airspace in 3D", exact: true }).click();
+  await page.getByRole("radiogroup", { name: "Airspace levels" }).getByRole("radio", { name: /^Whole slice/ }).click();
+  await page.getByRole("radiogroup", { name: "Airspace acrylic" }).getByRole("radio", { name: /^Chart colors/ }).click();
+  const plates = await downloadPreview("airspace-preview.png");
+  await expect(page.locator(".airspace-settings")).toContainText(/\d+ pieces? on \d+ levels?/);
+
+  // Decode the files the maker downloaded. Only count the model artwork, away from the card text.
+  const blueShiftPixels = await page.evaluate(async ([withoutPlates, withPlates]) => {
+    async function artwork(base64: string) {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      return context.getImageData(48, 168, 1104, 560).data;
+    }
+    const [before, after] = await Promise.all([artwork(withoutPlates), artwork(withPlates)]);
+    let count = 0;
+    for (let i = 0; i < after.length; i += 4) {
+      const original = before[i + 2]! - before[i]!;
+      const tinted = after[i + 2]! - after[i]!;
+      if (tinted - original > 35 && after[i + 2]! > before[i + 2]! + 12) count++;
+    }
+    return count;
+  }, [terrain, plates] as const);
+  expect(blueShiftPixels).toBeGreaterThan(2_000);
 });
 
 test("builds the airspace a browser agent asks for, on through rods", async ({ page, browserName }) => {

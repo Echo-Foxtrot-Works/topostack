@@ -1,5 +1,7 @@
+import { CIRCLE_CROP_SEGMENTS, cropRadiusMm } from "../primitives/crop.js";
+import { formatNumber as format } from "../primitives/format.js";
 import polygonClipping, { type MultiPolygon, type Pair, type Ring } from "polygon-clipping";
-import { clamp, normalizeMultiPolygon, ringBounds, simplify, toRing } from "../primitives/geometry2d.js";
+import { clamp, pointAt, normalizeMultiPolygon, ringBounds, simplify, toRing } from "../primitives/geometry2d.js";
 import { sampleIndexAt, sampleOffset } from "../primitives/grid.js";
 import type { ElevationGrid, Point2D, Polygon2D, ProjectConfigV1 } from "../types.js";
 
@@ -87,4 +89,53 @@ export function layerForElevation(elevation: number, thresholds: number[]): numb
     if (elevation >= (thresholds[index] ?? Number.POSITIVE_INFINITY)) layer = index;
   }
   return layer;
+}
+
+type EngravingCrop = Pick<ProjectConfigV1, "cropShape" | "widthMm" | "heightMm">;
+
+function segmentOnCropBoundary(start: Point2D, end: Point2D, config: EngravingCrop): boolean {
+  const epsilon = 0.02;
+  if (config.cropShape === "circle") {
+    // Contours are clipped to a polygon, not a true circle, and simplified
+    // afterwards. A vertex on the crop can therefore sit up to one chord
+    // sagitta inside the radius, and a simplified run of crop edges bows
+    // inward by up to the simplification tolerance as well. A fixed epsilon
+    // smaller than that sagitta let whole arcs through as engraved stubs.
+    const radius = cropRadiusMm(config);
+    const sagitta = radius * (1 - Math.cos(Math.PI / CIRCLE_CROP_SEGMENTS));
+    const inner = radius - sagitta - CONTOUR_SIMPLIFICATION_TOLERANCE_MM - epsilon;
+    const onBoundary = (point: Point2D) => {
+      const distance = Math.hypot(point.x, point.y);
+      return distance >= inner && distance <= radius + epsilon;
+    };
+    return onBoundary(start) && onBoundary(end) && onBoundary(pointAt(start, end, 0.5));
+  }
+  const halfWidth = config.widthMm / 2;
+  const halfHeight = config.heightMm / 2;
+  return (Math.abs(start.x - halfWidth) <= epsilon && Math.abs(end.x - halfWidth) <= epsilon) ||
+    (Math.abs(start.x + halfWidth) <= epsilon && Math.abs(end.x + halfWidth) <= epsilon) ||
+    (Math.abs(start.y - halfHeight) <= epsilon && Math.abs(end.y - halfHeight) <= epsilon) ||
+    (Math.abs(start.y + halfHeight) <= epsilon && Math.abs(end.y + halfHeight) <= epsilon);
+}
+
+/**
+ * Filled contour polygons include pieces of the crop edge whenever terrain
+ * continues beyond the artwork. Remove those edge-following pieces so a flat
+ * topographic line terminates naturally at the optional border.
+ */
+export function openContourPath(points: Point2D[], config: EngravingCrop): string {
+  let result = "";
+  let connected = false;
+  for (let index = 1; index < points.length; index += 1) {
+    const start = points[index - 1]!;
+    const end = points[index]!;
+    if (segmentOnCropBoundary(start, end, config)) {
+      connected = false;
+      continue;
+    }
+    if (!connected) result += `M${format(start.x)} ${format(start.y)}`;
+    result += `L${format(end.x)} ${format(end.y)}`;
+    connected = true;
+  }
+  return result;
 }

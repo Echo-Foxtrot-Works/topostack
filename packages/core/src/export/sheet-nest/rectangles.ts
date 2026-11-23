@@ -1,6 +1,6 @@
 import type { Point2D } from "../../types.js";
 import type { StripEngine, StripEngineItem, StripEnginePlacement, StripEngineResult } from "./engine.js";
-import { candidateOrientations, rotatedBounds } from "./transform.js";
+import { candidateOrientations, rotatedBounds, sheetFitOrientations } from "./transform.js";
 
 const EPSILON = 1e-6;
 
@@ -24,12 +24,24 @@ export interface RectanglePackResult extends StripEngineResult {
   unplaced: number[];
 }
 
-function orientationsOf(item: StripEngineItem): Orientation[] {
+function orientationsOf(item: StripEngineItem, maxWidth: number, maxHeight: number): Orientation[] {
   const points: Point2D[] = item.outline.map(([x, y]) => ({ x, y }));
-  return candidateOrientations(points, item.orientationsDeg).map((rotationDeg) => {
+  const measure = (rotationDeg: number): Orientation => {
     const bounds = rotatedBounds(points, rotationDeg);
     return { rotationDeg, width: bounds.maxX - bounds.minX, height: bounds.maxY - bounds.minY, minX: bounds.minX, minY: bounds.minY };
-  });
+  };
+  const candidates = candidateOrientations(points, item.orientationsDeg).map(measure);
+  const fits = (box: Orientation) => box.width <= maxWidth + EPSILON && box.height <= maxHeight + EPSILON;
+  if (!item.orientationsDeg && !candidates.some(fits)) {
+    for (const angle of sheetFitOrientations(points, maxWidth)) {
+      const candidate = measure(angle);
+      if (fits(candidate)) {
+        candidates.push(candidate);
+        break;
+      }
+    }
+  }
+  return candidates;
 }
 
 /**
@@ -43,7 +55,7 @@ export function packRectangles(items: StripEngineItem[], stripHeight: number, sp
   const height = stripHeight + spacing;
   const widthLimit = maxWidth + spacing;
   let skyline: Segment[] = [{ y0: 0, y1: height, x: 0 }];
-  const candidates = items.map((item, index) => ({ index, orientations: orientationsOf(item) }));
+  const candidates = items.map((item, index) => ({ index, orientations: orientationsOf(item, maxWidth, stripHeight) }));
   const footprint = (orientations: Orientation[]) => Math.min(...orientations.map((o) => o.width * o.height));
   const longest = (orientations: Orientation[]) => Math.min(...orientations.map((o) => Math.max(o.width, o.height)));
   // Big parts first; among equals, the long thin ones, which are hardest to place late.

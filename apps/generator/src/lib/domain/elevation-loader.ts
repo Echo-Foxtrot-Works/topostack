@@ -42,8 +42,8 @@ export async function loadElevation(window: TileWindow, bounds: GeoBounds, signa
   }
   if (datasetVersions.size > 1) throw new Error("Terrain tiles came from inconsistent dataset versions. Try again shortly.");
 
-  // Use the stitched native raster so tile boundaries are ordinary neighbors.
-  const elevationRepairCount = repairElevationSpikes(mosaic, mosaicWidth, mosaicHeight);
+  // Repair Mapzen artifacts using only Mapzen neighbors, including across tile edges.
+  const elevationRepairCount = repairElevationSpikes(mosaic, mosaicWidth, mosaicHeight, terrainOwners);
 
   // Output samples i in 0..width-1 span [westX, eastX] edge to edge, matching
   // the contourToMm/sampleElevation convention in core (grid.width - 1 spans

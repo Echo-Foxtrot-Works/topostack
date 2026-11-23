@@ -53,6 +53,6 @@ describe("Crater Lake bundled preview", () => {
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.every((marking) => marking.operation === "engrave" && marking.label)).toBe(true);
     const layer = geometry.layers.find(layer => layer.markings.some(marking => marking.id.startsWith("transport-label-")))!;
-    expect(layerToSvg(geometry, layer)).toContain(`id="${layer.id}-ENGRAVE-transport-labels"`);
+    expect(layerToSvg(geometry, layer)).toMatch(new RegExp(`id="${layer.id}-part-\\d+-ENGRAVE-transport-labels"`));
   });
 });

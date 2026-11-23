@@ -226,6 +226,17 @@ describe("SVG export", () => {
     expect(cutPaths.every((data) => (data.match(/M/g) ?? []).length === 1)).toBe(true);
   });
 
+  it("gives every element in a master composed from split panels a unique id", async () => {
+    const config = { ...DEFAULT_PROJECT, workAreaWidthMm: 160, workAreaHeightMm: 120 };
+    const ir = generateGeometry(config, realSource(config));
+    expect(ir.splitPlan).toBeDefined();
+    ir.layers[0]!.markings.push({ id: "cross-seam", kind: "guide", operation: "engrave", points: [{ x: -140, y: 80 }, { x: 140, y: 80 }] });
+    const svg = await buildFabricationPackage(ir, config).master.blob.text();
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
+    expect(ids.filter((id) => id?.startsWith("cross-seam")).length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("writes one root-level group per cut piece, holding its own cuts and engraving (Atomm SVG grouping spec)", () => {
     const result = generateGeometry(DEFAULT_PROJECT, realSource());
     const svg = masterToSvg(result);

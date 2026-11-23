@@ -4,7 +4,7 @@
  * Use a local median/MAD (median absolute deviation), never a sea-level clamp or
  * crop-wide percentile: continuous ocean floors and land depressions survive.
  */
-export function repairElevationSpikes(values: Float32Array, width: number, height: number): number {
+export function repairElevationSpikes(values: Float32Array, width: number, height: number, terrainOwners?: Uint16Array): number {
   const repairs: Array<[number, number]> = [];
   const neighbors: number[] = [];
   for (let row = 0; row < height; row += 1) {
@@ -12,13 +12,15 @@ export function repairElevationSpikes(values: Float32Array, width: number, heigh
       const index = row * width + column;
       const value = values[index]!;
       // Keep shallow bathymetry and all above-sea-level terrain untouched.
-      if (value >= -100) continue;
+      if (value >= -100 || terrainOwners?.[index]) continue;
       neighbors.length = 0;
       let maximumNeighbor = -Infinity;
       for (let dy = -8; dy <= 8; dy += 4) {
         for (let dx = -8; dx <= 8; dx += 4) {
           if ((!dx && !dy) || row + dy < 0 || row + dy >= height || column + dx < 0 || column + dx >= width) continue;
-          const neighbor = values[(row + dy) * width + column + dx]!;
+          const neighborIndex = (row + dy) * width + column + dx;
+          if (terrainOwners?.[neighborIndex]) continue;
+          const neighbor = values[neighborIndex]!;
           neighbors.push(neighbor);
           maximumNeighbor = Math.max(maximumNeighbor, neighbor);
         }

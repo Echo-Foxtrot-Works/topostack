@@ -29,13 +29,15 @@ export function resizeSource(source: SourceBundleV1, from: ProjectConfigV1, to: 
   const scaleX = to.widthMm / from.widthMm;
   const scaleY = to.heightMm / from.heightMm;
   const scalePoints = (points: Point2D[]) => points.map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
+  const scaleArea = (area: WaterAreaV1) => ({ ...area, polygon: { outer: scalePoints(area.polygon.outer), holes: area.polygon.holes.map(scalePoints) } });
   return {
     ...source,
     markings: source.markings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })),
     ...(source.aviationMarkings ? { aviationMarkings: source.aviationMarkings.map((marking) => ({ ...marking, points: scalePoints(marking.points) })) } : {}),
     ...(source.airspaceVolumes ? { airspaceVolumes: source.airspaceVolumes.map((volume) => ({ ...volume, polygons: volume.polygons.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) })) } : {}),
     ...(source.landAreas ? { landAreas: source.landAreas.map((area) => ({ ...area, polygons: area.polygons.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) })) } : {}),
-    ...(source.waterAreas ? { waterAreas: source.waterAreas.map((area) => ({ ...area, polygon: { outer: scalePoints(area.polygon.outer), holes: area.polygon.holes.map(scalePoints) } })) } : {}),
+    ...(source.waterAreas ? { waterAreas: source.waterAreas.map(scaleArea) } : {}),
+    ...(source.preChartLakeAreas ? { preChartLakeAreas: source.preChartLakeAreas.map(scaleArea) } : {}),
     ...(source.inlandWaterAreas ? { inlandWaterAreas: source.inlandWaterAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
     ...(source.waterPatternAreas ? { waterPatternAreas: source.waterPatternAreas.map((polygon) => ({ outer: scalePoints(polygon.outer), holes: polygon.holes.map(scalePoints) })) } : {}),
   };
@@ -55,13 +57,15 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   const enablesPaintWater = "paintTemplates" in patch && sourceRequirements(nextProject).water && !sourceRequirements(sourceProject).water;
   const buildings = buildingOutlinesEnabled(nextProject);
   const hadBuildings = buildingOutlinesEnabled(sourceProject);
-  // Footprints are selected at finished size. Resizing or changing the printable minimum can reveal more.
-  const reloadBuildings = buildings
-    ? !hadBuildings || patch.widthMm !== undefined || patch.heightMm !== undefined || patch.minimumFeatureMm !== undefined || patch.cropShape !== undefined
-    : hadBuildings && source.vectorStatus === "partial";
-  const changesVectorDetails = reloadBuildings || reloadsLayer || "showWater" in patch || (patch.showWaterDepth === true && !sourceProject.showWater) || enablesPaintWater;
+  // Shorelines, waterway and boundary lines, and footprints are filtered at finished size.
+  const sizeFilterChanged = patch.widthMm !== undefined || patch.heightMm !== undefined || patch.minimumFeatureMm !== undefined;
+  const needsWater = sourceRequirements(nextProject).water;
+  const reloadBuildings = buildings ? !hadBuildings || patch.cropShape !== undefined : hadBuildings && source.vectorStatus === "partial";
+  const refilterVectors = sizeFilterChanged && (needsWater || nextProject.showBoundaries || buildings || nextProject.showRail);
+  const changesVectorDetails = refilterVectors || reloadBuildings || reloadsLayer || "showWater" in patch || (patch.showWaterDepth === true && !sourceProject.showWater) || enablesPaintWater;
   if (changesVectorDetails) next = { ...next, vectorStatus: "not-requested" };
-  if (patch.showWaterDepth === true || enablesPaintWater) next = { ...next, lakeDataStatus: "not-requested" };
+  // A later edit can re-enable water while reusing this same source.
+  if (sizeFilterChanged || patch.showWaterDepth === true || enablesPaintWater) next = { ...next, lakeDataStatus: "not-requested" };
   const enablesDepthByMode = nextProject.outputMode === "stack" && nextProject.showWaterDepth && sourceProject.outputMode !== "stack";
   if (enablesDepthByMode) next = { ...next, ...(!sourceProject.showWater ? { vectorStatus: "not-requested" as const } : {}), lakeDataStatus: "not-requested" };
   // Loaded aviation holds only the groups enabled then; turning another on
@@ -99,7 +103,12 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   let next = source;
   let inland = source.inlandWaterAreas ?? [];
   let ocean = (source.waterAreas ?? []).filter((area) => area.kind === "ocean").map((area) => area.polygon);
-  let lakes = (source.waterAreas ?? []).filter((area) => area.kind === "lake");
+  const preparedLakes = (source.waterAreas ?? []).filter((area) => area.kind === "lake");
+  // Older stored sources only have the chart-edited polygons. Reload their
+  // original outlines before resolving the shore or applying another chart.
+  const needsOriginalLakes = !source.preChartLakeAreas && preparedLakes.some((area) => area.bathymetryOrigin === "chart");
+  let lakes = source.preChartLakeAreas ?? (needsOriginalLakes ? [] : preparedLakes);
+  if (needsOriginalLakes) next = { ...next, lakeDataStatus: "not-requested", bathymetryStatus: undefined };
 
   if (needsVectors && (source.vectorStatus !== "available" || (config.showRail && source.railContextIncomplete))) {
     try {
@@ -152,14 +161,14 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     next = { ...next, ...lands };
   }
 
-  if (usesWaterAreas && source.lakeDataStatus !== "available") {
+  if (usesWaterAreas && next.lakeDataStatus !== "available") {
     try {
       lakes = await loadLakeAreas(source.bounds, zoom, config, signal);
       next = { ...next, lakeDataStatus: "available", bathymetryStatus: undefined };
     } catch (error) {
       if (signal.aborted) throw error;
       lakes = [];
-      next = { ...next, lakeDataStatus: "unavailable" };
+      next = { ...next, lakeDataStatus: "unavailable", bathymetryStatus: undefined };
     }
   }
 
@@ -184,6 +193,9 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
     next = applySurveyProvenance(next, bathymetry);
   } else if (!usesWaterDepth) {
     next = applySurveyProvenance(next, { areas: lakes, status: "not-covered", datasetVersions: [], attribution: [] });
+  } else if (source.preChartLakeAreas) {
+    // The base shore and the selected charts still match the prepared depths.
+    lakes = preparedLakes;
   }
   return assembleWater(next, lakes, ocean, config);
 }
@@ -207,7 +219,7 @@ export class SourcePreparationCache {
     const patch = projectPatch(sourceProject, previewProject);
     const key = preparationKey(nextProject);
     // Everything besides `key` that shapes the output for a given input object.
-    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.minimumFeatureMm, sourceProject.cropShape, buildingOutlinesEnabled(sourceProject), sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation" || name === "airspaceStack").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null, sourceProject.airspaceStack?.classes ?? null]);
+    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.minimumFeatureMm, sourceProject.cropShape, buildingOutlinesEnabled(sourceProject), sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation" || name === "airspaceStack" || name === "userDepthCharts").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null, sourceProject.airspaceStack?.classes ?? null]);
     const entry = this.entry;
     if (entry && entry.key === key) {
       if (entry.input === active && entry.inputSignature === inputSignature) return entry.output;

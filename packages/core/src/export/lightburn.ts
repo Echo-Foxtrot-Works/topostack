@@ -58,7 +58,7 @@ interface Paint {
 
 
 interface ShapeNode { kind: "shape"; layer: LightBurnLayerKey; line: Polyline }
-interface GroupNode { kind: "group"; children: Node[] }
+interface GroupNode { kind: "group"; children: Node[]; piece?: boolean }
 type Node = ShapeNode | GroupNode;
 
 interface Frame { group?: GroupNode; matrix: Matrix; paint: Paint }
@@ -215,10 +215,10 @@ function readSvg(svg: string): Node[] {
       : multiply(parent.matrix, parseTransform(values.get("transform")));
     const paint = inheritPaint(parent.paint, values);
     if (name === "svg" || name === "g") {
-      // A transformed group is a placed panel or nested part: keep it movable as one LightBurn group.
+      // Ordinary panels have no transform. Their piece owns its cuts and marks just as on a stock sheet.
       let group = parent.group!;
-      if (name === "g" && values.has("transform")) {
-        const child: GroupNode = { kind: "group", children: [] };
+      if (name === "g" && (values.has("transform") || values.has("data-piece"))) {
+        const child: GroupNode = { kind: "group", children: [], piece: values.has("data-piece") };
         group.children.push(child);
         group = child;
       }
@@ -236,13 +236,13 @@ function readSvg(svg: string): Node[] {
   return prune(root.children);
 }
 
-/** Drops empty groups and unwraps groups of one, which LightBurn would show as needless nesting. */
+/** Drop empty groups and unwrap single-child transform wrappers, retaining every piece. */
 function prune(nodes: Node[]): Node[] {
   return nodes.flatMap((node): Node[] => {
     if (node.kind === "shape") return [node];
     const children = prune(node.children);
     if (!children.length) return [];
-    return children.length === 1 ? children : [{ kind: "group", children }];
+    return children.length === 1 && !node.piece ? children : [{ ...node, children }];
   });
 }
 

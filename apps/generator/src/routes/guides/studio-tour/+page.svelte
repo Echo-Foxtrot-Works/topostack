@@ -12,7 +12,7 @@
   <ul>
     <li><strong>Project name</strong> names your project and its exported files. The arrow beside it opens the project menu:
       <ul>
-        <li><strong>Import project JSON</strong> opens a project settings file (up to 2 MB) you exported earlier.</li>
+        <li><strong>Import project JSON</strong> opens a project settings file (up to 24 MB) you exported earlier.</li>
         <li><strong>Copy share link</strong> copies a link that opens this design.</li>
         <li><strong>Reset project</strong> restores the Crater Lake preview and all default settings, clearing custom markers and lines. The reset saves automatically; use Undo to recover your previous settings.</li>
       </ul>

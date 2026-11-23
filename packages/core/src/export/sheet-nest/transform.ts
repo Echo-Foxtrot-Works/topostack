@@ -62,3 +62,43 @@ export function candidateOrientations(outline: Point2D[], allowed: number[] | un
   });
   return [...angles];
 }
+
+/**
+ * Extra orientations for a part whose minimum-area box misses the sheet.
+ * Between hull-edge alignments the vertices defining the width and height
+ * stay fixed. Each extent is a positive sinusoid, hence concave there. Split
+ * each interval again where the width equals the sheet width. On its
+ * width-feasible pieces, the minimum height is attained at an endpoint.
+ */
+export function* sheetFitOrientations(points: Point2D[], sheetWidth: number): Generator<number> {
+  const hull = convexHull(points);
+  const breaks = new Set([0, Math.PI]);
+  for (let i = 1; i < hull.length; i++) {
+    const a = hull[i - 1]!, b = hull[i]!;
+    const alignment = -Math.atan2(b.y - a.y, b.x - a.x);
+    for (const offset of [0, Math.PI / 2]) breaks.add((alignment + offset + 2 * Math.PI) % Math.PI);
+  }
+  const angles = [...breaks].sort((a, b) => a - b);
+  for (let i = 1; i < angles.length; i++) {
+    const lo = angles[i - 1]!, hi = angles[i]!;
+    yield lo * 180 / Math.PI;
+    if (!Number.isFinite(sheetWidth)) continue;
+    const mid = (lo + hi) / 2;
+    const cos = Math.cos(mid), sin = Math.sin(mid);
+    const projectedX = (p: Point2D) => p.x * cos - p.y * sin;
+    let left = hull[0]!, right = left;
+    for (const p of hull) {
+      if (projectedX(p) < projectedX(left)) left = p;
+      if (projectedX(p) > projectedX(right)) right = p;
+    }
+    const dx = right.x - left.x, dy = right.y - left.y;
+    const span = Math.hypot(dx, dy);
+    if (span < sheetWidth || !span) continue;
+    const phase = Math.atan2(-dy, dx);
+    const delta = Math.acos(sheetWidth / span);
+    for (const root of [phase - delta, phase + delta]) {
+      const angle = (root + 2 * Math.PI) % (2 * Math.PI);
+      if (angle >= lo && angle <= hi) yield angle * 180 / Math.PI;
+    }
+  }
+}

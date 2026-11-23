@@ -858,6 +858,8 @@ export interface SourceBundleV1 {
   terrainSourceUnavailable?: boolean;
   markings: MarkingFeature[];
   waterAreas?: WaterAreaV1[];
+  /** Resolved lake outlines before chart edits, retained while charts are applied. */
+  preChartLakeAreas?: WaterAreaV1[];
   /** OSM water polygons retained independently of depth-modeling metadata. */
   waterPatternAreas?: Polygon2D[];
   /** Inland OSM polygons retained for shoreline fallback and depth retries. */
