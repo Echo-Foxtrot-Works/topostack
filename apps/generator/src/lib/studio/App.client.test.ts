@@ -27,7 +27,7 @@ vi.mock("$lib/atomm/atomm-bridge", () => ({ connectAtomm: vi.fn(() => () => unde
 vi.mock("$app/navigation", () => ({ replaceState: (url: URL) => window.history.replaceState(window.history.state, "", url) }));
 vi.mock("$lib/studio/ThreePreview.svelte", async () => ({ default: (await import("$lib/studio/testing/TestPreview.svelte")).default }));
 
-import { loadProject, PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
+import { PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
 import App from "$lib/studio/App.svelte";
 import { nav } from "$lib/studio/customdata/custom-data-nav.svelte";
 import { resetDraft } from "$lib/studio/customdata/chart-draft.svelte";
