@@ -90,7 +90,7 @@ describe("preview resource cleanup", () => {
     scene.traverse((object) => {
       if (!(object instanceof LineSegments2)) return;
       lineObjects += 1;
-      expect(object.material.worldUnits).toBe(true);
+      expect(object.material.side).toBe(THREE.DoubleSide);
       expect(object.material.linewidth).toBe(0.2);
       if (object.material.color.getHex() !== 0x21170f) segments += object.geometry.getAttribute("instanceStart").count;
     });
