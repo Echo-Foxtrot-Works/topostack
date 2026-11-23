@@ -75,7 +75,7 @@ describe("nestable parts", () => {
   it("keys a job by content: stable across regeneration, sensitive to layout settings, blind to effort", () => {
     const again = nestableParts(generateGeometry(DEFAULT_PROJECT, realSource()));
     const key = sheetNestJobKey(parts, settings);
-    expect(key).toMatch(/^nest1-[0-9a-f]{16}$/);
+    expect(key).toMatch(/^nest2-[0-9a-f]{16}$/);
     expect(sheetNestJobKey(again, settings)).toBe(key);
     expect(sheetNestJobKey(parts, { ...settings, timeBudgetS: 120 })).toBe(key);
     expect(sheetNestJobKey(parts, { ...settings, spacingMm: 3 })).not.toBe(key);
@@ -106,6 +106,17 @@ describe("small part groups", () => {
     const corners = parts.slice(0, 3).flatMap((part) => part.outline);
     expect(corners.every((point) => pointInRing(point, group.outline) || group.outline.some((corner) => corner.x === point.x && corner.y === point.y))).toBe(true);
     expect(result.map((part) => part.id).sort()).toEqual(["layer-03:1+layer-03:2+layer-03:3", "layer-03:4", "layer-03:5", "layer-04:1"]);
+  });
+
+  it("requires clearance from every member, including a contained or intersecting outline", () => {
+    const seed = square("layer-03:1", 0, 0, 10);
+    const neighbour = square("layer-03:2", 14, 0, 10);
+    // Clear of the seed, but inside the second piece.
+    const inside = square("layer-03:3", 15, 1, 5);
+    expect(clusterSmallParts([seed, neighbour, inside], 2).map((part) => part.id).sort())
+      .toEqual(["layer-03:1+layer-03:2", "layer-03:3"]);
+    const crossing = square("layer-03:4", 9, 9, 5);
+    expect(clusterSmallParts([seed, crossing], 0)).toHaveLength(2);
   });
 
   it("refuses a group whose hull would mostly be empty", () => {

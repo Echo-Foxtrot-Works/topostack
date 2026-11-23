@@ -1,6 +1,6 @@
 // What MapCanvas draws over the map, built without the map: marker elements
 // and the GeoJSON for custom lines, the map area, and the path being drawn.
-import { boundsForProject, markerCenterForAnchor, markerIcon, markerPolygons, unwrapLongitude, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
+import { boundsForProject, markerCenterForAnchor, markerIcon, markerPolygons, unwrapGeoPath, type CustomLineFeatureV1, type GeoBounds, type GeoPoint, type MapMarkerV1, type ProjectConfigV1 } from "@topostack/core";
 import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
 import { polygonsPath } from "$lib/studio/svg-path";
 
@@ -59,7 +59,7 @@ export function customLineData(lines: CustomLineFeatureV1[], longitudeBounds: Ge
     features: lines.map((line) => ({
       type: "Feature" as const,
       properties: { id: line.id, kind: line.kind },
-      geometry: { type: "LineString" as const, coordinates: line.points.map((point) => [unwrapLongitude(point.lon, longitudeBounds), point.lat] as [number, number]) },
+      geometry: { type: "LineString" as const, coordinates: unwrapGeoPath(line.points, longitudeBounds).map((point) => [point.lon, point.lat] as [number, number]) },
     })),
   };
 }
@@ -88,14 +88,14 @@ export function mapAreaData(project: ProjectConfigV1, show: boolean) {
  * segment the next click would add, running to the pointer.
  */
 export function draftData(points: readonly GeoPoint[], to: { lat: number; lon: number } | undefined, longitudeBounds: GeoBounds) {
-  const at = (point: { lat: number; lon: number }) => [unwrapLongitude(point.lon, longitudeBounds), point.lat] as [number, number];
-  const coordinates = points.map(at);
+  const coordinates = unwrapGeoPath(to ? [...points, to] : points, longitudeBounds).map(({ lat, lon }) => [lon, lat] as [number, number]);
+  const pointer = to ? coordinates.pop() : undefined;
   const last = coordinates[coordinates.length - 1];
   return {
     type: "FeatureCollection" as const,
     features: [
       ...(coordinates.length > 1 ? [{ type: "Feature" as const, properties: { rubber: false }, geometry: { type: "LineString" as const, coordinates } }] : []),
-      ...(last && to ? [{ type: "Feature" as const, properties: { rubber: true }, geometry: { type: "LineString" as const, coordinates: [last, at(to)] } }] : []),
+      ...(last && pointer ? [{ type: "Feature" as const, properties: { rubber: true }, geometry: { type: "LineString" as const, coordinates: [last, pointer] } }] : []),
       // The first dot is drawn larger: it is the target that closes the shape.
       ...coordinates.map((coordinate, index) => ({ type: "Feature" as const, properties: { first: index === 0 }, geometry: { type: "Point" as const, coordinates: coordinate } })),
     ],

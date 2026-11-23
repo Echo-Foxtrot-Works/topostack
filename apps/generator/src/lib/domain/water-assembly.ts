@@ -10,10 +10,10 @@ import { limitVectorMarkingGroups, multiPolygonToAreas, shorelineMarkings } from
  * cut away. Both would otherwise describe the same shoreline a few tens of
  * meters apart, and the scored outline would visibly miss the cut recess.
  */
-export function combineWaterAreas(lakes: WaterAreaV1[], ocean: Polygon2D[], minimumFeatureMm: number): WaterAreaV1[] {
+export function combineWaterAreas(lakes: WaterAreaV1[], ocean: Polygon2D[], minimumFeatureMm: number, lakeFootprints = lakes): WaterAreaV1[] {
   const oceanAreas: WaterAreaV1[] = ocean.map((polygon, index) => ({ id: `ocean-${index}`, kind: "ocean", polygon }));
-  if (!lakes.length || !ocean.length) return [...oceanAreas, ...lakes];
-  const lakeInput: MultiPolygon = lakes.map((lake) => [
+  if (!lakeFootprints.length || !ocean.length) return [...oceanAreas, ...lakes];
+  const lakeInput: MultiPolygon = lakeFootprints.map((lake) => [
     lake.polygon.outer.map((point) => [point.x, point.y] as Pair),
     ...lake.polygon.holes.map((ring) => ring.map((point) => [point.x, point.y] as Pair)),
   ]);
@@ -33,19 +33,18 @@ export function combineWaterAreas(lakes: WaterAreaV1[], ocean: Polygon2D[], mini
 /** Keep visible shorelines aligned with the polygons used for lake depths. */
 export function applyLakeShorelines(source: SourceBundleV1, config: ProjectConfigV1): SourceBundleV1 {
   if (!source.waterAreas?.length) return source;
-  const lakes = resolveLakeOutlines([], source.waterAreas.filter((area) => area.kind === "lake"), source.inlandWaterAreas ?? []);
-  // A lake that takes a more detailed shore here must be carved to that shore.
-  const shores = new Map(lakes.map((lake) => [lake.id, lake.polygon]));
-  const waterAreas = source.waterAreas.map((area) => {
-    const shore = area.kind === "lake" ? shores.get(area.id) : undefined;
-    return shore && shore !== area.polygon ? { ...area, polygon: shore } : area;
-  });
-  const polygons = [...source.waterAreas.filter((area) => area.kind === "ocean").map((area) => area.polygon), ...lakes.map((area) => area.polygon)];
+  // Shore selection has already run before depth charts cut out reviewed land.
+  const polygons = source.waterAreas.map((area) => area.polygon);
+  // Map-only sources can carry an ocean here and their inland shores separately.
+  // Without a prepared lake, those shores still supply engraving and paint.
+  if (source.inlandWaterAreas?.length && !source.preChartLakeAreas?.length && !source.waterAreas.some(area => area.kind === "lake")) {
+    for (const lake of resolveLakeOutlines([], [], source.inlandWaterAreas)) polygons.push(lake.polygon);
+  }
   const limited = limitVectorMarkingGroups([
     source.markings.filter((marking) => !marking.id.startsWith("water-area-")),
     config.showWater ? shorelineMarkings(polygons) : [],
   ]);
-  return { ...source, waterAreas, markings: limited.markings, waterPatternAreas: polygons,
+  return { ...source, markings: limited.markings, waterPatternAreas: polygons,
     vectorStatus: limited.truncated && source.vectorStatus === "available" ? "partial" : source.vectorStatus };
 }
 
@@ -54,5 +53,7 @@ export function applyLakeShorelines(source: SourceBundleV1, config: ProjectConfi
  * refreshes: trim the ocean under lakes, then rebuild shorelines to match.
  */
 export function assembleWater(source: SourceBundleV1, lakes: WaterAreaV1[], ocean: Polygon2D[], config: ProjectConfigV1): SourceBundleV1 {
-  return applyLakeShorelines({ ...source, waterAreas: combineWaterAreas(lakes, ocean, config.minimumFeatureMm) }, config);
+  // A reviewed island or strip cut out of a lake must also stay above an
+  // overlapping ocean polygon, so trim ocean against the original footprint.
+  return applyLakeShorelines({ ...source, waterAreas: combineWaterAreas(lakes, ocean, config.minimumFeatureMm, source.preChartLakeAreas) }, config);
 }

@@ -15,7 +15,7 @@ export type NestMaterial = "wood" | "acrylic";
 export function prepareNestJob(geometry: GeometryIRV1, project: ProjectConfigV1, material: NestMaterial = "wood"): NestJob {
   const resolved = material === "acrylic" ? resolveAcrylicNestSettings(project) : resolveSheetNestSettings(project);
   if (!resolved.ok) return resolved;
-  const parts = material === "acrylic" ? acrylicNestableParts(geometry) : nestableParts(geometry);
+  const parts = material === "acrylic" ? acrylicNestableParts(geometry, resolved.settings.spacingMm) : nestableParts(geometry, resolved.settings.spacingMm);
   if (!parts.length) return { ok: false, error: material === "acrylic" ? "No lake became an acrylic insert, so there is nothing to nest." : "Generate the terrain before nesting its parts." };
   return { ok: true, parts, settings: resolved.settings };
 }

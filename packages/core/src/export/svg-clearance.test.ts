@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, type OperationPath, type Point2D } from "../index.js";
+import { circleRing, parsePathPoints, pointInRing } from "../test-support/sources.js";
 import { engravingToSvg } from "./engraving-svg.js";
 import { masterToSvg } from "./svg.js";
 
@@ -45,6 +46,31 @@ describe("fabrication marker clearances", () => {
     expect(data(svg,"solid-marker")?.match(/M/g)).toHaveLength(2);
     expect(svg).toMatch(/id="solid-marker"[^>]*fill-rule="evenodd"/);
     expect(data(svg,"crossing")).toBe("M-10 0 L-2 0 M-1 0 L1 0 M2 0 L10 0");
+  });
+
+  it.each(["layer", "master", "flat"])("clears earlier fills and preserves each marker above its own halo in %s", (mode) => {
+    const ir = artwork();
+    const marks = ir.layers[0]!.markings = [0, 6].flatMap((x, index) => [
+      { id: `halo-${index}`, kind: "marker", operation: "engrave", points: circleRing(x, 0, 5.5), filled: true, knockout: true },
+      { id: `marker-${index}`, kind: "marker", operation: "engrave", points: circleRing(x, 0, 4), filled: true },
+    ] satisfies OperationPath[]);
+    const svg = mode === "layer" ? layerToSvg(ir, ir.layers[0]!) : mode === "master" ? masterToSvg(ir) : engravingToSvg(ir, config);
+    const coverage = (x: number) => marks.filter((mark) => {
+      const d = data(svg, mark.id);
+      return d && pointInRing({ x, y: 0 }, parsePathPoints(d));
+    }).map(({ id }) => id);
+    expect(coverage(-2)).toEqual(["marker-0"]);
+    expect(coverage(1.8)).toEqual([]);
+    expect(coverage(3)).toEqual(["marker-1"]);
+  });
+
+  it("keeps a flat contour layer's labels below the base plate's marker backings", () => {
+    const ir = artwork();
+    ir.layers.push({ ...ir.layers[0]!, index: 1, markings: [{ id: "elevation-1", kind: "label", operation: "engrave", label: ".", points: [{ x: -1, y: -1 }], textStyle: { font: "technical", sizeMm: 1 } }] });
+    const render = () => engravingToSvg(ir, config);
+    expect(data(render(), "elevation-1")).toBeUndefined();
+    ir.layers[0]!.markings = [];
+    expect(data(render(), "elevation-1")).toContain("M");
   });
 
   it("also removes flat contour segments under a marker", () => {

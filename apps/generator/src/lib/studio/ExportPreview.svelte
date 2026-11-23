@@ -5,6 +5,7 @@
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
   import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import { acrylicOutsideStudio, buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
+  import { projectFileCharts } from "$lib/studio/project-file";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
   import { ChevronDown } from "@lucide/svelte";
 
@@ -78,7 +79,7 @@
           if (cancelled) return;
           const output = isEmbedded()
             ? await buildAtommPackage(current.geometry, layout?.project ?? current.project, guideFonts, layout?.sheetPlan)
-            : buildProjectPackage(current.geometry, current.project, { guideFonts });
+            : buildProjectPackage(current.geometry, current.project, { guideFonts, charts: await projectFileCharts(current.project) });
           const svg = await output.master.blob.text();
           if (cancelled) return;
           // The image fills the file's own viewBox size, so the sheet keeps its proportions.

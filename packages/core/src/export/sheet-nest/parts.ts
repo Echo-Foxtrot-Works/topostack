@@ -1,7 +1,8 @@
-import { ringBounds, signedArea, simplifyClosedRing } from "../../primitives/geometry2d.js";
+import { distanceToSegment, pointInRing, segmentsIntersect, ringBounds, signedArea, simplifyClosedRing } from "../../primitives/geometry2d.js";
 import { offsetClosedRing } from "../../primitives/offset.js";
 import type { GeometryIRV1, NestPartV1, Point2D } from "../../types.js";
 import { nestFamilies, rootPolygonByPolygon } from "../panel-layout.js";
+import { DEFAULT_SHEET_NESTING } from "./resolve.js";
 import { convexHull } from "../../primitives/convex-hull.js";
 
 /** Vertex budget per outline sent to the packer; more costs time without better layouts. */
@@ -36,7 +37,7 @@ export function partOutline(outer: Point2D[], kerfMm: number, maxVertices = MAX_
  * donor's root polygon; everything else is a part of its own. Seam-split
  * layers already hold one polygon per piece.
  */
-export function nestableParts(ir: GeometryIRV1): NestPartV1[] {
+export function nestableParts(ir: GeometryIRV1, spacingMm = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
   const parts: NestPartV1[] = [];
   for (const family of nestFamilies(ir)) {
     const roots = rootPolygonByPolygon(ir, family);
@@ -72,7 +73,7 @@ export function nestableParts(ir: GeometryIRV1): NestPartV1[] {
     }
   }
   const polygonIndexOf = (part: NestPartV1) => Number.parseInt(part.id.slice(part.id.indexOf(":") + 1), 10);
-  return clusterSmallParts(parts).sort((left, right) => left.rootLayerIndex - right.rootLayerIndex || polygonIndexOf(left) - polygonIndexOf(right));
+  return clusterSmallParts(parts, spacingMm).sort((left, right) => left.rootLayerIndex - right.rootLayerIndex || polygonIndexOf(left) - polygonIndexOf(right));
 }
 
 /** Parts smaller than this (about 20 × 20 mm) may be grouped with their neighbours. */
@@ -89,6 +90,22 @@ function boundsGap(left: Point2D[], right: Point2D[]): number {
   return Math.max(b.minX - a.maxX, a.minX - b.maxX, b.minY - a.maxY, a.minY - b.maxY, 0);
 }
 
+/** All distances here are between the outward kerf-compensated boundaries. */
+function hasClearance(a: Point2D[], b: Point2D[], spacing: number): boolean {
+  const gap = boundsGap(a, b);
+  if (gap > 0 && gap >= spacing) return true;
+  if (pointInRing(a[0]!, b) || pointInRing(b[0]!, a)) return false;
+  for (let i = 1; i < a.length; i++) {
+    for (let j = 1; j < b.length; j++) {
+      const p = a[i - 1]!, q = a[i]!, r = b[j - 1]!, s = b[j]!;
+      if (segmentsIntersect(p, q, r, s)) return false;
+      if (Math.min(distanceToSegment(p, r, s), distanceToSegment(q, r, s),
+        distanceToSegment(r, p, q), distanceToSegment(s, p, q)) < spacing) return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Tiny islands of one layer (peaks, seam slivers) cost the packer as much as
  * a whole layer each. Neighbouring ones are grouped into one rigid part
@@ -96,7 +113,7 @@ function boundsGap(left: Point2D[], right: Point2D[]): number {
  * other on the sheet and are found together. A group is only formed while
  * its hull stays compact, so it never wastes more than a small area.
  */
-export function clusterSmallParts(parts: NestPartV1[]): NestPartV1[] {
+export function clusterSmallParts(parts: NestPartV1[], spacingMm = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
   const small = parts.filter((part) => part.areaMm2 < SMALL_PART_MM2).sort((left, right) => right.areaMm2 - left.areaMm2 || left.id.localeCompare(right.id));
   const taken = new Set<string>();
   const merged: NestPartV1[] = [];
@@ -115,6 +132,7 @@ export function clusterSmallParts(parts: NestPartV1[]): NestPartV1[] {
         const next = convexHull([...hull, ...candidate.outline]);
         const ownArea = groupArea + candidate.areaMm2;
         if (Math.abs(signedArea(next)) > CLUSTER_HULL_RATIO * ownArea) continue;
+        if (!group.every((member) => hasClearance(member.outline, candidate.outline, spacingMm))) continue;
         group.push(candidate);
         groupArea = ownArea;
         taken.add(candidate.id);

@@ -86,6 +86,25 @@ describe("nested fabrication package", { timeout: 30_000 }, () => {
     expect(rootGroups(sheet).every((part) => hasOperation(part, "CUT"))).toBe(true);
   });
 
+  it.each([[10, 2], [13, 5]])("keeps kerf-compensated cuts %s mm apart at their origins clear of the requested %s mm gap", async (origin, spacingMm) => {
+    const config = { ...DEFAULT_PROJECT, laserKerfMm: 0.2, sheetNesting: { ...sheetNesting, spacingMm, rotation: "none" as const } };
+    const generated = generateGeometry(config, realSource(config));
+    const square = (x: number) => ({ outer: [{ x, y: 0 }, { x: x + 10, y: 0 }, { x: x + 10, y: 10 }, { x, y: 10 }, { x, y: 0 }], holes: [] });
+    const ir = { ...generated, fabricationNests: [], paintRegions: [], layers: [{ ...generated.layers[0]!, polygons: [square(0), square(origin)], pieces: [], markings: [] }] };
+    const parts = nestableParts(ir, spacingMm);
+    const plan = await planSheets(parts, config.sheetNesting, { engine: rectangleEngine });
+    const pkg = buildFabricationPackage(ir, config, { sheetPlan: plan });
+    const rings = [...sheetCutRings(await text(pkg, "-sheet-01.svg")).values()];
+    expect(rings).toHaveLength(2);
+    const bounds = rings.map((ring) => ({
+      minX: Math.min(...ring.map((p) => p.x)), maxX: Math.max(...ring.map((p) => p.x)),
+      minY: Math.min(...ring.map((p) => p.y)), maxY: Math.max(...ring.map((p) => p.y)),
+    }));
+    const [a, b] = bounds as [typeof bounds[number], typeof bounds[number]];
+    expect(a.maxX - a.minX).toBeCloseTo(10.2);
+    expect(Math.max(a.minX - b.maxX, b.minX - a.maxX, a.minY - b.maxY, b.minY - a.maxY)).toBeGreaterThanOrEqual(spacingMm - 1e-8);
+  });
+
   it("keeps every cut line inside the sheet margin", async () => {
     for (const rotation of ["quarter", "free"] as const) {
       const { config, ir, plan } = await nestedProject({ sheetNesting: { ...sheetNesting, rotation } });

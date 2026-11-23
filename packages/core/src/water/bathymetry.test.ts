@@ -27,6 +27,15 @@ describe("NOAA lake-floor carving", () => {
     expect(grid.values[13]).toBe(180);
   });
 
+  it.each([{ multiplier: 1, bed: 60 }, { multiplier: 2, bed: 20 }])("scales DEM lake beds about the known waterline at $multiplier×", ({ multiplier, bed }) => {
+    const terrain = { ...grid, values: Float32Array.from({ length: 25 }, (_, i) => 40 + i % 5 * 20), min: 40, max: 120 };
+    const area = { ...lake(), bathymetry: undefined, surfaceElevationM: 100 };
+    const result = carveWaterDepth(terrain, { ...config, waterDepthExaggeration: multiplier }, [area], 5000);
+    expect(result.surfaces[0]).toMatchObject({ surfaceElevationM: 100, bedElevationM: bed });
+    expect(result.grid.values[11]).toBe(bed);
+    expect(result.grid.values[13]).toBe(100);
+  });
+
   it("carves surveyed fallback outlines without modeled-depth metadata", () => {
     const area = { ...lake(), outlineSource: "provider" as const, hylakId: undefined, maxDepthM: undefined };
     const result = carveWaterDepth(grid, config, [area], 5000);

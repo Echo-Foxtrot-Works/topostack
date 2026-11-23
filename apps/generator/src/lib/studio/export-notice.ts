@@ -4,6 +4,7 @@ import { createSubscriber } from "svelte/reactivity";
 import type { ExportUpdate } from "$lib/atomm/atomm-bridge";
 import { t } from "$lib/i18n/i18n.svelte";
 import { prepareProjectSettings, prepareSelectedDownload, startBrowserDownload, type DownloadOption } from "$lib/studio/native-export";
+import { projectFileCharts } from "$lib/studio/project-file";
 import { errorText } from "$lib/i18n/errors";
 
 export type ExportPhase = "idle" | "preparing" | "ready" | "error";
@@ -94,16 +95,14 @@ export async function downloadProject({ option, geometry, project, sheetPlan, ac
   notice.apply({ phase: "preparing", intent: "download" });
   await nextFrame();
   try {
+    const charts = option === "project" || option === "all" ? await projectFileCharts(project) : [];
     const download = option === "project"
-      ? prepareProjectSettings(project, await (async () => {
-        if (!project.userDepthCharts || !Object.keys(project.userDepthCharts).length) return [];
-        return (await import("$lib/storage/user-charts")).chartsForProject(project);
-      })())
+      ? prepareProjectSettings(project, charts)
       : await (async () => {
         const { buildProjectPackage, loadGuideFonts, withLightBurnProjects } = await import("$lib/studio/export-policy");
         // Only the booklet uses the fonts; skip fetching them for files without it.
         const guideFonts = option === "all" || option === "assembly" ? await loadGuideFonts() : [];
-        const output = buildProjectPackage(geometry, project, { guideFonts, sheetPlan, acrylicSheetPlan });
+        const output = buildProjectPackage(geometry, project, { guideFonts, sheetPlan, acrylicSheetPlan, charts, includeProjectFile: option === "all" });
         return prepareSelectedDownload(option === "lightburn" ? await withLightBurnProjects(output) : output, option);
       })();
     startBrowserDownload(download);

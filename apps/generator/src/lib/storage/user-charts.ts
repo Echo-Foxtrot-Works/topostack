@@ -189,18 +189,22 @@ export async function deleteUserChart(id: string): Promise<void> {
   await del(summaryKey(id));
 }
 
-/** At most this many charts travel with one project file. */
-const MAX_PROJECT_CHARTS = 16;
-
 /** The charts an exported project must carry, so it opens on another device. */
 export async function chartsForProject(config: Pick<ProjectConfigV1, "userDepthCharts">): Promise<UserChartBathymetryV1[]> {
-  const ids = [...new Set(Object.values(config.userDepthCharts ?? {}).map((reference) => reference.id))].slice(0, MAX_PROJECT_CHARTS);
-  const charts: UserChartBathymetryV1[] = [];
-  for (const id of ids) {
-    const loaded = await loadUserChart(id);
-    if (loaded) charts.push(loaded.chart);
+  const byId = new Map<string, { chart: UserChartBathymetryV1; contentHash: string }>();
+  for (const reference of Object.values(config.userDepthCharts ?? {})) {
+    let entry = byId.get(reference.id);
+    if (!entry) {
+      const loaded = await loadUserChart(reference.id);
+      if (!loaded) throw new Error(`The depth chart ${reference.id} is unavailable. Restore it or remove its reference before exporting a project backup.`);
+      entry = { chart: loaded.chart, contentHash: await chartContentHash(loaded.chart) };
+      byId.set(reference.id, entry);
+    }
+    if (entry.contentHash !== reference.contentHash || entry.chart.id !== reference.id) {
+      throw new Error(`The depth chart ${reference.id} has changed. Restore the pinned chart or regenerate terrain with the current chart before exporting a project backup.`);
+    }
   }
-  return charts;
+  return Array.from(byId.values(), entry => entry.chart);
 }
 
 /**
@@ -214,7 +218,7 @@ export async function saveProjectCharts(value: unknown, config: Pick<ProjectConf
   const wanted = new Set(Object.values(config.userDepthCharts ?? {}).map((reference) => reference.id));
   let saved = 0;
   let skipped = 0;
-  for (const item of value.slice(0, MAX_PROJECT_CHARTS)) {
+  for (const item of value) {
     try {
       const chart = parseUserChartBathymetry(item);
       if (!wanted.has(chart.id)) { skipped += 1; continue; }

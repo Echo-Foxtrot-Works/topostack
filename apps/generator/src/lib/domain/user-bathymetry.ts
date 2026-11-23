@@ -217,5 +217,12 @@ export async function applyUserCharts(
     }
   }
   if (!charted) return result;
-  return { areas, status: result.status === "not-covered" || result.status === "unavailable" ? "available" : result.status, datasetVersions, attribution };
+  // A chart can split a lake or cut an island. Keep the original polygons and
+  // identities together so changing charts never starts from an edited shape.
+  const preChartLakeAreas = result.areas.map((area) => {
+    const outline = { ...area };
+    delete outline.bathymetry;
+    return outline;
+  });
+  return { areas, preChartLakeAreas, status: result.status === "not-covered" || result.status === "unavailable" ? "available" : result.status, datasetVersions, attribution };
 }

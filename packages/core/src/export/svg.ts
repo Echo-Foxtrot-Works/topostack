@@ -3,7 +3,7 @@ import { type FabricationPanel, fabricationPanels } from "./panel-layout.js";
 import { labelFootprint } from "../annotate/label-placement.js";
 import { formatNumber as format } from "../primitives/format.js";
 import { boundsOverlap, pointInPolygon, ringBounds, type Bounds2D } from "../primitives/geometry2d.js";
-import { markingsWithin } from "../pipeline/marking-clip.js";
+import { markingClearances, markingsWithin } from "../pipeline/marking-clip.js";
 import { omittedNestHoles, paintStencil } from "../pipeline/paint-regions.js";
 import { DEFAULT_TEXT_STYLE, PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type LineStyleV1, type PaintRegionKind, type ProjectConfigV1 } from "../types.js";
 
@@ -67,14 +67,13 @@ export function layerMarkingBounds(layer: LayerIR): Array<Bounds2D | undefined> 
  * crossing a seam stays one continuous path in the IR - which is what the
  * preview and the master layout want. A single sheet must not engrave past its
  * own pieces, so narrow the geometry here instead (`markingsWithin`). A halo
- * is a clearance gap, resolved against the whole layer by `markerClearance`;
- * it never serializes, so no sheet needs a copy.
+ * stays in drawing order until its gap has been cut out of earlier artwork.
  */
 function panelMarkings(layer: LayerIR, included?: Set<number>): LayerIR["markings"] {
   if (!included) return layer.markings;
   const polygons = layer.polygons.filter((_, index) => included.has(index));
   if (!polygons.length) return [];
-  return markingsWithin(layer.markings, polygons, "inside");
+  return markingsWithin(layer.markings, polygons, "inside", { keepKnockouts: true });
 }
 
 /** Up to eight points spread along a marking, used to decide which piece owns it. */
@@ -119,31 +118,33 @@ function pieceId(layer: LayerIR, polygonIndex: number): string {
   return layer.pieces.find((piece) => piece.polygonIndex === polygonIndex)?.id ?? `${layer.id}-piece-${polygonIndex + 1}`;
 }
 
-function markingBodies(layer: LayerIR, style: LineStyleV1, markings: LayerIR["markings"]): Pick<Record<Operation, string>, "engrave" | "assembly" | "score"> {
+function markingBodies(groupId: string, style: LineStyleV1, markings: LayerIR["markings"], clearance: ReturnType<typeof markingClearances>): Pick<Record<Operation, string>, "engrave" | "assembly" | "score"> {
   return {
-    engrave: layerMarkingPaths(layer, "engrave", style, ARTWORK_CATEGORIES, markings),
-    assembly: layerMarkingPaths(layer, "engrave", style, ASSEMBLY_CATEGORIES, markings),
-    score: layerMarkingPaths(layer, "score", style, ARTWORK_CATEGORIES, markings),
+    engrave: layerMarkingPaths(groupId, "engrave", style, ARTWORK_CATEGORIES, markings, clearance),
+    assembly: layerMarkingPaths(groupId, "engrave", style, ASSEMBLY_CATEGORIES, markings, clearance),
+    score: layerMarkingPaths(groupId, "score", style, ARTWORK_CATEGORIES, markings, clearance),
   };
 }
 
 /** A layer's parts: one per cut piece (all, or those in `included`), each with the markings on it. */
 function layerParts(ir: GeometryIRV1, layer: LayerIR, included?: Set<number>, omittedHoles = new Map<number, Set<number>>()): PartBody[] {
   const markings = panelMarkings(layer, included);
+  const clearance = markingClearances(markings);
   const pieces = layer.polygons.map((_, index) => index).filter((index) => !included || included.has(index));
   if (!pieces.length) {
     // A layer with nothing to cut still engraves: its markings form one design unit.
-    const bodies = markingBodies(layer, ir.lineStyle, markings);
+    const bodies = markingBodies(layer.id, ir.lineStyle, markings, clearance);
     return Object.values(bodies).some(Boolean) ? [{ id: layer.id, name: layer.id, attributes: ` data-layer="${escapeXml(layer.id)}"`, bodies }] : [];
   }
   const owners = markingOwners(layer, markings, pieces);
   return pieces.map((polygonIndex) => {
     const id = pieceId(layer, polygonIndex);
+    const partId = `${layer.id}-part-${polygonIndex + 1}`;
     return {
-      id: `${layer.id}-part-${polygonIndex + 1}`,
+      id: partId,
       name: id,
       attributes: ` data-layer="${escapeXml(layer.id)}" data-piece="${escapeXml(id)}"`,
-      bodies: { ...markingBodies(layer, ir.lineStyle, owners.get(polygonIndex) ?? []), cut: layerCutPaths(layer, ir.laserKerfMm, omittedHoles, new Set([polygonIndex])) },
+      bodies: { ...markingBodies(partId, ir.lineStyle, owners.get(polygonIndex) ?? [], clearance), cut: layerCutPaths(layer, ir.laserKerfMm, omittedHoles, new Set([polygonIndex])) },
     };
   });
 }
@@ -254,7 +255,11 @@ export function masterToSvg(ir: GeometryIRV1, panels = fabricationPanels(ir), bo
   const body = panels.map((panel, index) => {
     const offsetX = startX + (index % columns) * (panelWidth + gap) - (panel.minX + panel.maxX) / 2;
     const offset = `translate(${format(offsetX)} ${format(startY + Math.floor(index / columns) * (panelHeight + gap) - (panel.minY + panel.maxY) / 2)})`;
-    return bodies[index]!.map((part) => partGroup(part, OPERATIONS, ir.lineStyle, offset)).join("");
+    return bodies[index]!.map((part) => {
+      const group = partGroup(part, OPERATIONS, ir.lineStyle, offset);
+      // One marking can be clipped onto several panels, retaining its source id on each.
+      return panel.included ? group.replace(/<path id="([^"]+)"/g, (_, id: string) => `<path id="${id}--panel${index + 1}"`) : group;
+    }).join("");
   }).join("");
   return svgDocument(width, height, body, `${ir.projectName} — master layout`, -width / 2, -height / 2);
 }

@@ -1,4 +1,5 @@
 import { buildingOutlinesEnabled } from "../pipeline/source-requirements.js";
+import { packageProjectFiles } from "./project-file.js";
 import { ASSEMBLY, CUT, ENGRAVE, EXPORT_CREDIT, MAX_EXPORT_PACKAGE_BYTES, SCORE, safeName } from "./svg-primitives.js";
 import { ENGRAVE_ONLY, OPERATIONS, masterToSvg, paintTemplateSvg, panelBodies, panelToSvg } from "./svg.js";
 import { fabricationPanels } from "./panel-layout.js";
@@ -99,6 +100,10 @@ function attributionText(ir: GeometryIRV1): string {
 
 /** Optional inputs the core cannot fetch itself. */
 export interface PackageOptions {
+  /** Local chart records to embed in the importable project alongside its references. */
+  charts?: readonly { id: string }[];
+  /** A selected machine file can be produced without loading backup records. */
+  includeProjectFile?: boolean;
   /** Fonts embedded in the assembly guide; system fonts are used without them. */
   guideFonts?: readonly GuideFont[];
   /**
@@ -122,7 +127,7 @@ export interface PackageOptions {
  */
 function nestedLayout(ir: GeometryIRV1, resolved: SheetNestSettingsResult, plan: SheetNestPlanV1, labels?: ProjectConfigV1, material = "sheet"): NestedLayout {
   if (!resolved.ok) throw new Error(resolved.error);
-  const parts = nestableParts(ir);
+  const parts = nestableParts(ir, resolved.settings.spacingMm);
   if (sheetNestJobKey(parts, resolved.settings) !== plan.jobKey) throw new Error(`The ${material} layout is out of date. Nest the parts again, or export the original panels.`);
   const problems = verifySheetPlan(parts, plan);
   if (problems.length) throw new Error(`The ${material} layout is not valid: ${problems[0]}`);
@@ -522,7 +527,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
       paintTemplates: paintTemplates.map((template) => ({ kind: template.kind, filename: template.file.filename })),
       ...(nested ? { map: sheetMap(ir, nested.sheets[panel.sheetIndex!]!) } : {}),
     })), options.guideFonts, acrylic?.guide, airspace?.guide)], { type: "text/html" }) },
-    { filename: `${base}-project.json`, blob: new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }) },
+    ...(options.includeProjectFile === false ? [] : packageProjectFiles(base, manifest, options.charts)),
     { filename: "README.txt", blob: new Blob([readme], { type: "text/plain" }) },
     { filename: "ATTRIBUTION.txt", blob: new Blob([attribution], { type: "text/plain" }) },
   ];
@@ -534,7 +539,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   };
 }
 
-export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectConfigV1): FabricationPackageV1 {
+export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectConfigV1, options: PackageOptions = {}): FabricationPackageV1 {
   const ir = { ...generated, projectId: config.id, projectName: config.name };
   if (config.outputMode !== "engraving") throw new Error("Choose flat engraving before exporting engraving artwork.");
   const reason = exportBlockReason(ir, config);
@@ -584,7 +589,7 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
   const readme = `${ir.projectName}\n\nFlat topographic engraving\nArtwork size: ${size}\n${config.showEngravingContours ? `Contour lines: ${config.engravingContourCount}\nIndex contour: every ${config.engravingIndexInterval} lines\n` : "Contour lines: none\n"}Water fill: ${config.showWater ? config.waterFillPattern : "none"}\n${linework}Map details: ${details.length ? details.join(", ") : "none"}\nBorder: ${config.showEngravingBorder ? "engraved" : "none"}\n\nThe SVG contains one blue ENGRAVE operation group and no CUT or SCORE paths. In xTool Studio, choose Score for blue linework. Engrave fills closed shapes; reserve it for intentionally filled markers. Marker clearances are gaps in the line geometry; there is no white engraving operation. Minor and index contours are separated into named subgroups so their line weights can be assigned independently. Verify physical dimensions, focus, power, speed, and material settings with a small test engraving before processing the final item. Terrain data is decorative and is not survey, navigation, or engineering data.\n\n${EXPORT_CREDIT}\n`;
   const files: ExportFile[] = [
     master,
-    { filename: `${base}-project.json`, blob: new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }) },
+    ...(options.includeProjectFile === false ? [] : packageProjectFiles(base, manifest, options.charts)),
     { filename: "README.txt", blob: new Blob([readme], { type: "text/plain" }) },
     { filename: "ATTRIBUTION.txt", blob: new Blob([attribution], { type: "text/plain" }) },
   ];
@@ -593,5 +598,5 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
 }
 
 export function buildProjectPackage(ir: GeometryIRV1, config: ProjectConfigV1, options: PackageOptions = {}): FabricationPackageV1 {
-  return config.outputMode === "engraving" ? buildEngravingPackage(ir, config) : buildFabricationPackage(ir, config, options);
+  return config.outputMode === "engraving" ? buildEngravingPackage(ir, config, options) : buildFabricationPackage(ir, config, options);
 }

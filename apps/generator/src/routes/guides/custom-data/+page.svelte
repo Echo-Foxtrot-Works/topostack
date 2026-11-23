@@ -55,7 +55,7 @@
     <li>Markers and paths: up to 250 of each, with up to 2,000 points in one path and 10,000 in total.</li>
     <li>Marker icons: up to 24 per project. Graphics: up to 24 in the library and 50 placed.</li>
     <li>SVG uploads up to 1 MB; GPX, KML and GeoJSON imports up to 20 MB.</li>
-    <li>Chart pictures are reduced to 2,400 pixels on their longer side. Project files with charts can be up to 24 MB.</li>
+    <li>Chart pictures are reduced to 2,400 pixels on their longer side. Project files can be up to 24 MB, including all attached charts.</li>
   </ul>
 
   <h2>Next steps</h2>

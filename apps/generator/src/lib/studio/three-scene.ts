@@ -8,8 +8,6 @@ export interface CachedLayer {
   meshes: THREE.Mesh[];
   /** Cut lines between the pieces of a split layer, as segment pairs. */
   seams: number[];
-  /** The top-face material, which knockout markings also draw with. */
-  face: THREE.MeshStandardMaterial;
   /** Materials and textures only this layer's meshes reference. */
   resources: Array<{ dispose: () => void }>;
 }

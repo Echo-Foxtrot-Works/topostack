@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildProjectPackage, DEFAULT_PROJECT, generateGeometry, layerToSvg, type ProjectConfigV1 } from "../index.js";
+import { rootGroups } from "../test-support/svg.js";
 import { realSource } from "../test-support/sources.js";
 import { dashPolyline } from "../primitives/dash.js";
 import { LIGHTBURN_LAYERS, parseTransform, svgToLightBurn } from "./lightburn.js";
@@ -58,6 +59,24 @@ describe("LightBurn projects", () => {
     expect(outline.minY).toBeCloseTo(0, 3);
     expect(outline.maxX).toBeCloseTo(300.15, 3);
     expect(outline.maxY).toBeCloseTo(200.15, 3);
+  });
+
+  it("keeps each panel piece's cuts, holes and engraving together even without a placement transform", () => {
+    const ir = generateGeometry(DEFAULT_PROJECT, realSource());
+    const square = (x: number, y: number, size: number) => [{ x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y }];
+    const layer = { ...ir.layers[0]!, pieces: [], polygons: [
+      { outer: square(0, 0, 10), holes: [square(3, 3, 2)] }, { outer: square(20, 0, 10), holes: [] },
+    ], markings: [{ id: "road", kind: "road" as const, operation: "engrave" as const, points: [{ x: 1, y: 1 }, { x: 8, y: 1 }] }] };
+    const svg = layerToSvg(ir, layer);
+    const groups = rootGroups(svg);
+    expect(groups).toHaveLength(2);
+    expect(groups.every((group) => group.includes("data-piece=") && !group.includes("transform="))).toBe(true);
+    const xml = svgToLightBurn(svg)!;
+    const children = [...xml.matchAll(/<Children>([\s\S]*?)<\/Children>/g)].map((match) => match[1]!);
+    expect(children.map((group) => readProject(group).shapes.map((shape) => shape.cutIndex))).toEqual([
+      [index("engrave"), index("cut"), index("cut")], [index("cut")],
+    ]);
+    expect(readProject(xml).shapes.every((shape) => shape.depth === 1)).toBe(true);
   });
 
   it("flips Y so the artwork reads the same way up as the SVG", () => {

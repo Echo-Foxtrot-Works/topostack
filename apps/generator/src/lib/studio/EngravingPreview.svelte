@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/i18n.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
-  import { cropRadiusMm, waterPatternStrokes, type GeometryIRV1, type Point2D, type ProjectConfigV1 } from "@topostack/core";
+  import { cropRadiusMm, flatArtworkMarkings, openContourPath, waterPatternStrokes, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import { markingCap, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath as linePath } from "$lib/studio/svg-path";
   import { placementViewBox } from "$lib/studio/placement/viewport";
@@ -9,7 +9,7 @@
   // `cropShape` comes from the project the geometry was built for: a width,
   // height or shape edit leaves the map area stale, so drawing the surface and
   // border from the live project would frame old contours at the new size and
-  // stop `onBoundary` recognizing the crop edges it clipped them to.
+  // stop `openContourPath` recognizing the crop edges it clipped them to.
   let { geometry, project, cropShape, artworkOnly = false }: { geometry: GeometryIRV1; project: ProjectConfigV1; cropShape: ProjectConfigV1["cropShape"]; artworkOnly?: boolean } = $props();
   const shadowId = $props.id();
   // A rename or slider tick replaces `project` and `geometry` without changing
@@ -24,37 +24,7 @@
   const lineStyle = $derived(geometry.lineStyle);
   const contourLayers = $derived(layers.slice(1));
   const waterPattern = $derived(waterPatternStrokes(waterFillPattern, waterPatternAreas, crop.widthMm, crop.heightMm, lineStyle.waterMm));
-  const markings = $derived(layers.flatMap((layer) => layer.markings)
-    .filter((marking) => !marking.id.startsWith("alignment-")));
-  function onBoundary(start: Point2D, end: Point2D): boolean {
-    const epsilon = 0.02;
-    if (crop.cropShape === "circle") {
-      const radius = cropRadiusMm(crop);
-      return Math.abs(Math.hypot(start.x, start.y) - radius) <= epsilon &&
-        Math.abs(Math.hypot(end.x, end.y) - radius) <= epsilon;
-    }
-    const halfWidth = crop.widthMm / 2;
-    const halfHeight = crop.heightMm / 2;
-    return (Math.abs(start.x - halfWidth) <= epsilon && Math.abs(end.x - halfWidth) <= epsilon) ||
-      (Math.abs(start.x + halfWidth) <= epsilon && Math.abs(end.x + halfWidth) <= epsilon) ||
-      (Math.abs(start.y - halfHeight) <= epsilon && Math.abs(end.y - halfHeight) <= epsilon) ||
-      (Math.abs(start.y + halfHeight) <= epsilon && Math.abs(end.y + halfHeight) <= epsilon);
-  }
-
-  function contourPath(points: Point2D[]): string {
-    let result = "";
-    let connected = false;
-    for (let index = 1; index < points.length; index += 1) {
-      const start = points[index - 1]!;
-      const end = points[index]!;
-      if (onBoundary(start, end)) { connected = false; continue; }
-      if (!connected) result += `M${start.x} ${start.y}`;
-      result += `L${end.x} ${end.y}`;
-      connected = true;
-    }
-    return result;
-  }
-
+  const markings = $derived(flatArtworkMarkings(layers));
 </script>
 
 {#snippet artwork()}
@@ -73,7 +43,7 @@
       {#each contourLayers as layer}
         {#each layer.polygons as polygon}
           {#each [polygon.outer, ...polygon.holes] as ring}
-            <path d={contourPath(ring)} stroke-width={layer.index % project.engravingIndexInterval === 0 ? geometry.lineStyle.indexContourMm : geometry.lineStyle.contourMm} class:index-contour={layer.index % project.engravingIndexInterval === 0} />
+            <path d={openContourPath(ring, crop)} stroke-width={layer.index % project.engravingIndexInterval === 0 ? geometry.lineStyle.indexContourMm : geometry.lineStyle.contourMm} class:index-contour={layer.index % project.engravingIndexInterval === 0} />
           {/each}
         {/each}
       {/each}

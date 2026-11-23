@@ -57,3 +57,10 @@ the 24-tile request budget and 768-sample output-grid limit.
 
 Source attribution: Mapzen terrain tiles, compiled from open elevation datasets,
 including USGS NED. See the attribution links above.
+
+## Monterey Bay seafloor
+
+`gebco-monterey-z9.png` is tile `9/82/199` from the locally provisioned
+`gebco-2026-ocean-v1` archive. Pixel (132, 147) contains a −314 m sounding
+near 36.836767° N, 121.979828° W. The archive uses whole-metre elevations
+from the public-domain GEBCO Compilation Group (2026) grid. [GEBCO 2026 Grid](https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid).

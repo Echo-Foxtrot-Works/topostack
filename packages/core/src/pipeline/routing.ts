@@ -5,7 +5,7 @@ import { coordinateGridMarkings } from "./coordinate-grid.js";
 import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationStrokePaths } from "./transportation.js";
 import { clipPolyline, polylineLength, pointInPreparedPolygons, type PreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
 import { placeLinearLabel } from "../annotate/label-placement.js";
-import { geoPointToMapPoint } from "../annotate/markers.js";
+import { projectGeoPath } from "../annotate/markers.js";
 import { offsetPolygons } from "../primitives/offset.js";
 import { WATER_INSERT_SHORE_BAND_MM } from "./water-inserts.js";
 import type { ElevationGrid, LayerIR, MarkingFeature, Point2D, Polygon2D, ProjectConfigV1, TransportationClass, WaterInsertIR } from "../types.js";
@@ -80,13 +80,13 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
 /** Source, custom, and graticule features with their ids made unique among repeated source ids. */
 function mapFeatures(context: GenerationContext, modelGrid: ElevationGrid): Array<{ feature: MarkingFeature; featureId: string }> {
   const { config, source } = context;
-  const customLineMarkings: MarkingFeature[] = config.customLines.map((line, index) => ({
+  const customLineMarkings: MarkingFeature[] = config.customLines.flatMap((line, index) => projectGeoPath(line.points, source.bounds, config.widthMm, config.heightMm).map((points) => ({
     id: `custom-data-line-${index}`,
     kind: line.kind,
     operation: "engrave",
-    points: line.points.map((point) => geoPointToMapPoint(point.lat, point.lon, source.bounds, config.widthMm, config.heightMm)),
+    points,
     ...(line.kind === "trail" ? { transportationClass: "trail" as const } : {}),
-  }));
+  })));
   const mapMarkings = [
     ...source.markings,
     ...context.aviation.lines,

@@ -4,7 +4,7 @@ import { labelSvgPaths, roundText } from "../annotate/labels.js";
 import { offsetClosedRing } from "../primitives/offset.js";
 import { aviationStroke } from "../pipeline/aviation.js";
 import { landStroke } from "../pipeline/lands.js";
-import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type LineStyleV1, type Point2D } from "../types.js";
+import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type OperationPath, type LineStyleV1, type Point2D } from "../types.js";
 
 
 export const CUT = "#FE0002";
@@ -131,28 +131,31 @@ export function clearLineData(data: string, clearance?: MarkerClearance): string
   }).join(" ");
 }
 
-export function markingPath(mark: LayerIR["markings"][number], sharedClearance?: MarkerClearance, stroke?: string): string {
+export function markingPath(mark: OperationPath, cleared?: ReadonlyMap<OperationPath, OperationPath[]>, stroke?: string): string {
   if (mark.knockout) return "";
-  // The title's own backing is a knockout; it must clear what lies beneath, not the title.
-  const clearance = mark.id.startsWith("plaque-") ? undefined : sharedClearance;
   const color = stroke ?? (mark.operation === "score" ? SCORE : ENGRAVE);
-  if (mark.label && mark.points[0]) {
-    const { stroke: strokeData, fill } = labelSvgPaths(mark.label, mark.points[0], 0, 0, mark.labelRotationRad, mark.textStyle);
-    // Typeface letters are areas to fill; like marker artwork they are not cut back by clearance.
+  const fragments = cleared?.get(mark) ?? [mark];
+  if (!fragments.length) return "";
+  const first = fragments[0]!;
+  if (first.label && first.points[0]) {
+    const { stroke: strokeData, fill } = labelSvgPaths(first.label, first.points[0], 0, 0, first.labelRotationRad, first.textStyle);
     if (fill) return `<path id="${escapeXml(mark.id)}" d="${fill}" fill="${color}" stroke="none" fill-rule="evenodd"/>`;
-    return `<path id="${escapeXml(mark.id)}" d="${clearLineData(strokeData, clearance)}" fill="none" stroke="${color}"${roundText(mark.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : ""}/>`;
+    return `<path id="${escapeXml(mark.id)}" d="${strokeData}" fill="none" stroke="${color}"${roundText(first.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : ""}/>`;
   }
-  const paint = mark.filled ? `fill="${color}" stroke="none"` : `fill="none" stroke="${color}"`;
-  const data = [pathData(mark.points, 0, 0, mark.filled), ...(mark.holes ?? []).map(hole => pathData(hole, 0, 0, true))].join(" ");
-  return mark.points.length > 1 ? `<path id="${escapeXml(mark.id)}" d="${mark.filled ? data : clearLineData(data, clearance)}" ${paint}${mark.holes?.length ? ' fill-rule="evenodd"' : ""}/>` : "";
+  const paint = first.filled ? `fill="${color}" stroke="none"` : `fill="none" stroke="${color}"`;
+  const data = fragments.filter((part) => part.points.length > 1).flatMap((part) => [
+    pathData(part.points, 0, 0, part.filled), ...(part.holes ?? []).map((hole) => pathData(hole, 0, 0, true)),
+  ]).join(" ");
+  const attributes = fragments.some(part => part.holes?.length) ? ' fill-rule="evenodd"' :
+    mark.label && !first.filled && roundText(mark.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : "";
+  return data ? `<path id="${escapeXml(mark.id)}" d="${data}" ${paint}${attributes}/>` : "";
 }
 
-export function layerMarkingPaths(layer: LayerIR, operation: "score" | "engrave", style: LineStyleV1, categories: readonly EngravingCategory[] = ARTWORK_CATEGORIES, source: LayerIR["markings"] = layer.markings): string {
+export function layerMarkingPaths(groupId: string, operation: "score" | "engrave", style: LineStyleV1, categories: readonly EngravingCategory[], source: OperationPath[], clearance: ReadonlyMap<OperationPath, OperationPath[]>): string {
   const markings = source.filter((mark) => mark.operation === operation);
-  const clearance = markerClearance([layer]);
   return categories.map((category) => {
     const paths = markings.filter((mark) => engravingCategory(mark) === category).map((mark) => markingPath(mark, clearance, category === "assembly-labels" ? ASSEMBLY : undefined)).join("");
-    return paths ? `<g id="${layer.id}-${operation.toUpperCase()}-${category}"${categoryStrokeAttributes(category, style)}>${paths}</g>` : "";
+    return paths ? `<g id="${groupId}-${operation.toUpperCase()}-${category}"${categoryStrokeAttributes(category, style)}>${paths}</g>` : "";
   }).join("");
 }
 

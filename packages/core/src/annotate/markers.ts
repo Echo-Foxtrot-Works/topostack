@@ -1,6 +1,6 @@
 import polygonClipping, { type Polygon } from "polygon-clipping";
 import { mercatorWorldY, normalizeMultiPolygon } from "../primitives/geometry2d.js";
-import { MARKER_ICON_UNITS, type BuiltInMarkerSymbol, type GeoBounds, type MapMarkerV1, type MarkerIconV1, type Point2D, type Polygon2D } from "../types.js";
+import { MARKER_ICON_UNITS, type BuiltInMarkerSymbol, type GeoBounds, type GeoPoint, type MapMarkerV1, type MarkerIconV1, type Point2D, type Polygon2D } from "../types.js";
 import { markerIconBottom, markerIconPolygons } from "./marker-icons.js";
 
 /** Enough sides that a marker-sized circle reads as round at any preview zoom. */
@@ -117,6 +117,38 @@ export function unwrapLongitude(longitude: number, bounds: GeoBounds): number {
   return longitude + Math.round((center - longitude) / 360) * 360;
 }
 
+/** Follow the shortest longitudinal step at every vertex of a connected path. */
+export function unwrapGeoPath(points: readonly GeoPoint[], bounds: GeoBounds): GeoPoint[] {
+  let previous = (bounds.west + bounds.east) / 2;
+  return points.map(({ lat, lon }) => {
+    previous = lon + 360 * Math.round((previous - lon) / 360);
+    return { lat, lon: previous };
+  });
+}
+
+/** Project continuous runs of each world copy reaching the crop, including both sides of a world-wide crop. */
+export function projectGeoPath(points: readonly GeoPoint[], bounds: GeoBounds, widthMm: number, heightMm: number): Point2D[][] {
+  const path = unwrapGeoPath(points, bounds);
+  const runs: Point2D[][] = [];
+  const active = new Map<number, { through: number; run: Point2D[] }>();
+  for (let index = 1; index < path.length; index++) {
+    const a = path[index - 1]!, b = path[index]!;
+    const first = Math.ceil((bounds.west - Math.max(a.lon, b.lon)) / 360);
+    const last = Math.floor((bounds.east - Math.min(a.lon, b.lon)) / 360);
+    for (let world = first; world <= last; world++) {
+      let entry = active.get(world);
+      if (!entry || entry.through !== index - 1) {
+        entry = { through: index - 1, run: [projectPoint(a.lat, a.lon + world * 360, bounds, widthMm, heightMm)] };
+        active.set(world, entry);
+        runs.push(entry.run);
+      }
+      entry.run.push(projectPoint(b.lat, b.lon + world * 360, bounds, widthMm, heightMm));
+      entry.through = index;
+    }
+  }
+  return runs;
+}
+
 /** Test a canonical longitude against bounds that may cross the antimeridian. */
 export function longitudeInBounds(longitude: number, bounds: GeoBounds): boolean {
   const unwrapped = unwrapLongitude(longitude, bounds);
@@ -125,11 +157,14 @@ export function longitudeInBounds(longitude: number, bounds: GeoBounds): boolean
 
 /** Project a geographic coordinate into the artwork's centered millimeter space. */
 export function geoPointToMapPoint(lat: number, lon: number, bounds: GeoBounds, widthMm: number, heightMm: number): Point2D {
+  return projectPoint(lat, unwrapLongitude(lon, bounds), bounds, widthMm, heightMm);
+}
+
+function projectPoint(lat: number, lon: number, bounds: GeoBounds, widthMm: number, heightMm: number): Point2D {
   const northY = mercatorWorldY(bounds.north);
   const southY = mercatorWorldY(bounds.south);
-  const unwrappedLongitude = unwrapLongitude(lon, bounds);
   return {
-    x: ((unwrappedLongitude - bounds.west) / (bounds.east - bounds.west) - 0.5) * widthMm,
+    x: ((lon - bounds.west) / (bounds.east - bounds.west) - 0.5) * widthMm,
     y: ((mercatorWorldY(lat) - northY) / (southY - northY) - 0.5) * heightMm,
   };
 }

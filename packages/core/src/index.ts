@@ -3,21 +3,23 @@ export { planSeamGrid } from "./pipeline/split.js";
 export { generateGeometry, createGeometryGenerator, createParallelGeometryGenerator, type ParallelGenerationOptions, type GenerationOptions, type GenerationStage } from "./pipeline/generate.js";
 export { createSyntheticSource } from "./pipeline/synthetic-source.js";
 export { projectFingerprint } from "./pipeline/fingerprint.js";
-export { CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "./pipeline/contours.js";
+export { openContourPath, CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "./pipeline/contours.js";
 // Polygon clip inputs appear in exported signatures (paint regions, marker
 // placement), so the prepared form is public even though the primitives stay internal.
 export { boundsOverlap, clipPolyline, preparePolygons, distanceToSegment, polylineLength, ringBounds, signedArea, type Bounds2D, type PreparedPolygons } from "./primitives/geometry2d.js";
-export { labelDimensions, labelLineSegments, labelPathData, labelSvgPaths, roundText, unsupportedLabelCharacters, type LabelLineSegment } from "./annotate/labels.js";
+export { labelGeometry, labelDimensions, labelLineSegments, labelPathData, labelSvgPaths, roundText, unsupportedLabelCharacters, type LabelLineSegment } from "./annotate/labels.js";
 export { FONT_CATALOG, clearRegisteredFonts, decodeFontGlyphs, fontEntry, isBitmapFont, isFontLoaded, missingGlyphs, projectFonts, registerFont, type FontCatalogEntry, type FontGlyphsV1, type FontKind } from "./annotate/font-data.js";
-export { markerCenterForAnchor, markerIcon, markerPolygons, markerSymbolPaths, unwrapLongitude } from "./annotate/markers.js";
+export { markerCenterForAnchor, markerIcon, markerPolygons, markerSymbolPaths, unwrapGeoPath, unwrapLongitude } from "./annotate/markers.js";
 export { buildMarkerIcon, iconShapePolygons, markerIconPointCount, markerIconPolygons, type MarkerIconPaint } from "./annotate/marker-icons.js";
 export { placedGraphicCenter, placedGraphicFootprint, placedGraphicMarkingPrefix, placedGraphicMarkings, placedGraphicPlacementAt, placedGraphicSource } from "./annotate/graphics.js";
 export { flattenSvgPath, type PathPolyline } from "./annotate/svg-path-data.js";
 export { northArrowCenter, northArrowFootprint, northArrowMarkings, northArrowPlacementAt } from "./annotate/north-arrow.js";
 export { activePlaque, plaqueBox, plaqueFont, plaqueFootprint, plaqueMarkings, plaquePlacementAt } from "./annotate/plaque.js";
 export { scaleBarCenter, scaleBarFootprint, scaleBarMarkings, scaleBarPlacementAt } from "./annotate/scale-bar.js";
+export { flatArtworkMarkings, visibleMarkings } from "./pipeline/marking-clip.js";
 export { layerToSvg } from "./export/svg.js";
 export type { GuideFont } from "./export/assembly-guide.js";
+export { MAX_PROJECT_FILE_BYTES, projectSettingsBlob } from "./export/project-file.js";
 export { buildFabricationPackage, buildProjectPackage, type PackageOptions } from "./export/packages.js";
 export { LIGHTBURN_LAYERS, svgToLightBurn, type LightBurnLayer, type LightBurnLayerKey, type LightBurnOptions } from "./export/lightburn.js";
 export { DEFAULT_SHEET_NESTING, SHEET_NEST_LIMITS, resolveSheetNestSettings, type SheetNestSettingsResult } from "./export/sheet-nest/resolve.js";
@@ -29,7 +31,7 @@ export { SheetNestError, planSheets, type PlanSheetsOptions } from "./export/she
 export { verifySheetPlan } from "./export/sheet-nest/verify.js";
 export { paintRegions, paintStencil } from "./pipeline/paint-regions.js";
 export type { FlatWaterArea, PaintLayerClip, PaintRegionSources } from "./pipeline/paint-regions.js";
-export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, lakeDisplayNames, waterInsertMaterial } from "./pipeline/water-inserts.js";
+export { DEFAULT_WATER_INSERT_CLEARANCE_MM, WATER_INSERT_LEDGE_MM, WATER_INSERT_MIN_WIDTH_MM, lakeDisplayNames, waterInsertMaterial, fittedWaterInsert } from "./pipeline/water-inserts.js";
 export { airspacePieceMarkings } from "./export/airspace.js";
 export { airspacePanelGroups } from "./pipeline/airspace-panels.js";
 export { AIRSPACE_DEFAULT_CAP_FT, DEFAULT_AIRSPACE_STACK, airspaceMaterial, airspaceStackTint, airspaceTint, registerAirspaceStage, type AirspaceStage } from "./pipeline/airspace-settings.js";
