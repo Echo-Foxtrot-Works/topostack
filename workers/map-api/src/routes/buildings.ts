@@ -39,7 +39,7 @@ export async function buildingResponse(request: Request, path: string): Promise<
   try {
     const upstream = await fetch(url, {
       headers: { "user-agent": `TopoStack/${packageJson.version} (+https://topostack.app)` },
-      redirect: "error", signal: upstreamSignal(request),
+      redirect: "manual", signal: upstreamSignal(request),
       cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": ttl, "400-599": 0 } },
     });
     if (upstream.status !== 200) {

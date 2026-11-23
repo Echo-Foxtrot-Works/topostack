@@ -119,6 +119,15 @@ const vectorHeader = new Uint8Array(await vectorResponse.arrayBuffer());
 if (new TextDecoder().decode(vectorHeader.subarray(0, 7)) !== "PMTiles" || vectorHeader[7] !== 3) throw new Error("The vector archive did not return a PMTiles v3 header.");
 if (vectorHeader[101] !== 12) throw new Error("The deployed vector archive has max zoom " + String(vectorHeader[101] ?? "unknown") + "; expected 12.");
 
+// Use the release served by the gateway and a tile containing Shinjuku Station.
+const buildings = await fetchJson(publicBase, "/v1/buildings");
+if (typeof buildings?.release !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(buildings.release)) throw new Error("The building gateway returned an invalid release.");
+const buildingTile = await fetchWithRetry(publicBase, `/v1/buildings/${buildings.release}/14/14549/6451.pbf`, { headers: { origin: atommOrigin } });
+verifyPublicCors(buildingTile);
+if (!buildingTile.headers.get("content-type")?.includes("application/vnd.mapbox-vector-tile") || new Uint8Array(await buildingTile.arrayBuffer())[0] !== 0x1a) {
+  throw new Error("The building gateway did not return the neighborhood vector layer for Shinjuku Station.");
+}
+
 if (readiness?.dependencies?.lakeData?.status === "available") {
   const lakeResponse = await fetchWithRetry(publicBase, "/v1/lakes.pmtiles", { headers: { range: "bytes=0-126", origin: atommOrigin } });
   verifyPublicCors(lakeResponse);

@@ -29,6 +29,16 @@ it("resolves a release and serves only the original encoded building layer", asy
   expect((await (await get(tilePath)).arrayBuffer()).byteLength).toBe(0);
 });
 
+it("rejects upstream redirects using a valid Worker request", async () => {
+  const requests: Request[] = [];
+  vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+    requests.push(new Request(url, init));
+    return Response.redirect("https://example.test/moved", 302);
+  });
+  expect((await get("")).status).toBe(502);
+  expect(requests.map(request => [request.url, request.redirect])).toEqual([[origin, "manual"]]);
+});
+
 it("distinguishes unavailable data from an empty building layer", async () => {
   const fetchOrigin = vi.fn(async () => new Response(null, { status: 404 }));
   vi.stubGlobal("fetch", fetchOrigin);
