@@ -180,7 +180,9 @@
   const themeColor = $derived.by(() => { void theme.resolved; return readRoleColor(document.documentElement, "background") ?? ""; });
   let booted = $state(false);
   let historyAvailability = $state({ canUndo: false, canRedo: false });
-  const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
+  type CompositionSnapshot = CompositionPreview & { sourceProject: ProjectConfigV1 };
+  type HistoryEntry = ProjectConfigV1 | CompositionSnapshot;
+  const projectHistory = new ProjectHistory<HistoryEntry>((availability) => { historyAvailability = availability; });
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
   const pipeline = new PreviewPipeline(() => loadGeometryClient(untrack(() => takeWarmWorker)));
@@ -575,13 +577,30 @@
     void updateFabrication({ verticalExaggeration });
   }
 
+  // Retain source and artwork only for a composition transition. Capture its
+  // inverse when traversed so Redo also restores the version actually left.
+  function compositionSnapshot(): CompositionSnapshot {
+    return { project, sourceProject, source: activeSource, geometry };
+  }
+
+  function inverseEntry(target: HistoryEntry): HistoryEntry {
+    return "geometry" in target && !terrainDataStale && geometry.configFingerprint === currentFingerprint
+      ? compositionSnapshot() : project;
+  }
+
   /** Adopt the exact preview the maker chose, with one discrete undo step. */
   function applyComposition(base: ProjectConfigV1, preview: CompositionPreview): void {
     if (project !== base || previewBusy || placement.session || terrainDataStale) return;
+    if (exportBlockMessage(preview.geometry, preview.project)) return;
+    projectHistory.push(compositionSnapshot());
+    installComposition(preview, preview.project);
+    status = previewUpdatedStatus("fabrication", activeSource, project, sourceRequirements(project));
+  }
+
+  function installComposition(preview: CompositionPreview, preparedFor: ProjectConfigV1): void {
     invalidatePendingPreview();
-    projectHistory.push(project);
     project = preview.project;
-    sourceProject = preview.project;
+    sourceProject = preparedFor;
     activeSource = preview.source;
     geometry = preview.geometry;
     selectedAirspaceLevel = undefined;
@@ -589,7 +608,6 @@
     mode = defaultModeFor(project.outputMode);
     previewNotice = "";
     generationState = "ready";
-    status = previewUpdatedStatus("fabrication", activeSource, project, sourceRequirements(project));
   }
 
   function updateDepthLayerLimit(value: number): void {
@@ -638,7 +656,12 @@
    * cosmetic change patches the preview in place, and anything else rebuilds
    * the preview from the retained source.
    */
-  function restoreProject(target: ProjectConfigV1, action: "Undo" | "Redo"): void {
+  function restoreProject(target: HistoryEntry, action: "Undo" | "Redo"): void {
+    if ("geometry" in target) {
+      installComposition(target, target.sourceProject);
+      status = t("status.historyApplied", { action: action === "Undo" ? "undo" : "redo" });
+      return;
+    }
     const changed = changedProjectKeys(project, target);
     const sourceChanged = changedProjectKeys(target, sourceProject);
     // Like the edits themselves, undoing a rename or restyle keeps Generate running.
@@ -668,8 +691,8 @@
     loadRealTerrain();
   }
 
-  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
-  function redo(): void { if (placement.session) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
+  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(inverseEntry); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
+  function redo(): void { if (placement.session) return; const next = projectHistory.redo(inverseEntry); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
     const shortcut = historyShortcut(event);
@@ -859,6 +882,7 @@
       const outcome = {
         fallback: loaded.fallback, fallbackReason: loaded.fallbackReason, waterWarning: loaded.waterWarning,
         vectorUnavailable: (next.vectorStatus !== "available" && sourceRequirements(generationProject).vectors)
+          || (generationProject.showRail && Boolean(next.railContextIncomplete))
           || (sourceRequirements(generationProject).aviation && (next.aviationStatus === "unavailable" || next.aviationStatus === "partial")),
         lakeUnavailable: generationProject.outputMode === "stack" && generationProject.showWaterDepth && next.lakeDataStatus !== "available",
       };

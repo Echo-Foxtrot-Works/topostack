@@ -41,6 +41,16 @@ describe("exportBlockReason", () => {
     expect(exportBlockReason(regeneratedFor(plain, { vectorStatus: "unavailable" }), plain)).toBeUndefined();
   });
 
+  it.each(["engraving", "stack"] as const)("requires complete station evidence only while Railways is enabled in %s", outputMode => {
+    const config = { ...project, outputMode, showRail: true };
+    const source = { ...realSource(config), railContextIncomplete: true };
+    const ir = generateGeometry(config, source);
+    expect(ir.warnings.some(w => w.code === "RAIL_CONTEXT_INCOMPLETE")).toBe(true);
+    expect(exportBlockReason(ir, config)).toMatch(/Covered railway data is incomplete/);
+    const off = { ...config, showRail: false };
+    expect(exportBlockReason(generateGeometry(off, source), off)).toBeUndefined();
+  });
+
   it("blocks missing lake depth only when water depth is carved", () => {
     expect(exportBlockReason({ ...ir, lakeDataStatus: "unavailable" }, project)).toMatch(/Lake depth data is unavailable/);
     const shallow = { ...project, showWaterDepth: false };

@@ -176,25 +176,28 @@ export function joinPaths(features: MarkingFeature[], groupKey: (feature: Markin
     unique.forEach((feature, featureIndex) => {
       if (used.has(featureIndex)) return;
       used.add(featureIndex);
-      const points = [...feature.points];
-      let extended = true;
-      while (extended) {
-        extended = false;
-        for (const atStart of [false, true]) {
-          const shared = atStart ? points[0]! : points.at(-1)!;
+      // Collect chains in each direction before flattening. Prepending each
+      // neighbor copies the full chain, and spreading a long tile path can
+      // exceed the JS argument limit even inside the source point budget.
+      const extend = (start: Point2D): Point2D[][] => {
+        let shared = start;
+        const parts: Point2D[][] = [];
+        while (true) {
           const owners = endpoints.get(pointKey(shared));
-          if (owners?.size !== 2) continue;
-          const nextIndex = [...owners].find((index) => !used.has(index));
-          if (nextIndex === undefined) continue;
-          const next = unique[nextIndex]!;
-          const oriented = pointKey(next.points[0]!) === pointKey(shared) ? [...next.points] : [...next.points].reverse();
-          if (atStart) points.unshift(...oriented.reverse().slice(0, -1));
-          else points.push(...oriented.slice(1));
+          if (owners?.size !== 2) break;
+          const nextIndex = [...owners].find(index => !used.has(index));
+          if (nextIndex === undefined) break;
+          const next = unique[nextIndex]!.points;
+          const outward = pointKey(next[0]!) === pointKey(shared) ? next.slice(1) : next.slice(0, -1).reverse();
+          parts.push(outward);
           used.add(nextIndex);
-          extended = true;
-          break;
+          shared = outward.at(-1) ?? shared;
         }
-      }
+        return parts;
+      };
+      const after = extend(feature.points.at(-1)!);
+      const before = extend(feature.points[0]!);
+      const points = before.flat().reverse().concat(feature.points, after.flat());
       joined.push({ feature, points });
     });
   }

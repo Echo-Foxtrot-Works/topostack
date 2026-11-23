@@ -1,3 +1,4 @@
+import { convexHull } from "../../primitives/convex-hull.js";
 import type { Bounds2D } from "../../primitives/geometry2d.js";
 import type { Point2D } from "../../types.js";
 
@@ -33,24 +34,6 @@ export function rotatedBounds(points: Point2D[], rotationDeg: number): Bounds2D 
     maxY = Math.max(maxY, y);
   }
   return { minX, minY, maxX, maxY };
-}
-
-/** Convex hull, counter-clockwise and closed (Andrew's monotone chain). */
-export function convexHull(points: Point2D[]): Point2D[] {
-  const sorted = [...points].sort((left, right) => left.x - right.x || left.y - right.y);
-  const cross = (o: Point2D, a: Point2D, b: Point2D) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: Point2D[] = [];
-  for (const point of sorted) {
-    while (lower.length >= 2 && cross(lower.at(-2)!, lower.at(-1)!, point) <= 0) lower.pop();
-    lower.push(point);
-  }
-  const upper: Point2D[] = [];
-  for (const point of [...sorted].reverse()) {
-    while (upper.length >= 2 && cross(upper.at(-2)!, upper.at(-1)!, point) <= 0) upper.pop();
-    upper.push(point);
-  }
-  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
-  return hull.length ? [...hull, hull[0]!] : [];
 }
 
 const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360;

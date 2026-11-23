@@ -34,6 +34,7 @@ export function exportBlockMessage(geometry: GeometryIRV1, project: ProjectConfi
   const { vectors: needsVectors, lakes: needsLakes, aviation: needsAviation, lands: needsLands } = sourceRequirements(project);
   if (geometry.vectorStatus === "partial" && needsVectors) return block("Map detail data exceeded the safe feature limit. Narrow the map area or disable some map details, then regenerate.", "exportBlockVectorPartial");
   if (geometry.vectorStatus !== "available" && needsVectors) return block("Map detail data is unavailable. Disable those map details or regenerate after the service is restored.", "exportBlockVectorUnavailable");
+  if (project.showRail && geometry.railContextIncomplete) return block("Covered railway data is incomplete. Regenerate, narrow the map area, or turn off Railways.", "railContextIncomplete");
   // Outside FAA coverage there is simply nothing to draw, which never blocks export.
   if (needsAviation && geometry.aviationStatus === "partial") return block("Aviation data exceeded the safe feature limit. Narrow the map area or turn off some aviation details, then regenerate.", "exportBlockAviationPartial");
   if (needsAviation && geometry.aviationStatus !== "available" && geometry.aviationStatus !== "not-covered") return block("FAA aviation data is unavailable. Turn off aviation details or regenerate after the service is restored.", "exportBlockAviationUnavailable");

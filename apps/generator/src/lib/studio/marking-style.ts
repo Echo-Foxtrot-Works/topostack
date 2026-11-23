@@ -56,6 +56,11 @@ export function markingWidth(marking: Pick<OperationPath, "kind" | "transportati
   return style.annotationMm;
 }
 
+export function markingCap(marking: Pick<OperationPath, "kind" | "transportationClass">, style: LineStyleV1) {
+  if (isRailClass(marking.transportationClass) || marking.kind === "grid") return "round";
+  return marking.kind === "road" ? style.roadCap : undefined;
+}
+
 function trailDash(style: LineStyleV1): string | undefined {
   const { trailMm, trailPattern } = style;
   if (trailPattern === "solid") return undefined;

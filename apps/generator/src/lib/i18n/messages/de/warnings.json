@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Erzeuge echte Geländedaten, bevor du {files, select, engraving {Gravurdateien} other {Fertigungsdateien}} exportierst.",
   "exportBlockStale": "Die Projekteinstellungen haben sich geändert. Erzeuge das Gelände vor dem Export neu.",
   "exportBlockVectorPartial": "Die Kartendetails haben das sichere Elementlimit überschritten. Verkleinere den Kartenausschnitt oder schalte einige Kartendetails aus und erzeuge dann neu.",
+  "railContextIncomplete": "Die Daten zu überdachten Bahnstrecken sind unvollständig. Erzeuge die Karte erneut, verkleinere den Kartenausschnitt oder schalte die Bahnstrecken aus.",
   "exportBlockVectorUnavailable": "Kartendetail-Daten sind nicht verfügbar. Schalte diese Kartendetails aus oder erzeuge neu, sobald der Dienst wieder verfügbar ist.",
   "graphicLoosePieces": "Eine ausgeschnittene Grafik geht durch die unterste Platte, daher fallen die Inseln in ihrer Form heraus. Graviere oder ritze sie stattdessen, oder bewahre die Inseln auf und klebe sie von Hand wieder ein.",
   "graphicOmitted": "Grafik {number} wurde weggelassen, weil sie nicht auf das Material passt. Verkleinere sie oder schiebe sie weiter nach innen.",

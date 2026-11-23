@@ -324,6 +324,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     units: config.units,
     configFingerprint: projectFingerprint(config),
     sourceKind: source.sourceKind,
+    ...(config.showRail && source.railContextIncomplete ? { railContextIncomplete: true } : {}),
     vectorStatus: source.vectorStatus,
     ...(source.aviationStatus ? { aviationStatus: source.aviationStatus } : {}),
     ...(source.aviationCycle ? { aviationCycle: source.aviationCycle } : {}),

@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Générez des données de terrain réelles avant d’exporter les fichiers {files, select, engraving {de gravure} other {de fabrication}}.",
   "exportBlockStale": "Les réglages du projet ont changé. Régénérez le terrain avant d’exporter.",
   "exportBlockVectorPartial": "Les détails de la carte dépassent la limite d’éléments sûre. Réduisez la zone de la carte ou désactivez certains détails, puis régénérez.",
+  "railContextIncomplete": "Les données des voies ferrées couvertes sont incomplètes. Relancez la génération, réduisez la zone de la carte ou désactivez les voies ferrées.",
   "exportBlockVectorUnavailable": "Les détails de la carte sont indisponibles. Désactivez ces détails ou régénérez une fois le service rétabli.",
   "graphicLoosePieces": "Un graphique découpé traverse la plaque du bas : les îlots à l’intérieur de sa forme tombent. Gravez-le ou tracez-le plutôt, ou gardez-les pour les recoller à la main.",
   "graphicOmitted": "Le graphique {number} a été omis car il ne tient pas sur le matériau. Réduisez-le ou rapprochez-le du centre.",

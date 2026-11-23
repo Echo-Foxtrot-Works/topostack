@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Hãy tạo dữ liệu địa hình thực trước khi xuất tệp {files, select, engraving {khắc} other {gia công}}.",
   "exportBlockStale": "Cài đặt dự án đã thay đổi. Hãy tạo lại địa hình trước khi xuất.",
   "exportBlockVectorPartial": "Dữ liệu chi tiết bản đồ vượt giới hạn đối tượng an toàn. Hãy thu hẹp vùng bản đồ hoặc tắt bớt chi tiết bản đồ, rồi tạo lại.",
+  "railContextIncomplete": "Dữ liệu về các đoạn đường sắt có mái che chưa đầy đủ. Hãy tạo lại bản đồ, thu hẹp khu vực hoặc tắt đường sắt.",
   "exportBlockVectorUnavailable": "Dữ liệu chi tiết bản đồ không khả dụng. Hãy tắt các chi tiết đó hoặc tạo lại sau khi dịch vụ khôi phục.",
   "graphicLoosePieces": "Một hình cắt xuyên qua tấm dưới cùng, nên các phần đảo bên trong hình sẽ rơi ra. Hãy khắc hoặc khắc vạch thay vào đó, hoặc giữ lại để dán keo lại bằng tay.",
   "graphicOmitted": "Đã bỏ hình {number} vì không vừa vật liệu. Hãy thu nhỏ hoặc dời vào trong.",

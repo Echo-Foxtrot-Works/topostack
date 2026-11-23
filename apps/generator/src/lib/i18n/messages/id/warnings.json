@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Buat data medan nyata sebelum mengekspor file {files, select, engraving {grafir} other {fabrikasi}}.",
   "exportBlockStale": "Pengaturan proyek berubah. Buat ulang medan sebelum mengekspor.",
   "exportBlockVectorPartial": "Data detail peta melebihi batas fitur aman. Persempit area peta atau nonaktifkan beberapa detail peta, lalu buat ulang.",
+  "railContextIncomplete": "Data jalur kereta tertutup belum lengkap. Buat ulang peta, perkecil area peta, atau nonaktifkan jalur kereta.",
   "exportBlockVectorUnavailable": "Data detail peta tidak tersedia. Nonaktifkan detail peta tersebut atau buat ulang setelah layanan pulih.",
   "graphicLoosePieces": "Grafik yang dipotong menembus lembar bawah, jadi pulau-pulau di dalam bentuknya akan lepas. Grafir atau gores saja, atau simpan bagian itu untuk dilem kembali secara manual.",
   "graphicOmitted": "Grafik {number} dihilangkan karena tidak muat pada bahan. Perkecil atau geser ke dalam.",

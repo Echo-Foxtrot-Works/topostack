@@ -1,12 +1,13 @@
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
+import { buildingMarkings, readBuildingFragments, type BuildingFragment } from "$lib/domain/building-outlines";
 import { classifyRail, railContextTiles, stationPassages, type RailContext } from "$lib/domain/covered-rail";
-import { boundsOverlap, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
+import { boundsOverlap, clipPolyline, cropBoundary, preparePolygons, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
 import { createArchive } from "$lib/domain/archive";
-import { classifyRings, VectorTile, type VectorTileFeature } from "@mapbox/vector-tile";
+import { classifyRings, VectorTile, type VectorTileFeature, type VectorTileLayer } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
-import { archiveTileWindow } from "$lib/domain/tile-math";
+import { archiveTileWindow, type DataTile } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 
 const RAW_VECTOR_MARKING_BUDGET_MULTIPLIER = 4;
@@ -58,6 +59,7 @@ export interface VectorData {
   ocean: Polygon2D[];
   /** True when enabled linework exceeded the bounded decoding/export budget. */
   truncated: boolean;
+  railContextIncomplete?: boolean;
 }
 
 /** A vector-tile polygon feature's rings, grouped into polygons and projected. */
@@ -82,7 +84,7 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   // quotas can discard a dense tile while empty neighbors leave room unused.
   let rawMarkingCount = 0;
   let truncated = false;
-  type TileVectors = { rail: RailContext; markings: MarkingFeature[]; waterPolygons: Polygon2D[]; oceanPolygons: Polygon2D[]; buildingPolygons: Polygon2D[] };
+  type TileVectors = { rail: RailContext; markings: MarkingFeature[]; waterPolygons: Polygon2D[]; oceanPolygons: Polygon2D[]; buildings?: { layer: VectorTileLayer; tile: DataTile } };
   const consumeGeometry = createFeatureBudget();
   // Auxiliary tunnel/station geometry must not exhaust the budget for requested map detail.
   const consumeContext = createFeatureBudget();
@@ -92,8 +94,8 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
     try { consumeContext(geometry); } catch { contextComplete = false; }
     return contextComplete;
   }
-  const selected = new Set(window.tiles.map(tile => `${tile.worldX}/${tile.y}`));
-  const tiles = config.showRail ? railContextTiles(window, bounds) : window.tiles;
+  let hasVisibleTunnel = false;
+  let railCrop: ReturnType<typeof preparePolygons> | undefined;
   // A margin keeps styled road caps outside the finished piece.
   const width = config.widthMm + 8;
   const height = config.heightMm + 8;
@@ -107,34 +109,30 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
     });
   }
 
-  const perTile = await mapTiles(tiles, async (tile, signal): Promise<TileVectors> => {
+  async function readTile(tile: DataTile, signal: AbortSignal, contextOnly = false): Promise<TileVectors> {
     const markings: MarkingFeature[] = [];
     const waterPolygons: Polygon2D[] = [];
     const oceanPolygons: Polygon2D[] = [];
-    const buildingPolygons: Polygon2D[] = [];
+    let buildings: TileVectors["buildings"];
     const rail: RailContext = { stations: [], surface: [], tunnels: [] };
-    const contextOnly = !selected.has(`${tile.worldX}/${tile.y}`);
-    const response = await vectorArchive.getZxy(tile.z, tile.x, tile.y, signal).catch(error => {
-      if (!contextOnly || signal.aborted) throw error;
-      return undefined;
-    });
-    if (!response) return { rail, markings, waterPolygons, oceanPolygons, buildingPolygons };
+    const response = await vectorArchive.getZxy(tile.z, tile.x, tile.y, signal);
+    if (!response) return { rail, markings, waterPolygons, oceanPolygons, buildings };
     const vectorTile = new VectorTile(new PbfReader(new Uint8Array(response.data)));
     for (const [layerName, layer] of Object.entries(vectorTile.layers)) {
       const lowered = layerName.toLowerCase();
       const isRoad = lowered.includes("road") || lowered.includes("transportation");
       const isWater = lowered === "water" || lowered.includes("waterway");
       const isBoundary = lowered === "boundaries" || lowered.includes("boundary");
-      const isBuilding = usesBuildings && lowered === "buildings";
+      if (!contextOnly && usesBuildings && lowered === "buildings") { buildings = { tile, layer }; continue; }
       const isPoi = config.showRail && lowered === "pois";
       if (contextOnly && !isRoad && !isPoi) continue;
-      if (!isRoad && !isWater && !isBoundary && !isBuilding && !isPoi) continue;
+      if (!isRoad && !isWater && !isBoundary && !isPoi) continue;
       for (let featureIndex = 0; featureIndex < layer.length; featureIndex += 1) {
         if (featureIndex % 64 === 0) await yieldForCancellation(signal);
         const feature = layer.feature(featureIndex);
         const properties = feature.properties as Record<string, unknown>;
         if (isPoi) {
-          if (feature.type === 1 && (properties.kind === "station" || properties.kind === "halt")) {
+          if (contextComplete && feature.type === 1 && (properties.kind === "station" || properties.kind === "halt")) {
             const geometry = feature.loadGeometry();
             if (!keepContext(geometry)) continue;
             for (const points of geometry) for (const point of points) rail.stations.push(projectPoint(tile, feature.extent, point));
@@ -142,23 +140,6 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
           continue;
         }
         if (contextOnly && properties.kind !== "rail") continue;
-        if (isBuilding) {
-          if (feature.type !== 3 || properties.kind !== "building") continue;
-          const project = (point: Point2D) => projectPoint(tile, feature.extent, point);
-          // Generalized tiles pack many unrelated footprints in a single feature.
-          // Only project and union the polygons that can reach the artwork.
-          for (const rings of classifyRings(feature.loadGeometry())) {
-            const [outer, ...holes] = rings;
-            if (!outer) continue;
-            const box = ringBounds(outer);
-            const min = project({ x: box.minX, y: box.minY });
-            const max = project({ x: box.maxX, y: box.maxY });
-            if (!boundsOverlap(crop, { minX: min.x, minY: min.y, maxX: max.x, maxY: max.y })) continue;
-            consumeGeometry(rings, true);
-            buildingPolygons.push({ outer: outer.map(project), holes: holes.map((ring) => ring.map(project)) });
-          }
-          continue;
-        }
         if (feature.type !== 2 && !(isWater && feature.type === 3)) continue;
         if (isWater && feature.type === 3) {
           if (!usesWaterAreas) continue;
@@ -188,11 +169,23 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
         // Retain names so enabling labels after generation needs no reload.
         const label = isRoad ? transportationLabel(properties) : undefined;
         const auxiliary = contextOnly || tunnelCandidate;
-        if (auxiliary && !contextComplete) continue;
+        if (auxiliary && !contextComplete && (contextOnly || hasVisibleTunnel)) continue;
         const geometry = feature.loadGeometry();
-        if (auxiliary) {
-          if (!keepContext(geometry)) continue;
-        } else consumeGeometry(geometry);
+        const hasEvidenceBudget = !auxiliary || keepContext(geometry);
+        if (tunnelCandidate && !contextOnly && !hasVisibleTunnel) {
+          hasVisibleTunnel = geometry.some(line => {
+            const box = ringBounds(line);
+            const min = projectPoint(tile, feature.extent, { x: box.minX, y: box.minY });
+            const max = projectPoint(tile, feature.extent, { x: box.maxX, y: box.maxY });
+            if (!boundsOverlap(crop, { minX: min.x, minY: min.y, maxX: max.x, maxY: max.y })) return false;
+            if (!hasEvidenceBudget) return true;
+            railCrop ??= preparePolygons([{ outer: cropBoundary(config), holes: [] }]);
+            return clipVectorTileLine(line, feature.extent).some(part =>
+              clipPolyline(part.map(point => projectPoint(tile, feature.extent, point)), railCrop!).length > 0);
+          });
+        }
+        if (!hasEvidenceBudget) continue;
+        if (!auxiliary) consumeGeometry(geometry);
         geometry.forEach((line, lineIndex) => {
           const project = (point: Point2D) => projectPoint(tile, feature.extent, point);
           if (transportationClass === "rail") {
@@ -213,11 +206,27 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
         });
       }
     }
-    return { rail, markings, waterPolygons, oceanPolygons, buildingPolygons };
-  }, signal);
+    return { rail, markings, waterPolygons, oceanPolygons, buildings };
+  }
+  const perTile = await mapTiles(window.tiles, (tile, signal) => readTile(tile, signal), signal);
+  if (hasVisibleTunnel && contextComplete) {
+    const context = railContextTiles(window, bounds);
+    contextComplete = context.complete;
+    const selected = new Set(window.tiles.map(tile => `${tile.worldX}/${tile.y}`));
+    const adjacent = context.tiles.filter(tile => !selected.has(`${tile.worldX}/${tile.y}`));
+    const neighbors = await mapTiles(adjacent, async (tile, signal) => {
+      if (!contextComplete) return;
+      try { return await readTile(tile, signal, true); }
+      catch (error) {
+        if (signal.aborted) throw error;
+        contextComplete = false;
+      }
+    }, signal);
+    for (const tile of neighbors) if (tile) perTile.push(tile);
+  }
   await yieldForCancellation(signal);
   const rawMarkings = perTile.flatMap((tile) => tile.markings);
-  const passages = contextComplete ? stationPassages(perTile.map(tile => tile.rail), config.widthMm / groundWidthMFor(bounds)) : [];
+  const passages = hasVisibleTunnel && contextComplete ? stationPassages(perTile.map(tile => tile.rail), config.widthMm / groundWidthMFor(bounds)) : [];
   for (const passage of passages) {
     addCropped(passage, rawMarkings);
   }
@@ -230,15 +239,22 @@ export async function loadVectorMarkings(bounds: GeoBounds, requestedZoom: numbe
   const inland = dissolveTilePolygons(perTile.flatMap((tile) => tile.waterPolygons), config.minimumFeatureMm);
   const ocean = dissolveTilePolygons(perTile.flatMap((tile) => tile.oceanPolygons), config.minimumFeatureMm);
   const shorelines = config.showWater ? shorelineMarkings([...ocean, ...inland]) : [];
-  const footprints = dissolveTilePolygons(perTile.flatMap((tile) => tile.buildingPolygons), config.minimumFeatureMm);
-  const buildings = footprints.flatMap((polygon, index) => [polygon.outer, ...polygon.holes].map((points, ring): MarkingFeature => ({
-    id: `building-${index}-${ring}`, kind: "building", operation: "engrave", points,
-  })));
+  // Decode footprints last so a dense city cannot consume the point/ring budget
+  // for surface rail, streets or water already requested on the same map.
+  const fragments: BuildingFragment[] = [];
+  for (const { buildings } of perTile) {
+    if (!buildings) continue;
+    const { layer, tile } = buildings;
+    const complete = await readBuildingFragments(layer, tile, (extent, p) => projectPoint(tile, extent, p), config, consumeGeometry, fragments, signal);
+    if (!complete) { truncated = true; break; }
+  }
+  const buildings = await buildingMarkings(fragments, config, signal);
   const limited = limitVectorMarkingGroups([boundaries, roads, rails, trails, shorelines, waterways, buildings]);
   return {
     markings: limited.markings,
     inland,
     ocean,
     truncated: limited.truncated || truncated,
+    ...(hasVisibleTunnel && !contextComplete ? { railContextIncomplete: true } : {}),
   };
 }

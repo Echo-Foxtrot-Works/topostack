@@ -128,6 +128,16 @@ describe("shorelineMarkings", () => {
 });
 
 describe("joinPaths", () => {
+  it("joins a long segment within the point budget in either orientation", () => {
+    const line = (id: string, points: Point2D[]): MarkingFeature => ({ id, kind: "road", operation: "engrave", points });
+    const long = Array.from({ length: 140_000 }, (_, i) => p(i + 1, 0));
+    for (const tail of [long, [...long].reverse()]) {
+      const [joined] = joinPaths([line("first", [p(0, 0), p(1, 0)]), line("tail", tail)]);
+      expect(joined!.points).toHaveLength(140_001);
+      expect(joined!.points.at(-1)).toEqual(p(140_000, 0));
+    }
+  });
+
   it("joins pieces at shared degree-two endpoints whichever way they run", () => {
     const joined = joinPaths([line("b", [[10, 0], [20, 0]]), line("a", [[0, 0], [10, 0]]), line("c", [[30, 0], [20, 0]])]);
     expect(joined).toHaveLength(1);

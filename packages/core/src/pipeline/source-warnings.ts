@@ -24,6 +24,11 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     message: "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
     messageKey: "vectorDataUnavailable",
   });
+  if (config.showRail && source.railContextIncomplete) warnings.push({
+    code: "RAIL_CONTEXT_INCOMPLETE",
+    message: "Covered railway data is incomplete. Regenerate, narrow the map area, or turn off Railways.",
+    messageKey: "railContextIncomplete",
+  });
   if (aviationRequested(config)) {
     if (source.aviationStatus === "partial") warnings.push({
       code: "AVIATION_DATA_PARTIAL",

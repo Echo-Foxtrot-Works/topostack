@@ -11,7 +11,7 @@ export function previewPendingStatus(kind: PreviewUpdateKind, project: ProjectCo
 
 export function previewUpdatedStatus(kind: PreviewUpdateKind, source: SourceBundleV1, project: ProjectConfigV1, requirements: { vectors: boolean; lakes: boolean; aviation?: boolean }): string {
   if (kind === "details") {
-    if (source.vectorStatus !== "available" && requirements.vectors) return t("status.mapDetailsUpdatedSourceIncomplete");
+    if ((source.vectorStatus !== "available" && requirements.vectors) || (project.showRail && source.railContextIncomplete)) return t("status.mapDetailsUpdatedSourceIncomplete");
     if ((source.aviationStatus === "unavailable" || source.aviationStatus === "partial") && requirements.aviation) return t("status.mapDetailsUpdatedAviationIncomplete");
     if (source.lakeDataStatus === "unavailable" && requirements.lakes) return t("status.mapDetailsUpdatedLakeDepthUnavailable");
     if (source.sourceKind === "preview") return t("status.realDataSamplePreviewUpdated");

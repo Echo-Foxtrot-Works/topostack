@@ -2,7 +2,7 @@ import { ringBounds, signedArea, simplifyClosedRing } from "../../primitives/geo
 import { offsetClosedRing } from "../../primitives/offset.js";
 import type { GeometryIRV1, NestPartV1, Point2D } from "../../types.js";
 import { nestFamilies, rootPolygonByPolygon } from "../panel-layout.js";
-import { convexHull } from "./transform.js";
+import { convexHull } from "../../primitives/convex-hull.js";
 
 /** Vertex budget per outline sent to the packer; more costs time without better layouts. */
 export const MAX_OUTLINE_VERTICES = 400;

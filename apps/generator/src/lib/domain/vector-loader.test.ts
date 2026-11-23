@@ -189,7 +189,7 @@ describe("water geometry cleanup", () => {
 
 const getHeaderMock = vi.hoisted(() => vi.fn());
 const getZxyMock = vi.hoisted(() => vi.fn());
-const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false }));
+const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false, stationPoints: 1, cornerBuildings: 0 }));
 vi.mock("pmtiles", async (importOriginal) => ({
   ...await importOriginal<typeof import("pmtiles")>(),
   PMTiles: class {
@@ -202,7 +202,7 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
   ...await importOriginal<typeof import("@mapbox/vector-tile")>(),
   VectorTile: class {
     layers = {
-      pois: { length: 1, feature: () => ({ type: 1, extent: 4096, properties: { kind: "station" }, loadGeometry: () => [[{ x: 2048, y: 2048 }]] }) },
+      pois: { length: 1, feature: () => ({ type: 1, extent: 4096, properties: { kind: "station" }, loadGeometry: () => [Array(vectorFixture.stationPoints).fill({ x: 2048, y: 2048 })] }) },
       transportation: { length: 3, feature: (index: number) => ({
         type: 2, extent: 4096, properties: { kind: "rail", kind_detail: "rail", is_tunnel: index === 1 },
         loadGeometry: () => {
@@ -217,6 +217,9 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
             { x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y },
           ];
           if (index === 1) return [square(2150, 2020, 20)];
+          if (vectorFixture.cornerBuildings) return [
+            ...Array.from({ length: vectorFixture.cornerBuildings }, (_, i) => square(1005 + (i % 43) * 5, 1005 + Math.floor(i / 43) * 5, 3)), square(2000, 2000, 30),
+          ];
           return [square(1950, 1950, 100), square(1980, 1980, 40).reverse(), square(2130, 2020, 1), square(100, 100, 50)];
         },
       }) },
@@ -265,6 +268,8 @@ describe("geographic crop bounds", () => {
 
 describe("vector marking zoom", () => {
   beforeEach(() => {
+    vectorFixture.stationPoints = 1;
+    vectorFixture.cornerBuildings = 0;
     vectorFixture.outsideRoads = 0;
     vectorFixture.insideRoads = 1;
     vectorFixture.uniqueNames = false;
@@ -284,6 +289,37 @@ describe("vector marking zoom", () => {
     expect(data.markings[0]!.points[0]!.x).toBeCloseTo(-54);
     expect(data.markings[0]!.points.at(-1)!.x).toBeCloseTo(54);
     expect((await loadVectorMarkings(bounds, 15, { ...config, showRail: false })).markings).toEqual([]);
+  });
+
+  it("flags failed auxiliary reads and exhausted evidence budgets while retaining selected roads", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    const bounds = { west: 0.042, east: 0.0877, south: 0.042, north: 0.046 };
+    const config = { ...DEFAULT_PROJECT, showRail: true, showRoads: true };
+    getZxyMock.mockImplementation(async (_z, x) => {
+      if (x !== 2048) throw new Error("neighbor is unavailable");
+      return { data: new ArrayBuffer(0) };
+    });
+    const missing = await loadVectorMarkings(bounds, 15, config);
+    expect(missing.railContextIncomplete).toBe(true);
+    expect(missing.markings.some(line => line.transportationClass === "major-road")).toBe(true);
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    vectorFixture.stationPoints = 200_001;
+    const dense = await loadVectorMarkings(bounds, 15, config);
+    expect(dense.railContextIncomplete).toBe(true);
+    expect(dense.markings.some(line => line.transportationClass === "rail")).toBe(true);
+  });
+
+  it("reserves the circular crop's marking budget for visible footprints", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    vectorFixture.cornerBuildings = 1849;
+    const unit = 360 / 4096 / 4096;
+    const bounds = { west: 1000 * unit, east: 3000 * unit, south: (4096 - 3000) * unit, north: (4096 - 1000) * unit };
+    const config = { ...DEFAULT_PROJECT, showBuildings: true, showRoads: false, cropShape: "circle" as const,
+      widthMm: 200, heightMm: 200, minimumFeatureMm: 0.2, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const { markings, truncated } = await loadVectorMarkings(bounds, 13, config);
+    expect(truncated).toBe(false);
+    expect(markings.filter(mark => mark.kind === "building")).toHaveLength(1);
   });
 
   it("loads printable footprints and courtyards at display zoom 13 even when the archive ends at 12", async () => {

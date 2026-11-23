@@ -45,6 +45,7 @@
   "exportBlockNotReal": "匯出{files, select, engraving {雕刻} other {加工}}檔案前，請先生成真實地形資料。",
   "exportBlockStale": "專案設定已變更。匯出前請重新生成地形。",
   "exportBlockVectorPartial": "地圖細節資料超出安全圖徵上限。請縮小地圖範圍或關閉部分地圖細節，然後重新生成。",
+  "railContextIncomplete": "有頂棚鐵路區段的資料不完整。請重新產生、縮小地圖範圍或關閉鐵路。",
   "exportBlockVectorUnavailable": "地圖細節資料無法使用。請關閉這些地圖細節，或在服務恢復後重新生成。",
   "graphicLoosePieces": "切割圖形穿透了底層板材，其形狀內的孤島會掉落。請改為雕刻或劃線，或保留這些孤島再以手工黏回。",
   "graphicOmitted": "圖形 {number} 因超出材料範圍而被省略。請縮小它或往內移動。",

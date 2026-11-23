@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from "svelte";
   import { Button } from "@loidolt/theme-svelte";
-  import { projectFingerprint } from "@topostack/core";
+  import { exportBlockMessage, projectFingerprint } from "@topostack/core";
+  import { exportBlockText } from "$lib/i18n/warnings";
   import { errorText } from "$lib/i18n/errors";
   import { t } from "$lib/i18n/i18n.svelte";
   import { basePath } from "$lib/site/paths";
@@ -20,7 +21,8 @@
   let choice = $state<MapComposition>("streets");
   let candidate = $state.raw<CompositionPreview>();
   let error = $state("");
-  const unchanged = $derived(candidate?.geometry.configFingerprint === studio.geometry.configFingerprint);
+  const unchanged = $derived(candidate?.geometry === studio.geometry);
+  const blocked = $derived(candidate && exportBlockText(exportBlockMessage(candidate.geometry, candidate.project)));
   const missingSubject = $derived.by(() => {
     if (!candidate) return false;
     const { geometry } = candidate;
@@ -60,7 +62,7 @@
   onDestroy(() => pipeline.dispose());
 
   function apply(): void {
-    if (!candidate || unchanged) return;
+    if (!candidate || unchanged || Boolean(blocked)) return;
     studio.applyComposition(original, candidate);
     dialog.close();
     onClose();
@@ -85,15 +87,15 @@
       </div>
     </figure>
   </div>
-  {#if candidate && choice !== "terrain" && candidate.source.vectorStatus !== "available"}
-    <p class="composition-note" role="status">{t("status.terrainReadyMapDetailIncomplete")} <button type="button" onclick={() => compare(choice, true)}>{t("app.retry")}</button></p>
+  {#if blocked}
+    <p class="composition-note" role="status">{blocked} <button type="button" onclick={() => compare(choice, true)}>{t("app.retry")}</button></p>
   {:else if missingSubject}
     <p class="composition-note" role="status">{t("place.noCompositionFeatures")}</p>
   {/if}
   <footer>
     <small><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · <a href={`${basePath()}/attribution${import.meta.env.VITE_SITE_ENV === "atomm" ? ".html" : ""}`} target="_blank" rel="noreferrer">{t("preview.allSources")}</a></small>
     <Button onclick={() => dialog.close()}>{t("place.cancel")}</Button>
-    <Button variant="primary" disabled={!candidate || unchanged} onclick={apply}>{t("place.applyComposition")}</Button>
+    <Button variant="primary" disabled={!candidate || unchanged || Boolean(blocked)} onclick={apply}>{t("place.applyComposition")}</Button>
   </footer>
 </dialog>
 

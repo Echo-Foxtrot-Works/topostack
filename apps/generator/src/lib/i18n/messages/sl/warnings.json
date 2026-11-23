@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Pred izvozom datotek {files, select, engraving {za graviranje} other {za izdelavo}} ustvarite resnične podatke terena.",
   "exportBlockStale": "Nastavitve projekta so se spremenile. Pred izvozom znova ustvarite teren.",
   "exportBlockVectorPartial": "Podatki podrobnosti zemljevida so presegli varno omejitev elementov. Zožite območje zemljevida ali izklopite nekatere podrobnosti in znova ustvarite teren.",
+  "railContextIncomplete": "Podatki o pokritih železniških odsekih so nepopolni. Znova ustvarite zemljevid, zmanjšajte območje ali izklopite železnice.",
   "exportBlockVectorUnavailable": "Podatki podrobnosti zemljevida niso na voljo. Izklopite te podrobnosti ali znova ustvarite teren, ko bo storitev spet delovala.",
   "graphicLoosePieces": "Izrezana grafika gre skozi spodnjo ploščo, zato otočki znotraj njene oblike izpadejo. Namesto tega jo gravirajte ali zarišite ali pa otočke shranite in jih ročno prilepite nazaj.",
   "graphicOmitted": "Grafika {number} je bila izpuščena, ker se ne prilega materialu. Zmanjšajte jo ali jo premaknite navznoter.",

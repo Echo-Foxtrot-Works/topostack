@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Gere dados de terreno reais antes de exportar arquivos de {files, select, engraving {gravação} other {fabricação}}.",
   "exportBlockStale": "As configurações do projeto mudaram. Regenere o terreno antes de exportar.",
   "exportBlockVectorPartial": "Os dados de detalhes do mapa passaram do limite seguro de elementos. Reduza a área do mapa ou desative alguns detalhes e regenere.",
+  "railContextIncomplete": "Os dados de trechos ferroviários cobertos estão incompletos. Gere o mapa novamente, reduza a área ou desative as ferrovias.",
   "exportBlockVectorUnavailable": "Os dados de detalhes do mapa estão indisponíveis. Desative esses detalhes ou regenere quando o serviço voltar.",
   "graphicLoosePieces": "Um gráfico de corte atravessa a chapa de baixo, então as ilhas dentro da forma caem. Grave ou risque o gráfico, ou guarde as ilhas para colar de volta à mão.",
   "graphicOmitted": "O gráfico {number} foi omitido porque não cabe no material. Diminua-o ou mova-o para dentro.",

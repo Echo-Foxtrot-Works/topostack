@@ -862,6 +862,8 @@ export interface SourceBundleV1 {
   waterPatternAreas?: Polygon2D[];
   /** Inland OSM polygons retained for shoreline fallback and depth retries. */
   inlandWaterAreas?: Polygon2D[];
+  /** Evidence for inferring covered station passages was unavailable or exceeded its budget. */
+  railContextIncomplete?: boolean;
   vectorStatus: "available" | "partial" | "unavailable" | "not-requested";
   /**
    * FAA aviation features, kept apart from `markings` so reloading roads and
@@ -1248,6 +1250,7 @@ export type GeometryWarningCode =
   | "SMALL_FEATURES"
   | "DATA_FALLBACK"
   | "VECTOR_DATA_PARTIAL"
+  | "RAIL_CONTEXT_INCOMPLETE"
   | "VECTOR_DATA_UNAVAILABLE"
   | "LAKE_DATA_UNAVAILABLE"
   | "BATHYMETRY_FALLBACK"
@@ -1306,6 +1309,8 @@ export interface GeometryIRV1 {
   units: UnitSystem;
   configFingerprint: string;
   sourceKind: SourceBundleV1["sourceKind"];
+  /** Evidence for inferring covered station passages was unavailable or exceeded its budget. */
+  railContextIncomplete?: boolean;
   vectorStatus: SourceBundleV1["vectorStatus"];
   aviationStatus?: AviationStatus;
   aviationCycle?: string;

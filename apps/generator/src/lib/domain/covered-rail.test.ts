@@ -15,6 +15,8 @@ describe("covered railway passages", () => {
     expect(classifyRail({ tunnel: "building_passage" })).toBe("covered-rail");
     expect(classifyRail({ is_tunnel: true })).toBe("rail-tunnel");
     expect(classifyRail({ is_tunnel: true, covered: "no" })).toBeUndefined();
+    expect(classifyRail({ is_tunnel: true, is_covered: "no" })).toBeUndefined();
+    expect(classifyRail({ is_tunnel: true, is_covered: false })).toBeUndefined();
     expect(classifyRail({ is_tunnel: true, level: "-2" })).toBeUndefined();
     expect(classifyRail({ is_tunnel: true, kind_detail: "subway" })).toBeUndefined();
     expect(classifyRail({ covered: "yes", location: "underground" })).toBeUndefined();
@@ -31,5 +33,21 @@ describe("covered railway passages", () => {
     expect(stationPassages([west, { ...east, surface: [{ label: "Metro", points: points(112, 180) }] }], 1)).toEqual([]);
     expect(stationPassages([west, { ...east, stations: [point(0)] }], 0.25)).toEqual([]);
     expect(stationPassages([west, { ...east, stations: [] }], 1)).toEqual([]);
+  });
+
+  it("requires a plausible, unambiguous continuation for unnamed tunnels", () => {
+    const context = (length: number, distance: number): RailContext => ({
+      tunnels: [{ ...part("passage", [0, length]), label: undefined }], stations: [point(length / 2, distance)],
+      surface: [{ points: points(-50, 0) }, { points: points(length, length + 50) }],
+    });
+    expect(stationPassages([context(600, 160)], 1)).toHaveLength(1);
+    expect(stationPassages([context(600.01, 160)], 1)).toEqual([]);
+    expect(stationPassages([context(600, 160.01)], 1)).toEqual([]);
+    const rail = context(300, 0);
+    const crossing = { points: [point(0, -50), point(0), point(0, 50)] };
+    expect(stationPassages([{ ...rail, surface: [crossing, rail.surface[1]!] }], 1)).toEqual([]);
+    expect(stationPassages([{ ...rail, surface: rail.surface.map((line, i) => ({ ...line, label: i ? "East" : "West" })) }], 1)).toEqual([]);
+    expect(stationPassages([{ ...rail, surface: [...rail.surface, { points: [point(0), point(-50, 20)] }] }], 1)).toEqual([]);
+    expect(stationPassages([{ ...rail, surface: [rail.surface[0]!, { points: [point(300, 1), point(350, 1)] }] }], 1)).toEqual([]);
   });
 });

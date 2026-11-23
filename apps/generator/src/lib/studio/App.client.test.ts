@@ -27,7 +27,8 @@ vi.mock("$lib/atomm/atomm-bridge", () => ({ connectAtomm: vi.fn(() => () => unde
 vi.mock("$app/navigation", () => ({ replaceState: (url: URL) => window.history.replaceState(window.history.state, "", url) }));
 vi.mock("$lib/studio/ThreePreview.svelte", async () => ({ default: (await import("$lib/studio/testing/TestPreview.svelte")).default }));
 
-import { PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
+import { composeMap } from "$lib/studio/map-compositions";
+import { loadProject, PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
 import App from "$lib/studio/App.svelte";
 import { nav } from "$lib/studio/customdata/custom-data-nav.svelte";
 import { resetDraft } from "$lib/studio/customdata/chart-draft.svelte";
@@ -1052,11 +1053,47 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector(".composition-dialog")).toBeNull();
     expect(flat.getAttribute("aria-checked")).toBe("true");
     expect(target.querySelector('[role="switch"][aria-label="Roads"]')?.getAttribute("aria-checked")).toBe("false");
+    const loadsBeforeUndo = loadVectorMarkingsMock.mock.calls.length;
+    loadVectorMarkingsMock.mockRejectedValue(new Error("offline"));
     undo.click();
     await vi.waitFor(() => expect(flat.getAttribute("aria-checked")).toBe("false"));
     expect(target.querySelector('[role="switch"][aria-label="Roads"]')?.getAttribute("aria-checked")).toBe("true");
     expect(undo.disabled).toBe(true);
+    target.querySelector<HTMLButtonElement>('button[aria-label="Redo"]')!.click();
+    await vi.waitFor(() => expect(flat.getAttribute("aria-checked")).toBe("true"));
+    expect(loadVectorMarkingsMock).toHaveBeenCalledTimes(loadsBeforeUndo);
     expect(loadTerrainMock).toHaveBeenCalledOnce();
+  });
+
+  it("blocks a Terrain comparison with missing vectors and applies a repaired preview of the same design", async () => {
+    const terrain = composeMap(DEFAULT_PROJECT, "terrain");
+    const source = { ...createSyntheticSource(terrain, 32), sourceKind: "real" as const, vectorStatus: "unavailable" as const };
+    vi.mocked(loadProject).mockResolvedValueOnce(terrain);
+    loadTerrainMock.mockResolvedValue({ source, fallback: false });
+    loadVectorMarkingsMock.mockRejectedValue(new Error("offline"));
+    loadLakeAreasMock.mockResolvedValue([]);
+    const target = document.createElement("div");
+    document.body.append(target);
+    onTestFinished(() => target.remove());
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    const button = (name: string) => [...target.querySelectorAll<HTMLButtonElement>("button")].find(el => el.textContent?.trim() === name);
+    await vi.waitFor(() => expect(target.querySelector('[role="switch"][aria-label="Roads"]')?.getAttribute("aria-checked")).toBe("false"));
+    target.querySelector<HTMLButtonElement>(".generate-button")!.click();
+    await vi.waitFor(() => expect(button("Compare compositions")?.disabled).toBe(false));
+    button("Compare compositions")!.click();
+    await vi.waitFor(() => expect(target.querySelector(".composition-dialog select")).not.toBeNull());
+    const select = target.querySelector<HTMLSelectElement>(".composition-dialog select")!;
+    select.value = "terrain";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(target.querySelector(".composition-note")?.textContent).toMatch(/map detail data is unavailable/i));
+    expect(button("Apply composition")?.disabled).toBe(true);
+    loadVectorMarkingsMock.mockResolvedValue({ markings: source.markings, inland: [], ocean: [], truncated: false });
+    target.querySelector<HTMLButtonElement>(".composition-note button")!.click();
+    await vi.waitFor(() => expect(button("Apply composition")?.disabled).toBe(false));
+    button("Apply composition")!.click();
+    await tick();
+    expect(target.querySelector(".composition-dialog")).toBeNull();
+    expect(target.querySelector(".status-line")?.textContent).not.toMatch(/unavailable/);
   });
 
   it("explains automatic sidebar updates and flags a manually selected map area", async () => {
