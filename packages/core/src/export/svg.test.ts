@@ -8,6 +8,18 @@ import { EXPORT_CREDIT } from "./svg-primitives.js";
 import { hasOperation, operationBody, rootGroups } from "../test-support/svg.js";
 
 describe("SVG export", () => {
+  it("writes millimetre dash lengths and gaps into the same trail path in layered and flat files", () => {
+    const project = { ...DEFAULT_PROJECT, lineStyle: { ...DEFAULT_PROJECT.lineStyle, trailMm: 0.1, trailPattern: "dashed" as const } };
+    const ir = generateGeometry(project, realSource(project));
+    const layer = ir.layers[0]!;
+    layer.markings = [{ id: "trail", kind: "trail", transportationClass: "trail", operation: "engrave", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }] }];
+    ir.layers = [layer];
+    for (const svg of [layerToSvg(ir, layer), engravingToSvg(ir, project)]) {
+      expect(svg).toContain('id="trail" d="M0 0 L1.2 0 M2 0 L3.2 0 M4 0 L5 0" fill="none" stroke="#2366FF"');
+      expect(svg).not.toContain("stroke-dasharray");
+    }
+  });
+
   it("exports 1:1 millimeter SVGs with machine operation groups", async () => {
     const result = generateGeometry(DEFAULT_PROJECT, realSource());
     const svg = layerToSvg(result, result.layers[0]!);
@@ -118,7 +130,7 @@ describe("SVG export", () => {
     expect(svg).toContain('id="ENGRAVE-contours-minor" stroke-width="0.12"');
     expect(svg).toContain('id="ENGRAVE-contours-index" stroke-width="0.4"');
     expect(svg).toContain('id="ENGRAVE-major-roads" stroke-width="0.52"');
-    expect(svg).toMatch(/id="ENGRAVE-trails" stroke-width="0\.18" stroke-dasharray="0\.01 [^"]+"/);
+    expect(svg).toMatch(/id="ENGRAVE-trails" stroke-width="0\.18"[^>]*><path[^>]* d="M[^"]+ M/);
     expect(svg).toContain('id="ENGRAVE-water" stroke-width="0.36"');
     expect(svg).toContain('id="ENGRAVE-border" stroke-width="0.46"');
     expect(svg).toContain("road-flat");

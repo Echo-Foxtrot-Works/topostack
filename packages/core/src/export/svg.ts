@@ -1,4 +1,4 @@
-import { ARTWORK_CATEGORIES, ASSEMBLY, ASSEMBLY_CATEGORIES, CUT, CUT_LINE, ENGRAVE, SCORE, escapeXml, layerCutPaths, layerMarkingPaths, pathData, svgDocument } from "./svg-primitives.js";
+import { ARTWORK_CATEGORIES, ASSEMBLY, ASSEMBLY_CATEGORIES, CUT, CUT_LINE, ENGRAVE, SCORE, escapeXml, layerCutPaths, markingGroups, pathData, svgDocument } from "./svg-primitives.js";
 import { type FabricationPanel, fabricationPanels } from "./panel-layout.js";
 import { labelFootprint } from "../annotate/label-placement.js";
 import { formatNumber as format } from "../primitives/format.js";
@@ -119,10 +119,11 @@ function pieceId(layer: LayerIR, polygonIndex: number): string {
 }
 
 function markingBodies(groupId: string, style: LineStyleV1, markings: LayerIR["markings"], clearance: ReturnType<typeof markingClearances>): Pick<Record<Operation, string>, "engrave" | "assembly" | "score"> {
+  const engraved = markings.filter(mark => mark.operation === "engrave");
   return {
-    engrave: layerMarkingPaths(groupId, "engrave", style, ARTWORK_CATEGORIES, markings, clearance),
-    assembly: layerMarkingPaths(groupId, "engrave", style, ASSEMBLY_CATEGORIES, markings, clearance),
-    score: layerMarkingPaths(groupId, "score", style, ARTWORK_CATEGORIES, markings, clearance),
+    engrave: markingGroups(`${groupId}-ENGRAVE`, style, ARTWORK_CATEGORIES, engraved, clearance),
+    assembly: markingGroups(`${groupId}-ENGRAVE`, style, ASSEMBLY_CATEGORIES, engraved, clearance),
+    score: markingGroups(`${groupId}-SCORE`, style, ARTWORK_CATEGORIES, markings.filter(mark => mark.operation === "score"), clearance),
   };
 }
 

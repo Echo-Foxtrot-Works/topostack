@@ -146,7 +146,7 @@ describe("aviation generation and export", () => {
     expect(markings.filter((marking) => marking.id.startsWith("aviation-label-")).map((marking) => marking.label)).toEqual(["DEN", "DVV"]);
     expect(result.aviationCycle).toBe("2026-09-03");
     const svg = engravingToSvg(result, project);
-    expect(svg).toMatch(/ENGRAVE-airspace-d"[^>]*stroke-dasharray=/);
+    expect(svg).toMatch(/ENGRAVE-airspace-d"[^>]*><path[^>]* d="M[^"]+ M/);
     expect(svg).not.toMatch(/ENGRAVE-special-use-airspace"[^>]*stroke-dasharray=/);
     expect(svg).toMatch(/ENGRAVE-airspace-b" stroke-width="0.36"/);
     expect(svg).toContain("ENGRAVE-aviation-symbols");

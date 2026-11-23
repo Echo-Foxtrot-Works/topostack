@@ -1,4 +1,4 @@
-import { ARTWORK_CATEGORIES, ENGRAVE, ENGRAVE_LINE, type MarkerClearance, categoryStrokeAttributes, clearLineData, engravingCategory, markerClearance, markingPath, pathData, escapeXml, svgDocument } from "./svg-primitives.js";
+import { ARTWORK_CATEGORIES, ENGRAVE, ENGRAVE_LINE, type MarkerClearance, clearLineData, markerClearance, markingGroups, pathData, escapeXml, svgDocument } from "./svg-primitives.js";
 import { flatArtworkMarkings, markingClearances } from "../pipeline/marking-clip.js";
 import { cropRadiusMm } from "../primitives/crop.js";
 import { formatNumber as format } from "../primitives/format.js";
@@ -21,11 +21,7 @@ function flatMarkingPaths(ir: GeometryIRV1): string {
   // Score paths in layered projects (notably water) become ordinary engraved
   // lines in a flat project; the output deliberately has one operation only.
   const markings = flatArtworkMarkings(ir.layers);
-  const clearance = markingClearances(markings);
-  return ARTWORK_CATEGORIES.map((category) => {
-    const paths = markings.filter((mark) => engravingCategory(mark) === category).map((mark) => markingPath(mark, clearance)).join("");
-    return paths ? `<g id="ENGRAVE-${category}"${categoryStrokeAttributes(category, ir.lineStyle)}>${paths}</g>` : "";
-  }).join("");
+  return markingGroups("ENGRAVE", ir.lineStyle, ARTWORK_CATEGORIES, markings, markingClearances(markings));
 }
 
 function engravingWaterPatternPaths(ir: GeometryIRV1, config: ProjectConfigV1, clearance?: MarkerClearance): string {

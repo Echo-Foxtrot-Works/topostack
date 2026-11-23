@@ -37,7 +37,8 @@ describe("Atomm export policy", () => {
   });
 
   it("maps nested assembly labels to blue without changing geometry or standalone exports", async () => {
-    const project = { ...DEFAULT_PROJECT, sheetNesting: { sheetWidthMm: 600, sheetHeightMm: 400, marginMm: 3, spacingMm: 2, rotation: "quarter" as const, timeBudgetS: 5, seed: 1 } };
+    const markers = [{ id: "summit", lat: DEFAULT_PROJECT.location.lat, lon: DEFAULT_PROJECT.location.lon, symbol: "pin" as const }];
+    const project = { ...DEFAULT_PROJECT, name: "Map #000000 #00A651", markers, sheetNesting: { sheetWidthMm: 600, sheetHeightMm: 400, marginMm: 3, spacingMm: 2, rotation: "quarter" as const, timeBudgetS: 5, seed: 1 } };
     const result = generateGeometry(project, { ...createSyntheticSource(project, 32), sourceKind: "real" });
     const settings = resolveSheetNestSettings(project);
     if (!settings.ok) throw new Error(settings.error);
@@ -45,12 +46,13 @@ describe("Atomm export policy", () => {
     const original = buildProjectPackage(result, project, { sheetPlan });
     const adapted = await buildAtommPackage(result, project, [], sheetPlan);
     const originalSvg = await original.master.blob.text();
-    expect(originalSvg).toContain("#00A651");
-    expect(await adapted.master.blob.text()).toBe(originalSvg.replaceAll("#00A651", "#2366FF"));
+    expect(originalSvg).toContain('stroke="#00A651"');
+    expect(originalSvg).toContain('fill="#000000"');
+    expect(await adapted.master.blob.text()).toBe(originalSvg.replace(/(fill|stroke)="#00A651"/g, '$1="#2366FF"').replaceAll('fill="#000000"', 'fill="#2366FF"'));
     for (const file of adapted.files.filter(file => /\.(svg|html|txt)$/.test(file.filename))) {
-      expect(await file.blob.text()).not.toMatch(/#00A651|green id|engraved in green/);
+      expect(await file.blob.text()).not.toMatch(/(?:stroke|fill)="#00A651"|green id|engraved in green/);
     }
-    expect(await original.master.blob.text()).toContain("#00A651");
+    expect(await original.master.blob.text()).toContain('stroke="#00A651"');
   });
 
   it("returns one master for Studio and all files for download", async () => {

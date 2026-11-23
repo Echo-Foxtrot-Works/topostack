@@ -33,9 +33,9 @@ describe("geometry generation", () => {
     // The pin's eye is engraved as a hole in its head.
     expect(foregroundPin?.holes).toHaveLength(1);
     const svg = engravingToSvg(result, project);
-    expect(svg).toMatch(/id="map-marker-[^"]+"[^>]+fill="#2366FF"/);
+    expect(svg).toMatch(/id="map-marker-[^"]+"[^>]+fill="#000000"/);
     expect(svg).not.toContain('fill="#ffffff"');
-    expect(svg).toMatch(/id="map-marker-[^"]+"[^>]+fill="#2366FF" stroke="none"/);
+    expect(svg).toMatch(/id="map-marker-[^"]+"[^>]+fill="#000000" stroke="none"/);
     expect(() => validateProject({ ...DEFAULT_PROJECT, markers: [{ ...markers[0]!, lat: 90 }] })).toThrow(/marker latitude/i);
     expect(() => validateProject({ ...DEFAULT_PROJECT, markers: [{ ...markers[0]!, symbol: "flag" as never }] })).toThrow(/marker symbol/i);
     expect(() => validateProject({ ...DEFAULT_PROJECT, markers: [markers[0]!, { ...markers[1]!, id: markers[0]!.id }] })).toThrow(/unique/i);
@@ -62,7 +62,7 @@ describe("geometry generation", () => {
     const trail = { id: "dateline", kind: "trail" as const, points: [{ lon: 179.9, lat: 0 }, { lon: -179.9, lat: 0 }] };
     const exportTrail = (west: number, east: number) => {
       const bounds = { west, east, south: -0.05, north: 0.05 };
-      const project = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, widthMm: 100, heightMm: 100, customLines: [trail], location: { ...DEFAULT_PROJECT.location, lat: 0, lon: (west + east) / 2, bounds } };
+      const project = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, widthMm: 100, heightMm: 100, lineStyle: { ...DEFAULT_PROJECT.lineStyle, trailPattern: "solid" as const }, customLines: [trail], location: { ...DEFAULT_PROJECT.location, lat: 0, lon: (west + east) / 2, bounds } };
       const svg = engravingToSvg(generateGeometry(project, realSource(project)), project);
       return [...svg.matchAll(/<path id="custom-data-line-[^"]+" d="([^"]+)"/g)].map((match) => parsePathPoints(match[1]!));
     };
@@ -99,7 +99,7 @@ describe("geometry generation", () => {
     const svg = engravingToSvg(result, project);
 
     expect(boundaries).toHaveLength(1);
-    expect(svg).toMatch(/id="ENGRAVE-boundaries" stroke-width="0\.27" stroke-dasharray="[^"]+"/);
+    expect(svg).toMatch(/id="ENGRAVE-boundaries" stroke-width="0\.27"[^>]*><path[^>]* d="M[^"]+ M/);
     expect(generateGeometry({ ...project, showBoundaries: false }, source).layers.flatMap((layer) => layer.markings).some((marking) => marking.kind === "boundary")).toBe(false);
   });
 

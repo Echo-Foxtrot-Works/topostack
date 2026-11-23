@@ -73,18 +73,18 @@ export const PUBLIC_PAGES: Record<string, PageMeta> = {
   },
   "/guides/lightburn": {
     title: "Open Topographic Map Projects in LightBurn | TopoStack",
-    description: "Open TopoStack's LightBurn projects with cut, score and engraving layers already set up, or import the SVG, check size, apply kerf once and preview the job.",
+    description: "Open each panel on its own LightBurn page with named cut, score and engraving layers. Find individual files for earlier versions and instructions for SVG import.",
     label: "LightBurn workflow",
     published: "2026-10-08",
-    updated: "2026-11-18",
+    updated: "2026-11-23",
     image: socialCard("guides-lightburn", "LightBurn workflow guide card showing TopoStack’s export dialog, not a LightBurn screenshot."),
   },
   "/guides/xtool-studio": {
     title: "Import Topographic Map SVGs into xTool Studio | TopoStack",
-    description: "Use TopoStack SVGs in xTool Studio: check size, set Cut, Score and Engrave for each color, apply kerf once, or open straight in Studio from Atomm.",
+    description: "Open each TopoStack panel on its own xTool Studio canvas, choose material settings, or import individual SVGs and assign operations by color.",
     label: "xTool Studio workflow",
     published: "2026-11-18",
-    updated: "2026-11-18",
+    updated: "2026-11-23",
     image: socialCard("guides-xtool-studio", "xTool Studio workflow guide card showing TopoStack’s export dialog, not an xTool Studio screenshot."),
   },
   "/guides/topographic-map-engraving": {

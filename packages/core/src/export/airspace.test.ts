@@ -66,7 +66,7 @@ describe("airspace export", { timeout: 60_000 }, () => {
 
   it("frosts plate shelves as filled engraving and draws sector edges in their chart style", async () => {
     const engrave = await text(packaged(plates, { form: "plates", kerfMm: 0.1 }), "-airspace-clear-01-engrave.svg");
-    expect(engrave).toMatch(/A1-1-frost-1[^>]*fill="#2366FF"/);
+    expect(engrave).toMatch(/A1-1-frost-1[^>]*fill="#000000"/);
     expect(engrave).toContain("ENGRAVE-airspace-b");
   });
 

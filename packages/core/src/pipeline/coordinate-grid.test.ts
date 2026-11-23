@@ -30,7 +30,7 @@ describe("coordinate grid", () => {
     expect(grid.some((marking) => marking.id.startsWith("coordinate-longitude-"))).toBe(true);
     expect(grid.some((marking) => marking.id.startsWith("coordinate-latitude-"))).toBe(true);
     expect(result.warnings.some((warning) => warning.code === "VECTOR_DATA_UNAVAILABLE")).toBe(false);
-    expect(svg).toMatch(/id="ENGRAVE-coordinate-grid" stroke-width="0\.13" stroke-dasharray="0\.01 [^"]+"/);
+    expect(svg).toMatch(/id="ENGRAVE-coordinate-grid" stroke-width="0\.13"[^>]*><path[^>]* d="M[^"]+ M/);
     expect(generateGeometry({ ...project, showCoordinateGrid: false }, source).layers.flatMap((layer) => layer.markings).some((marking) => marking.kind === "grid")).toBe(false);
   });
 });

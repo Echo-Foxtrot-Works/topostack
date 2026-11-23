@@ -1,8 +1,9 @@
-import { zip, type AsyncZippable } from "fflate";
+import type { AsyncZippable } from "fflate";
+import { zipBlob } from "./zip-blob";
 import { projectSettingsBlob, type FabricationPackageV1, type ProjectConfigV1 } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 
-export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "lightburn" | "project";
+export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "lightburn" | "lightburn-pages" | "xtool" | "project";
 
 export interface PreparedDownload {
   blob: Blob;
@@ -29,14 +30,9 @@ export async function prepareProjectDownload(output: FabricationPackageV1): Prom
     entries[file.filename] = new Uint8Array(await file.blob.arrayBuffer());
   }));
 
-  const bytes = await new Promise<Uint8Array>((resolve, reject) => {
-    zip(entries, { level: 6 }, (error, data) => error ? reject(error) : resolve(data));
-  });
-  const archive = new Uint8Array(bytes.byteLength);
-  archive.set(bytes);
   return {
     filename: archiveFilename(output.master.filename),
-    blob: new Blob([archive.buffer], { type: "application/zip" }),
+    blob: await zipBlob(entries),
     fileCount: output.files.length,
   };
 }
@@ -79,6 +75,10 @@ const ENGRAVING_FILE = new RegExp(`${PANEL_NAME}-engrave\\.svg$`);
 const PAINT_FILE = new RegExp(`${PANEL_NAME}-paint-[a-z-]+\\.svg$`);
 
 export async function prepareSelectedDownload(output: FabricationPackageV1, option: Exclude<DownloadOption, "project">): Promise<PreparedDownload> {
+  if (option === "lightburn-pages" || option === "xtool") {
+    const { preparePanelProject } = await import("./panel-project");
+    return preparePanelProject(output, option);
+  }
   if (option === "all") return prepareProjectDownload(output);
   if (option === "master") return { ...output.master, fileCount: 1 };
   const base = output.master.filename.replace(/-(?:master|engraving)\.svg$/i, "");

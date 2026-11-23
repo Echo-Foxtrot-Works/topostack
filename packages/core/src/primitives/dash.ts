@@ -11,7 +11,7 @@ export function dashPolyline(line: Polyline, pattern: readonly number[]): Polyli
   const dashes: Polyline[] = [];
   // A zero-length dash is a round-cap dot in SVG; LightBurn drops a path with no length.
   const finish = (dash: Point2D[] | undefined) => {
-    if (dash && dash.length > 1 && (dash[0]!.x !== dash.at(-1)!.x || dash[0]!.y !== dash.at(-1)!.y)) dashes.push({ points: dash, closed: false });
+    if (dash && dash.some(point => point.x !== dash[0]!.x || point.y !== dash[0]!.y)) dashes.push({ points: dash, closed: false });
   };
   let slot = 0;
   let remaining = lengths[0]!;
