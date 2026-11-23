@@ -21,8 +21,6 @@
   "flatEngravingPreview": "平面雕刻預覽",
   "engravingZoomControls": "雕刻縮放控制項",
   "resetEngravingView": "重設雕刻檢視",
-  "legendMinorContour": "首曲線",
-  "legendIndexEvery": "每 {interval} 條一條計曲線",
   "legendContourCount": "{count, plural, other {# 條等高線}}",
   "legendNoContours": "無等高線",
   "legendWaterPattern": "{pattern, select, lines {線條水面} ripples {波紋水面} dots {點狀水面} other {{pattern}水面}}",

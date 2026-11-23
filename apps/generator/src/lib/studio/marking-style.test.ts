@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, landStroke } from "@topostack/core";
-import { markingCap, markingColor, markingDash, markingStyleKey, markingWidth } from "$lib/studio/marking-style";
+import { markingCap, markingColor, markingDash, markingStyleKey } from "$lib/studio/marking-style";
 
 const style = DEFAULT_PROJECT.lineStyle;
 
@@ -20,9 +20,7 @@ describe("marking style", () => {
     expect(markingCap({ kind: "road", transportationClass: "covered-rail" }, squared)).toBe("round");
   });
 
-  it("uses the line style for widths and dashes", () => {
-    expect(markingWidth({ kind: "trail", transportationClass: "trail" }, style)).toBe(style.trailMm);
-    expect(markingWidth({ kind: "water" }, style)).toBe(style.waterMm);
+  it("uses the line style for dash cadence", () => {
     expect(markingDash({ kind: "road", transportationClass: "major-road" }, style)).toBeUndefined();
     expect(markingDash({ kind: "boundary" }, style)).toBe(`${Math.max(style.boundaryMm * 8, 1.6)} ${Math.max(style.boundaryMm * 5, 1)}`);
     expect(markingDash({ kind: "trail", transportationClass: "trail" }, { ...style, trailPattern: "solid" })).toBeUndefined();
@@ -31,7 +29,6 @@ describe("marking style", () => {
 
   it("draws public land boundaries with their class's stroke, as the export does", () => {
     expect(markingStyleKey({ operation: "engrave", kind: "land", landClass: "blm" })).toBe("land");
-    expect(markingWidth({ kind: "land", landClass: "national-park" }, style)).toBe(landStroke("national-park", style).widthMm);
     expect(markingDash({ kind: "land", landClass: "national-park" }, style)).toBeUndefined();
     expect(markingDash({ kind: "land", landClass: "blm" }, style)).toBe(landStroke("blm", style).dash!.join(" "));
   });

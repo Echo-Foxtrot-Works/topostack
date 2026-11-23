@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { plaqueFootprint, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
+  import { SCORE_BURN_WIDTH_MM, plaqueFootprint, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
   import { markingPath, pointsToPath } from "$lib/studio/svg-path";
   import { availablePlaceables, hiddenByPrefix, type PlacementContext } from "./placeables";
   import PlacementMarking from "./PlacementMarking.svelte";
@@ -66,7 +66,7 @@
 <g data-placement-artwork>
   <g mask={`url(#${id}-before-title)`}>
     {#if project.outputMode === "engraving"}
-      <g fill="none" stroke="#6b4a2d" stroke-width={geometry.lineStyle.contourMm}>
+      <g fill="none" stroke="#6b4a2d" stroke-width={SCORE_BURN_WIDTH_MM}>
         {#each layers.slice(1) as layer (layer.id)}
           {#each layer.polygons as polygon}<path d={[polygon.outer, ...polygon.holes].map(ring => `${pointsToPath(ring)} Z`).join(" ")} />{/each}
         {/each}

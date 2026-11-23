@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Predogled ploskovnega graviranja",
   "engravingZoomControls": "Kontrolniki povečave graviranja",
   "resetEngravingView": "Ponastavi pogled graviranja",
-  "legendMinorContour": "Pomožna plastnica",
-  "legendIndexEvery": "Glavna vsaka {interval}.",
   "legendContourCount": "{count, plural, one {# plastnica} two {# plastnici} few {# plastnice} other {# plastnic}}",
   "legendNoContours": "Ni plastnic",
   "legendWaterPattern": "{pattern, select, lines {voda s črtami} ripples {voda z valovi} dots {voda s pikami} other {voda: {pattern}}}",

@@ -36,7 +36,7 @@
   "buildingWidth": "Šířka obrysu budov",
   "buildingsHint": "Obrysy budov se gravírují od přiblížení mapy {zoom}.",
   "rail": "Železnice",
-  "railHint": "Povrchové koleje mají šířku místních silnic. Zakryté úseky se zobrazují tenčí přerušovanou čarou.",
+  "railHint": "Na nezakrytých tratích se tam, kde je místo, zobrazují pražce. Zakryté úseky jsou čárkované.",
   "transportationLabels": "Popisky dopravy",
   "stateProvinceBoundariesName": "Hranice států a provincií",
   "stateProvinceBoundaries": "Hranice států/provincií",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Vypnutím celku jej vynecháte ze šablon a hranic, například les kolem parku. Seznam uvádí {count} největších.",
   "publicLandPaint": "Barvení veřejných pozemků",
   "landPaintNote": "Každý zapnutý druh dostane papírovou šablonu pro každý panel, vyříznutou podle pozemků, které zůstanou po sestavení viditelné. Kde se druhy překrývají, barví ten konkrétnější: park nad divočinou a lesem kolem něj. Veřejné pozemky USA z databáze USGS PAD-US.",
-  "strokeWidthNote": "Šířky tahů jsou fyzické hodnoty SVG. Výsledná šířka rytí závisí také na zaostření, výkonu, rychlosti, materiálu a na tom, zda software laseru považuje tahy za osy, nebo vyplněné tvary."
+  "strokeWidthNote": "Náhled znázorňuje stopu laseru o šířce 0,20 mm. Nastavení šířky ovlivňuje vzhled SVG. Skutečná šířka stopy závisí na zaostření, výkonu, rychlosti a materiálu."
 }

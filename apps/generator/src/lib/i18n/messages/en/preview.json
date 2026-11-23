@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Flat engraving preview",
   "engravingZoomControls": "Engraving zoom controls",
   "resetEngravingView": "Reset engraving view",
-  "legendMinorContour": "Minor contour",
-  "legendIndexEvery": "Index every {interval}",
   "legendContourCount": "{count, plural, other {# contours}}",
   "legendNoContours": "No contours",
   "legendWaterPattern": "{pattern, select, lines {lines water} ripples {ripples water} dots {dots water} other {{pattern} water}}",

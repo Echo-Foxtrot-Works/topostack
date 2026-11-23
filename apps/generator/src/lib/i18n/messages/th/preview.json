@@ -21,8 +21,6 @@
   "flatEngravingPreview": "ตัวอย่างแกะสลักแบบเรียบ",
   "engravingZoomControls": "ตัวควบคุมการซูมงานแกะสลัก",
   "resetEngravingView": "รีเซ็ตมุมมองงานแกะสลัก",
-  "legendMinorContour": "เส้นชั้นความสูงย่อย",
-  "legendIndexEvery": "เส้นหลักทุก {interval}",
   "legendContourCount": "{count, plural, other {# เส้นชั้นความสูง}}",
   "legendNoContours": "ไม่มีเส้นชั้นความสูง",
   "legendWaterPattern": "{pattern, select, lines {น้ำลายเส้น} ripples {น้ำลายระลอก} dots {น้ำลายจุด} other {น้ำลาย {pattern}}}",

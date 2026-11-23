@@ -36,7 +36,7 @@
   "buildingWidth": "Building outline width",
   "buildingsHint": "Engrave building footprints at map zoom {zoom} and closer.",
   "rail": "Railways",
-  "railHint": "Surface tracks use the local road width. Covered tracks appear as thinner dashes.",
+  "railHint": "Open tracks use spaced cross-ties where there is room. Covered tracks use dashes.",
   "transportationLabels": "Transportation labels",
   "stateProvinceBoundariesName": "State and province boundaries",
   "stateProvinceBoundaries": "State / province boundaries",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Turn a unit off to leave it out of the paint templates and boundaries, such as the forest around a park. The largest {count} are listed.",
   "publicLandPaint": "Public land paint",
   "landPaintNote": "Each kind turned on gets a paper template per panel, cut to the land that stays visible after assembly. Where kinds overlap, the more specific one paints: a park over the wilderness and forest around it. US public lands from the USGS PAD-US database.",
-  "strokeWidthNote": "Stroke widths are physical SVG values. Final engraved width also depends on focus, power, speed, material, and whether your laser software treats strokes as centerlines or filled shapes."
+  "strokeWidthNote": "The preview shows a representative 0.20 mm burn. Width settings style the SVG. Actual score width depends on focus, power, speed and material."
 }

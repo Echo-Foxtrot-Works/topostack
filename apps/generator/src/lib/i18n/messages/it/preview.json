@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Anteprima incisione piana",
   "engravingZoomControls": "Controlli zoom incisione",
   "resetEngravingView": "Reimposta vista incisione",
-  "legendMinorContour": "Curva intermedia",
-  "legendIndexEvery": "Direttrice ogni {interval}",
   "legendContourCount": "{count, plural, one {# curva} other {# curve}}",
   "legendNoContours": "Nessuna curva",
   "legendWaterPattern": "{pattern, select, lines {acqua a linee} ripples {acqua a increspature} dots {acqua a punti} other {acqua {pattern}}}",

@@ -3,7 +3,7 @@ import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, FeatureBudgetExceededError, yieldForCancellation } from "$lib/domain/feature-budget";
 import { buildingMarkings, readBuildingFragments, type BuildingFragment } from "$lib/domain/building-outlines";
 import { railContextTiles, stationPassages, type RailContext } from "$lib/domain/covered-rail";
-import { classifyTransportation } from "./transportation-classification";
+import { classifyTransportation, transportGrade } from "./transportation-classification";
 import { boundsOverlap, clipPolyline, cropBoundary, preparePolygons, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
 import { createArchive, type Archive } from "$lib/domain/archive";
 import { classifyRings, VectorTile, type VectorTileFeature, type VectorTileLayer } from "@mapbox/vector-tile";
@@ -210,7 +210,7 @@ async function loadVectorWindow(
             const id = [tile.z, tile.worldX, tile.y, layerName, feature.id ?? featureIndex, lineIndex, clippedIndex].join("-");
             const marking: MarkingFeature = {
               id, kind, operation: kind === "water" ? "score" : "engrave",
-              ...(transportationClass ? { transportationClass } : {}), ...(label ? { label } : {}),
+              ...(transportationClass ? { transportationClass, ...transportGrade(properties) } : {}), ...(label ? { label } : {}),
               points: clippedLine.map(project),
             };
             if (tunnelCandidate) { rail.tunnels.push(marking); return; }

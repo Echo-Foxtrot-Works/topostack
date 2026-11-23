@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { cropRadiusMm, fittedWaterInsert, visibleMarkings, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
-  import { markingCap, markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
+  import { SCORE_BURN_WIDTH_MM, cropRadiusMm, fittedWaterInsert, visibleMarkings, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
+  import { markingCap, markingColor, markingDash } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
   import AirspaceLevelArtwork from "$lib/studio/AirspaceLevelArtwork.svelte";
   import { hiddenByPrefix } from "./placeables";
@@ -60,9 +60,9 @@
   {#each markings as marking}
     {#if marking.label && marking.points[0]}
       {@const text = labelPaths(marking)}
-      {#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} />{/if}
+      {#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} />{/if}
     {:else if marking.points.length > 1}
-      <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={markingCap(marking, geometry.lineStyle)} />
+      <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={markingCap(marking, geometry.lineStyle)} />
     {/if}
   {/each}
 {/snippet}
@@ -70,7 +70,7 @@
 <svg class="stack-top-view" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} role="img" aria-label={t("water.topDownView")}>
   {#if outputMode === "engraving"}
     {#if cropShape === "circle"}<circle cx="0" cy="0" r={cropRadiusMm(geometry)} fill="#e8cfaa" />{:else}<rect x={-geometry.widthMm / 2} y={-geometry.heightMm / 2} width={geometry.widthMm} height={geometry.heightMm} fill="#e8cfaa" />{/if}
-    {#if !bare}<g fill="none" stroke="#6b4a2d" stroke-width={geometry.lineStyle.contourMm}>
+    {#if !bare}<g fill="none" stroke="#6b4a2d" stroke-width={SCORE_BURN_WIDTH_MM}>
       {#each geometry.layers.slice(1) as layer (layer.id)}
         {#each layer.polygons as polygon}<path d={ringsPath(polygon)} />{/each}
       {/each}

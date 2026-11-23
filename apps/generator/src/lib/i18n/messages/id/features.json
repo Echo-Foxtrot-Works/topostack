@@ -36,7 +36,7 @@
   "buildingWidth": "Lebar garis luar bangunan",
   "buildingsHint": "Denah bangunan diukir mulai tingkat zoom peta {zoom}.",
   "rail": "Rel kereta",
-  "railHint": "Rel di permukaan memakai lebar jalan lokal. Bagian yang tertutup digambar dengan garis putus-putus yang lebih tipis.",
+  "railHint": "Rel terbuka menampilkan bantalan dengan jarak teratur jika ruang cukup. Rel tertutup digambar dengan garis putus-putus.",
   "transportationLabels": "Label jalan",
   "stateProvinceBoundariesName": "Batas negara bagian dan provinsi",
   "stateProvinceBoundaries": "Batas negara bagian/provinsi",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Matikan unit untuk mengecualikannya dari stensil dan batas, misalnya hutan di sekitar taman. {count} unit terbesar ditampilkan.",
   "publicLandPaint": "Cat lahan publik",
   "landPaintNote": "Setiap jenis yang aktif mendapat stensil kertas per panel, dipotong sesuai lahan yang tetap terlihat setelah perakitan. Jika jenis tumpang tindih, yang lebih spesifik yang dicat: taman di atas kawasan alam liar dan hutan di sekitarnya. Lahan publik AS dari basis data USGS PAD-US.",
-  "strokeWidthNote": "Lebar goresan adalah nilai fisik SVG. Lebar grafir akhir juga bergantung pada fokus, daya, kecepatan, bahan, dan apakah perangkat lunak laser Anda memperlakukan goresan sebagai garis tengah atau bentuk terisi."
+  "strokeWidthNote": "Pratinjau menampilkan contoh jejak laser selebar 0,20 mm. Pengaturan lebar menentukan tampilan SVG. Lebar jejak sebenarnya bergantung pada fokus, daya, kecepatan, dan bahan."
 }

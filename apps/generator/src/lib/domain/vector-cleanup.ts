@@ -224,7 +224,7 @@ export function cleanBoundaryMarkings(markings: MarkingFeature[], minimumFeature
 export function stitchTransportationMarkings(markings: MarkingFeature[]): MarkingFeature[] {
   const transportation = markings.filter((marking) => marking.transportationClass && marking.points.length > 1);
   const other = markings.filter((marking) => !marking.transportationClass || marking.points.length < 2);
-  const stitched = joinPaths(transportation, (marking) => [marking.kind, marking.transportationClass, marking.label ?? ""].join("\u0000"))
+  const stitched = joinPaths(transportation, (marking) => [marking.kind, marking.transportationClass, marking.transportLevel ?? 0, marking.isBridge ?? false, marking.label ?? ""].join("\u0000"))
     .map(({ feature, points }) => ({ ...feature, points }));
   return [...stitched, ...other];
 }

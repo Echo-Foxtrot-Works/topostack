@@ -54,6 +54,7 @@ import EngravingPreview from "$lib/studio/EngravingPreview.svelte";
 import ThreePreview from "$lib/studio/ThreePreview.svelte";
 import ThreePreviewHost from "$lib/studio/testing/ThreePreviewHost.svelte";
 import * as THREE from "three";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const resizeCallbacks: ResizeObserverCallback[] = [];
@@ -80,16 +81,18 @@ describe("preview resource cleanup", () => {
     // The scene rebuild is deferred briefly so rapid edits do not re-extrude.
     await vi.waitFor(() => expect(renderer.render.mock.calls.some(([scene]) => {
       let lines = 0;
-      (scene as THREE.Scene).traverse((object) => { if (object instanceof THREE.Line) lines += 1; });
+      (scene as THREE.Scene).traverse((object) => { if (object instanceof LineSegments2) lines += 1; });
       return lines > 0;
     })).toBe(true));
     const scene = renderer.render.mock.lastCall![0] as THREE.Scene;
     let lineObjects = 0;
     let segments = 0;
     scene.traverse((object) => {
-      if (!(object instanceof THREE.Line)) return;
+      if (!(object instanceof LineSegments2)) return;
       lineObjects += 1;
-      if ((object.material as THREE.LineBasicMaterial).color.getHex() !== 0x21170f) segments += object.geometry.getAttribute("position").count / 2;
+      expect(object.material.worldUnits).toBe(true);
+      expect(object.material.linewidth).toBe(0.2);
+      if (object.material.color.getHex() !== 0x21170f) segments += object.geometry.getAttribute("instanceStart").count;
     });
     const polylines = geometry.layers.flatMap((layer) => layer.markings.filter((marking) => !marking.filled && marking.points.length > 1));
     // Every segment survives batching, in far fewer objects than one per marking.
@@ -118,6 +121,21 @@ describe("preview resource cleanup", () => {
     expect(path.getAttribute("d")?.match(/M/g)).toHaveLength(2);
     expect(path.getAttribute("fill-rule")).toBe("evenodd");
     expect(path.getAttribute("stroke")).toBe("none");
+  });
+
+  it.each(["cut", "flat"])("uses one burn width for every transport class in the %s preview", mode => {
+    const project = { ...DEFAULT_PROJECT, lineStyle: { ...DEFAULT_PROJECT.lineStyle, majorRoadMm: 1, localRoadMm: 0.5 } };
+    const geometry = generateGeometry(project, createSamplePreviewSource());
+    const classes = ["major-road", "local-road", "rail", "covered-rail"] as const;
+    geometry.layers = [{ ...geometry.layers[0]!, markings: classes.map((transportationClass, y) => ({
+      id: transportationClass, kind: "road", operation: "engrave", transportationClass, points: [{ x: 0, y }, { x: 10, y }],
+    })) }];
+    const target = document.createElement("div");
+    component = mode === "cut" ? mount(TwoDPreview, { target, props: { geometry, selectedLayer: 0 } })
+      : mount(EngravingPreview, { target, props: { geometry, project, cropShape: "rectangle" } });
+    flushSync();
+    const paths = [...target.querySelectorAll("[data-transportation-class] path")];
+    expect(paths.map(path => path.getAttribute("stroke-width"))).toEqual(classes.map(() => "0.2"));
   });
 
   it("draws the same circular contour paths as the engraving SVG", async () => {
@@ -176,9 +194,11 @@ describe("preview resource cleanup", () => {
       const vertices: number[][] = [];
       let symbolWidth = 0;
       scene?.traverse((object) => {
-        if (object instanceof THREE.LineSegments && object.material.color.getHexString() === "62442f") {
-          const positions = object.geometry.getAttribute("position");
-          for (let index = 0; index < positions.count; index++) vertices.push([Number(positions.getX(index).toFixed(3)), positions.getY(index)]);
+        if (object instanceof LineSegments2 && object.material.color.getHexString() === "39291d") {
+          const starts = object.geometry.getAttribute("instanceStart"), ends = object.geometry.getAttribute("instanceEnd");
+          for (let index = 0; index < starts.count; index++) {
+            for (const positions of [starts, ends]) vertices.push([Number(positions.getX(index).toFixed(3)), positions.getY(index)]);
+          }
         }
         if (object instanceof THREE.Mesh && object.geometry instanceof THREE.ShapeGeometry && object.material.color.getHexString() === "2b2119") {
           object.geometry.computeBoundingBox();
@@ -290,14 +310,14 @@ describe("preview resource cleanup", () => {
     component = mount(ThreePreview, { target, props: { geometry, exploded: 0 } });
     flushSync();
     const renderer = three.renderers[0]!;
-    const labelLines: THREE.Line[] = [];
-    const gridLines: THREE.Line[] = [];
+    const labelLines: LineSegments2[] = [];
+    const gridLines: LineSegments2[] = [];
     await vi.waitFor(() => {
       labelLines.length = 0; gridLines.length = 0;
       expect(renderer.render).toHaveBeenCalled();
       (renderer.render.mock.lastCall![0] as THREE.Scene).traverse(object => {
-        if (!(object instanceof THREE.Line)) return;
-        const material = object.material as THREE.LineBasicMaterial;
+        if (!(object instanceof LineSegments2)) return;
+        const material = object.material;
         if (material.color.getHex() === 0x21170f) labelLines.push(object);
         if (material.color.getHex() === 0x34404b) gridLines.push(object);
       });
@@ -306,7 +326,7 @@ describe("preview resource cleanup", () => {
     });
     expect(labelLines.every(line => line.geometry.getAttribute("position").count > 2)).toBe(true);
     for (const line of gridLines) {
-      const material = line.material as THREE.LineDashedMaterial;
+      const material = line.material;
       // At fitted zoom, marks need a useful duty cycle rather than tiny
       // capless segments that disappear between screen pixels.
       expect(material.dashSize / (material.dashSize + material.gapSize)).toBeGreaterThanOrEqual(0.4);
