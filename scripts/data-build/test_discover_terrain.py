@@ -151,6 +151,44 @@ class RegisterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'manifest mismatch'):
             terrain_release.load_registry(self.catalog, self.pins)
 
+    def test_availability_changes_only_the_release_and_build_replays_preserve_it(self):
+        import terrain_release
+        entry = self.entry()
+        entry['source'].pop('availability', None)
+        mod.register([entry], self.catalog, self.pins)
+        before = json.loads(self.catalog.read_text())
+        previous_manifest = self.catalog.parent / before['releaseManifest']
+        previous_bytes = previous_manifest.read_bytes()
+        source_id = entry['source']['id']
+
+        terrain_release.set_availability([source_id], 'development', self.catalog, self.pins)
+        restricted = self.catalog.read_bytes()
+        after = json.loads(restricted)
+        self.assertEqual(after['records'], before['records'])
+        expected = [{**source, 'availability': 'development'} if source['id'] == source_id else source
+                    for source in before['sources']]
+        self.assertEqual(after['sources'], expected)
+        self.assertNotEqual(after['releaseManifest'], before['releaseManifest'])
+        self.assertEqual(previous_manifest.read_bytes(), previous_bytes)
+        mod.register([entry], self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), restricted)
+        with self.assertRaisesRegex(ValueError, 'Unknown registered'):
+            terrain_release.set_availability([source_id, 'unknown-v1'], 'all', self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), restricted)
+        terrain_release.set_availability([source_id], 'all', self.catalog, self.pins)
+        restored, _ = terrain_release.load_registry(self.catalog, self.pins)
+        self.assertEqual(restored[-1]['availability'], 'all')
+
+    def test_availability_change_requires_outstanding_approval(self):
+        import terrain_release
+        entry = self.entry()
+        entry['source'].update(availability='development', approval={'required': True})
+        mod.register([entry], self.catalog, self.pins)
+        before = self.catalog.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'approval reference'):
+            terrain_release.set_availability([entry['source']['id']], 'all', self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), before)
+
 
 if __name__ == '__main__':
     unittest.main()

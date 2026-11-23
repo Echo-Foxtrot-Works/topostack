@@ -2,25 +2,11 @@ import { distanceToSegment, groundWidthMFor, polylineLength, ringBounds, type Ge
 import { fittingTileWindow, worldXToLon, worldYToLat, type TileWindow } from "$lib/domain/tile-math";
 import { stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 
+export { classifyRail } from "./transportation-classification";
+
 // Only the fallback for tiles that omit OSM's covered tag needs these limits.
 const MAX_PASSAGE_M = 600;
 const STATION_DISTANCE_M = 160;
-const RAIL_DETAILS = new Set(["rail", "subway", "light_rail", "tram", "narrow_gauge", "monorail", "funicular", "preserved"]);
-const RAIL_SERVICES = new Set(["yard", "siding", "spur", "crossover"]);
-const negative = (value: unknown) => value === false || value === "no";
-const affirmative = (value: unknown) => value === true || value === "yes";
-
-/** A generic tunnel flag alone is only a candidate. Keep genuine underground services out of the fallback. */
-export function classifyRail(tags: Record<string, unknown>): "rail" | "covered-rail" | "rail-tunnel" | undefined {
-  const detail = String(tags.kind_detail || "rail");
-  if (!RAIL_DETAILS.has(detail) || RAIL_SERVICES.has(String(tags.service)) || tags.location === "underground" || Number(tags.level) < 0) return undefined;
-  const covered = affirmative(tags.covered) || affirmative(tags.is_covered) || tags.covered === "arcade" || tags.covered === "colonnade" || tags.tunnel === "building_passage";
-  if (covered) return "covered-rail";
-  if (!affirmative(tags.is_tunnel) && !affirmative(tags.tunnel)) return "rail";
-  if (detail === "subway" || Number(tags.layer) < 0 || negative(tags.covered) || negative(tags.is_covered)) return undefined;
-  return "rail-tunnel";
-}
-
 /** Read nearby rail and station evidence even when the maker crops tightly around the middle of a station. */
 export function railContextTiles(window: TileWindow, bounds: GeoBounds): { tiles: TileWindow["tiles"]; complete: boolean } {
   const margin = (window.eastX - window.westX) * (MAX_PASSAGE_M + STATION_DISTANCE_M) / groundWidthMFor(bounds);

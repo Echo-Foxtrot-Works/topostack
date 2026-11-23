@@ -41,8 +41,8 @@ describe("survey catalog contract", () => {
 });
 
 describe("terrain catalog contract", () => {
-  it("accepts registered bare-earth terrain sources", () => {
-    expect(validateTerrainCatalog(terrainCatalog).sources).toEqual(terrainCatalog.sources.map((item) => ({ ...item, availability: "all" })));
+  it("preserves explicit deployment scopes and defaults the rest of the terrain catalog to all", () => {
+    expect(validateTerrainCatalog(terrainCatalog).sources).toEqual(terrainCatalog.sources.map((item) => ({ availability: "all", ...item })));
   });
   it("accepts Japanese heights and ocean grids with their own value ranges", () => {
     const base = terrainCatalog.sources[0]!;

@@ -24,7 +24,7 @@ The sea-level contour then runs between the two margins, on the vector shore. At
   - **Zooms:** z0–9 PNG tiles in Terrarium encoding.
   - **Values:** elevations from −11,000 to +10 m, rounded to whole metres.
   - **Masking:** land (TID 0) and every sample at or above 0 m are transparent, and tiles without ocean are omitted.
-  - **Size:** 289,574 tiles cover the world's ocean at z0–9.
+  - **Size:** 220,138 addressed tiles cover the world's ocean at z0–9 in the published archive.
 - **Building:**
   - **Resampling:** depth is reprojected to Web Mercator per z5 block, bilinear for depth and nearest for TID. The z6–8 levels are 2×2 means of valid samples, and z0–4 come from one global z5 mosaic.
   - **Tile boundaries:** every z9 tile lies inside one of GEBCO's eight 90° GeoTIFF tiles.

@@ -1,5 +1,15 @@
 import { unzlibSync } from "fflate";
 
+export const TERRAIN_STATUS_HEADER = "x-topostack-terrain-status";
+export const TERRAIN_NO_DATA = "no-data";
+
+export class TerrainTileNoDataError extends Error {
+  constructor() {
+    super("Terrain tile contains no elevation samples.");
+    this.name = "TerrainTileNoDataError";
+  }
+}
+
 const TILE_SIZE = 256;
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
@@ -100,7 +110,14 @@ export function decodeTerrainPng(bytes: Uint8Array, allowNoData = false): Float3
       continue;
     }
     const elevation = pixels[pixel]! * 256 + pixels[pixel + 1]! + pixels[pixel + 2]! / 256 - 32768;
-    if (elevation === -32768) throw invalid();
+    if (elevation === -32768) {
+      // A valid, completely empty Mapzen tile encodes the sentinel in every
+      // pixel. A partial sentinel tile still fails strict validation.
+      if (index === 0 && pixels.every((byte, offset) => byte === (channels === 4 && offset % 4 === 3 ? 255 : 0))) {
+        throw new TerrainTileNoDataError();
+      }
+      throw invalid();
+    }
     values[index] = elevation;
   }
   return values;

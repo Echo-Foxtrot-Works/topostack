@@ -202,10 +202,11 @@
     }
   },
   "registryVersion": 1,
-  "releaseManifest": "terrain-releases/1ede3dc0434478eee2e1ced8e84994d77d14094e051c3a8d812d9523c6432695.json",
+  "releaseManifest": "terrain-releases/248548c1bfafb5a24642356665e74a8833663102a4b5e39f199762f2bef32baa.json",
   "sources": [
     {
       "acquisitionYear": 2020,
+      "availability": "development",
       "bounds": [
         -78.97,
         46.44,
@@ -225,6 +226,7 @@
       "verticalDatum": "CGVD2013"
     },
     {
+      "availability": "development",
       "bounds": [
         -82.57,
         46.56,
@@ -244,6 +246,7 @@
       "verticalDatum": "CGVD2013"
     },
     {
+      "availability": "development",
       "bounds": [
         -82.705078125,
         46.55886030311719,

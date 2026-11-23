@@ -1,9 +1,9 @@
 import packageJson from "../../package.json";
-import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
+import { decodeTerrainPng, TERRAIN_NO_DATA, TERRAIN_STATUS_HEADER, TerrainTileNoDataError } from "@topostack/data-contracts/terrain-png";
 import { BodyTooLargeError, readBounded } from "../body";
 import { headCache, readCache, writeCache } from "../cache";
 import { edgeCacheKey, matchEdge, putEdge, teeToEdge } from "../edge-cache";
-import { etagMatches, rateLimitExceeded, UpstreamError, upstreamErrorResponse, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
+import { etagMatches, json, rateLimitExceeded, UpstreamError, upstreamErrorResponse, upstreamFailure, upstreamRejected, upstreamSignal } from "../http";
 import { hex } from "../hex";
 
 const MAX_TERRAIN_BYTES = 2_000_000;
@@ -85,7 +85,7 @@ function readTerrainCache(request: Request, env: Env, key: string): Promise<R2Ob
   return etag ? readCache(env.MAP_CACHE, key, "terrain", { etagDoesNotMatch: etag }) : readCache(env.MAP_CACHE, key, "terrain");
 }
 
-/** One tile from the terrain origin, checked to be a terrain PNG. Throws UpstreamError when it is not usable. */
+/** Validate an origin tile and distinguish a confirmed elevation gap from an upstream failure. */
 async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promise<{ body: Uint8Array<ArrayBuffer>; imagerySources: string }> {
   let upstream: Response;
   try {
@@ -114,7 +114,10 @@ async function fetchUpstreamTile(request: Request, env: Env, tile: Tile): Promis
     throw upstreamFailure(error, "Terrain origin");
   }
   try { decodeTerrainPng(body); }
-  catch { throw new UpstreamError(502, "Terrain origin returned an invalid tile"); }
+  catch (error) {
+    if (error instanceof TerrainTileNoDataError) throw error;
+    throw new UpstreamError(502, "Terrain origin returned an invalid tile");
+  }
   return { body, imagerySources };
 }
 
@@ -160,7 +163,7 @@ async function terrainHeadResponse(request: Request, env: Env, key: string, edge
     return etagMatches(request.headers.get("if-none-match"), object.httpEtag) ? notModified(headers) : new Response(null, { headers });
   }
   // Uncached tile: 200 means "addressable", not "a GET will succeed". The origin
-  // has not been contacted, so a later GET may still answer 502/504. Clients
+  // has not been contacted, so a later GET may still answer 404/502/504. Clients
   // must read `x-topostack-cache: MISS` as "unverified". RFC 9110 section 9.3.2
   // lets HEAD omit fields (etag, length) only known after generating content,
   // and no-store keeps shared caches from pinning this validator-less answer.
@@ -204,8 +207,13 @@ export async function terrainResponse(request: Request, env: Env, ctx: Execution
   let fetched: Awaited<ReturnType<typeof fetchUpstreamTile>>;
   try { fetched = await fetchUpstreamTile(request, env, tile); }
   catch (error) {
-    if (!(error instanceof UpstreamError)) throw error;
-    return (await staleResponse(env, key, cached)) ?? upstreamErrorResponse(error);
+    if (!(error instanceof UpstreamError) && !(error instanceof TerrainTileNoDataError)) throw error;
+    const stale = await staleResponse(env, key, cached);
+    if (stale) return stale;
+    if (error instanceof TerrainTileNoDataError) {
+      return json({ error: error.message, code: TERRAIN_NO_DATA }, { status: 404, headers: { [TERRAIN_STATUS_HEADER]: TERRAIN_NO_DATA, "cache-control": "no-store" } });
+    }
+    return upstreamErrorResponse(error);
   }
   const { body, imagerySources } = fetched;
   const etag = await r2Etag(body);

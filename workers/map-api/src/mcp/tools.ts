@@ -131,7 +131,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: "check_coverage",
     title: "Check data coverage",
-    description: "List the high-resolution terrain and surveyed lake floors that cover an area, to set expectations about detail before planning.",
+    description: "List candidate data sources for an area.",
     inputSchema: { type: "object", required: ["area"], additionalProperties: false, properties: { area: AREA_SCHEMA } },
     outputSchema: coverageResultSchema(ATTRIBUTION_SCHEMA),
     annotations: readOnly("Check data coverage"),
@@ -141,10 +141,10 @@ export const TOOLS: ToolDefinition[] = [
       const ground = areaGround(args.area);
       if ("errors" in ground) throw new AgentError(422, "The area is invalid.", ground.errors);
       const { attribution, ...coverage } = coverageResult(areaCoverage(ground.bounds), publicOrigin(context));
-      const detail = coverage.terrain.highResolution.length ? `High-resolution terrain: ${coverage.terrain.highResolution.map(({ name, resolutionM }) => `${name} (${resolutionM} m)`).join("; ")}.` : "No high-resolution terrain here; the global terrain is used.";
+      const detail = coverage.terrain.highResolution.length ? `Regional terrain candidates include ${coverage.terrain.highResolution.map(({ name, resolutionM }) => `${name} (${resolutionM} m)`).join(", ")}.` : coverage.terrain.base + ".";
       const lakes = coverage.lakeSurveys.length ? `Surveyed lake floors: ${coverage.lakeSurveys.map(({ name }) => name).join("; ")}.` : "No surveyed lake floors here; lake depths are modeled.";
-      const aviation = coverage.aviation ? `FAA aviation detail available (NASR cycle ${coverage.aviation.nasrCycle}; decorative, not for navigation).` : "No FAA aviation detail here (US and territories only).";
-      const lands = coverage.publicLands.length ? `Public land outlines available from ${coverage.publicLands.map(({ name, version }) => `${name} (${version})`).join(" and ")} for paint templates and engraved boundaries.` : "No PAD-US or CPCAD public land here; OpenStreetMap national parks, nature reserves and military land are used where mapped, without names.";
+      const aviation = coverage.aviation ? `FAA NASR cycle ${coverage.aviation.nasrCycle} may cover this crop. Aviation detail is decorative, never for navigation.` : "This crop is outside the registered FAA regions.";
+      const lands = coverage.publicLands.length ? `The studio checks ${coverage.publicLands.map(({ name, version }) => `${name} (${version})`).join(" and ")} for public land outlines.` : "The studio uses OpenStreetMap national parks, nature reserves and military land where mapped.";
       return { structured: { ...coverage, attribution }, text: [detail, lakes, aviation, lands, ...coverage.notes, `Data: ${attribution.text}`].join("\n") };
     },
   },

@@ -283,9 +283,9 @@ describe("ocean depth coverage", () => {
     const coverage = areaCoverage({ west: 138.4, south: 34.6, east: 138.9, north: 35.1 }, { terrain: [land, ocean], surveys: [] });
     expect(coverage.terrain.highResolution.map(({ id }) => id)).toEqual([]);
     expect(coverage.terrain.ocean.map(({ id }) => id)).toEqual(["ocean-test-v1"]);
-    expect(coverage.notes[0]).toContain("Sea floor depth comes from Ocean grid");
+    expect(coverage.notes[0]).toContain("Ocean grid can supply sea floor elevations");
     expect(attributionFor("https://topostack.test", coverage).sources.map(({ name }) => name)).toContain("Ocean grid");
     const inland = areaCoverage({ west: 138.4, south: 34.6, east: 138.9, north: 35.1 }, { terrain: [], surveys: [] });
-    expect(inland.notes[0]).toContain("open sea is flat");
+    expect(inland.notes[0]).toContain("base terrain");
   });
 });

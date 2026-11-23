@@ -108,6 +108,12 @@ describe("lands source registration", () => {
     expect(landSourcesCovering(validateLandsSources(registration), { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toEqual(expected);
   });
 
+  it("accepts unwrapped copies of the remote island boxes in a date-line crop", () => {
+    const sources = validateLandsSources(registration);
+    expect(landSourcesCovering(sources, { west: 179.9, east: 182.8, south: 28.1, north: 28.3 })).toEqual(["padus"]);
+    expect(landSourcesCovering(sources, { west: -194, east: -179.9, south: 19.2, north: 19.4 })).toEqual(["padus"]);
+  });
+
   it("rejects a registration that is not an object", () => {
     expect(() => validateLandsSources("public-lands")).toThrow();
   });
@@ -115,7 +121,9 @@ describe("lands source registration", () => {
   it.each([
     ["Rocky Mountain National Park", -105.68, 40.34], ["Moab, UT", -109.55, 38.57], ["Shreveport, LA", -93.75, 32.45],
     ["Northwest Angle, MN", -95.1, 49.35], ["Key West, FL", -81.78, 24.55], ["Denali", -151.0, 63.1], ["Haleakala", -156.17, 20.71],
-    ["El Yunque", -65.78, 18.3], ["Midway Atoll", -177.38, 28.2],
+    ["El Yunque", -65.78, 18.3], ["Midway Atoll", -177.38, 28.2], ["Wake", 166.64, 19.28],
+    ["Baker", -176.48, 0.19], ["Howland", -176.62, 0.81], ["Jarvis", -160.01, -0.37], ["Johnston", -169.53, 16.73],
+    ["Kingman", -162.40, 6.39], ["Palmyra", -162.08, 5.88], ["Navassa", -75.01, 18.40], ["French Frigate Shoals", -166.28, 23.87],
   ])("covers %s", (_name, lon, lat) => {
     expect(landsCovers(validateLandsSources(registration), { west: lon - 0.01, south: lat - 0.01, east: lon + 0.01, north: lat + 0.01 })).toBe(true);
   });

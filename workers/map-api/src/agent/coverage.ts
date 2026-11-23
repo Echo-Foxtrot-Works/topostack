@@ -4,10 +4,10 @@ import { aviationCovers, type AviationSources } from "@topostack/data-contracts/
 import { landSourcesCovering, type LandsSources } from "@topostack/data-contracts/land-tiles";
 import { aviationSources, landsSources, servedBathymetryArchives, servedTerrainArchives } from "../routes/archive";
 
-/** Which of TopoStack's data sources reach a crop, so an agent can say what detail to expect. */
+/** Candidate sources for a crop. This lookup compares registered extents without reading tiles. */
 export interface AreaCoverage {
   terrain: {
-    /** The global base terrain always covers Web Mercator land. */
+    /** Base elevation service for Web Mercator land. */
     base: string;
     highResolution: Array<{ id: string; name: string; resolutionM: number; license: string }>;
     /** Ocean depth grids, used where the area reaches the sea. */
@@ -15,13 +15,9 @@ export interface AreaCoverage {
   };
   lakeSurveys: Array<{ id: string; name: string; license: string }>;
   roadsAndWater: string;
-  /** FAA airspace, airports, navaids and obstacles, when the crop touches US coverage. */
+  /** FAA release candidate when the crop touches a registered search region. */
   aviation: { name: string; nasrCycle: string; license: string } | null;
-  /**
-   * Public land outlines for paint templates and engraved boundaries: USGS
-   * PAD-US where the crop touches the United States, CPCAD where it touches
-   * Canada. Empty elsewhere, where OpenStreetMap's protected areas stand in.
-   */
+  /** PAD-US and CPCAD candidates selected by their registered search regions. */
   publicLands: Array<{ name: string; version: string; license: string }>;
   notes: string[];
 }
@@ -69,15 +65,16 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   ];
   const notes = [
     ocean.length
-      ? `Sea floor depth comes from ${ocean.map(({ name }) => name).join(" and ")} where the area reaches the sea; lakes use survey or modeled depths.`
-      : "Terrain is land elevation; open sea is flat at sea level and lakes use survey or modeled depths.",
-    ...(terrain.length ? ["High-resolution terrain is used where it covers the area."] : []),
+      ? `${ocean.map(({ name }) => name).join(" and ")} can supply sea floor elevations where it has valid samples. Lakes use survey or modeled depths.`
+      : "Offshore elevations come from the base terrain and can be flat. Lakes use survey or modeled depths.",
+    ...(terrain.length ? ["Valid regional elevation samples replace the base terrain."] : []),
+    ...(aviation || publicLands.length ? ["Aviation and land search regions can include empty crops across a border."] : []),
     ...(surveys.length ? ["Surveyed lake floors here can add sheets below the shoreline when water depth is on; the studio counts them."] : []),
   ];
   return {
-    terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: terrain, ocean },
+    terrain: { base: "Mapzen Terrain Tiles (source and ground resolution vary by location)", highResolution: terrain, ocean },
     lakeSurveys: surveys,
-    roadsAndWater: "OpenStreetMap via Protomaps, worldwide",
+    roadsAndWater: "OpenStreetMap via Protomaps, up to zoom 12. Local mapping and generalization affect detail.",
     aviation,
     publicLands,
     notes,

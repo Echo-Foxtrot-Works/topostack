@@ -817,6 +817,8 @@ export interface WaterSurfaceIR {
 
 export interface TerrainSelection {
   policy: "terrain-priority-v1";
+  /** Requested and delivered Mapzen tile zoom, after any native NoData fallback. */
+  mapzenZoom?: { requested: number; used: number };
   sources: Array<{ id: string; name: string; fraction: number; nativeResolutionM?: number; verticalDatum: string }>;
   attempts: Array<{ id: string; name: string; status: "selected" | "no-coverage" | "unavailable" }>;
 }
@@ -1246,6 +1248,7 @@ export interface AirspaceStackIR {
 /** Why a generation warns; a stable code the studio and agents key their wording and actions on. */
 export type GeometryWarningCode =
   | "TERRAIN_SOURCE_FALLBACK"
+  | "TERRAIN_COARSER_ZOOM"
   | "ELEVATION_REPAIRED"
   | "LOW_RELIEF"
   | "EMPTY_LAYER"

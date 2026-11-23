@@ -153,6 +153,9 @@ describe("public land areas", () => {
     expect(markStaleSourceData(source, { paintTemplates: parksAndForests.paintTemplates }, parks, parksAndForests).landAreas).toBeUndefined();
     expect(markStaleSourceData(source, { paintTemplates: parks.paintTemplates }, parksAndForests, parks)).toBe(source);
     expect(markStaleSourceData(source, { paintTemplates: ["national-park", "water"] }, parks, painting("national-park", "water"))).toBe(source);
+    // Removing the last official match can reveal a mapped OSM preserve.
+    const preserves = painting("preserve");
+    expect(markStaleSourceData(source, { paintTemplates: preserves.paintTemplates }, painting("national-park", "preserve"), preserves).landsStatus).toBeUndefined();
     // A partial load may fit everything once a class is dropped.
     const partial = loaded({ landAreas: [park], landsStatus: "partial" });
     expect(markStaleSourceData(partial, { paintTemplates: parks.paintTemplates }, parksAndForests, parks).landsStatus).toBeUndefined();

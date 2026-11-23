@@ -127,7 +127,7 @@
     <div class="source">
       <h3><a href={landsSources.canada.url}>Canadian Protected and Conserved Areas Database (CPCAD)</a></h3>
       <p>In Canada, the outlines of national parks, provincial and territorial parks, wilderness areas, national wildlife areas and migratory bird sanctuaries, and ecological, private and Indigenous conservation areas come from Environment and Climate Change Canada's CPCAD ({landsSources.canada.date}).</p>
-      <p>Elsewhere, national parks, nature reserves and military land come from OpenStreetMap where they are mapped, credited with the rest of the map data.</p>
+      <p>Where the official archives supply no matching units, OpenStreetMap can supply national parks, nature reserves and military land. These features carry the same OpenStreetMap credit as the rest of the map data.</p>
       <p class="credit"><strong>Credit / license:</strong> {landsSources.canada.license}</p>
     </div>
   </section>
