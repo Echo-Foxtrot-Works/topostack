@@ -1,5 +1,5 @@
 import { aviationRequested, aviationSymbolsFillIn } from "./aviation.js";
-import { sourceRequirements } from "./source-requirements.js";
+import { buildingOutlinesEnabled, sourceRequirements } from "./source-requirements.js";
 import type { GenerationContext } from "./generation-context.js";
 
 export function addSourceWarnings({ config, source, usesWaterDepth, warnings, aviation }: GenerationContext): void {
@@ -19,6 +19,11 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     code: "ELEVATION_REPAIRED",
     message: "Isolated depth spikes in the elevation data were replaced with estimates from nearby terrain. Review the terrain before cutting.",
     messageKey: "elevationRepaired",
+  });
+  if (buildingOutlinesEnabled(config) && source.buildingDetail && source.buildingDetail.zoom < 14) warnings.push({
+    code: "BUILDING_DETAIL_FALLBACK",
+    message: "This map uses generalized building outlines. Some smaller buildings may be missing.",
+    messageKey: "buildingDetailFallback",
   });
   const wantsVectorData = sourceRequirements(config).vectors;
   if (source.vectorStatus === "partial" && wantsVectorData) warnings.push({

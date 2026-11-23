@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Não há terreno de maior resolução para esta área. O mapa usa a fonte de elevação padrão.",
   "terrainCoarserZoom": "Os blocos de elevação mais detalhados estavam vazios. Este mapa usa os blocos de elevação originais no nível de zoom {zoom}.",
   "transportationLabelsOmitted": "Os rótulos de vias não cabem no material exposto. Reduza o tamanho do texto ou o exagero vertical, ou aumente o tamanho da arte.",
+  "buildingDetailFallback": "Este mapa usa contornos simplificados das edificações. Algumas edificações menores podem estar ausentes.",
   "vectorDataPartial": "O limite de elementos de detalhes do mapa foi atingido, então podem faltar estradas, trilhas, linhas de água ou limites.",
   "vectorDataUnavailable": "Os dados de detalhes do mapa estão indisponíveis. Este projeto não pode ser exportado até os dados do mapa voltarem ou esses detalhes serem desativados.",
   "waterDepthClamped": "A água aqui é mais funda do que {count, plural, one {a chapa abaixo da margem comporta} other {as # chapas abaixo da margem comportam}}, então o fundo fica achatado. Aumente o limite de camadas de profundidade ou desative-o para cobertura automática. Ajustar profundidade comprime os lagos no limite escolhido.",

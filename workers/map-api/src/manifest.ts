@@ -60,6 +60,7 @@ export function buildManifest(datasetVersion: string, terrainSources: ReadonlyAr
       ...bathymetrySources.map(({ source, path }) => bathymetryEntry(source, path)),
       { name: "GLOBathy", url: "https://doi.org/10.1038/s41597-022-01132-9", attribution: "CC0 1.0 — Khazaei et al. (2022)" },
       { name: `Protomaps Basemap ${PROTOMAPS_SNAPSHOT}`, url: `https://build.protomaps.com/${PROTOMAPS_SNAPSHOT}.pmtiles`, version: PROTOMAPS_BASEMAP_VERSION, license: "ODbL Produced Work" },
+      { id: "openfreemap-buildings", name: "OpenFreeMap building footprints", url: "https://openfreemap.org/", license: "© OpenMapTiles (CC BY 4.0), OpenStreetMap contributors (ODbL)", optional: true, minZoom: 13, maxZoom: 14 },
       { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright", license: "ODbL" },
       ...(aviation ? [aviationEntry(aviation)] : []),
       ...(lands ? [landsEntry(lands)] : []),

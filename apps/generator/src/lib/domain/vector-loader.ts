@@ -1,10 +1,11 @@
 import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, FeatureBudgetExceededError, yieldForCancellation } from "$lib/domain/feature-budget";
+import { buildingDetailLevels, type BuildingLevel } from "./building-detail";
 import { buildingMarkings, readBuildingFragments, type BuildingFragment } from "$lib/domain/building-outlines";
 import { railContextTiles, stationPassages, type RailContext } from "$lib/domain/covered-rail";
 import { classifyTransportation, transportGrade } from "./transportation-classification";
-import { boundsOverlap, clipPolyline, cropBoundary, preparePolygons, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
+import { boundsOverlap, clipPolyline, cropBoundary, preparePolygons, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type TransportationClass } from "@topostack/core";
 import { createArchive, type Archive } from "$lib/domain/archive";
 import { classifyRings, VectorTile, type VectorTileFeature, type VectorTileLayer } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
@@ -48,6 +49,7 @@ export interface VectorData {
   /** True when enabled linework exceeded the bounded decoding/export budget. */
   truncated: boolean;
   railContextIncomplete?: boolean;
+  buildingDetail?: SourceBundleV1["buildingDetail"];
 }
 
 /** A vector-tile polygon feature's rings, grouped into polygons and projected. */
@@ -98,7 +100,8 @@ async function loadVectorWindow(
   let rawMarkingCount = 0;
   let truncated = false;
   type TileVectors = { rail: RailContext; markings: MarkingFeature[]; waterPolygons: Polygon2D[]; oceanPolygons: Polygon2D[]; buildings?: { layer: VectorTileLayer; tile: DataTile } };
-  const consumeGeometry = createFeatureBudget();
+  const geometryUsed = { points: 0, rings: 0 };
+  const consumeGeometry = createFeatureBudget(geometryUsed);
   // Auxiliary tunnel/station geometry must not exhaust the budget for requested map detail.
   const consumeContext = createFeatureBudget();
   let contextComplete = true;
@@ -254,20 +257,44 @@ async function loadVectorWindow(
   const shorelines = config.showWater ? shorelineMarkings([...ocean, ...inland]) : [];
   // Decode footprints last so a dense city cannot consume the point/ring budget
   // for surface rail, streets or water already requested on the same map.
-  const fragments: BuildingFragment[] = [];
-  for (const { buildings } of perTile) {
-    if (!buildings) continue;
-    const { layer, tile } = buildings;
-    const complete = await readBuildingFragments(layer, tile, (extent, p) => projectPoint(tile, extent, p), config, consumeGeometry, fragments, signal);
-    if (!complete) { truncated = true; break; }
+  const groups = [boundaries, roads, rails, trails, shorelines, waterways];
+  const base = { inland, ocean, ...(hasVisibleTunnel && !contextComplete ? { railContextIncomplete: true } : {}) };
+  function finish(buildings: MarkingFeature[], complete = true, level?: BuildingLevel): VectorData {
+    const limited = limitVectorMarkingGroups([...groups, buildings]);
+    return { ...base, markings: limited.markings, truncated: limited.truncated || truncated || !complete,
+      ...(level ? { buildingDetail: { zoom: level.zoom, release: level.release } } : {}) };
   }
-  const buildings = await buildingMarkings(fragments, config, signal);
-  const limited = limitVectorMarkingGroups([boundaries, roads, rails, trails, shorelines, waterways, buildings]);
-  return {
-    markings: limited.markings,
-    inland,
-    ocean,
-    truncated: limited.truncated || truncated,
-    ...(hasVisibleTunnel && !contextComplete ? { railContextIncomplete: true } : {}),
-  };
+  if (!usesBuildings) return finish([]);
+
+  async function withBuildings(level: BuildingLevel): Promise<VectorData> {
+    // Each alternative inherits exactly the budget left by the other layers.
+    const consume = createFeatureBudget({ ...geometryUsed });
+    const fragments: BuildingFragment[] = [];
+    let complete = true;
+    for (const { layer, tile } of level.layers) {
+      if (!layer) continue;
+      complete = await readBuildingFragments(layer, tile, (extent, p) => level.projectPoint(tile, extent, p), config, consume, fragments, signal);
+      if (!complete) break;
+    }
+    const buildings = await buildingMarkings(fragments, config, signal);
+    return finish(buildings, complete, level);
+  }
+
+  let finest: VectorData | undefined;
+  const hasBuildings = (data: VectorData) => data.markings.some(mark => mark.kind === "building");
+  try {
+    for await (const level of buildingDetailLevels(bounds, config, signal)) {
+      const data = await withBuildings(level);
+      if (!data.truncated && (!finest || hasBuildings(data) || !hasBuildings(finest))) return data;
+      finest ??= data;
+      // Reducing building detail cannot repair an overflow in another layer.
+      if (truncated || groups.reduce((total, group) => total + group.length, 0) >= MAX_VECTOR_MARKINGS) return finest;
+    }
+  } catch {
+    signal?.throwIfAborted();
+  }
+  const fallback = await withBuildings({ zoom: window.zoom, projectPoint, layers: perTile.flatMap(({ buildings }) => buildings ? [buildings] : []) });
+  // Keep the detailed partial preview when coarsening would erase the layer
+  // or still leave an incomplete export.
+  return finest && (fallback.truncated || (!hasBuildings(fallback) && hasBuildings(finest))) ? finest : fallback;
 }

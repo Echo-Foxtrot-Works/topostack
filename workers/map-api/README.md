@@ -11,6 +11,8 @@ npx wrangler r2 bucket create topostack-map-cache
 npx wrangler r2 bucket create topostack-vector-data
 ```
 
+For neighborhood building outlines, `GET /v1/buildings` resolves the current OpenFreeMap release. `GET /v1/buildings/<release>/<z>/<x>/<y>.pbf` returns only the building layer from its OpenMapTiles tile. Studio starts at zoom 14 where the crop fits and can try zoom 13 for a complete export. The release stays fixed for the crop. Studio uses a maximum of 24 tiles and four concurrent requests. A missing tile or failed release lookup sends the whole crop through the generalized Protomaps fallback.
+
 TopoStack pins the Protomaps `20260905` basemap build (`4.15.2`) and extracts a global zoom 0–12 archive so local roads and trails are available. The upstream archive's published BLAKE3 digest is `f5d3c4040d21a2a135883dc534158f3dd19b7253f8a80e0964c98b779ed8042f`. Build and verify the archive with PMTiles CLI `1.31.2` or newer:
 
 The current zoom-12 extraction is 17,562,176,068 bytes and its release SHA-256 is `a7bd0139b4fd06e0f20602569083281d2b4e6bab7198d54400e70d666961f8e7`.

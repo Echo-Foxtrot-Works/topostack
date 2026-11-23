@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Teren višje ločljivosti za to območje ni na voljo. Zemljevid namesto tega uporablja standardni vir višin.",
   "terrainCoarserZoom": "Podrobnejše višinske ploščice so bile prazne. Ta zemljevid uporablja izvorne višinske ploščice na ravni povečave {zoom}.",
   "transportationLabelsOmitted": "Napisi prometnic se ne prilegajo izpostavljenemu materialu. Zmanjšajte velikost besedila ali navpično povečanje ali povečajte velikost izdelka.",
+  "buildingDetailFallback": "Ta zemljevid uporablja poenostavljene obrise stavb. Nekatere manjše stavbe lahko manjkajo.",
   "vectorDataPartial": "Dosežena je bila omejitev elementov podrobnosti zemljevida, zato morda manjkajo nekatere ceste, pešpoti, vodne črte ali meje.",
   "vectorDataUnavailable": "Podatki podrobnosti zemljevida niso na voljo. Tega projekta ni mogoče izvoziti, dokler podatki niso obnovljeni ali te podrobnosti izklopljene.",
   "waterDepthClamped": "Voda je tu pregloboka za {count, plural, one {# ploščo} two {# plošči} few {# plošče} other {# plošč}} pod obalno črto, zato je njeno dno sploščeno. Povečajte omejitev globinskih plasti ali jo izklopite za samodejno pokritost. Prilagodi globino stisne jezera v izbrani okvir.",

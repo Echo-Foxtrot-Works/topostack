@@ -1,5 +1,5 @@
 import { transportGrade } from "./transportation-classification";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@topostack/core";
 import { boundsForProject } from "@topostack/core";
 import type { PbfReader } from "pbf";
@@ -219,7 +219,9 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
     layers;
 
     constructor(reader: PbfReader) {
-      const coarser = reader.buf[0] === 1;
+      const detailByte = reader.buf[0];
+      const denseBuildings = detailByte === 24;
+      const coarser = detailByte === 1;
       const roadY = coarser ? 3072 : 2048;
       const outsideRoads = coarser ? 0 : vectorFixture.outsideRoads;
       const insideRoads = coarser ? 1 : vectorFixture.insideRoads;
@@ -230,6 +232,12 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
         { x: 0, y: roadY - 500 },
       ];
       this.layers = {
+        ...(detailByte === 14 || denseBuildings ? { building: { name: "building", length: denseBuildings ? 500 : 2, feature: (index: number) => {
+          const x = denseBuildings ? 1000 + (index % 25) * 60 : 1850, y = denseBuildings ? 1000 + Math.floor(index / 25) * 60 : 1850;
+          const size = denseBuildings ? 40 : 390;
+          return { id: index, type: 3, extent: 4096, properties: { render_min_height: denseBuildings ? 0 : index * 4 },
+            loadGeometry: () => [[{ x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y }]] };
+        } } } : {}),
         pois: { length: 1, feature: () => ({ type: 1, extent: 4096, properties: { kind: "station" }, loadGeometry: () => [Array(vectorFixture.stationPoints).fill({ x: 2048, y: 2048 })] }) },
         transportation: { length: 3, feature: (index: number) => ({
           type: 2, extent: 4096, properties: { kind: "rail", kind_detail: "rail", is_tunnel: index === 1 },
@@ -313,7 +321,9 @@ describe("geographic crop bounds", () => {
 });
 
 describe("vector marking zoom", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
     vectorFixture.stationPoints = 1;
     vectorFixture.cornerBuildings = 0;
     vectorFixture.outsideRoads = 0;
@@ -378,12 +388,59 @@ describe("vector marking zoom", () => {
     );
     expect((await load(13, false)).markings).toEqual([]);
     expect((await load(12.99, true)).markings).toEqual([]);
-    const { markings, truncated } = await load(13, true);
+    expect(fetch).not.toHaveBeenCalled();
+    const { markings, truncated, buildingDetail } = await load(13, true);
+    expect(buildingDetail).toMatchObject({ zoom: 12 });
     expect(truncated).toBe(false);
     expect(markings.map(({ id, kind, operation }) => [id, kind, operation])).toEqual([
       ["building-0-0", "building", "engrave"], ["building-0-1", "building", "engrave"],
     ]);
     expect(markings.every(({ points }) => points.length === 5 && points[0]!.x === points[4]!.x && points[0]!.y === points[4]!.y)).toBe(true);
+  });
+
+  it("uses one detailed release for the crop, including successful empty tiles", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const bounds = { west: 0.040, east: 0.070, south: 0.040, north: 0.070 };
+    const project = { ...DEFAULT_PROJECT, showBuildings: true, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const fetchDetail = vi.fn(async (url: string) => url.endsWith("/v1/buildings") ? Response.json({ release: "test-build" }) :
+      new Response(Uint8Array.of(14)));
+    vi.stubGlobal("fetch", fetchDetail);
+    const detailed = await loadVectorMarkings(bounds, 13, project);
+    expect(detailed.buildingDetail).toEqual({ zoom: 14, release: "test-build" });
+    // Only the center z14 tile has its square inside the crop.
+    const outlines = detailed.markings.filter(mark => mark.kind === "building");
+    expect(outlines).toHaveLength(1);
+    const westWallLon = (8194 + 1850 / 4096) * 360 / 2 ** 14 - 180;
+    expect(outlines[0]!.points[0]!.x).toBeCloseTo(((westWallLon - bounds.west) / (bounds.east - bounds.west) - 0.5) * project.widthMm);
+    expect(fetchDetail.mock.calls.slice(1).every(([url]) => url.includes("/buildings/test-build/14/"))).toBe(true);
+    fetchDetail.mockImplementation(async url => url.endsWith("/v1/buildings") ? Response.json({ release: "test-build" }) : new Response(new Uint8Array()));
+    const empty = await loadVectorMarkings(bounds, 13, project);
+    expect(empty.buildingDetail).toEqual(detailed.buildingDetail);
+    expect(empty.markings.filter(mark => mark.kind === "building")).toHaveLength(0);
+    expect(empty.markings.filter(mark => mark.kind === "road")).toEqual(detailed.markings.filter(mark => mark.kind === "road"));
+
+    fetchDetail.mockImplementation(async url => url.endsWith("/v1/buildings") ? Response.json({ release: "test-build" }) :
+      url.includes("/8194/") ? new Response(null, { status: 503 }) : new Response(Uint8Array.of(14)));
+    const fallback = await loadVectorMarkings(bounds, 13, project);
+    expect(fallback.buildingDetail).toMatchObject({ zoom: 12 });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
+    expect(fallback.markings).toEqual((await loadVectorMarkings(bounds, 13, project)).markings);
+  });
+
+  it("fits a crowded neighborhood using complete footprints from the same release at z13", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const fetchDetail = vi.fn(async (url: string) => url.endsWith("/v1/buildings") ? Response.json({ release: "city" }) :
+      new Response(Uint8Array.of(url.includes("/city/14/") ? 24 : 14)));
+    vi.stubGlobal("fetch", fetchDetail);
+    const bounds = { west: 0.0001, east: 0.0438, south: 0.0001, north: 0.0438 };
+    const project = { ...DEFAULT_PROJECT, showBuildings: true, minimumFeatureMm: 0.2, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const result = await loadVectorMarkings(bounds, 13, project);
+    expect(result).toMatchObject({ buildingDetail: { zoom: 13, release: "city" }, truncated: false });
+    expect(result.markings.filter(mark => mark.kind === "building")).toHaveLength(1);
+    expect(fetchDetail.mock.calls.filter(([url]) => url.includes("/city/14/"))).toHaveLength(4);
+    expect(getZxyMock.mock.calls.every(([zoom]) => zoom === 12)).toBe(true);
   });
 
   it("does not let off-crop roads exhaust the feature budget", async () => {

@@ -2,10 +2,10 @@ import { classifyRings, type VectorTileLayer } from "@mapbox/vector-tile";
 import { boundsOverlap, clipPolyline, cropBoundary, cropRadiusMm, ringBounds, minimumCaliperWidth, preparePolygons, type Bounds2D, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1 } from "@topostack/core";
 import polygonClipping, { type Pair } from "polygon-clipping";
 import type { DataTile } from "./tile-math";
-import { type createFeatureBudget, yieldForCancellation } from "./feature-budget";
+import { type createFeatureBudget, MAX_SOURCE_POINTS, yieldForCancellation } from "./feature-budget";
 
-interface SeamSpan { key: string; low: number; high: number; before: boolean; buffered: boolean }
-export interface BuildingFragment { id?: number; polygon: Polygon2D; spans: SeamSpan[] }
+interface SeamSpan { key: string; low: number; high: number; before: boolean; buffered: boolean; unit: number }
+export interface BuildingFragment { id?: number; polygon: Polygon2D; spans: SeamSpan[]; outlineWithParts?: boolean }
 
 /** Intersect each footprint with its tile edges. Coordinates along a shared
  * edge are in tile units, independent of the feature's MVT extent. */
@@ -29,7 +29,12 @@ export function buildingSeams(rings: Point2D[][], box: Bounds2D, tile: DataTile,
       }
       crossings.sort((a, b) => a - b);
       for (let i = 1; i < crossings.length; i += 2) {
-        spans.push({ key, before, low: crossings[i - 1]!, high: crossings[i]!, buffered: min < edge && edge < max });
+        const low = crossings[i - 1]!, high = crossings[i]!;
+        // Sampling either side of a vertex on the seam can split a continuous
+        // cross section into two intervals with an infinitesimal gap.
+        const previous = spans.at(-1);
+        if (previous?.key === key && low - previous.high < 1e-9) previous.high = high;
+        else spans.push({ key, before, low, high, buffered: min < edge && edge < max, unit: 1 / extent });
       }
     }
   }
@@ -41,10 +46,12 @@ export function buildingSeams(rings: Point2D[][], box: Bounds2D, tile: DataTile,
 export async function readBuildingFragments(layer: VectorTileLayer, tile: DataTile, projectPoint: (extent: number, point: Point2D) => Point2D,
   config: ProjectConfigV1, consume: ReturnType<typeof createFeatureBudget>, fragments: BuildingFragment[], signal?: AbortSignal): Promise<boolean> {
   const crop = { minX: -config.widthMm / 2, maxX: config.widthMm / 2, minY: -config.heightMm / 2, maxY: config.heightMm / 2 };
+  const detailed = layer.name === "building"; // OpenMapTiles uses the singular layer name.
   for (let i = 0; i < layer.length; i++) {
     if (i % 64 === 0) await yieldForCancellation(signal);
     const feature = layer.feature(i);
-    if (feature.type !== 3 || feature.properties.kind !== "building") continue;
+    if (feature.type !== 3) continue;
+    if (detailed ? Number(feature.properties.render_min_height) > 0 : feature.properties.kind !== "building") continue;
     const project = (p: Point2D) => projectPoint(feature.extent, p);
     // Generalized tiles can pack thousands of unrelated footprints into one feature.
     for (const [j, rings] of classifyRings(feature.loadGeometry()).entries()) {
@@ -58,8 +65,14 @@ export async function readBuildingFragments(layer: VectorTileLayer, tile: DataTi
       if (config.cropShape === "circle" && Math.hypot(Math.max(0, min.x, -max.x), Math.max(0, min.y, -max.y)) > cropRadiusMm(config)) continue;
       const insideTile = box.minX > 0 && box.minY > 0 && box.maxX < feature.extent && box.maxY < feature.extent;
       if (insideTile && Math.min(max.x - min.x, max.y - min.y) + 1e-7 < config.minimumFeatureMm) continue;
+      // Rotated houses often pass the axis-aligned box test despite being too
+      // narrow. Discard them before they spend the ring budget of a dense city.
+      if (outer.length > MAX_SOURCE_POINTS) return false;
+      const projectedOuter = outer.map(project);
+      if (insideTile && minimumCaliperWidth(projectedOuter) + 1e-7 < config.minimumFeatureMm) continue;
       try { consume(rings, true); } catch { return false; }
-      fragments.push({ id: feature.id, polygon: { outer: outer.map(project), holes: holes.map(ring => ring.map(project)) },
+      fragments.push({ id: feature.id, polygon: { outer: projectedOuter, holes: holes.map(ring => ring.map(project)) },
+        outlineWithParts: detailed && feature.properties.hide_3d === true,
         spans: insideTile ? [] : buildingSeams(rings, box, tile, feature.extent) });
     }
   }
@@ -92,7 +105,11 @@ function joinFootprints(fragments: BuildingFragment[]): Polygon2D[] {
         // Generalized tiles can repack the same building under a different ID.
         // In that case require matching cross sections and actual buffered area.
         if (aId === undefined || aId !== bId) {
-          if (Math.abs(a.low - b.low) > 1e-8 || Math.abs(a.high - b.high) > 1e-8) continue;
+          // Clipping and rounding slanted walls to the MVT integer grid can
+          // move the intersection by a fraction of a unit in the next tile.
+          const tolerance = a.buffered && b.buffered
+            ? Math.min(Math.max(a.unit, b.unit), 0.05 * Math.min(a.high - a.low, b.high - b.low)) : 1e-8;
+          if (Math.abs(a.low - b.low) > tolerance || Math.abs(a.high - b.high) > tolerance) continue;
           if (!a.buffered && !b.buffered && aId !== undefined && bId !== undefined) continue;
         }
         parent[root(b.owner)] = root(a.owner);
@@ -188,11 +205,29 @@ function uniqueWalls(markings: MarkingFeature[]): MarkingFeature[] {
   });
 }
 
+function omitCoveredBuildingParts(fragments: BuildingFragment[]): BuildingFragment[] {
+  // OpenMapTiles marks a parent footprint covered by 3D parts with hide_3d.
+  // Keep the parent and omit contained ground-floor parts. A courtyard can
+  // contain an independent building, so test the actual polygon with holes.
+  const parents = fragments.filter(f => f.outlineWithParts).map(({ polygon }) => ({
+    box: ringBounds(polygon.outer), rings: [polygon.outer, ...polygon.holes].map(ring => ring.map(({ x, y }): Pair => [x, y])),
+  }));
+  if (!parents.length) return fragments;
+  return fragments.filter(fragment => {
+    if (fragment.outlineWithParts) return true;
+    const { outer, holes } = fragment.polygon;
+    const box = ringBounds(outer);
+    return !parents.some(parent => parent.box.minX <= box.minX && parent.box.maxX >= box.maxX &&
+      parent.box.minY <= box.minY && parent.box.maxY >= box.maxY &&
+      polygonClipping.difference([outer, ...holes].map(ring => ring.map(({ x, y }): Pair => [x, y])), parent.rings).length === 0);
+  });
+}
+
 export async function buildingMarkings(fragments: BuildingFragment[], config: ProjectConfigV1, signal?: AbortSignal): Promise<MarkingFeature[]> {
   if (!fragments.length) return [];
   const crop = preparePolygons([{ outer: cropBoundary(config), holes: [] }]);
   const markings: MarkingFeature[] = [];
-  const footprints = joinFootprints(fragments);
+  const footprints = joinFootprints(omitCoveredBuildingParts(fragments));
   for (const [i, footprint] of footprints.entries()) {
     if (i % 128 === 0) await yieldForCancellation(signal);
     for (const [j, ring] of [footprint.outer, ...footprint.holes].entries()) {

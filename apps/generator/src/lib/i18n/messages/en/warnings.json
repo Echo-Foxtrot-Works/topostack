@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
   "terrainCoarserZoom": "Higher-detail elevation tiles were empty. This map uses original elevation tiles at zoom {zoom}.",
   "transportationLabelsOmitted": "Transportation labels do not fit the exposed material. Reduce Text size or Vertical exaggeration, or increase the artwork size.",
+  "buildingDetailFallback": "This map uses generalized building outlines. Some smaller buildings may be missing.",
   "vectorDataPartial": "The map detail feature limit was reached, so some roads, trails, water lines, or boundaries may be missing.",
   "vectorDataUnavailable": "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
   "waterDepthClamped": "Water here is deeper than the {count, plural, one {# sheet} other {# sheets}} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.",

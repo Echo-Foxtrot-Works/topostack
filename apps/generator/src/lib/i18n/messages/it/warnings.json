@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Un terreno a risoluzione più alta non è disponibile per quest’area. La mappa usa la fonte di altitudine standard.",
   "terrainCoarserZoom": "Le tessere di elevazione più dettagliate erano vuote. Questa mappa usa le tessere di elevazione originali al livello di zoom {zoom}.",
   "transportationLabelsOmitted": "Le etichette dei trasporti non entrano nel materiale esposto. Riduci la dimensione del testo o l’esagerazione verticale, oppure aumenta le dimensioni della grafica.",
+  "buildingDetailFallback": "Questa mappa usa contorni degli edifici semplificati. Alcuni edifici più piccoli potrebbero mancare.",
   "vectorDataPartial": "È stato raggiunto il limite di elementi di dettaglio della mappa, quindi potrebbero mancare strade, sentieri, corsi d’acqua o confini.",
   "vectorDataUnavailable": "I dati di dettaglio della mappa non sono disponibili. Il progetto non può essere esportato finché i dati non tornano disponibili o quei dettagli non vengono disattivati.",
   "waterDepthClamped": "Qui l’acqua è più profonda di quanto {count, plural, one {la # lastra} other {le # lastre}} sotto la riva possano contenere, quindi il fondale viene appiattito. Aumenta il limite degli strati di profondità o disattivalo per la copertura automatica. Adatta profondità comprime i laghi nel margine scelto.",

@@ -317,6 +317,16 @@ describe("stale water data", () => {
 describe("refreshing map data after a failed or partial load", () => {
   const signal = () => new AbortController().signal;
 
+  it("refreshes a saved generalized building source and reuses its resolved neighborhood release", async () => {
+    const config = { ...DEFAULT_PROJECT, showBuildings: true, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const detailed = { zoom: 14, release: "city" };
+    const deps = dependencies({ loadVectorMarkings: vi.fn(async () => ({ buildingDetail: detailed, truncated: false, inland: [], ocean: [], markings: [] })) });
+    const next = await refreshRequiredMapData(loaded(), config, signal(), deps);
+    expect(next.buildingDetail).toEqual(detailed);
+    await refreshRequiredMapData(next, config, signal(), deps);
+    expect(deps.loadVectorMarkings).toHaveBeenCalledTimes(1);
+  });
+
   it("returns sample terrain untouched", async () => {
     const deps = dependencies();
     const sample = { ...loaded({ vectorStatus: "not-requested" }), sourceKind: "preview" as const };

@@ -870,6 +870,8 @@ export interface SourceBundleV1 {
   preChartLakeAreas?: WaterAreaV1[];
   /** OSM water polygons retained independently of depth-modeling metadata. */
   waterPatternAreas?: Polygon2D[];
+  /** Building tile resolution and OpenFreeMap release. The basemap fallback has no separate release. */
+  buildingDetail?: { zoom: number; release?: string };
   /** Inland OSM polygons retained for shoreline fallback and depth retries. */
   inlandWaterAreas?: Polygon2D[];
   /** Evidence for inferring covered station passages was unavailable or exceeded its budget. */
@@ -1261,6 +1263,7 @@ export type GeometryWarningCode =
   | "SMALL_FEATURES"
   | "DATA_FALLBACK"
   | "VECTOR_DATA_PARTIAL"
+  | "BUILDING_DETAIL_FALLBACK"
   | "RAIL_CONTEXT_INCOMPLETE"
   | "VECTOR_DATA_UNAVAILABLE"
   | "LAKE_DATA_UNAVAILABLE"

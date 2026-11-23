@@ -39,6 +39,24 @@ describe("building engravings", () => {
     expect(lines.map(line => polylineLength(line.points)).sort((a, b) => a - b)).toEqual([32, 80]);
   });
 
+  it("rejoins repacked footprints whose slanted wall rounds differently in neighboring tiles", async () => {
+    const parts = [rect(-10, 0, 12, 10), rect(-2, 0.1, 12, 9.9)].map((outer, i) => {
+      const local = outer.map(({ x, y }) => point(i ? x : x + 256, y + 100));
+      return { ...fragment(outer), id: i + 10, spans: buildingSeams([local], ringBounds(local), { x: i, worldX: i, y: 0, z: 14 }, 256) };
+    });
+    const lines = await buildingMarkings(parts, project);
+    expect(lines).toHaveLength(1);
+    expect(polylineLength(lines[0]!.points)).toBeCloseTo(60);
+  });
+
+  it("omits 3D parts inside a parent footprint and keeps buildings inside a courtyard", async () => {
+    const parent = { ...fragment(rect(-20, -20, 40, 40), [rect(5, 5, 10, 10)]), outlineWithParts: true };
+    const part = fragment(rect(-18, -18, 10, 10));
+    const courtyard = fragment(rect(6, 6, 4, 4));
+    const lines = await buildingMarkings([part, courtyard, parent], project);
+    expect(lines.map(mark => polylineLength(mark.points)).sort((a,b) => a-b)).toEqual([16, 40, 160]);
+  });
+
   it("clips boundary strokes to a circular crop without adding a wall on its edge", async () => {
     const lines = await buildingMarkings([fragment(rect(-49, -49, 5, 5)), fragment(rect(48, -2, 6, 4))], { ...project, cropShape: "circle" });
     expect(lines.length).toBeGreaterThan(0);
