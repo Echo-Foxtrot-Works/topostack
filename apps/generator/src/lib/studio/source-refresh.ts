@@ -112,7 +112,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   let lakes = source.preChartLakeAreas ?? (needsOriginalLakes ? [] : preparedLakes);
   if (needsOriginalLakes) next = { ...next, lakeDataStatus: "not-requested", bathymetryStatus: undefined };
 
-  if (needsVectors && (source.vectorStatus !== "available" || (config.showRail && source.railContextIncomplete))) {
+  if (needsVectors && (source.vectorStatus !== "available" || (buildingOutlinesEnabled(config) && !source.buildingDetail?.release) || (config.showRail && source.railContextIncomplete))) {
     try {
       const vector = await loadVectorMarkings(source.bounds, zoom, config, signal);
       ocean = vector.ocean;
@@ -123,6 +123,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
         waterPatternAreas: [...vector.ocean, ...vector.inland],
         inlandWaterAreas: vector.inland,
         railContextIncomplete: vector.railContextIncomplete,
+        buildingDetail: vector.buildingDetail,
         vectorStatus: vector.truncated ? "partial" : "available",
       };
     } catch (error) {

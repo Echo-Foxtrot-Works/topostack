@@ -15,6 +15,7 @@ import { geocodeResponse } from "./routes/geocode";
 import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
 import { isSitePage, sitePageResponse } from "./routes/pages";
 import { isHighVolumeCacheHit, REQUEST_LOG_SAMPLE_RATE, shouldLogRequest } from "./request-log";
+import { BUILDING_TILE_PATH, buildingResponse } from "./routes/buildings";
 import { terrainResponse, validTile } from "./routes/terrain";
 import { isTerrainRefused, recordTerrainRefusal } from "./terrain-refusal";
 import { collectUsage } from "./usage-events";
@@ -146,6 +147,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const archive = ARCHIVE_ROUTES.get(url.pathname);
   // Unserved archives answer exactly like unknown paths, so production never reveals them.
   if (archive && archiveServed(archive, env.ENVIRONMENT)) return archiveResponse(request, env, ctx, archive);
+  if (url.pathname === "/v1/buildings" || BUILDING_TILE_PATH.test(url.pathname)) {
+    return limited("buildings", () => buildingResponse(request, url.pathname))(request, env, ctx, url);
+  }
   if (OUTLINE_PATH.test(url.pathname)) return limited("lake-outlines", outlineResponse)(request, env, ctx, url);
   if (PREVIEW_PATH.test(url.pathname)) return limited("lake-previews", previewResponse)(request, env, ctx, url);
   const terrainMatch = TERRAIN_TILE_PATH.exec(url.pathname);

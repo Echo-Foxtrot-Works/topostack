@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Teren o wyższej rozdzielczości jest niedostępny dla tego obszaru. Mapa używa standardowego źródła wysokości.",
   "terrainCoarserZoom": "Bardziej szczegółowe kafelki wysokościowe były puste. Ta mapa używa oryginalnych kafelków wysokościowych z poziomu powiększenia {zoom}.",
   "transportationLabelsOmitted": "Etykiety dróg nie mieszczą się na odsłoniętym materiale. Zmniejsz Rozmiar tekstu lub Przewyższenie albo zwiększ rozmiar grafiki.",
+  "buildingDetailFallback": "Ta mapa wykorzystuje uproszczone obrysy budynków. Może brakować niektórych mniejszych budynków.",
   "vectorDataPartial": "Osiągnięto limit obiektów szczegółów mapy, więc może brakować części dróg, szlaków, linii wód lub granic.",
   "vectorDataUnavailable": "Dane szczegółów mapy są niedostępne. Tego projektu nie można wyeksportować, dopóki dane mapy nie zostaną przywrócone lub te szczegóły nie zostaną wyłączone.",
   "waterDepthClamped": "Woda jest tu głębsza, niż mieści {count, plural, one {# arkusz} few {# arkusze} many {# arkuszy} other {# arkusza}} poniżej linii brzegowej, więc jej dno jest spłaszczone. Zwiększ limit warstw głębokości lub wyłącz go, aby pokrycie było automatyczne. Dopasuj głębokość ściska jeziora do wybranego limitu.",

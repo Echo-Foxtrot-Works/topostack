@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Un terrain à plus haute résolution est indisponible pour cette zone. La carte utilise la source d’altitude standard.",
   "terrainCoarserZoom": "Les tuiles d’altitude plus détaillées étaient vides. Cette carte utilise les tuiles d’altitude originales au niveau de zoom {zoom}.",
   "transportationLabelsOmitted": "Les étiquettes de transport ne tiennent pas sur la matière exposée. Réduisez la taille du texte ou l’exagération verticale, ou augmentez la taille du motif.",
+  "buildingDetailFallback": "Cette carte utilise des contours de bâtiments simplifiés. Certains petits bâtiments peuvent manquer.",
   "vectorDataPartial": "La limite d’éléments des détails de la carte a été atteinte : certaines routes, sentiers, lignes d’eau ou limites peuvent manquer.",
   "vectorDataUnavailable": "Les détails de la carte sont indisponibles. Ce projet ne peut pas être exporté tant que les données ne sont pas rétablies ou que ces détails ne sont pas désactivés.",
   "waterDepthClamped": "L’eau est ici plus profonde que ce que {count, plural, one {la plaque} other {les # plaques}} sous la rive peuvent contenir : son fond est donc aplati. Augmentez la limite de couches de profondeur ou désactivez-la pour une couverture automatique. Ajuster la profondeur comprime les lacs dans la marge choisie.",

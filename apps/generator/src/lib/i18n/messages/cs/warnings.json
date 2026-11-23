@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Terén s vyšším rozlišením není pro tuto oblast dostupný. Mapa místo toho používá standardní zdroj výšek.",
   "terrainCoarserZoom": "Dlaždice s podrobnějšími výškovými daty byly prázdné. Tato mapa používá původní výškové dlaždice na úrovni přiblížení {zoom}.",
   "transportationLabelsOmitted": "Popisky dopravy se nevejdou na odkrytý materiál. Zmenšete velikost textu nebo převýšení, nebo zvětšete velikost grafiky.",
+  "buildingDetailFallback": "Tato mapa používá zjednodušené obrysy budov. Některé menší budovy mohou chybět.",
   "vectorDataPartial": "Byl dosažen limit prvků detailů mapy, takže některé silnice, stezky, vodní čáry nebo hranice mohou chybět.",
   "vectorDataUnavailable": "Data detailů mapy nejsou dostupná. Projekt nelze exportovat, dokud se mapová data neobnoví nebo se tyto detaily nevypnou.",
   "waterDepthClamped": "Voda je zde hlubší, než pojme {count, plural, one {# deska} few {# desky} many {# desky} other {# desek}} pod břehovou čárou, proto je její dno zploštělé. Zvyšte limit hloubkových vrstev nebo jej vypněte pro automatické pokrytí. Přizpůsobit hloubku stlačí jezera do zvoleného limitu.",

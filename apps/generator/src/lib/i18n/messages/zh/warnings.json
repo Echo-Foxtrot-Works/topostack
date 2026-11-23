@@ -66,6 +66,7 @@
   "terrainSourceFallback": "此区域没有更高分辨率的地形。地图改用标准海拔数据源。",
   "terrainCoarserZoom": "更精细的高程图块没有数据。此地图采用缩放级别 {zoom} 的原始高程图块。",
   "transportationLabelsOmitted": "交通标注放不进外露材料。请减小文字大小或垂直夸张，或增大作品尺寸。",
+  "buildingDetailFallback": "此地图使用简化的建筑物轮廓，部分小型建筑物可能缺失。",
   "vectorDataPartial": "已达到地图细节要素上限，部分道路、步道、水系线或边界可能缺失。",
   "vectorDataUnavailable": "地图细节数据不可用。在地图数据恢复或关闭这些细节之前，无法导出此项目。",
   "waterDepthClamped": "此处水深超过岸线以下 {count, plural, other {# 张板材}}的容量，因此湖底被截平。请提高水深层数上限，或关闭该限制以自动覆盖。“适配水深”会将湖泊压缩到所选范围内。",

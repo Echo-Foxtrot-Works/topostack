@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Medan resolusi lebih tinggi tidak tersedia untuk area ini. Peta memakai sumber elevasi standar.",
   "terrainCoarserZoom": "Ubin elevasi yang lebih terperinci kosong. Peta ini memakai ubin elevasi asli pada tingkat perbesaran {zoom}.",
   "transportationLabelsOmitted": "Label jalan tidak muat pada bahan yang terbuka. Perkecil Ukuran teks atau Eksagerasi vertikal, atau perbesar ukuran karya.",
+  "buildingDetailFallback": "Peta ini menggunakan garis luar bangunan yang disederhanakan. Sebagian bangunan kecil mungkin tidak terlihat.",
   "vectorDataPartial": "Batas fitur detail peta tercapai, jadi sebagian jalan, jalur setapak, garis air, atau batas mungkin hilang.",
   "vectorDataUnavailable": "Data detail peta tidak tersedia. Proyek ini tidak dapat diekspor sampai data peta pulih atau detail tersebut dinonaktifkan.",
   "waterDepthClamped": "Air di sini lebih dalam daripada yang dapat ditampung {count, plural, other {# lembar}} di bawah garis pantai, jadi dasarnya diratakan. Naikkan batas lapisan kedalaman atau matikan untuk cakupan otomatis. Sesuaikan kedalaman memampatkan danau ke batas yang dipilih.",

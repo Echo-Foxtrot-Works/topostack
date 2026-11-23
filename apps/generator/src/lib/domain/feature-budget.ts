@@ -10,14 +10,12 @@ export class FeatureBudgetExceededError extends Error {
 }
 
 /** Bound decode/projection/union work before retaining a source's geometry. */
-export function createFeatureBudget() {
-  let points = 0;
-  let rings = 0;
+export function createFeatureBudget(used = { points: 0, rings: 0 }) {
   return (geometry: readonly (readonly Point2D[])[], polygon = false): void => {
-    if (polygon) rings += geometry.length;
+    if (polygon) used.rings += geometry.length;
     for (const path of geometry) {
-      points += path.length;
-      if (points > MAX_SOURCE_POINTS || rings > MAX_SOURCE_RINGS) throw new FeatureBudgetExceededError();
+      used.points += path.length;
+      if (used.points > MAX_SOURCE_POINTS || used.rings > MAX_SOURCE_RINGS) throw new FeatureBudgetExceededError();
     }
   };
 }

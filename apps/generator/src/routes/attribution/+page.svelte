@@ -154,7 +154,7 @@
     <h2 id="services-title">Location map and place search</h2>
     <div class="source">
       <h3><a href="https://openfreemap.org/">OpenFreeMap</a> and <a href="https://openmaptiles.org/">OpenMapTiles</a></h3>
-      <p>The studio’s location map uses OpenFreeMap’s Liberty style and hosted tiles to help you frame an area. Generated artwork uses the terrain and feature datasets described above.</p>
+      <p>The studio’s location map uses OpenFreeMap’s Liberty style and hosted tiles to help you frame an area. For neighborhood projects with Building outlines enabled, TopoStack also reads footprint polygons from OpenFreeMap’s neighborhood tiles and includes the tile release and OpenMapTiles credits in the export.</p>
       <p class="credit">OpenFreeMap · © OpenMapTiles · Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>. <a href="https://openfreemap.org/quick_start/">Provider credits</a> remain available on the interactive map.</p>
     </div>
     <div class="source">

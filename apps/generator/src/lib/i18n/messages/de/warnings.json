@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Für diesen Bereich ist kein höher aufgelöstes Gelände verfügbar. Die Karte verwendet stattdessen die Standard-Höhenquelle.",
   "terrainCoarserZoom": "Die detaillierteren Höhenkacheln waren leer. Diese Karte verwendet originale Höhenkacheln der Zoomstufe {zoom}.",
   "transportationLabelsOmitted": "Die Verkehrsbeschriftung passt nicht auf das sichtbare Material. Verringere Textgröße oder Überhöhung, oder vergrößere die Vorlage.",
+  "buildingDetailFallback": "Diese Karte verwendet vereinfachte Gebäudeumrisse. Einige kleinere Gebäude können fehlen.",
   "vectorDataPartial": "Das Limit für Kartendetails wurde erreicht, daher fehlen eventuell einige Straßen, Wanderwege, Gewässerlinien oder Grenzen.",
   "vectorDataUnavailable": "Kartendetail-Daten sind nicht verfügbar. Dieses Projekt kann erst exportiert werden, wenn die Kartendaten wieder verfügbar oder diese Details ausgeschaltet sind.",
   "waterDepthClamped": "Das Wasser ist hier tiefer, als {count, plural, one {die # Platte} other {die # Platten}} unter der Uferlinie aufnehmen {count, plural, one {kann} other {können}}, daher wird sein Boden abgeflacht. Erhöhe das Limit der Tiefenschichten oder schalte es für automatische Abdeckung aus. „Tiefe anpassen“ staucht Seen auf den gewählten Rahmen.",

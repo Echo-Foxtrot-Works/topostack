@@ -9,7 +9,7 @@ import { cropBoundary as boundary } from "../primitives/crop.js";
 import { selectElevationLabels } from "../annotate/label-placement.js";
 import { splitLayersForWorkArea } from "./split.js";
 import { paintRegions } from "./paint-regions.js";
-import { sourceRequirements } from "./source-requirements.js";
+import { buildingOutlinesEnabled, sourceRequirements } from "./source-requirements.js";
 import { cutWaterInserts, labelCoverings, takeInsertMarkings, withInsertSurfaces } from "./water-inserts.js";
 import type { ElevationGrid, GeometryIRV1, GeometryWarning, LayerIR, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR } from "../types.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
@@ -357,6 +357,10 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     warnings: context.warnings,
     attribution: [
       ...source.attribution,
+      ...(buildingOutlinesEnabled(config) && source.buildingDetail?.release ? [
+        { name: `OpenFreeMap buildings (${source.buildingDetail.release}, z${source.buildingDetail.zoom})`, url: "https://openfreemap.org/", license: "OpenStreetMap contributors (ODbL)" },
+        { name: "© OpenMapTiles", url: "https://openmaptiles.org/", license: "CC BY 4.0 cartography" },
+      ] : []),
       ...(aviationRequested(config) && source.aviationStatus !== "not-covered" ? source.aviationAttribution ?? [] : []),
       ...(sourceRequirements(config).lands && source.landsStatus !== "not-covered" ? source.landsAttribution ?? [] : []),
     ],

@@ -66,6 +66,7 @@
   "terrainSourceFallback": "Không có địa hình độ phân giải cao hơn cho khu vực này. Bản đồ dùng nguồn độ cao tiêu chuẩn.",
   "terrainCoarserZoom": "Các ô dữ liệu độ cao chi tiết hơn không có dữ liệu. Bản đồ này dùng các ô dữ liệu độ cao gốc ở mức thu phóng {zoom}.",
   "transportationLabelsOmitted": "Nhãn giao thông không vừa phần vật liệu lộ ra. Hãy giảm Cỡ chữ hoặc Phóng đại chiều đứng, hoặc tăng kích thước tác phẩm.",
+  "buildingDetailFallback": "Bản đồ này sử dụng đường viền tòa nhà đã được đơn giản hóa. Một số tòa nhà nhỏ có thể bị thiếu.",
   "vectorDataPartial": "Đã đạt giới hạn đối tượng chi tiết bản đồ, nên có thể thiếu một số đường, đường mòn, đường nước hoặc ranh giới.",
   "vectorDataUnavailable": "Dữ liệu chi tiết bản đồ không khả dụng. Không thể xuất dự án này cho đến khi dữ liệu bản đồ được khôi phục hoặc tắt các chi tiết đó.",
   "waterDepthClamped": "Nước ở đây sâu hơn mức {count, plural, other {# tấm}} dưới đường bờ có thể chứa, nên đáy bị làm phẳng. Hãy tăng giới hạn lớp độ sâu hoặc tắt nó để tự động bao phủ. Khớp độ sâu sẽ nén hồ vào giới hạn đã chọn.",
