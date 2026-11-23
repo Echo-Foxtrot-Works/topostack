@@ -1,5 +1,5 @@
 import outlineRelease from "../../../scripts/data/lake-outlines-release.json";
-import { terrainPng } from "./terrain-fixture";
+import { elevationPng, terrainPng } from "./terrain-fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv, exports } from "cloudflare:workers";
 import mapWorker from "../src/index";
@@ -345,7 +345,39 @@ describe("terrain proxy", () => {
     })));
     const response = await exports.default.fetch("http://example.com/v1/terrain/11/321/705.png", { headers: origin });
     expect(response.status).toBe(502);
+    expect(response.headers.has("x-topostack-terrain-status")).toBe(false);
     expect(await response.json()).toMatchObject({ error: "Terrain origin returned an invalid tile" });
+  });
+
+  it("reports fully empty native terrain as NoData without storing the invalid tile", async () => {
+    const tile = "14/8873/6333.png";
+    const key = `terrain/${workerEnv.DATASET_VERSION}/terrarium/${tile}`;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => -32768), {
+      headers: { "content-type": "image/png" },
+    })));
+    const response = await exports.default.fetch(`http://example.com/v1/terrain/${tile}`, { headers: origin });
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-topostack-terrain-status")).toBe("no-data");
+    expect(response.headers.get("access-control-expose-headers")).toContain("x-topostack-terrain-status");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({ code: "no-data" });
+    expect(await workerEnv.MAP_CACHE.head(key)).toBeNull();
+  });
+
+  it("retains a previously validated stale tile if the refreshed origin tile has no data", async () => {
+    const tile = "14/8873/6334.png";
+    await workerEnv.MAP_CACHE.put(`terrain/${workerEnv.DATASET_VERSION}/terrarium/${tile}`, terrainPng.slice(), {
+      customMetadata: { terrainValidation: "png-v1", provenance: "v1", imagerySources: "previous-source" },
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => -32768), {
+      headers: { "content-type": "image/png" },
+    })));
+    const response = await exports.default.fetch(`http://example.com/v1/terrain/${tile}`, { headers: origin });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-topostack-cache")).toBe("STALE");
+    expect(response.headers.get("x-topostack-imagery-sources")).toBe("previous-source");
+    expect(response.headers.has("x-topostack-terrain-status")).toBe(false);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(terrainPng);
   });
 });
 
@@ -487,6 +519,20 @@ describe("development-only data", () => {
     expect(archiveServed(pending, "production")).toBe(false);
     expect(archiveServed({ ...pending, source: { availability: "all" } }, "production")).toBe(true);
     expect(archiveServed({ key: "osm/current.pmtiles", label: "OSM" }, "production")).toBe(true);
+  });
+  it("exposes the three Ontario pilot archives only in development", () => {
+    const pilots = [
+      "nrcan-hrdem-alexander-v1",
+      "nrcan-hrdem-mosaic-1m-1898742dd0f3-v1",
+      "nrcan-hrdem-mosaic-1m-cd6412cfd2b8-v1",
+    ];
+    for (const environment of ["development", "production"]) {
+      const advertised = servedTerrainArchives(environment).map(({ source }) => source.id);
+      for (const id of pilots) {
+        expect(advertised.includes(id)).toBe(environment === "development");
+        expect(archiveServed(ARCHIVE_ROUTES.get(`/v1/terrain-sources/${id}.pmtiles`)!, environment)).toBe(environment === "development");
+      }
+    }
   });
   it("keeps every source available to all on production routes and manifests", () => {
     const routed = [...ARCHIVE_ROUTES.values()].filter((route) => route.source);

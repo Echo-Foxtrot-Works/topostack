@@ -1,3 +1,4 @@
+import { TERRAIN_STATUS_HEADER } from "@topostack/data-contracts/terrain-png";
 import { EVENTS_PATH, FEEDBACK_PATH, MCP_PATH } from "./paths";
 
 
@@ -63,7 +64,7 @@ export function corsHeaders(request: Request, env: Env): Headers {
     "access-control-allow-methods": isEvent || isAgentPost ? "POST,OPTIONS" : "GET,HEAD,OPTIONS",
     "access-control-allow-headers": pathname === MCP_PATH ? "content-type,accept,authorization,mcp-protocol-version,mcp-session-id,last-event-id" : "range,content-type,if-none-match",
     // retry-after is readable so browser clients can back off after a 429.
-    "access-control-expose-headers": pathname === MCP_PATH ? "mcp-session-id,mcp-protocol-version,retry-after" : "content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads",
+    "access-control-expose-headers": pathname === MCP_PATH ? "mcp-session-id,mcp-protocol-version,retry-after" : `content-length,content-range,etag,retry-after,x-topostack-dataset,x-topostack-cache,x-topostack-imagery-sources,x-topostack-r2-reads,${TERRAIN_STATUS_HEADER}`,
     "access-control-max-age": "86400",
     "vary": "Origin",
   });

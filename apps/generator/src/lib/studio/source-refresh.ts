@@ -85,7 +85,9 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   if (("paintTemplates" in patch || "lands" in patch || "outputMode" in patch) && sourceRequirements(nextProject).lands) {
     const had = new Set(source.landAreas ? landClassesNeeded(sourceProject) : []);
     const needs = landClassesNeeded(nextProject);
-    if (needs.some((landClass) => !had.has(landClass)) || (source.landsStatus === "partial" && needs.length !== had.size)) {
+    // Dropping the final matching unit can change the source from official data to OSM.
+    const removedLastMatch = source.landAreas?.length && !source.landAreas.some((area) => needs.includes(area.landClass));
+    if (needs.some((landClass) => !had.has(landClass)) || (needs.length !== had.size && (source.landsStatus === "partial" || removedLastMatch))) {
       next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsSources: undefined, landsAttribution: undefined };
     }
   }

@@ -1,3 +1,4 @@
+import { TERRAIN_STATUS_HEADER } from "@topostack/data-contracts/terrain-png";
 import { OUTLINE_INDEX_KEY, outlineReadiness } from "./lake-outlines";
 import { archiveHead } from "../archive-head";
 import { json } from "../http";
@@ -86,7 +87,8 @@ export async function probeUpstreams(env: Env, ctx: ExecutionContext): Promise<v
       let ok = response.ok;
       if (ok && source === "geocoder") ok = (await response.json<unknown[]>()).length > 0;
       else await response.body?.cancel();
-      return { source, ok, status: response.status, durationMs: Date.now() - start };
+      const reason = source === "terrain" ? response.headers.get(TERRAIN_STATUS_HEADER) : null;
+      return { source, ok, status: response.status, durationMs: Date.now() - start, ...(reason ? { reason } : {}) };
     } catch { return { source, ok: false, status: 0, durationMs: Date.now() - start }; }
   }));
   const snapshot = { checkedAt: new Date().toISOString(), environment: env.ENVIRONMENT, ok: results.every((result) => result.ok), results };

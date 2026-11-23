@@ -158,6 +158,14 @@ describe("aviation source registration", () => {
     expect(aviationCovers(sources, { west: -71.1, south: 42.3, east: -70.9, north: 42.4 })).toBe(true);
   });
 
+  it("routes the archived HFS airport and Tern Island while excluding the surrounding shoals", () => {
+    const sources = validateAviationSources(registration);
+    // The published HFS point lies just south of the mapped island coastline.
+    expect(aviationCovers(sources, { west: -166.28465, south: 23.86405, east: -166.28463, north: 23.86407 })).toBe(true);
+    expect(aviationCovers(sources, { west: -166.287, south: 23.870, east: -166.285, north: 23.871 })).toBe(true);
+    expect(aviationCovers(sources, { west: -166.26, south: 23.83, east: -166.25, north: 23.84 })).toBe(false);
+  });
+
   // Places where the boxes meet: each lies inside one box, not merely touching two.
   it.each([
     ["Shreveport, LA", -93.75, 32.45], ["Longview, TX", -94.74, 32.5], ["Fayetteville, AR", -94.16, 36.07], ["Fort Smith, AR", -94.37, 35.34],

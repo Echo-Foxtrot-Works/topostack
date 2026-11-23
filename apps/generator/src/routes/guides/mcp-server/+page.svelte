@@ -14,7 +14,7 @@
     project: { name: "Mount Rainier", placeLabel: "Mount Rainier", output: "layered", widthMm: 300, heightMm: 200, shape: "rectangle", materialThicknessMm: 3, verticalExaggeration: 2, bounds: { west: -121.8918, south: 46.7923, east: -121.6288, north: 46.9122 } },
     plan: { output: "layered", sheetCount: 35, heightOfModelMm: 105, materialThicknessMm: 3, requestedVerticalExaggeration: 2, fittedVerticalExaggeration: 1.985, metersPerStep: 100.7, scaleDenominator: 66667, groundWidthKm: 20, groundHeightKm: 13.3, minElevationM: 844, maxElevationM: 4370, reliefM: 3526, estimate: true },
     relief: { sampleZoom: 10, tiles: 4, coastal: false },
-    coverage: { terrain: { base: "Mapzen Terrain Tiles (global, about 30 m or coarser)", highResolution: [], ocean: [] }, lakeSurveys: [], roadsAndWater: "OpenStreetMap via Protomaps, worldwide", notes: ["…"] },
+    coverage: { terrain: { base: "Mapzen Terrain Tiles (source and ground resolution vary by location)", highResolution: [], ocean: [] }, lakeSurveys: [], roadsAndWater: "OpenStreetMap via Protomaps, up to zoom 12. Detail varies with local mapping and tile generalization.", notes: ["…"] },
     notes: ["Estimated from terrain sampled at zoom 10; peaks can be smoothed, so expect the studio's count to differ by a sheet or two. The studio's count is the one that is cut."],
     studioUrl: "https://topostack.app/studio?generate=1#p=1.bVVNc9s2EP0r…",
     attribution: { text: "Terrain: Mapzen Terrain Tiles and its sources · Map data © OpenStreetMap contributors (ODbL) · …", sources: ["…"], fullNotice: "https://topostack.app/attribution" },
@@ -61,7 +61,7 @@
     <thead><tr><th scope="col">Tool</th><th scope="col">Input</th><th scope="col">Returns</th></tr></thead>
     <tbody>
       <tr><td><code>search_places</code></td><td><code>query</code> (2–160 characters), optional <code>limit</code> (1–8, default 5)</td><td>For each match: <code>label</code>, <code>lat</code>, <code>lon</code>, <code>type</code>, a suggested <code>area</code>, and <code>surveyedLake</code>. The area's width depends on the kind of place, for example 20 km for a city. The only tool that calls a third party, the Geoapify geocoder.</td></tr>
-      <tr><td><code>check_coverage</code></td><td><code>area</code></td><td>The base terrain, any high-resolution terrain and surveyed lake floors that cover the area, and notes about them</td></tr>
+      <tr><td><code>check_coverage</code></td><td><code>area</code></td><td>The base terrain and regional data sources whose extents intersect the area. The studio checks actual samples and features during generation.</td></tr>
       <tr><td><code>plan_model</code></td><td>A project request</td><td>The expanded <code>project</code>, and the <code>plan</code>: sheet count, stack height, fitted exaggeration, elevation per sheet, scale, ground size, elevation range. Also the terrain sample used, coverage, <code>notes</code> and <code>studioUrl</code>.</td></tr>
       <tr><td><code>preview_model</code></td><td>A project request</td><td>The same as <code>plan_model</code>, and it opens the in-chat preview in clients that support MCP Apps</td></tr>
       <tr><td><code>create_studio_link</code></td><td>A project request</td><td><code>url</code>, its <code>length</code>, a <code>project</code> summary and attribution</td></tr>

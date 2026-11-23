@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "measuredAtUtc": "2026-11-23T04:26:46.000Z",
+  "site": {
+    "code": "IT",
+    "name": "Mount Etna",
+    "lat": 37.75512,
+    "lon": 14.99514,
+    "radiusM": 900,
+    "bounds": {
+      "west": 14.984914292837104,
+      "east": 15.005365707162895,
+      "south": 37.74703519942508,
+      "north": 37.76320480057492
+    }
+  },
+  "projectSettings": {
+    "outputMode": "stack",
+    "widthMm": 200,
+    "heightMm": 200,
+    "materialThicknessMm": 3,
+    "verticalExaggeration": 1,
+    "roads": true,
+    "trails": true,
+    "water": false,
+    "waterDepth": false
+  },
+  "production": {
+    "origin": "https://topostack.app",
+    "terrainHttpStatus": [
+      {
+        "tile": "14/8873/6333",
+        "status": 502
+      },
+      {
+        "tile": "14/8873/6334",
+        "status": 502
+      }
+    ],
+    "studioStatus": "Sample terrain generated · Terrain service returned 502 · connect the map API for real elevation",
+    "terrainRequests": [
+      {
+        "path": "/v1/terrain/15/17748/12666.png",
+        "status": 502
+      }
+    ],
+    "exportReady": false
+  },
+  "terrainOriginals": [
+    {
+      "tile": "14/8873/6333",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/8873/6333.png",
+      "bytes": 270,
+      "sha256": "3b93f26267630963185ee67d8020972faee108a7bca80db725817e4680c9955c",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif",
+      "validPixels": 0,
+      "sentinelPixels": 65536,
+      "sentinelM": -32768
+    },
+    {
+      "tile": "14/8873/6334",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/8873/6334.png",
+      "bytes": 270,
+      "sha256": "3b93f26267630963185ee67d8020972faee108a7bca80db725817e4680c9955c",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif",
+      "validPixels": 0,
+      "sentinelPixels": 65536,
+      "sentinelM": -32768
+    },
+    {
+      "tile": "13/4436/3166",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/13/4436/3166.png",
+      "bytes": 116283,
+      "sha256": "a6eef0d8c0c8b7df05f47fe90b755e7bca03bb147a57c2bea16895adb5854506",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif",
+      "validPixels": 65536,
+      "elevationM": [
+        1629.171875,
+        3054.94140625
+      ]
+    },
+    {
+      "tile": "13/4436/3167",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/13/4436/3167.png",
+      "bytes": 115857,
+      "sha256": "3d1ea5e0beaab5bf5ae2e664bc13392f76b945af7d143de498fcd17a04182018",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif",
+      "validPixels": 65536,
+      "elevationM": [
+        1668.203125,
+        3072.5234375
+      ]
+    },
+    {
+      "tile": "13/4437/3166",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/13/4437/3166.png",
+      "bytes": 120199,
+      "sha256": "bbbb804c4470755c6aa55dec8a36bda6ea3b7922132e3f9415e8b8e0f8feeaaf",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif, eudem/eudem_dem_5deg_n35e015.tif",
+      "validPixels": 65536,
+      "elevationM": [
+        1960.98828125,
+        3298.87890625
+      ]
+    },
+    {
+      "tile": "13/4437/3167",
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/13/4437/3167.png",
+      "bytes": 121628,
+      "sha256": "a122b99069c911a2afa373a31a3b396eb9521133bd43d34ee6b226ee0e04dfec",
+      "imagerySources": "eudem/eudem_dem_5deg_n35e010.tif, eudem/eudem_dem_5deg_n35e015.tif",
+      "validPixels": 65536,
+      "elevationM": [
+        1732.24609375,
+        3285.99609375
+      ]
+    }
+  ],
+  "patchedLocalStudio": {
+    "method": "Local Chromium Studio using unmodified captured Mapzen terrain PNGs, the patched gateway NoData response replayed on empty tiles, and live production Protomaps byte ranges.",
+    "status": "passed",
+    "studioStatus": "Real terrain ready · 15 layers · 15 cut panels",
+    "sourceRequests": [
+      {
+        "path": "/v1/terrain/15/17747/12666.png",
+        "status": 404
+      },
+      {
+        "path": "/v1/terrain/14/8873/6333.png",
+        "status": 404
+      },
+      {
+        "path": "/v1/terrain/14/8873/6334.png",
+        "status": 404
+      },
+      {
+        "path": "/v1/terrain/14/8874/6333.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/terrain/14/8874/6334.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/osm.pmtiles",
+        "status": 206
+      },
+      {
+        "path": "/v1/terrain/13/4436/3166.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/terrain/13/4437/3166.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/terrain/13/4436/3167.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/terrain/13/4437/3167.png",
+        "status": 200
+      },
+      {
+        "path": "/v1/osm.pmtiles",
+        "status": 206
+      },
+      {
+        "path": "/v1/osm.pmtiles",
+        "status": 206
+      }
+    ],
+    "download": {
+      "filename": "mount-etna-dry-relief-project-files.zip",
+      "zipBytes": 80228,
+      "masterSvgBytes": 34032,
+      "svgFiles": 31,
+      "cutPaths": 16,
+      "vertices": 1401,
+      "layers": 15,
+      "sha256": "13bb9a1e71bcb803fc64ef590e02f0fa73c70f634f4b26fe9b7e81b4bfaf4225"
+    },
+    "export": {
+      "location": {
+        "lat": 37.75512,
+        "lon": 14.99514,
+        "zoom": 14,
+        "label": "Mount Etna",
+        "bounds": {
+          "west": 14.984914292837104,
+          "south": 37.74703519942508,
+          "east": 15.005365707162895,
+          "north": 37.76320480057492
+        }
+      },
+      "bounds": {
+        "west": 14.984914292837104,
+        "south": 37.74703519942508,
+        "east": 15.005365707162895,
+        "north": 37.76320480057492
+      },
+      "dataset": "mapzen-terrarium+protomaps-20260905-z12-v1",
+      "vectors": "available",
+      "elevationsM": [
+        2904.5146455821036,
+        3298.483720415068
+      ],
+      "imagery": [
+        "eudem/eudem_dem_5deg_n35e010.tif",
+        "eudem/eudem_dem_5deg_n35e015.tif"
+      ],
+      "terrainSelection": {
+        "policy": "terrain-priority-v1",
+        "attempts": [],
+        "mapzenZoom": {
+          "requested": 15,
+          "used": 13
+        },
+        "sources": [
+          {
+            "id": "mapzen",
+            "name": "Mapzen composite terrain",
+            "verticalDatum": "Source-dependent",
+            "fraction": 1
+          }
+        ]
+      },
+      "lakeDepths": 0,
+      "projectWater": false,
+      "projectDepth": false,
+      "warnings": [
+        {
+          "code": "TERRAIN_COARSER_ZOOM",
+          "message": "Higher-detail elevation tiles were empty. This map uses original elevation tiles at zoom 13.",
+          "messageKey": "terrainCoarserZoom",
+          "params": {
+            "zoom": 13
+          }
+        }
+      ]
+    }
+  }
+}

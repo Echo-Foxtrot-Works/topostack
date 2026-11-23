@@ -80,6 +80,7 @@ describe("generation warnings in English", () => {
 
   // Interpolated messages, with the values core passes and the English it writes for them.
   const cases: Array<[key: string, params: GeometryWarning["params"], english: string]> = [
+    ["terrainCoarserZoom", { zoom: 13 }, "Higher-detail elevation tiles were empty. This map uses original elevation tiles at zoom 13."],
     ["airspacePieceUnsupported", { count: 1 }, "1 airspace piece was left out because no rod could hold it clear of the terrain and the pieces below. A thinner rod helps."],
     ["airspacePieceUnsupported", { count: 3 }, "3 airspace pieces were left out because no rod could hold them clear of the terrain and the pieces below. A thinner rod helps."],
     ["airspaceOverhang", { count: 1 }, "1 airspace sheet reaches past the rods that could stand under it. Reduce the model size or add supports under it before assembly."],

@@ -75,7 +75,7 @@ export function openApiDocument(apiOrigin: string, siteOrigin: string, version: 
       "/v1/coverage": {
         get: {
           operationId: "areaCoverage",
-          summary: "Which high-resolution terrain and lake surveys cover an area",
+          summary: "Which registered data sources could contribute to an area",
           parameters: [
             { name: "bbox", in: "query", schema: { type: "string" }, description: "west,south,east,north in degrees." },
             { name: "lat", in: "query", schema: { type: "number" } },

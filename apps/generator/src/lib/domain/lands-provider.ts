@@ -13,8 +13,8 @@ import { projectedPolygons } from "$lib/domain/vector-loader";
 
 /**
  * Public land units for paint stencils and engraved boundaries: from
- * `/v1/lands.pmtiles` (PAD-US) inside its coverage, and outside it from the
- * protected areas in the OpenStreetMap basemap, where they are mapped. Tiles
+ * PAD-US and CPCAD where they supply requested units, then from protected
+ * areas in the OpenStreetMap basemap where those units are absent. Tiles
  * cut every unit, so each unit's pieces are unioned by its id and clipped to
  * the crop. Which class paints where two overlap is core's job.
  */
@@ -27,7 +27,7 @@ export const MAX_LAND_UNITS = 600;
 export interface LandAreaData {
   areas: LandAreaV1[];
   status: LandsStatus;
-  /** Where the loaded units came from: PAD-US or CPCAD inside the archive's coverage, OpenStreetMap outside it. */
+  /** Sources of the units retained in the crop. */
   sources?: LandsSource[];
   /** PAD-US version of the archive actually read. */
   version?: string;
@@ -47,7 +47,7 @@ function landsAttribution(sources: LandsSource[], version: string): SourceAttrib
 const sourcesOf = (areas: LandAreaV1[]): LandsSource[] => (["padus", "cpcad"] as const).filter((source) => areas.some((area) => (area.source ?? "padus") === source));
 
 /**
- * The land classes OpenStreetMap can stand in for outside PAD-US, by the
+ * The land classes OpenStreetMap can supply, by the
  * Protomaps `landuse` kind. OSM gives these polygons no names or managers, so
  * the rest of the classes (forests as public land, BLM, refuges) have no
  * counterpart, and the units are never labelled.
@@ -80,10 +80,14 @@ export async function loadLandAreas(
       const properties = parseLandProperties(feature.properties);
       return properties ? { unit: properties.unit, landClass: properties.class, ...(properties.name ? { name: properties.name } : {}), ...(properties.source ? { source: properties.source } : {}) } : undefined;
     }, signal);
-    const sources = sourcesOf(result.areas);
-    return { ...result, sources, version, attribution: landsAttribution(sources, version) };
+    // The registration boxes also contain foreign ground and open sea. A complete
+    // empty crop can use OSM. Preserve official units and partial-load warnings.
+    if (result.areas.length || result.status === "partial") {
+      const sources = sourcesOf(result.areas);
+      return { ...result, sources, version, attribution: landsAttribution(sources, version) };
+    }
   }
-  // Outside PAD-US, the basemap's protected areas where they are mapped; OSM is credited with every map already.
+  // OSM is credited with every map already.
   const osmClasses = Object.values(OSM_LAND_KINDS).filter((landClass) => wanted.has(landClass));
   if (!osmClasses.length) return { areas: [], status: "not-covered", attribution: [] };
   const result = await loadUnits(`${apiBase()}/v1/osm.pmtiles`, "landuse", bounds, requestedZoom, config, () => {}, (feature, featureIndex, tileKey) => {

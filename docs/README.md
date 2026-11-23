@@ -67,6 +67,7 @@ Python data builders under `scripts/` use one pinned environment: `scripts/data-
 
 Dated snapshots kept for history. Do not update them; write a new one.
 
+- [Country-by-country map data depth, 2026-11-22](reports/non-lake-country-sweep-2026-11-22.md) — production terrain, map features and coastal coverage across 250 countries and territories, with downloadable evidence and fabrication checks.
 - [Launch-readiness review, 2026-09-12](reports/launch-readiness-review-2026-09-12.md)
 - [Launch-readiness remediation, 2026-09-12](reports/launch-readiness-remediation-2026-09-12.md)
 - [SEO discoverability audit, 2026-09-15](reports/seo-discoverability-audit-2026-09-15.md)

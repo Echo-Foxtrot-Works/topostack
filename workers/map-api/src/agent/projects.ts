@@ -108,14 +108,14 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   const notes = [`Estimated from terrain sampled at zoom ${relief.zoom}; peaks can be smoothed, so expect the studio's count to differ by a sheet or two. The studio's count is the one that is cut.`];
   if (plan.reliefM < 20) notes.push(plan.output === "flat" ? "This area is nearly flat, so contour lines may be sparse." : "This area is nearly flat, so the layers may look alike. Try a smaller area or more exaggeration.");
   if (plan.output === "layered" && plan.sheetCount > MANY_SHEETS) notes.push(`${plan.sheetCount} sheets is a large stack. Thicker material or less exaggeration makes fewer sheets.`);
-  if (relief.coastal) notes.push("The area reaches the sea; the sea is cut flat and the stack is sized from the land.");
+  if (relief.coastal) notes.push("The estimate uses land above sea level. The studio includes available depth data.");
   if (coverage.lakeSurveys.length && project.showWaterDepth && plan.output === "layered") notes.push("Lake depth adds sheets below the shoreline; the studio counts them.");
   if (projectDrawsAviation(project)) notes.push(coverage.aviation
-    ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
+    ? `FAA NASR cycle ${coverage.aviation.nasrCycle} may cover this crop. Aviation detail is decorative, never for navigation.`
     : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
   if (projectUsesLands(project)) notes.push(coverage.publicLands.length
-    ? `Public land outlines come from ${coverage.publicLands.map(({ name }) => name).join(" and ")}. Boundaries are as published and can lag changes on the ground.`
-    : "Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land only, without names. Other kinds will be empty here.");
+    ? `The studio checks ${coverage.publicLands.map(({ name }) => name).join(" and ")} for public land. Boundaries can lag changes on the ground.`
+    : "Here public land comes from OpenStreetMap where mapped. It supplies unnamed national parks, nature reserves (as preserves) and military land.");
   if (plan.output === "flat" && project.paintTemplates.length) notes.push("Paint templates are made for layered models only, so flat output leaves them out.");
   notes.push(...airspaceNotes(project, plan));
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;

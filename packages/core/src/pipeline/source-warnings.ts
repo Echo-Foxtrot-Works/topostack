@@ -3,6 +3,13 @@ import { sourceRequirements } from "./source-requirements.js";
 import type { GenerationContext } from "./generation-context.js";
 
 export function addSourceWarnings({ config, source, usesWaterDepth, warnings, aviation }: GenerationContext): void {
+  const mapzenZoom = source.terrainSelection?.mapzenZoom;
+  if (mapzenZoom && mapzenZoom.used < mapzenZoom.requested && source.terrainSelection?.sources.some(({ id }) => id === "mapzen")) warnings.push({
+    code: "TERRAIN_COARSER_ZOOM",
+    message: `Higher-detail elevation tiles were empty. This map uses original elevation tiles at zoom ${mapzenZoom.used}.`,
+    messageKey: "terrainCoarserZoom",
+    params: { zoom: mapzenZoom.used },
+  });
   if (source.terrainSourceUnavailable) warnings.push({
     code: "TERRAIN_SOURCE_FALLBACK",
     message: "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
@@ -64,12 +71,12 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     });
     if (source.landsStatus === "not-covered") warnings.push({
       code: "LANDS_NOT_COVERED",
-      message: "Neither PAD-US nor OpenStreetMap has public land of the asked-for kinds here, so this area has no public land paint or boundaries.",
+      message: "No public land of the selected kinds was found in this area.",
       messageKey: "landsNotCovered",
     });
     if (source.landsSources?.includes("openstreetmap")) warnings.push({
       code: "LANDS_FROM_OPENSTREETMAP",
-      message: "Outside the United States and Canada, public land comes from OpenStreetMap: national parks, nature reserves (as preserves) and military land only, unnamed, and only as completely as they are mapped.",
+      message: "This area uses OpenStreetMap for public land. It supplies unnamed national parks, nature reserves (shown as preserves) and military land where mapped.",
       messageKey: "landsFromOpenStreetMap",
     });
   }

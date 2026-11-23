@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { decodeTerrainPng } from "./terrain-png";
+import { decodeTerrainPng, TerrainTileNoDataError } from "./terrain-png";
 
 function chunk(type: string, data: Uint8Array): Buffer {
   const result = Buffer.alloc(data.length + 12);
@@ -17,7 +17,7 @@ function chunk(type: string, data: Uint8Array): Buffer {
   return result;
 }
 
-function terrainPng(options: { filter?: number; rgba?: boolean; alpha?: number; noData?: boolean; width?: number; transparency?: boolean; extraBytes?: number } = {}): Buffer {
+function terrainPng(options: { filter?: number; rgba?: boolean; alpha?: number; noData?: boolean | "first-pixel"; width?: number; transparency?: boolean; extraBytes?: number } = {}): Buffer {
   const channels = options.rgba ? 4 : 3;
   const stride = 256 * channels;
   const raw = Buffer.alloc((stride + 1) * 256 + (options.extraBytes ?? 0));
@@ -25,9 +25,10 @@ function terrainPng(options: { filter?: number; rgba?: boolean; alpha?: number; 
   for (let y = 0; y < 256; y += 1) for (let x = 0; x < 256; x += 1) {
     const offset = y * stride + x * channels;
     // Exercise byte carries, negative depths, fractional meters and all filters.
-    pixels[offset] = options.noData ? 0 : 100 + Math.floor(x / 8);
-    pixels[offset + 1] = options.noData ? 0 : (x * 3 + y * 7) % 256;
-    pixels[offset + 2] = options.noData ? 0 : (x + y) % 256;
+    const missing = options.noData === true || (options.noData === "first-pixel" && x === 0 && y === 0);
+    pixels[offset] = missing ? 0 : 100 + Math.floor(x / 8);
+    pixels[offset + 1] = missing ? 0 : (x * 3 + y * 7) % 256;
+    pixels[offset + 2] = missing ? 0 : (x + y) % 256;
     if (channels === 4) pixels[offset + 3] = options.alpha ?? 255;
   }
   for (let y = 0; y < 256; y += 1) {
@@ -68,8 +69,12 @@ describe("numeric Terrarium PNG decoding", () => {
     }
   });
 
-  it.each([{ width: 512 }, { filter: 5 }, { rgba: true, alpha: 0 }, { rgba: true, alpha: 128 }, { transparency: true }, { noData: true }, { extraBytes: 5 }])("rejects unsupported or missing data: %j", (options) => {
+  it.each([{ width: 512 }, { filter: 5 }, { rgba: true, alpha: 0 }, { rgba: true, alpha: 128 }, { transparency: true }, { noData: "first-pixel" as const }, { extraBytes: 5 }])("rejects unsupported or missing data: %j", (options) => {
     expect(() => decodeTerrainPng(terrainPng(options))).toThrow(/elevation PNG/);
+  });
+
+  it.each([false, true])("distinguishes a completely empty sentinel tile with RGBA=%s", (rgba) => {
+    expect(() => decodeTerrainPng(terrainPng({ rgba, noData: true }))).toThrow(TerrainTileNoDataError);
   });
 
   it("preserves transparent bathymetry as missing without weakening terrain validation", () => {

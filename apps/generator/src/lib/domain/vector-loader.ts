@@ -2,7 +2,8 @@ import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import { createFeatureBudget, FeatureBudgetExceededError, yieldForCancellation } from "$lib/domain/feature-budget";
 import { buildingMarkings, readBuildingFragments, type BuildingFragment } from "$lib/domain/building-outlines";
-import { classifyRail, railContextTiles, stationPassages, type RailContext } from "$lib/domain/covered-rail";
+import { railContextTiles, stationPassages, type RailContext } from "$lib/domain/covered-rail";
+import { classifyTransportation } from "./transportation-classification";
 import { boundsOverlap, clipPolyline, cropBoundary, preparePolygons, groundWidthMFor, isRailClass, buildingOutlinesEnabled, ringBounds, sourceRequirements, type GeoBounds, type MarkingFeature, type Point2D, type Polygon2D, type ProjectConfigV1, type TransportationClass } from "@topostack/core";
 import { createArchive, type Archive } from "$lib/domain/archive";
 import { classifyRings, VectorTile, type VectorTileFeature, type VectorTileLayer } from "@mapbox/vector-tile";
@@ -10,25 +11,12 @@ import { PbfReader } from "pbf";
 import { archiveTileWindow, type DataTile } from "$lib/domain/tile-math";
 import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, shorelineMarkings, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 
+export { classifyTransportation };
+
 const RAW_VECTOR_MARKING_BUDGET_MULTIPLIER = 4;
-const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"]);
-const LOCAL_ROAD_DETAILS = new Set(["tertiary", "tertiary_link", "residential", "service", "unclassified", "road", "raceway", "driveway", "parking_aisle", "alley", "drive-through", "emergency_access"]);
-const TRAIL_DETAILS = new Set(["pedestrian", "track", "path", "cycleway", "bridleway", "steps", "corridor", "sidewalk", "crossing"]);
-const EXCLUDED_TRANSPORT_KINDS = new Set(["aerialway", "ferry", "pier", "aeroway"]);
 /** Letters the engraving fonts can draw; names in other scripts fall back to a romanized name. */
 const ENGRAVABLE_SCRIPT = /[\p{Script=Latin}\p{Script=Cyrillic}]/u;
 const ROMANIZED_NAME_KEYS = ["name:en", "name:ja-Latn", "name:ja_rm", "name:zh-Latn-pinyin", "name:ko-Latn", "int_name"] as const;
-
-export function classifyTransportation(properties: Record<string, unknown>): TransportationClass | "rail-tunnel" | undefined {
-  const kind = typeof properties.kind === "string" ? properties.kind : "";
-  const detail = typeof properties.kind_detail === "string" ? properties.kind_detail : "";
-  if (EXCLUDED_TRANSPORT_KINDS.has(kind)) return undefined;
-  if (kind === "rail") return classifyRail(properties);
-  if (kind === "path" || TRAIL_DETAILS.has(detail)) return "trail";
-  if (kind === "highway" || kind === "major_road" || MAJOR_ROAD_DETAILS.has(detail)) return "major-road";
-  if (kind === "minor_road" || LOCAL_ROAD_DETAILS.has(detail)) return "local-road";
-  return undefined;
-}
 
 export function transportationLabel(properties: Record<string, unknown>): string | undefined {
   const text = (key: string) => {

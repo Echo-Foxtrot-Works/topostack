@@ -1,72 +1,94 @@
-# Curated terrain coverage
+# Curated terrain and ocean coverage
 
-Decision: data acquisition and publication are operator-controlled. Application
-requests only read approved, versioned datasets. The application never discovers
-providers, queues terrain builds, or publishes new data. Manual bulk preparation
-may use scripts, but a person chooses the products, extent, and release.
+## What the studio could load on November 22, 2026
 
-## What is operational today
+Production uses the Mapzen Terrarium composite across the supported Web Mercator band (85.0511°S–85.0511°N). The country name alone cannot tell a maker what survey or effective resolution a crop will use. The service returns the upstream imagery filenames in `x-topostack-imagery-sources`. No independently registered land terrain archive returned data on the production gateway during this review. [Architecture](architecture.md) · [Mapzen source list and footprint index](https://github.com/tilezen/joerd/blob/master/docs/data-sources.md)
 
-- Worldwide fallback: existing Mapzen Terrain Tiles composite. Its underlying
-  datasets and effective resolution vary by location; inspect recorded imagery
-  provenance rather than assuming it is uniformly 30 m or current lidar.
-- Preferred coverage: three verified NRCan regional archives in Ontario, recorded
-  in `scripts/data/terrain-sources.json`. These cover the two Alexander Lake areas
-  and an additional region west of the western lake. Archives are published in
-  **development**, not production. Countrywide preferred coverage is not yet built.
-- Source selection: explicit quality priority, then native resolution, acquisition
-  year, and stable ID. Only valid samples claim coverage; gaps fall through.
-  Archive metadata is checked, and source contributions travel with exports.
-
-The provider inventory below is a preparation plan, **not** an enabled catalog.
-Do not add nationwide bounding boxes to the runtime catalog until corresponding
-archives exist and their actual coverage has been checked.
-
-## Initial base set to prepare
-
-| Area | Broad baseline / preferred product | Higher-detail coverage | Official reference |
+| Layer | Production gateway | Development gateway | Evidence and geographic limits |
 | --- | --- | --- | --- |
-| Canada | MRDEM-30 **DTM**, nationwide 30 m baseline | HRDEM bare-earth mosaics at 1 m / 2 m where valid | [NRCan strategy](https://natural-resources.canada.ca/maps-tools-publications/satellite-elevation-air-photos/national-elevation-data-strategy) |
-| United States | 3DEP seamless 1/3 arc-second (~10 m) where available; verify Alaska/territory product coverage separately | 3DEP 1 m projects and published seamless 1 m areas | [USGS products](https://www.usgs.gov/3d-elevation-program/about-3dep-products-services), [seamless 1 m](https://www.usgs.gov/3d-elevation-program/new-product-3d-elevation-program-seamless-1-meter-digital-elevation-model-s1m) |
-| England | Environment Agency lidar composite **DTM**, 1 m, approximately 99% coverage | Review newer local surveys where useful | [EA lidar collection](https://www.data.gov.uk/collections/environment/lidar) |
-| New Zealand | LINZ national elevation products | National Elevation Programme bare-earth lidar coverage; verify native resolution and acquisition per release | [LINZ elevation](https://www.linz.govt.nz/products-services/data/types-linz-data/elevation-data) |
-| Switzerland / Liechtenstein | swissALTI3D, 2 m option | 0.5 m option where output scale benefits | [swisstopo](https://www.swisstopo.admin.ch/en/height-model-swissalti3d) |
-| Australia | Retain current global fallback while evaluating national DEM variants | Geoscience Australia 5 m lidar DEM coverage; it is not complete national lidar coverage | [GA lidar DEM](https://services.ga.gov.au/gis/rest/services/DEM_LiDAR_5m_2025/MapServer) |
+| Mapzen land and ocean | HTTP 200 on sampled tiles | Configured base service | At z12, production returned USGS NED 1/3″ in Colorado, CDEM in Ontario and British Columbia, Austrian and Norwegian 10 m DEMs, LINZ in New Zealand, and SRTM at Fuji, Kilimanjaro, Merapi and in Guatemala. The open-ocean tile east of Japan returned GMTED. These are individual observations. [Colorado tile](https://topostack.app/v1/terrain/12/846/1556.png) · [Ontario tile](https://topostack.app/v1/terrain/12/1149/1449.png) · [Fuji tile](https://topostack.app/v1/terrain/12/3626/1617.png) · [Japan Trench tile](https://topostack.app/v1/terrain/12/3679/1571.png) |
+| Canada, NRCan HRDEM | Three registrations advertised, all three archive routes returned 404 | All three returned 206 | Only three small Ontario footprints near West Nipissing and Elliot Lake, 1 m source, z10–15. No Canada-wide preferred layer. [Catalog with bounds and hashes](../scripts/data/terrain-sources.json) · [Pilot coverage](hrdem-terrain.md) |
+| Global ocean, GEBCO_2026 | Absent from manifest, archive route returned 404. The production storage receipt records promotion on Nov 20. | Advertised and returned 206 for the 6,059,356,841-byte archive | 15 arc-seconds (about 463 m north–south), z0–9, whole-metre depths. Finer zooms interpolate. Land, NoData and base terrain above sea level keep their underlying values. [Ocean builder and selection](ocean-bathymetry.md) · [GEBCO release](https://www.gebco.net/news/release-gebco2026-grid) |
+| Japan, GSI 5 m / 10 m | No registered GSI land archive | No registered GSI land archive | Local Fuji shard trial and comparison crops. GSI reproduction approval is outstanding for these archives, including distribution via public dev. [GSI runbook](gsi-terrain.md) · [Measured trial](reports/japan-fidelity-spike-2026-11.md) |
 
-Reviewed 2026-09-16. Product availability does not establish that a release has
-been licensed, downloaded, normalized, or activated in TopoStack. Add further
-countries to this inventory as their authoritative products are assessed.
+**Verification.** At 04:09 UTC on November 23 (November 22 in Denver), GET requests with `Range: bytes=0-7` checked all four IDs in the catalog at `/v1/terrain-sources/{id}.pmtiles` on both public hosts. A 206 verifies that the gateway served archive bytes. It does not measure valid pixels in a crop. The GEBCO provisioning receipt in the operator workspace records the same SHA-256 for both buckets, `5484337000c4851d0a24929c465c4a6ad082e85dd73719f0e543a1e03c03f1c1`. Recheck the gateway when promoting application code. [Production manifest](https://topostack.app/v1/manifest) · [Development manifest](https://dev.topostack.app/v1/manifest) · [Versioned release](../scripts/data/terrain-releases/1ede3dc0434478eee2e1ced8e84994d77d14094e051c3a8d812d9523c6432695.json)
 
-## Release workflow
+Mapzen already incorporates some national products. Its published inputs include US 3DEP, Canadian CDEM (20–400 m depending on latitude), UK Environment Agency surveys, Austria and Norway 10 m, Mexico's INEGI relief, New Zealand 8 m, and 5 m coverage in parts of coastal Australia. Other inputs include EU-DEM across much of Europe, ArcticDEM in northern strips, SRTM and coarser GMTED on land, and ETOPO1 (1 arc-minute) offshore. Zoom and location change the contributors. Test any replacement against the actual crop, particularly where Mapzen already carries finer data than a proposed national baseline. [Mapzen source definitions](https://github.com/tilezen/joerd/blob/master/docs/data-sources.md)
 
-1. Choose a named provider release, intended regional coverage, and priority.
-   Prefer broad national baselines before accumulating isolated lake-sized patches.
-2. Record licence/redistribution terms, attribution, source URLs, checksums or
-   object pins, acquisition date when known, native resolution, ground-vs-surface
-   semantics, vertical units and datum, and actual NoData coverage.
-3. Normalize to the numeric elevation archive contract. Heights must be metres.
-   Horizontal reprojection alone does not normalize vertical datums. The current
-   validator admits CGVD2013 only; admitting another national datum requires
-   explicit normalization/mixing policy and fixtures, not relabelling heights.
-4. Build offline in bounded geographic chunks with reproducible receipts.
-   Countrywide packaging and storage estimates must be prepared before bulk
-   imports: the existing builder has a 100-million-sample limit and writes through
-   zoom 15. It is a regional tool, not yet a national-scale tiling pipeline.
-5. Compare source samples, contour quality, coverage edges, tile seams, and
-   overlap behavior. Check that nominally finer data actually improves the result.
-6. Stage and verify full archive hashes, promote the data release, then enable its
-   catalog registration in the application release. Keep rollback receipts.
+## What a terrain upgrade changes at five test points
 
-Use `scripts/data-build/discover-terrain.py` manually to inspect Canadian candidates and
-prepare approved areas. `--build`, `--register`, and archive `--promote` remain
-explicit operator actions. The discovery script is never called by the app.
+Each production value below is one decoded Terrarium pixel at z15 (`256 × R + G + B / 256 − 32768` metres). The comparison queries the national elevation service at that pixel's geographic centre. Swiss points were transformed from WGS84 to LV95 for the API. Values are rounded to 0.1 m. A difference includes source vintage, sampling, terrain shape and any vertical-reference differences. These spot checks quantify disagreement at five locations. They do not estimate countrywide vertical accuracy. [Swiss point service](https://docs.geo.admin.ch/access-data/get-point-height.html) · [USGS EPQS method](https://www.usgs.gov/faqs/how-accurate-are-elevations-generated-elevation-point-query-service-national-map)
 
-## Selection policy
+| Point (latitude, longitude) | Production tile source | Production (m) | National service (m) | Production minus national (m) |
+| --- | --- | ---: | ---: | ---: |
+| Matterhorn, 45.976402, 7.658608 | [EU-DEM](https://topostack.app/v1/terrain/15/17081/11660.png) | 4,282.3 | [4,475.9](https://api3.geo.admin.ch/rest/services/height?easting=2617048.546&northing=1091671.724) | −193.6 |
+| Eiger, 46.577492, 8.005321 | [EU-DEM](https://topostack.app/v1/terrain/15/17112/11581.png) | 3,915.2 | [3,956.3](https://api3.geo.admin.ch/rest/services/height?easting=2643439.029&northing=1158625.170) | −41.1 |
+| Bern, 46.947992, 7.447379 | [EU-DEM](https://topostack.app/v1/terrain/15/17061/11532.png) | 550.5 | [540.4](https://api3.geo.admin.ch/rest/services/height?easting=2600665.849&northing=1199656.404) | +10.1 |
+| Pikes Peak, 38.840560, −105.044210 | [NED 1/3″](https://topostack.app/v1/terrain/15/6822/12541.png) | 4,301.8 | [4,300.3](https://epqs.nationalmap.gov/v1/json?x=-105.0442099571228&y=38.84055999471738&units=Meters&output=json) | +1.6 |
+| Denver, 39.739188, −104.984815 | [NED Denver City 2008](https://topostack.app/v1/terrain/15/6828/12436.png) | 1,609.1 | [1,608.2](https://epqs.nationalmap.gov/v1/json?x=-104.98481512069702&y=39.73918786355945&units=Meters&output=json) | +0.9 |
 
-Retain a worldwide fallback. Above it, register approved national bare-earth
-baselines and then verified regional lidar DTMs. Priority is a curation decision;
-smaller advertised pixels alone do not prove better ground elevations. Do not
-substitute a DSM containing vegetation/buildings for a DTM without explicitly
-changing the product contract. Lake-floor bathymetry is separate from land terrain.
+The two Swiss summit samples justify testing a swissALTI3D crop at fabrication scale. The two Colorado reference samples both reported 1 m resolution, yet the differences were under 2 m. Compare contour shape and edge detail as well as height before investing in regional conversions. Japan already has a three-site comparison with summit heights, coverage masks, errors and contour detail. [Japan fidelity measurements](reports/japan-fidelity-spike-2026-11.md)
 
-See [terrain selection](terrain-selection.md) and [archive preparation](hrdem-terrain.md).
+## Land acquisition candidates
+
+The following are published source products or documented access leads. The app only selects operator-approved, versioned archives. Pixel size below describes the input grid. A terrain request is still bounded by z15, 24 tiles and a project grid of at most 768 samples per axis. [Selection and rendering limits](terrain-selection.md)
+
+| Country or area | Product and extent | Acquisition decision |
+| --- | --- | --- |
+| Canada | NRCan MRDEM-30 national bare-earth DTM, with HRDEM 1 m / 2 m mosaics by footprint | Use the existing STAC adapter. Compare against CDEM, keep the DTM band, and stage regional builds around known gaps first. [MRDEM](https://natural-resources.canada.ca/science-data/science-research/geomatics/ending-canadian-digital-elevation-model-era-new-medium-resolution-digital-elevation-model) · [HRDEM](hrdem-terrain.md) |
+| United States and territories | USGS 3DEP seamless 1/3″ (about 10 m) across the states and territories, 1 m projects by footprint, 5 m IfSAR DTM in Alaska | Use the work-unit index for the 1 m adapter. Check metadata for the local vertical reference in Hawaii, Puerto Rico, USVI and Pacific territories. Public-domain data. [Products and coverage](https://www.usgs.gov/3d-elevation-program/about-3dep-products-services) · [Datums](https://www.usgs.gov/faqs/what-projection-horizontal-datum-vertical-datum-and-resolution-a-usgs-digital-elevation-model) |
+| Mexico | INEGI CEM 4.0 national 15 m and higher-resolution terrain grids by tile and acquisition type | Compare to Mapzen's historical INEGI contributor. Select terrain from the catalog and check the survey footprint. [INEGI downloads](https://inegi.org.mx/app/geo2/elevacionesmex/) |
+| Haiti | CNIGS / World Bank airborne lidar DTM, 1.5 m, national 2014–16 collection, EGM96 | The archive distributor gives the survey footprint but lists no use licence. Resolve redistribution with the provider. [HaitiData](https://haitidata.org/) · [Dataset record](https://portal.opentopography.org/datasetMetadata?otCollectionID=OT.082021.32618.1) |
+| Argentina | IGN continental MDE-Ar v2.1, 30 m SRTM/ALOS composite. Aerophotogrammetric MDEs at 5 m cover selected polygons | Use the IGN flight footprint and verify ground classification before ranking. The 30 m grid has overlapping lineage with Mapzen. [Technical report](https://www.ign.gob.ar/archivos/Informe_MDE-Ar_v2.1_30m.pdf) · [Flight-derived products](https://www.ign.gob.ar/NuestrasActividades/Fotogrametria/ProductosYServicios) |
+| Brazil | State of Santa Catarina 1 m ground model (MDT). IBGE's separate photogrammetric MDE sheets include vegetation and buildings | Assess Santa Catarina's numeric source tiles and reuse terms. Keep the two products distinct. [UDESC / SIGSC](https://geolab.faed.udesc.br/index.php/downloads/download-mdt) · [IBGE definition](https://www.ibge.gov.br/geociencias/todos-os-produtos-geociencias/10856-mde-modelo-digital-de-elevacao.html) |
+| Colombia | IDECA Bogotá 2025 bare-earth mosaic, 1 m urban and expansion areas, 5 m eastern hills, 10 m rural | CC BY 4.0. Record each subarea's spacing when testing a Bogotá relief. [IDECA mosaic and download](https://ideca.gov.co/mapas/imagenes-de-sensores-remotos/inventario-mdt05) |
+| South Africa | NGI national 25 m DEM, photogrammetry and digitized contours | Compare actual contour improvement against Mapzen, particularly for steep terrain. Confirm delivery and redistribution terms. [NGI elevation data](https://ngi.dlrrd.gov.za/index.php/what-we-do/maps-and-geospatial-information/40-elevation-data) |
+| Rwanda | National Land Authority / WASAC 10 m DEM, CC BY 4.0 | The publisher documents northwest outliers and a southwest gap in the original. Inspect corrections, fill lineage, ground semantics and height reference. [UNDP distribution](https://geohub.data.undp.org/data/00d5add9be37e465398b081683c3ec03) · [WASAC processing](https://github.com/WASAC/rwanda-dem) |
+| Tanzania | Zanzibar City and surrounding area, photogrammetric DTM produced for the World Bank flood project | Request the raster, footprint, native spacing and terms before promising coverage. The report documents a local product. [World Bank project report](https://documents1.worldbank.org/curated/en/099081501272327443/pdf/P15977904067240d90aee00af70a99368d3.pdf) |
+| Japan | GSI national DEM10B and 5 m DEM5A/B/C by footprint | Existing adapter and local measurements. At Fuji and Kamikochi the 5 m mosaic had 3.6–4.5 times the local detail metric of Mapzen. Resolve approval before public distribution. [GSI tile index](https://maps.gsi.go.jp/development/ichiran.html) · [Trial](reports/japan-fidelity-spike-2026-11.md) |
+| Taiwan | Ministry of the Interior 20 m DTM for the main island and some outlying islands, including Penghu | Government open-data licence v1.0. Match sheet year and island coverage. [MOI catalog](https://data.gov.tw/en/datasets/35430) · [Sheet coverage](https://data.gov.tw/en/datasets/175239) |
+| Indonesia | BIG DEMNAS, 0.27 arc-seconds (about 8 m), mixed radar and stereo points, EGM2008 | Compare roof/canopy effects against verified ground elevations before admitting it as a ground model. [BIG product specification](https://big.go.id/content/Product/demnas) |
+| India | NRSC/ISRO Cartosat-1 stereo DEM, public 1 arc-second (about 30 m) posting | An alternative for poor SRTM crops. Confirm surface semantics, vertical reference and permission for packaged redistribution. [Indian government catalog](https://data.gov.in/catalog/digital-elevation-model-dem-generated-cartosat-1-satellite-data-india) |
+| Philippines | Phil-LiDAR floodplain DTMs, delivered through LiPAD by request | Check the mapped river-basin footprint, project-specific resolution and requested use. [LiPAD access](https://lipad.dream.upd.edu.ph/) |
+| United Kingdom | England's EA composite 1 m DTM covers approximately 99% of England | Select an English survey vintage. Obtain separate evidence for Wales, Scotland and Northern Ireland. [EA composite](https://environment.data.gov.uk/dataset/13787b9a-26a4-4775-8523-806d13af58fc) |
+| France and overseas areas | IGN RGE ALTI bare-earth 1 m / 5 m. Covers metropolitan France and much of overseas France. Excludes French Polynesia, New Caledonia, Wallis and Futuna, and masked areas | Open Licence 2.0. Match each territory's height datum and retain the supplied NoData mask. [IGN catalog](https://www.data.gouv.fr/datasets/rge-alti-r) |
+| Spain | IGN/CNIG PNOA ground grids, 5 m first pass, 2 m second pass, 0.5 m third pass | Select a completed downloadable sheet and credit the survey generation. [PNOA product catalog](https://centrodedescargas.cnig.es/CentroDescargas/modelos-digitales-elevaciones) |
+| Portugal | DGT 2024–25 mainland lidar MDT, 0.5 m / 2 m / 10 m. Cascais height datum | Test a mainland crop. Obtain island-specific sourcing for Madeira and the Azores. [DGT specifications and downloads](https://www.dgterritorio.gov.pt/atividades/cartografia/cartografia-topografica/modelos-digitais) |
+| Switzerland and Liechtenstein | swissALTI3D 2 m / 0.5 m grid, LN02 heights | Start at 2 m. Some 0.5 m cells are oversampled, and high elevations include stereo measurements. [swisstopo product](https://www.swisstopo.admin.ch/en/height-model-swissalti3d) · [Liechtenstein release](https://www.swisstopo.admin.ch/en/height-model-swissalti3d-update-20260928) |
+| Austria | BEV airborne-laser terrain grid, 1 m | Compare with the historical Austrian 10 m Mapzen contribution. Preserve the declared Austrian vertical reference. [BEV ALS-DGM](https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html) |
+| Netherlands | AHN 0.5 m DTM | Use the ground-classified raster and test below-sea-level polders and dykes in the coastline fitting step. [Government catalog](https://data.overheid.nl/en/dataset/47567-actueel-hoogtebestand-nederland--ahn--dtm) |
+| Finland | National Land Survey 2 m laser ground model, N2000, CC BY 4.0 | Preserve the two quality classes and known gaps at parts of the outer archipelago and eastern border. [NLS metadata](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) |
+| Estonia | Land and Spatial Development Board DTM, 1 / 5 / 10 / 25 m | Select the DTM GeoTIFF and acquisition cycle from the sheet index. [Elevation data](https://geoportaal.maaamet.ee/eng/Maps-and-Data/Topographic-Data/Elevation-data-p308.html) |
+| Poland | GUGiK NMT terrain grid at ≤1 m or 5 m by sheet | Query the actual index for coverage and retain the PL-KRON86-NH or PL-EVRF2007-NH frame on the sheet. [GUGiK downloads](https://www.geoportal.gov.pl/pl/dane/numeryczny-model-terenu-nmt/) |
+| Slovenia | Nationwide DMV 5 ground elevation model, 5 m, CC BY 4.0, plus laser-derived 1 m relief data | Compare the newer lidar footprint against DMV 5. [National metadata](https://eprostor.gov.si/imps/srv/api/records/4ac9a90e-7694-42eb-870a-c11ef93783c4) · [Survey authority](https://www.e-prostor.gov.si/podrocja/drzavni-topografski-sistem/daljinsko-zaznavanje/) |
+| Australia | Geoscience Australia 5 m lidar DEM mosaic in surveyed areas | Use the numeric grid and a valid-data mask from ELVIS. Compare the existing Mapzen coastal lidar first. [5 m service](https://services.ga.gov.au/gis/rest/services/DEM_LiDAR_5m_2025/MapServer) · [ELVIS](https://www.ga.gov.au/scientific-topics/national-location-information/elvis-elevation-information-system) |
+| New Zealand | LINZ National Elevation Programme, 1 m bare-earth DEM mosaics across most of the country | Consult the coverage index. Native collection dates and completeness vary, and the DSM is a separate download. [LINZ coverage map](https://www.linz.govt.nz/products-services/data/types-linz-data/elevation-data/lidar-data-coverage) · [DEM products](https://www.linz.govt.nz/products-services/data/types-linz-data/elevation-data/provincial-growth-fund-lidar-programme) |
+| Tuvalu | National coastal airborne lidar and offshore multibeam around all nine islands | A high-value test for atolls where a 30 m model can lose both land and channels. The study directs DEM requests to the Government of Tuvalu. Confirm permission and local vertical reference. [Survey and availability](https://doi.org/10.1029/2023EF003924) |
+| Antarctica and Arctic land | PGC REMA and ArcticDEM stereo-derived 2 m surface models. ArcticDEM includes Greenland | Use only for an explicitly identified surface or ice product. Convert ellipsoidal heights, respect the app's latitude limit and check the acquisition-specific Alaska reuse conditions. [PGC product guide](https://www.pgc.umn.edu/guides/stereo-derived-elevation-models/pgc-dem-products-arcticdem-rema-and-earthdem/) |
+
+**Broad alternative for unassessed areas.** GEDTM30 v1.2 is a CC BY 4.0, 30 m machine-learning estimate of ground elevation from multiple sources. Its distributed footprint spans about 62.0°S to 83.7°N, with EGM2008 heights. Compare it to Mapzen at forested, steep, low-lying and urban test sites before assigning priority. Copernicus GLO-30 describes the surface, including trees and buildings. FABDEM v1.2 removes estimated tree and building heights, but its public licence is CC BY-NC-SA 4.0 and the publisher directs commercial users to a separate enquiry. [GEDTM30](https://portal.opentopography.org/datasetMetadata?otCollectionID=OT.082025.4326.1) · [Copernicus product licence](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf) · [FABDEM](https://research-information.bris.ac.uk/en/datasets/fabdem-v1-2/)
+
+## Ocean acquisition candidates
+
+GEBCO reports 28.7% of the global seabed mapped to modern standards for its 2026 release. That percentage measures the underlying surveys, independently of the 15″ global grid coverage. Check GEBCO's Type Identifier and errata when choosing pilots, including the North Pacific depth offset off the US and the erroneous shelf value near Hyuga, Japan. A production GEBCO gateway release would reach many coasts at once. Harbours, reefs and narrow channels require finer local measurements. [GEBCO grid and source types](https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid) · [Coverage release](https://www.gebco.net/news/release-gebco2026-grid) · [Errata](https://www.gebco.net/data-products/gridded-bathymetry-data/data-set-errata)
+
+| Coast or basin | Candidate | Decision before use |
+| --- | --- | --- |
+| European seas, Mediterranean shore of North Africa, and part of the Caribbean | EMODnet 2024 DTM at 1/16 arc-minute (about 115 m), plus finer regional grids | Use numeric depths, preserve source references including GEBCO infill, check the tile's extent and convert LAT-referenced depths to a compatible vertical datum. [EMODnet product and attributes](https://emodnet.ec.europa.eu/en/bathymetry) |
+| Ireland | INFOMAR seabed surveys, multibeam and lidar, CC BY 4.0 | Use a survey footprint, grid spacing, datum and the program's attribution for an Irish coastal pilot. [Catalog](https://data.gov.ie/en_GB/dataset/infomar-seabed-survey-bathymetry-multi-beam-and-lidar) |
+| United States, including US Caribbean | NOAA BlueTopo elevation, vertical uncertainty and contributor raster | Use the dated tile scheme and retain interpolation flags. NOAA specifies NAVD88. Its FAQ identifies the Atlantic, Gulf Coast and US Caribbean among the completed regions. [Coverage and access](https://nauticalcharts.noaa.gov/data/bluetopo_faq.html) · [Grid specification](https://nauticalcharts.noaa.gov/data/bluetopo_specs.html) |
+| Canada | Canadian Hydrographic Service NONNA roughly 10 m / 100 m grids, OGL-Canada | Depths use local chart datum. Validate the tidal transformation and survey footprint before joining GEBCO. [CHS NONNA](https://open.canada.ca/data/dataset/d3881c4c-650d-4070-bf9b-1e00aabf0a1d) |
+| Indonesia | BIG BATNAS 6″ (about 185 m), MSL, regional 90°–150°E and 20°S–20°N | Compare the blended altimetry and sounding sources with GEBCO in Indonesian straits. Confirm archive rights. [BIG BATNAS](https://big.go.id/content/Product/demnas) |
+| Australia and selected offshore islands | AusBathyTopo 2026 national 250 m and finer regional grids | Prefer a regional source with additional survey detail. The national grid includes satellite estimates and feeds GEBCO. Its extent excludes Heard and McDonald Islands. [Geoscience Australia](https://www.ga.gov.au/scientific-topics/marine-and-coastal/seabed/ausbathytopo-grids) |
+| New Zealand | LINZ coastal lidar 1 m DEM and hydrographic survey holdings | Read the survey index for the actual coastal footprint, capture dates and licence. Use a shallow-water test where valid seabed returns exist. [LINZ coastal index](https://data.linz.govt.nz/layer/122509-new-zealand-coastal-lidar-1m-dem-survey-index/) · [Hydrographic data](https://www.linz.govt.nz/products-services/data/types-linz-data/hydrographic-data) |
+| Southern Ocean | IBCSO v2 500 m regional polar-stereographic compilation south of 50°S | Already contributes to GEBCO. Use the source and coverage layers to find survey-level improvement before building a second mosaic. [IBCSO](https://ibcso.org/overview/) |
+
+## Preparing a release
+
+The local registry now marks the three Ontario pilots as development-only. To restore production availability, first set `--availability all` for the intended IDs in a local release with `python3 scripts/data-build/terrain_release.py --availability all <source-id> ...`. Use that candidate catalog to provision and promote the existing pinned archives to production. Publish the catalog and application after checking the remote release receipts, then verify the public manifest, archive ranges and a crop. A local availability change preserves the archive IDs, build receipts, pins and previous versioned manifests.
+
+1. Select an actual source footprint, intended zoom range and priority. Record the redistribution terms, attribution, acquisition date, ground/surface/depth semantics, vertical units and datum, and upstream checksums or object pins.
+2. Normalize elevations to metres, verify datum compatibility and retain valid-data masks. The current terrain contract admits CGVD2013, JP-TP and MSL. A new frame needs an explicit conversion or documented mixing policy and verification fixtures. [Terrain contract](../scripts/data-build/terrain_release.py) · [Selection policy](terrain-selection.md)
+3. Build bounded regional archives with reproducible receipts. The existing Canadian builder has a 100-million-sample limit and writes through z15. Measure storage and cut-layer improvement on pilot crops before planning nationwide packaging. [HRDEM preparation](hrdem-terrain.md)
+4. Compare sources at tile seams, NoData edges, sparse surveys and shoreline crossings. Check the resulting contours at fabrication scale. Preserve evidence of which source actually contributed.
+5. Stage and verify archive hashes, promote the storage release, then deploy the compatible catalog and check both gateway bytes and actual crop contributions. Keep rollback receipts. Discovery, build, registration and promotion are manual operator operations. [Terrain selection](terrain-selection.md) · [Ocean preparation](ocean-bathymetry.md)

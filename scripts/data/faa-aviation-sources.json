@@ -45,6 +45,7 @@
   { "id": "alaska", "bounds": [-180.0, 51.0, -129.5, 71.5] },
   { "id": "aleutians-west", "bounds": [172.0, 51.0, 180.0, 53.5] },
   { "id": "hawaii", "bounds": [-160.5, 18.5, -154.5, 22.5] },
+  { "id": "french-frigate-shoals-tern-island", "bounds": [-166.290, 23.864, -166.279, 23.873] },
   { "id": "puerto-rico-virgin-islands", "bounds": [-67.5, 17.5, -64.5, 18.8] },
   { "id": "guam-northern-marianas", "bounds": [144.5, 13.0, 146.2, 20.7] },
   { "id": "american-samoa", "bounds": [-171.2, -14.6, -168.1, -11.0] },
