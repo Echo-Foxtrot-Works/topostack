@@ -31,7 +31,6 @@
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { formatNumber, t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { ProjectHistory } from "$lib/studio/history";
-  import type { CompositionPreview } from "$lib/studio/map-compositions";
   import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
   import { autosaveProject } from "$lib/studio/autosave.svelte";
@@ -180,9 +179,7 @@
   const themeColor = $derived.by(() => { void theme.resolved; return readRoleColor(document.documentElement, "background") ?? ""; });
   let booted = $state(false);
   let historyAvailability = $state({ canUndo: false, canRedo: false });
-  type CompositionSnapshot = CompositionPreview & { sourceProject: ProjectConfigV1 };
-  type HistoryEntry = ProjectConfigV1 | CompositionSnapshot;
-  const projectHistory = new ProjectHistory<HistoryEntry>((availability) => { historyAvailability = availability; });
+  const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
   const pipeline = new PreviewPipeline(() => loadGeometryClient(untrack(() => takeWarmWorker)));
@@ -577,39 +574,6 @@
     void updateFabrication({ verticalExaggeration });
   }
 
-  // Retain source and artwork only for a composition transition. Capture its
-  // inverse when traversed so Redo also restores the version actually left.
-  function compositionSnapshot(): CompositionSnapshot {
-    return { project, sourceProject, source: activeSource, geometry };
-  }
-
-  function inverseEntry(target: HistoryEntry): HistoryEntry {
-    return "geometry" in target && !terrainDataStale && geometry.configFingerprint === currentFingerprint
-      ? compositionSnapshot() : project;
-  }
-
-  /** Adopt the exact preview the maker chose, with one discrete undo step. */
-  function applyComposition(base: ProjectConfigV1, preview: CompositionPreview): void {
-    if (project !== base || previewBusy || placement.session || terrainDataStale) return;
-    if (exportBlockMessage(preview.geometry, preview.project)) return;
-    projectHistory.push(compositionSnapshot());
-    installComposition(preview, preview.project);
-    status = previewUpdatedStatus("fabrication", activeSource, project, sourceRequirements(project));
-  }
-
-  function installComposition(preview: CompositionPreview, preparedFor: ProjectConfigV1): void {
-    invalidatePendingPreview();
-    project = preview.project;
-    sourceProject = preparedFor;
-    activeSource = preview.source;
-    geometry = preview.geometry;
-    selectedAirspaceLevel = undefined;
-    selectedLayer = featuredLayerIndex(geometry);
-    mode = defaultModeFor(project.outputMode);
-    previewNotice = "";
-    generationState = "ready";
-  }
-
   function updateDepthLayerLimit(value: number): void {
     if (!Number.isFinite(value)) return;
     const waterDepthLayerLimit = Math.max(1, Math.round(value));
@@ -656,12 +620,7 @@
    * cosmetic change patches the preview in place, and anything else rebuilds
    * the preview from the retained source.
    */
-  function restoreProject(target: HistoryEntry, action: "Undo" | "Redo"): void {
-    if ("geometry" in target) {
-      installComposition(target, target.sourceProject);
-      status = t("status.historyApplied", { action: action === "Undo" ? "undo" : "redo" });
-      return;
-    }
+  function restoreProject(target: ProjectConfigV1, action: "Undo" | "Redo"): void {
     const changed = changedProjectKeys(project, target);
     const sourceChanged = changedProjectKeys(target, sourceProject);
     // Like the edits themselves, undoing a rename or restyle keeps Generate running.
@@ -691,8 +650,8 @@
     loadRealTerrain();
   }
 
-  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(inverseEntry); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
-  function redo(): void { if (placement.session) return; const next = projectHistory.redo(inverseEntry); if (next) restoreProject(next, "Redo"); }
+  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
+  function redo(): void { if (placement.session) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
     const shortcut = historyShortcut(event);
@@ -976,7 +935,6 @@
 
   // The sidebar panels and preview read App state through this object; see StudioContext.
   provideStudio({
-    applyComposition,
     get project() { return project; },
     get sourceProject() { return sourceProject; },
     get activeSource() { return activeSource; },

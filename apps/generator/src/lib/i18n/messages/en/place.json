@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "Compare compositions",
-  "currentDesign": "Current design",
-  "composition.streets": "Street engraving",
-  "composition.shoreline": "Shoreline engraving",
-  "composition.terrain": "Terrain relief",
-  "applyComposition": "Apply composition",
-  "noCompositionFeatures": "The selected map features do not appear in this crop.",
   "artworkSize": "Artwork size",
   "cutSize": "Cut size",
   "placeAndSize": "Place and size",
