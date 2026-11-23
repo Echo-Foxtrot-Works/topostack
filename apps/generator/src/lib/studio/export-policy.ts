@@ -56,14 +56,17 @@ export async function withLightBurnProjects(output: FabricationPackageV1): Promi
   return { ...output, files: [...output.files, ...projects] };
 }
 
-/** Keep assembly ids in Atomm's standard line-engraving group, including its guide. */
+/** Atomm classifies blue strokes and blue fills separately in its processing dialog. */
 export async function buildAtommPackage(geometry: GeometryIRV1, project: ProjectConfigV1, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1, includeProjectFile = true) {
   const charts = includeProjectFile ? await projectFileCharts(project) : [];
   const output = buildProjectPackage(geometry, project, { guideFonts: fonts, sheetPlan, acrylicSheetPlan, charts, includeProjectFile });
   const files = await Promise.all(output.files.map(async file => {
-    if (!/\.(svg|html|txt)$/.test(file.filename)) return file;
+    const artwork = file.filename.endsWith(".svg");
+    if (!artwork && file.filename !== "README.txt" && !file.filename.endsWith("-assembly-guide.html")) return file;
     const original = await file.blob.text();
-    const text = original.replace(/#00A651/gi, "#2366FF").replace(/engraved in green/g, "engraved in blue").replace(/green id/g, "blue id");
+    const text = artwork
+      ? original.replace(/ (fill|stroke)="#00A651"/g, ' $1="#2366FF"').replaceAll(' fill="#000000"', ' fill="#2366FF"')
+      : original.replace(/^ASSEMBLY #00A651$/m, "ASSEMBLY #2366FF").replace(/engraved in green/g, "engraved in blue").replace(/green id/g, "blue id");
     return text === original ? file : { ...file, blob: new Blob([text], { type: file.blob.type }) };
   }));
   return { ...output, files, master: files.find(file => file.filename === output.master.filename)! };

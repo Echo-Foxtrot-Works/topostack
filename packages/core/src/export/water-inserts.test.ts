@@ -58,7 +58,7 @@ describe("acrylic water insert export", { timeout: 30_000 }, () => {
     const [left, right] = path.split("M").filter(Boolean).map((run) => parsePathPoints("M" + run));
     expect(left!.at(-1)!.x).toBeCloseTo(-4.317, 3);
     expect(right![0]!.x).toBeCloseTo(4.317, 3);
-    expect(svg).toMatch(/id="map-marker-[^"]+" d="[^"]+" fill="#2366FF" stroke="none"/);
+    expect(svg).toMatch(/id="map-marker-[^"]+" d="[^"]+" fill="#000000" stroke="none"/);
   });
 
   it("partitions a filled symbol around an enclosed opening in the two material SVGs", () => {

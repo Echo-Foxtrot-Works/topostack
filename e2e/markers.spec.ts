@@ -36,7 +36,7 @@ test("marker size persists and fabrication artwork spans visible stack layers", 
   const layerIndexes = [...master.matchAll(/id="map-marker-0-0-(\d+)-\d+"/g)].map(match => Number(match[1]));
   expect(new Set(layerIndexes).size).toBeGreaterThan(1);
   expect(master).not.toContain('fill="#ffffff"');
-  expect(master.match(/id="map-marker-0-[^"]+"[^>]*fill="#2366FF" stroke="none"/g)?.length).toBe(layerIndexes.length);
+  expect(master.match(/id="map-marker-0-[^"]+"[^>]*fill="#000000" stroke="none"/g)?.length).toBe(layerIndexes.length);
   const projectEntry = Object.keys(files).find(name => name.endsWith("-project.json"))!;
   const saved = JSON.parse(Buffer.from(files[projectEntry]!).toString("utf8"));
   expect(saved.project.markers[0].sizeMm).toBe(180);

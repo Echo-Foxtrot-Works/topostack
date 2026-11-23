@@ -1,7 +1,6 @@
-import { dashPolyline, type Polyline } from "../primitives/dash.js";
-import { flattenSvgPath } from "../annotate/svg-path-data.js";
-import type { Point2D } from "../types.js";
-import { ASSEMBLY, CUT, EXPORT_CREDIT } from "./svg-primitives.js";
+import { readLaserSvg, type ArtworkLayer, type ArtworkNode as Node } from "./laser-artwork.js";
+import { EXPORT_CREDIT } from "./svg-primitives.js";
+export { parseTransform } from "./laser-artwork.js";
 
 /**
  * LightBurn project files (.lbrn2) written from TopoStack's own export SVGs.
@@ -29,7 +28,7 @@ export interface LightBurnLayer {
   mode: "Cut" | "Scan";
 }
 
-export type LightBurnLayerKey = "engrave-fill" | "engrave" | "assembly-fill" | "assembly" | "score" | "cut";
+export type LightBurnLayerKey = ArtworkLayer;
 
 /** Layers in running order: marking first, the through cut last so pieces stay put. */
 export const LIGHTBURN_LAYERS: readonly LightBurnLayer[] = [
@@ -43,209 +42,6 @@ export const LIGHTBURN_LAYERS: readonly LightBurnLayer[] = [
 
 /** LightBurn's coordinates are saved as written; a tenth of a micron is far below any beam. */
 const PRECISION = 4;
-/** Chord tolerance, in SVG units (mm), when a circle becomes line segments. */
-const CIRCLE_TOLERANCE_MM = 0.01;
-
-type Matrix = readonly [number, number, number, number, number, number];
-const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
-
-interface Paint {
-  operation?: string;
-  stroke?: string;
-  fill?: string;
-  dash?: number[];
-}
-
-
-interface ShapeNode { kind: "shape"; layer: LightBurnLayerKey; line: Polyline }
-interface GroupNode { kind: "group"; children: Node[]; piece?: boolean }
-type Node = ShapeNode | GroupNode;
-
-interface Frame { group?: GroupNode; matrix: Matrix; paint: Paint }
-
-const TAG = /<(\/?)([a-zA-Z][\w:-]*)((?:\s+[\w:-]+\s*=\s*"[^"]*")*)\s*(\/?)>/g;
-const ATTRIBUTE = /([\w:-]+)\s*=\s*"([^"]*)"/g;
-
-function attributes(source: string): Map<string, string> {
-  const values = new Map<string, string>();
-  for (const [, name, value] of source.matchAll(ATTRIBUTE)) values.set(name!, unescapeXml(value!));
-  return values;
-}
-
-function unescapeXml(value: string): string {
-  return value.replace(/&(lt|gt|quot|apos|amp);/g, (_, entity: string) => ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" })[entity]!);
-}
-
-function multiply(a: Matrix, b: Matrix): Matrix {
-  return [
-    a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
-    a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
-    a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5],
-  ];
-}
-
-/** An SVG transform list as one matrix. */
-export function parseTransform(value: string | undefined): Matrix {
-  if (!value) return IDENTITY;
-  let result = IDENTITY;
-  for (const [, name, args] of value.matchAll(/(matrix|translate|scale|rotate)\s*\(([^)]*)\)/g)) {
-    const n = args!.trim().split(/[\s,]+/).filter(Boolean).map(Number);
-    let next: Matrix = IDENTITY;
-    if (name === "matrix" && n.length === 6) next = n as unknown as Matrix;
-    else if (name === "translate") next = [1, 0, 0, 1, n[0] ?? 0, n[1] ?? 0];
-    else if (name === "scale") next = [n[0] ?? 1, 0, 0, n[1] ?? n[0] ?? 1, 0, 0];
-    else if (name === "rotate") {
-      const radians = ((n[0] ?? 0) * Math.PI) / 180;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-      const [cx = 0, cy = 0] = [n[1], n[2]];
-      next = multiply(multiply([1, 0, 0, 1, cx, cy], [cos, sin, -sin, cos, 0, 0]), [1, 0, 0, 1, -cx, -cy]);
-    }
-    result = multiply(result, next);
-  }
-  return result;
-}
-
-function apply(matrix: Matrix, point: Point2D): Point2D {
-  return { x: matrix[0] * point.x + matrix[2] * point.y + matrix[4], y: matrix[1] * point.x + matrix[3] * point.y + matrix[5] };
-}
-
-function inheritPaint(parent: Paint, values: Map<string, string>): Paint {
-  const dash = values.get("stroke-dasharray");
-  return {
-    operation: values.get("data-operation") ?? parent.operation,
-    stroke: values.get("stroke") ?? parent.stroke,
-    fill: values.get("fill") ?? parent.fill,
-    dash: dash === undefined ? parent.dash : dash === "none" ? undefined : dash.trim().split(/[\s,]+/).map(Number).filter((length) => Number.isFinite(length) && length >= 0),
-  };
-}
-
-function isPainted(color: string | undefined): color is string {
-  return Boolean(color) && color !== "none" && color !== "transparent";
-}
-
-/** The layer a shape belongs on, or undefined for unpainted shapes. Fills win over strokes. */
-function layerFor(paint: Paint): { layer: LightBurnLayerKey; filled: boolean } | undefined {
-  // SVG's initial fill is black; TopoStack always states it, so an unstated fill is treated as none.
-  const filled = isPainted(paint.fill);
-  const color = (filled ? paint.fill : paint.stroke)?.toUpperCase();
-  if (!filled && !isPainted(paint.stroke)) return undefined;
-  if (color === ASSEMBLY.toUpperCase()) return { layer: filled ? "assembly-fill" : "assembly", filled };
-  const operation = paint.operation?.toUpperCase() ?? (color === CUT.toUpperCase() ? "CUT" : "ENGRAVE");
-  if (operation === "CUT") return { layer: "cut", filled: false };
-  if (operation === "SCORE") return { layer: "score", filled: false };
-  return { layer: filled ? "engrave-fill" : "engrave", filled };
-}
-
-function circlePoints(cx: number, cy: number, r: number): Point2D[] {
-  const steps = Math.max(16, Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - CIRCLE_TOLERANCE_MM / r))));
-  return Array.from({ length: steps }, (_, step) => {
-    const angle = (step / steps) * Math.PI * 2;
-    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
-  });
-}
-
-function elementPolylines(name: string, values: Map<string, string>): Polyline[] {
-  const number = (key: string) => Number(values.get(key) ?? 0);
-  if (name === "path") {
-    return flattenSvgPath(values.get("d") ?? "", 0.01).map(({ points, closed }) => {
-      const last = points.at(-1);
-      const trimmed = closed && last && points.length > 1 && last.x === points[0]!.x && last.y === points[0]!.y ? points.slice(0, -1) : points;
-      return { points: trimmed, closed };
-    });
-  }
-  if (name === "rect") {
-    const [x, y, w, h] = [number("x"), number("y"), number("width"), number("height")];
-    return w > 0 && h > 0 ? [{ points: [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }], closed: true }] : [];
-  }
-  if (name === "circle") {
-    const r = number("r");
-    return r > 0 ? [{ points: circlePoints(number("cx"), number("cy"), r), closed: true }] : [];
-  }
-  if (name === "line") return [{ points: [{ x: number("x1"), y: number("y1") }, { x: number("x2"), y: number("y2") }], closed: false }];
-  if (name === "polyline" || name === "polygon") {
-    const n = (values.get("points") ?? "").trim().split(/[\s,]+/).map(Number);
-    const points = Array.from({ length: Math.floor(n.length / 2) }, (_, index) => ({ x: n[index * 2]!, y: n[index * 2 + 1]! }));
-    return [{ points, closed: name === "polygon" }];
-  }
-  return [];
-}
-
-/** Maps SVG user units to LightBurn millimetres, Y up, with the canvas's lower-left corner at the origin. */
-function documentMatrix(values: Map<string, string>): Matrix {
-  const millimetres = (value: string | undefined) => {
-    const match = value?.match(/^\s*([\d.]+)\s*(mm|cm|in|px|pt)?\s*$/);
-    if (!match) return undefined;
-    const factor = { mm: 1, cm: 10, in: 25.4, px: 25.4 / 96, pt: 25.4 / 72 }[match[2] ?? "px"]!;
-    return Number(match[1]) * factor;
-  };
-  const view = values.get("viewBox")?.trim().split(/[\s,]+/).map(Number);
-  const width = millimetres(values.get("width"));
-  const height = millimetres(values.get("height"));
-  const [vx, vy, vw, vh] = view?.length === 4 ? view as [number, number, number, number] : [0, 0, width ?? 0, height ?? 0];
-  const sx = width && vw ? width / vw : 1;
-  const sy = height && vh ? height / vh : sx;
-  return [sx, 0, 0, -sy, -vx * sx, (vy + vh) * sy];
-}
-
-/** Reads a TopoStack SVG into a tree of layer-tagged polylines in LightBurn coordinates. */
-function readSvg(svg: string): Node[] {
-  const root: GroupNode = { kind: "group", children: [] };
-  const stack: Frame[] = [{ group: root, matrix: IDENTITY, paint: {} }];
-  let skipDepth = 0;
-  for (const [, closing, rawName, rawAttributes, selfClosing] of svg.matchAll(TAG)) {
-    const name = rawName!.toLowerCase();
-    if (closing) {
-      if (skipDepth) skipDepth -= 1;
-      else if (name === "g" || name === "svg") stack.pop();
-      continue;
-    }
-    if (skipDepth || name === "defs" || name === "title" || name === "desc" || name === "clippath" || name === "mask" || name === "pattern" || name === "symbol") {
-      if (!selfClosing) skipDepth += 1;
-      continue;
-    }
-    const values = attributes(rawAttributes ?? "");
-    const parent = stack.at(-1)!;
-    if (values.get("display") === "none" || values.get("visibility") === "hidden") {
-      if (!selfClosing) skipDepth += 1;
-      continue;
-    }
-    const matrix = name === "svg" && stack.length === 1
-      ? documentMatrix(values)
-      : multiply(parent.matrix, parseTransform(values.get("transform")));
-    const paint = inheritPaint(parent.paint, values);
-    if (name === "svg" || name === "g") {
-      // Ordinary panels have no transform. Their piece owns its cuts and marks just as on a stock sheet.
-      let group = parent.group!;
-      if (name === "g" && (values.has("transform") || values.has("data-piece"))) {
-        const child: GroupNode = { kind: "group", children: [], piece: values.has("data-piece") };
-        group.children.push(child);
-        group = child;
-      }
-      if (!selfClosing) stack.push({ group, matrix, paint });
-      continue;
-    }
-    const target = layerFor(paint);
-    if (!target) continue;
-    for (const line of elementPolylines(name, values)) {
-      if (line.points.length < (line.closed ? 3 : 2)) continue;
-      const dashed = !target.filled && paint.dash?.some((length) => length > 0) ? dashPolyline(line, paint.dash) : [line];
-      for (const piece of dashed) parent.group!.children.push({ kind: "shape", layer: target.layer, line: { points: piece.points.map((point) => apply(matrix, point)), closed: piece.closed } });
-    }
-  }
-  return prune(root.children);
-}
-
-/** Drop empty groups and unwrap single-child transform wrappers, retaining every piece. */
-function prune(nodes: Node[]): Node[] {
-  return nodes.flatMap((node): Node[] => {
-    if (node.kind === "shape") return [node];
-    const children = prune(node.children);
-    if (!children.length) return [];
-    return children.length === 1 && !node.piece ? children : [{ ...node, children }];
-  });
-}
-
 function usedLayers(nodes: Node[], used = new Set<LightBurnLayerKey>()): Set<LightBurnLayerKey> {
   for (const node of nodes) {
     if (node.kind === "shape") used.add(node.layer);
@@ -267,11 +63,17 @@ function shapeXml(node: Node, layers: ReadonlyMap<LightBurnLayerKey, LightBurnLa
   if (node.kind === "group") {
     return `${indent}<Shape Type="Group">\n${indent}    <XForm>1 0 0 1 0 0</XForm>\n${indent}    <Children>\n${node.children.map((child) => shapeXml(child, layers, `${indent}        `)).join("\n")}\n${indent}    </Children>\n${indent}</Shape>`;
   }
-  const { points, closed } = node.line;
-  const verts = points.map((point) => `V${number(point.x)} ${number(point.y)}c0x1c1x1`).join("");
-  const segments = closed ? points.length : points.length - 1;
-  const prims = Array.from({ length: segments }, (_, index) => `L${index} ${(index + 1) % points.length}`).join("");
-  return `${indent}<Shape Type="Path" CutIndex="${layers.get(node.layer)!.index}">\n${indent}    <XForm>1 0 0 1 0 0</XForm>\n${indent}    <VertList>${verts}</VertList>\n${indent}    <PrimList>${prims}</PrimList>\n${indent}</Shape>`;
+  const verts: string[] = [];
+  const prims: string[] = [];
+  // Each SVG move begins an independent chain. A hole closes onto its own
+  // first vertex, and a gap between dashes has no connecting primitive.
+  for (const { points, closed } of node.subpaths) {
+    const first = verts.length;
+    for (const point of points) verts.push(`V${number(point.x)} ${number(point.y)}c0x1c1x1`);
+    for (let i = first + 1; i < verts.length; i++) prims.push(`L${i - 1} ${i}`);
+    if (closed) prims.push(`L${verts.length - 1} ${first}`);
+  }
+  return `${indent}<Shape Type="Path" CutIndex="${layers.get(node.layer)!.index}">\n${indent}    <XForm>1 0 0 1 0 0</XForm>\n${indent}    <VertList>${verts.join("")}</VertList>\n${indent}    <PrimList>${prims.join("")}</PrimList>\n${indent}</Shape>`;
 }
 
 function cutSettingXml(layer: LightBurnLayer, priority: number): string {
@@ -298,17 +100,37 @@ const LIGHTBURN_NOTES = "Made with TopoStack. Layers run top to bottom: engravin
  * undefined when the SVG holds nothing to cut, score or engrave.
  */
 export function svgToLightBurn(svg: string, options: LightBurnOptions = {}): string | undefined {
-  const nodes = readSvg(svg);
-  const used = usedLayers(nodes);
+  return lightBurnProject([{ name: "", nodes: readLaserSvg(svg, "up") }], options);
+}
+
+/** Page zero lives at the root. LightBurn 2.2 stores each later page as a named group. */
+export function svgPagesToLightBurn(panels: readonly { name: string; svg: string }[], options: LightBurnOptions = {}): string | undefined {
+  const pages = panels.map(({ name, svg }) => ({ name, nodes: readLaserSvg(svg, "up") })).filter(page => page.nodes.length);
+  return lightBurnProject(pages, options, true);
+}
+
+function lightBurnProject(pages: { name: string; nodes: Node[] }[], options: LightBurnOptions, paged = false): string | undefined {
+  const first = pages[0];
+  if (!first) return undefined;
+  const used = new Set<LightBurnLayerKey>();
+  for (const page of pages) usedLayers(page.nodes, used);
   if (!used.size) return undefined;
   const layers = LIGHTBURN_LAYERS.filter((layer) => used.has(layer.key));
   const byKey = new Map(layers.map((layer) => [layer.key, layer]));
-  const notes = `${options.notes ?? LIGHTBURN_NOTES}\n${EXPORT_CREDIT}`;
+  const notes = `${options.notes ?? (paged ? LIGHTBURN_NOTES + " Cut settings are shared across pages. Check the material settings when you switch sheets." : LIGHTBURN_NOTES)}\n${EXPORT_CREDIT}`;
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<LightBurnProject AppVersion="1.7.03" FormatVersion="1" MaterialHeight="0" MirrorX="False" MirrorY="False">`,
+    `<LightBurnProject AppVersion="${paged ? "2.2.01" : "1.7.03"}" FormatVersion="1" MaterialHeight="0" MirrorX="False" MirrorY="False"${paged ? ` CurrentPage="0" Page0Name="${escapeAttribute(first.name)}"` : ""}>`,
     ...layers.map((layer, priority) => cutSettingXml(layer, priority)),
-    ...nodes.map((node) => shapeXml(node, byKey, "    ")),
+    ...first.nodes.map((node) => shapeXml(node, byKey, "    ")),
+    ...pages.slice(1).map(({ name, nodes }) => [
+      `    <Shape Type="Group" SubType="Page" Name="${escapeAttribute(name)}">`,
+      "        <XForm>1 0 0 1 0 0</XForm>",
+      "        <Children>",
+      ...nodes.map(node => shapeXml(node, byKey, "            ")),
+      "        </Children>",
+      "    </Shape>",
+    ].join("\n")),
     `    <Notes ShowOnLoad="1" Notes="${escapeAttribute(notes)}"/>`,
     `</LightBurnProject>`,
     "",

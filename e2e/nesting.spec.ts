@@ -32,13 +32,15 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   await expect(page.locator(".sheet-previews li")).not.toHaveCount(0);
   await expect(page.locator(".export-hero")).toContainText("nested sheet");
 
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /Complete project/ }).click();
-  const download = await downloadPromise;
-  const stream = await download.createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  const files = unzipSync(Buffer.concat(chunks));
+  async function downloadBytes(label: RegExp): Promise<Buffer> {
+    const ready = page.waitForEvent("download");
+    await page.getByRole("button", { name: label }).click();
+    const stream = await (await ready).createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks);
+  }
+  const files = unzipSync(await downloadBytes(/Complete project/));
   const names = Object.keys(files);
   expect(names).toContain("crater-lake-sheet-01.svg");
   expect(names).toContain("crater-lake-sheet-01-engrave.svg");
@@ -51,6 +53,17 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   expect(sheet).toMatch(/<g id="layer-\d+-part-\d+--p1" data-name="[^"]+"[^>]* data-part="[^"]+" data-layers="[^"]+" transform="matrix\(/);
   const readme = Buffer.from(files["README.txt"]!).toString("utf8");
   expect(readme).toContain("sparrow");
+
+  await page.getByText("Individual files").click();
+  const sheetNames = manifest.result.fabrication.panels.map(({ filename }: { filename: string }) =>
+    filename.replace("crater-lake-sheet-", "Sheet ").replace(".svg", ""));
+  const studio = unzipSync(await downloadBytes(/xTool Studio project/));
+  const project = JSON.parse(Buffer.from(studio["project.json"]!).toString("utf8"));
+  const titles = project.modules.canvases.map((id: string) => JSON.parse(Buffer.from(studio[`canvases/${id}.json`]!).toString("utf8")).title);
+  expect(titles).toEqual(sheetNames);
+  const lightburn = (await downloadBytes(/LightBurn project with pages/)).toString("utf8");
+  expect(lightburn).toContain(`Page0Name="${sheetNames[0]}"`);
+  expect([...lightburn.matchAll(/SubType="Page" Name="([^"]+)"/g)].map(match => match[1])).toEqual(sheetNames.slice(1));
 
   // After a reload the same design finds its saved layout; no second search.
   const summary = (await status.textContent())?.trim();

@@ -60,19 +60,21 @@ describe("ExportDialog", () => {
     expect(target.querySelector(".export-hero")?.textContent).toContain("9 panels");
     expect(target.textContent).toContain("Crater Lake · 12 layers · 9 cut panels");
     expect(target.querySelector<HTMLDetailsElement>(".export-more")?.open).toBe(false);
-    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Airspace", "Assembly guide", "LightBurn projects"]);
+    expect(rows()).toEqual(["Master SVG", "Cut panels", "Engraving panels", "Paint templates", "Acrylic inserts", "Airspace", "Assembly guide", "xTool Studio project", "LightBurn project with pages", "Separate LightBurn files"]);
     expect(button("Paint templates")?.disabled).toBe(true);
     expect(button("Acrylic inserts")?.disabled).toBe(true);
     expect(button("Airspace")?.disabled).toBe(true);
     button("Complete project")!.click();
     button("Cut panels")!.click();
-    button("LightBurn projects")!.click();
-    expect(onDownload.mock.calls).toEqual([["all"], ["panels"], ["lightburn"]]);
+    button("xTool Studio project")!.click();
+    button("LightBurn project with pages")!.click();
+    button("Separate LightBurn files")!.click();
+    expect(onDownload.mock.calls).toEqual([["all"], ["panels"], ["xtool"], ["lightburn-pages"], ["lightburn"]]);
   });
 
   it("offers only the engraving artwork for flat engravings", async () => {
     const { target, rows } = await render({ outputMode: "engraving" });
-    expect(rows()).toEqual(["Engraving SVG", "LightBurn project"]);
+    expect(rows()).toEqual(["Engraving SVG", "xTool Studio project", "LightBurn project"]);
     expect(target.querySelector(".export-hero")?.textContent).toContain("engraving SVG");
   });
 

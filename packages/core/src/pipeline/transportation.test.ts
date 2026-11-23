@@ -36,7 +36,7 @@ describe("transportation and waterway routing", () => {
     const trail = markings.filter((marking) => marking.id.startsWith("trail-") && marking.points.length > 1);
     expect(trail.length).toBeGreaterThan(0);
     expect(trail.some((marking) => Math.hypot(marking.points.at(-1)!.x - marking.points[0]!.x, marking.points.at(-1)!.y - marking.points[0]!.y) > 10)).toBe(true);
-    expect(masterToSvg(result)).toMatch(/ENGRAVE-trails[^>]+stroke-dasharray=/);
+    expect(masterToSvg(result)).toMatch(/ENGRAVE-trails"[^>]*><path[^>]* d="M[^"]+ M/);
   });
 
   it("keeps roads continuous at exact terrain-layer transitions", () => {

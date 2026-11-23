@@ -29,7 +29,7 @@ describe("fabrication marker clearances", () => {
     expect(data(svg, "water-crossing")).toBe("M0 -10 L0 -2 M0 2 L0 10");
     expect(svg).not.toContain('id="halo"');
     expect(svg).not.toContain("#ffffff");
-    expect(svg).toContain('d="M-1 -1 L1 -1 L1 1 L-1 1 L-1 -1 Z" fill="#2366FF" stroke="none"');
+    expect(svg).toContain('d="M-1 -1 L1 -1 L1 1 L-1 1 L-1 -1 Z" fill="#000000" stroke="none"');
     expect(svg.match(/id="solid-marker"/g)).toHaveLength(1);
     const cuts = [...svg.matchAll(/<path[^>]+stroke="#FE0002"[^>]*\/>/g)].map(match => match[0]);
     ir.layers[0]!.markings = ir.layers[0]!.markings.filter(mark => !mark.knockout);

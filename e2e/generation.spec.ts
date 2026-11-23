@@ -1,5 +1,6 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { unzipSync } from "fflate";
+import { strFromU8, unzipSync } from "fflate";
 
 test("generates deterministic real terrain and downloads the complete fabrication package", async ({ page }) => {
   test.setTimeout(180_000);
@@ -87,6 +88,39 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   await expect(page.locator(".export-feedback")).toContainText("Download ready");
   await expect.poll(() => usage.map((event) => event.event)).toEqual(["studio_open", "generation_started", "generation_succeeded", "export_prepared"]);
   expect(usage.at(-1)).toMatchObject({ output: "stack", delivery: "browser" });
+});
+
+test("downloads an xTool project over plain HTTP on a local network", async ({ page, context, baseURL }) => {
+  // Serve the preview under a non-loopback origin so the browser exposes the same Web Crypto APIs as on a LAN.
+  const origin = "http://topostack.test";
+  await context.route(`${origin}/**`, async (route) => {
+    const { pathname, search } = new URL(route.request().url());
+    const response = await context.request.get(new URL(pathname + search, baseURL).href);
+    await route.fulfill({ response });
+  });
+  await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  await page.goto(`${origin}/studio`);
+  expect(await page.evaluate(() => window.isSecureContext)).toBe(false);
+  await page.getByRole("button", { name: /generate terrain/i }).first().click();
+  await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await page.getByText("Individual files").click();
+  const ready = page.waitForEvent("download");
+  await page.getByRole("button", { name: /xTool Studio project/ }).click();
+  const download = await ready;
+  expect(download.suggestedFilename()).toBe("crater-lake.xs");
+
+  const files = unzipSync(await readFile(await download.path()));
+  const project = JSON.parse(strFromU8(files["project.json"]!));
+  const canvas = JSON.parse(strFromU8(files[`canvases/${project.activeCanvasId}.json`]!));
+  const { displays } = JSON.parse(strFromU8(files[`canvases/${canvas.id}/displays-0.json`]!));
+  const display = displays[0];
+  expect(project.activeCanvasId).toBe(project.modules.canvases[0]);
+  expect(canvas.groupData[display.groupTag].groupTag).toBe(display.groupTag);
+  const ids = [project.projectId, canvas.id, display.id, display.groupTag.replace(/^g-/, "")];
+  for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  expect(new Set(ids).size).toBe(ids.length);
 });
 
 test("persists the selected color scheme across reloads", async ({ page }) => {

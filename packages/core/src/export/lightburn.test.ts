@@ -3,7 +3,7 @@ import { buildProjectPackage, DEFAULT_PROJECT, generateGeometry, layerToSvg, typ
 import { rootGroups } from "../test-support/svg.js";
 import { realSource } from "../test-support/sources.js";
 import { dashPolyline } from "../primitives/dash.js";
-import { LIGHTBURN_LAYERS, parseTransform, svgToLightBurn } from "./lightburn.js";
+import { LIGHTBURN_LAYERS, parseTransform, svgToLightBurn, svgPagesToLightBurn } from "./lightburn.js";
 
 interface ReadShape { cutIndex: number; points: { x: number; y: number }[]; closed: boolean; depth: number }
 
@@ -116,8 +116,18 @@ describe("LightBurn projects", () => {
 
   it("draws dash patterns as separate dashes, since LightBurn ignores stroke-dasharray", () => {
     const svg = `<svg width="20mm" height="10mm" viewBox="0 0 20 10"><g data-operation="ENGRAVE" fill="none" stroke="#2366FF" stroke-dasharray="2 3"><path d="M0 5 L12 5"/></g></svg>`;
-    const { shapes } = readProject(svgToLightBurn(svg));
-    expect(shapes.map((shape) => [shape.points[0]!.x, shape.points.at(-1)!.x])).toEqual([[0, 2], [5, 7], [10, 12]]);
+    const xml = svgToLightBurn(svg);
+    const { shapes } = readProject(xml);
+    expect(shapes).toHaveLength(1);
+    expect(shapes[0]!.points.map(point => point.x)).toEqual([0, 2, 5, 7, 10, 12]);
+    expect(xml).toContain("<PrimList>L0 1L2 3L4 5</PrimList>");
+  });
+
+  it("keeps a filled symbol and its hole in one editable LightBurn path", () => {
+    const svg = `<svg width="12mm" height="12mm" viewBox="0 0 12 12"><path fill="#000000" stroke="none" fill-rule="evenodd" d="M0 0 L12 0 L12 12 L0 12 Z M4 4 L4 8 L8 8 L8 4 Z"/></svg>`;
+    const xml = svgToLightBurn(svg);
+    expect(readProject(xml).shapes).toMatchObject([{ cutIndex: index("engrave-fill"), closed: true }]);
+    expect(xml).toContain("<PrimList>L0 1L1 2L2 3L3 0L4 5L5 6L6 7L7 4</PrimList>");
   });
 
   it("splits dashes across corners and closes closed rings", () => {
@@ -127,6 +137,8 @@ describe("LightBurn projects", () => {
     expect(dashes.at(-1)!.points.at(-1)).toEqual({ x: 0, y: 0 });
     expect(dashPolyline({ points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], closed: false }, [0, 0])).toHaveLength(1);
     expect(dashPolyline({ points: [{ x: 0, y: 0 }, { x: 3, y: 0 }], closed: false }, [0, 1])).toEqual([]);
+    const triangle = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }];
+    expect(dashPolyline({ points: triangle, closed: true }, [5, 1])[0]?.points).toEqual([...triangle, triangle[0]]);
   });
 
   it("reads SVG transform lists", () => {
@@ -172,5 +184,26 @@ describe("LightBurn projects", () => {
     const { layers, shapes } = readProject(svgToLightBurn(await output.master.blob.text()));
     expect(layers.map((layer) => layer.name)).toContain("Engrave lines");
     expect(shapes.length).toBeGreaterThan(10);
+    expect(shapes.every(shape => shape.depth === 1)).toBe(true);
+  });
+});
+
+describe("LightBurn pages", () => {
+  it("writes the first panel at the root, later panels as page groups, and one shared layer table", () => {
+    const wrap = (shape: string) => `<svg width="50mm" height="30mm" viewBox="0 0 50 30">${shape}</svg>`;
+    const xml = svgPagesToLightBurn([
+      { name: "Empty", svg: wrap("") },
+      { name: 'Wood & "oak"', svg: wrap('<path fill="none" stroke="#FE0002" d="M2 3L9 11"/>') },
+      { name: "Acrylic", svg: wrap('<path fill="#000000" d="M0 0L10 0L10 10Z"/>') },
+    ])!;
+    const [first, second] = xml.split('<Shape Type="Group" SubType="Page" Name="Acrylic">');
+    expect(first).toContain('CurrentPage="0" Page0Name="Wood &amp; &quot;oak&quot;"');
+    expect(first).toContain('CutIndex="2"');
+    expect(first).toContain("V2 27");
+    expect(first).not.toContain('CutIndex="6"');
+    expect(second).toContain('<Children>');
+    expect(second).toContain('CutIndex="6"');
+    expect(xml.match(/<CutSetting type=/g)).toHaveLength(2);
+    expect(svgPagesToLightBurn([{ name: "Empty", svg: wrap("") }])).toBeUndefined();
   });
 });
