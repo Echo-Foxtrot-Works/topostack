@@ -42,9 +42,8 @@ export function sheetPreviews(plan: SheetNestPlanV1, parts: NestPartV1[]): Sheet
       if (!part) return [];
       const radians = (placement.rotationDeg * Math.PI) / 180;
       const [cos, sin] = [Math.cos(radians), Math.sin(radians)];
-      // Thumbnails are a few hundred pixels wide; about 120 vertices per outline is plenty.
-      const step = Math.max(1, Math.floor(part.outline.length / 120));
-      const points = part.outline.filter((_, index) => index % step === 0).map(({ x, y }) => `${round(cos * x - sin * y + placement.xMm)} ${round(sin * x + cos * y + placement.yMm)}`);
+      // The packer already simplifies the outline. Keep its vertices so sharp corners survive.
+      const points = part.outline.map(({ x, y }) => `${round(cos * x - sin * y + placement.xMm)} ${round(sin * x + cos * y + placement.yMm)}`);
       return [{ label: part.label, path: `M${points.join("L")}Z` }];
     }),
   }));
