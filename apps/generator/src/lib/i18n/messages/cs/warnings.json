@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Před exportem souborů {files, select, engraving {rytí} other {pro výrobu}} vygenerujte skutečná data terénu.",
   "exportBlockStale": "Nastavení projektu se změnilo. Před exportem znovu vygenerujte terén.",
   "exportBlockVectorPartial": "Data detailů mapy překročila bezpečný limit prvků. Zmenšete oblast mapy nebo vypněte některé detaily mapy a znovu vygenerujte.",
+  "railContextIncomplete": "Data o krytých železničních úsecích jsou neúplná. Vygenerujte mapu znovu, zmenšete oblast nebo vypněte železnice.",
   "exportBlockVectorUnavailable": "Data detailů mapy nejsou dostupná. Vypněte tyto detaily mapy nebo po obnovení služby znovu vygenerujte.",
   "graphicLoosePieces": "Řezaná grafika prochází spodní deskou, takže ostrůvky uvnitř jejího tvaru vypadnou. Místo toho ji gravírujte nebo použijte rytí linek, případně ostrůvky ručně přilepte zpět.",
   "graphicOmitted": "Grafika {number} byla vynechána, protože se nevejde na materiál. Zmenšete ji nebo ji posuňte dovnitř.",

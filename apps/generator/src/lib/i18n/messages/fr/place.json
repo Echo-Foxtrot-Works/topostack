@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Comparer les compositions",
+  "currentDesign": "Création actuelle",
+  "composition.streets": "Gravure des rues",
+  "composition.shoreline": "Gravure des rives",
+  "composition.terrain": "Relief du terrain",
+  "applyComposition": "Appliquer la composition",
+  "noCompositionFeatures": "Les éléments sélectionnés ne figurent pas dans ce cadrage.",
   "artworkSize": "Taille du motif",
   "cutSize": "Taille de découpe",
   "placeAndSize": "Lieu et taille",

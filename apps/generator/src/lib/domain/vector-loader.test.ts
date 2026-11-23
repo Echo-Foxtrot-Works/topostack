@@ -3,7 +3,7 @@ import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@to
 import { boundsForProject } from "@topostack/core";
 import type { PbfReader } from "pbf";
 import { MAX_SOURCE_RINGS } from "$lib/domain/feature-budget";
-import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, dissolveWaterPolygons, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, stitchTransportationMarkings } from "$lib/domain/vector-cleanup";
 import { classifyTransportation, isStateProvinceBoundary, loadVectorMarkings, transportationLabel } from "$lib/domain/vector-loader";
 import { applyLakeShorelines, combineWaterAreas } from "$lib/domain/water-assembly";
 import { fittingTileWindow } from "$lib/domain/tile-math";
@@ -31,7 +31,7 @@ describe("transportation metadata", () => {
     expect(classifyTransportation({ kind: "ferry", kind_detail: "path" })).toBeUndefined();
   });
 
-  it("keeps running rail lines and drops tunnels, yards and sidings", () => {
+  it("keeps running rail lines and drops underground subways, yards and sidings", () => {
     expect(classifyTransportation({ kind: "rail", kind_detail: "rail" })).toBe("rail");
     expect(classifyTransportation({ kind: "rail", kind_detail: "light_rail" })).toBe("rail");
     expect(classifyTransportation({ kind: "rail" })).toBe("rail");
@@ -141,7 +141,7 @@ describe("water geometry cleanup", () => {
   });
 
   it("keeps the filled shape, wound as the geometry engine expects", () => {
-    const areas = dissolveWaterAreas([
+    const areas = dissolveTilePolygons([
       { outer: ring(0, 0, 20, 20), holes: [ring(5, 5, 15, 15)] },
     ], 0.8);
     expect(areas).toHaveLength(1);
@@ -191,7 +191,7 @@ describe("water geometry cleanup", () => {
 
 const getHeaderMock = vi.hoisted(() => vi.fn());
 const getZxyMock = vi.hoisted(() => vi.fn());
-const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false, waterRings: 0 }));
+const vectorFixture = vi.hoisted(() => ({ outsideRoads: 0, insideRoads: 1, uniqueNames: false, stationPoints: 1, cornerBuildings: 0, waterRings: 0 }));
 vi.mock("pmtiles", async (importOriginal) => ({
   ...await importOriginal<typeof import("pmtiles")>(),
   PMTiles: class {
@@ -217,6 +217,27 @@ vi.mock("@mapbox/vector-tile", async (importOriginal) => ({
         { x: 0, y: roadY - 500 },
       ];
       this.layers = {
+        pois: { length: 1, feature: () => ({ type: 1, extent: 4096, properties: { kind: "station" }, loadGeometry: () => [Array(vectorFixture.stationPoints).fill({ x: 2048, y: 2048 })] }) },
+        transportation: { length: 3, feature: (index: number) => ({
+          type: 2, extent: 4096, properties: { kind: "rail", kind_detail: "rail", is_tunnel: index === 1 },
+          loadGeometry: () => {
+            const x = [1850, 1998, 2098, 2200];
+            return [[{ x: x[index], y: 2048 }, { x: x[index + 1], y: 2048 }]];
+          },
+        }) },
+        buildings: { length: 2, feature: (index: number) => ({
+          type: 3, extent: 4096, properties: { kind: index === 0 ? "building" : "building_part" },
+          loadGeometry: () => {
+            const square = (x: number, y: number, size: number) => [
+              { x, y }, { x: x + size, y }, { x: x + size, y: y + size }, { x, y: y + size }, { x, y },
+            ];
+            if (index === 1) return [square(2150, 2020, 20)];
+            if (vectorFixture.cornerBuildings) return [
+              ...Array.from({ length: vectorFixture.cornerBuildings }, (_, i) => square(1005 + (i % 43) * 5, 1005 + Math.floor(i / 43) * 5, 3)), square(2000, 2000, 30),
+            ];
+            return [square(1950, 1950, 100), square(1980, 1980, 40).reverse(), square(2130, 2020, 1), square(100, 100, 50)];
+          },
+        }) },
         roads: {
           length: outsideRoads + insideRoads,
           feature: (index: number) => ({
@@ -280,6 +301,8 @@ describe("geographic crop bounds", () => {
 
 describe("vector marking zoom", () => {
   beforeEach(() => {
+    vectorFixture.stationPoints = 1;
+    vectorFixture.cornerBuildings = 0;
     vectorFixture.outsideRoads = 0;
     vectorFixture.insideRoads = 1;
     vectorFixture.uniqueNames = false;
@@ -287,6 +310,67 @@ describe("vector marking zoom", () => {
     getHeaderMock.mockReset();
     getZxyMock.mockReset();
     getZxyMock.mockResolvedValue(undefined);
+  });
+
+  it("recognizes a station passage even when both portals are outside the crop and crops the real geometry", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const bounds = { west: 0.0437, east: 0.0442, south: 0.0437, north: 0.0442 };
+    const config = { ...DEFAULT_PROJECT, showRail: true, showRoads: false, widthMm: 100, heightMm: 100 };
+    const data = await loadVectorMarkings(bounds, 15, config);
+    expect(data.markings).toHaveLength(1);
+    expect(data.markings[0]).toMatchObject({ kind: "road", transportationClass: "covered-rail", operation: "engrave" });
+    expect(data.markings[0]!.points[0]!.x).toBeCloseTo(-54);
+    expect(data.markings[0]!.points.at(-1)!.x).toBeCloseTo(54);
+    expect((await loadVectorMarkings(bounds, 15, { ...config, showRail: false })).markings).toEqual([]);
+  });
+
+  it("flags failed auxiliary reads and exhausted evidence budgets while retaining selected roads", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    const bounds = { west: 0.042, east: 0.0877, south: 0.042, north: 0.046 };
+    const config = { ...DEFAULT_PROJECT, showRail: true, showRoads: true };
+    getZxyMock.mockImplementation(async (_z, x) => {
+      if (x !== 2048) throw new Error("neighbor is unavailable");
+      return { data: new ArrayBuffer(0) };
+    });
+    const missing = await loadVectorMarkings(bounds, 15, config);
+    expect(missing.railContextIncomplete).toBe(true);
+    expect(missing.markings.some(line => line.transportationClass === "major-road")).toBe(true);
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    vectorFixture.stationPoints = 200_001;
+    const dense = await loadVectorMarkings(bounds, 15, config);
+    expect(dense.railContextIncomplete).toBe(true);
+    expect(dense.markings.some(line => line.transportationClass === "rail")).toBe(true);
+  });
+
+  it("reserves the circular crop's marking budget for visible footprints", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    vectorFixture.cornerBuildings = 1849;
+    const unit = 360 / 4096 / 4096;
+    const bounds = { west: 1000 * unit, east: 3000 * unit, south: (4096 - 3000) * unit, north: (4096 - 1000) * unit };
+    const config = { ...DEFAULT_PROJECT, showBuildings: true, showRoads: false, cropShape: "circle" as const,
+      widthMm: 200, heightMm: 200, minimumFeatureMm: 0.2, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const { markings, truncated } = await loadVectorMarkings(bounds, 13, config);
+    expect(truncated).toBe(false);
+    expect(markings.filter(mark => mark.kind === "building")).toHaveLength(1);
+  });
+
+  it("loads printable footprints and courtyards at display zoom 13 even when the archive ends at 12", async () => {
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const load = (zoom: number, showBuildings: boolean) => loadVectorMarkings(
+      { west: 0.04, east: 0.05, south: 0.04, north: 0.05 }, 13,
+      { ...DEFAULT_PROJECT, location: { ...DEFAULT_PROJECT.location, zoom }, showBuildings, showRoads: false, minimumFeatureMm: 1 },
+    );
+    expect((await load(13, false)).markings).toEqual([]);
+    expect((await load(12.99, true)).markings).toEqual([]);
+    const { markings, truncated } = await load(13, true);
+    expect(truncated).toBe(false);
+    expect(markings.map(({ id, kind, operation }) => [id, kind, operation])).toEqual([
+      ["building-0-0", "building", "engrave"], ["building-0-1", "building", "engrave"],
+    ]);
+    expect(markings.every(({ points }) => points.length === 5 && points[0]!.x === points[4]!.x && points[0]!.y === points[4]!.y)).toBe(true);
   });
 
   it("does not let off-crop roads exhaust the feature budget", async () => {
@@ -341,6 +425,19 @@ describe("vector marking zoom", () => {
     const withoutWater = await loadVectorMarkings(bounds, 11, { ...config, showWater: false });
     expect(getZxyMock.mock.calls.map(([zoom]) => zoom)).toEqual([12]);
     expect(withoutWater.markings).toHaveLength(roads);
+  });
+
+  it("keeps requested neighborhood footprints at their resolved archive zoom on a crowded map", async () => {
+    vectorFixture.insideRoads = MAX_VECTOR_MARKINGS;
+    vectorFixture.uniqueNames = true;
+    getHeaderMock.mockResolvedValue({ minZoom: 4, maxZoom: 12 });
+    getZxyMock.mockResolvedValue({ data: new ArrayBuffer(0) });
+    const bounds = { west: 0.04, east: 0.05, south: 0.04, north: 0.05 };
+    const config = { ...DEFAULT_PROJECT, showBuildings: true, location: { ...DEFAULT_PROJECT.location, zoom: 13 } };
+    const data = await loadVectorMarkings(bounds, 13, config);
+    expect(getZxyMock.mock.calls.map(([zoom]) => zoom)).toEqual([12]);
+    expect(data.truncated).toBe(true);
+    expect(data.markings.some(mark => mark.kind === "building")).toBe(true);
   });
 
   it("propagates tile failures without retrying at a different zoom", async () => {

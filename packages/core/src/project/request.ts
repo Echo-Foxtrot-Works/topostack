@@ -22,6 +22,7 @@ export interface ProjectRequestDetails {
   roads?: boolean;
   trails?: boolean;
   rail?: boolean;
+  buildings?: boolean;
   roadLabels?: boolean;
   boundaries?: boolean;
   coordinateGrid?: boolean;
@@ -131,7 +132,7 @@ export const PROJECT_REQUEST_LIMITS = {
   markerNameLength: MAX_CUSTOM_DATA_NAME_LENGTH,
 } as const;
 
-export const PROJECT_REQUEST_DETAIL_KEYS = ["water", "waterDepth", "roads", "trails", "rail", "roadLabels", "boundaries", "coordinateGrid", "elevationLabels", "northArrow", "scaleBar"] as const satisfies readonly (keyof ProjectRequestDetails)[];
+export const PROJECT_REQUEST_DETAIL_KEYS = ["water", "waterDepth", "roads", "trails", "rail", "buildings", "roadLabels", "boundaries", "coordinateGrid", "elevationLabels", "northArrow", "scaleBar"] as const satisfies readonly (keyof ProjectRequestDetails)[];
 
 export const PROJECT_REQUEST_AVIATION_KEYS = ["airspace", "specialUse", "runways", "airports", "navaids", "obstacles", "labels"] as const satisfies readonly (keyof AviationDetailsV1)[];
 
@@ -143,6 +144,7 @@ const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> 
   roads: "showRoads",
   trails: "showTrails",
   rail: "showRail",
+  buildings: "showBuildings",
   roadLabels: "showTransportationLabels",
   boundaries: "showBoundaries",
   coordinateGrid: "showCoordinateGrid",

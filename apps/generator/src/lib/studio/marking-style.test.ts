@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, landStroke } from "@topostack/core";
-import { markingColor, markingDash, markingStyleKey, markingWidth } from "$lib/studio/marking-style";
+import { markingCap, markingColor, markingDash, markingStyleKey, markingWidth } from "$lib/studio/marking-style";
 
 const style = DEFAULT_PROJECT.lineStyle;
 
@@ -11,6 +11,13 @@ describe("marking style", () => {
     expect(markingStyleKey({ operation: "engrave", kind: "boundary" })).toBe("boundary");
     expect(markingStyleKey({ operation: "engrave", kind: "label" as never })).toBe("engrave");
     expect(markingColor({ operation: "engrave", kind: "grid" })).toBe("#34404b");
+  });
+
+  it("keeps rail strokes round when road endpoints are square", () => {
+    const squared = { ...style, roadCap: "square" as const };
+    expect(markingCap({ kind: "road", transportationClass: "local-road" }, squared)).toBe("square");
+    expect(markingCap({ kind: "road", transportationClass: "rail" }, squared)).toBe("round");
+    expect(markingCap({ kind: "road", transportationClass: "covered-rail" }, squared)).toBe("round");
   });
 
   it("uses the line style for widths and dashes", () => {

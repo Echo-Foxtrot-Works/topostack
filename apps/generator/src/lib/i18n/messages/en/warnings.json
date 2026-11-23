@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Generate real terrain data before exporting {files, select, engraving {engraving} other {fabrication}} files.",
   "exportBlockStale": "Project settings changed. Regenerate the terrain before exporting.",
   "exportBlockVectorPartial": "Map detail data exceeded the safe feature limit. Narrow the map area or disable some map details, then regenerate.",
+  "railContextIncomplete": "Covered railway data is incomplete. Regenerate, narrow the map area, or turn off Railways.",
   "exportBlockVectorUnavailable": "Map detail data is unavailable. Disable those map details or regenerate after the service is restored.",
   "graphicLoosePieces": "A cut graphic goes through the bottom sheet, so the islands inside its shape fall out. Engrave or score it instead, or keep them to glue back by hand.",
   "graphicOmitted": "Graphic {number} was omitted because it does not fit the material. Make it smaller or move it inward.",

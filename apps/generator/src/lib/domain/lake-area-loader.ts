@@ -7,7 +7,7 @@ import { createArchive } from "$lib/domain/archive";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { archiveTileWindow } from "$lib/domain/tile-math";
-import { dissolveWaterAreas } from "$lib/domain/vector-cleanup";
+import { dissolveTilePolygons } from "$lib/domain/vector-cleanup";
 import { projectedPolygons } from "$lib/domain/vector-loader";
 
 /**
@@ -79,7 +79,7 @@ async function loadHydroLakeAreas(bounds: GeoBounds, requestedZoom: number, conf
   const areas: WaterAreaV1[] = [];
   for (const [hylakId, entry] of byLake) {
     await yieldForCancellation(signal);
-    for (const [index, polygon] of dissolveWaterAreas(entry.polygons, config.minimumFeatureMm).entries()) {
+    for (const [index, polygon] of dissolveTilePolygons(entry.polygons, config.minimumFeatureMm).entries()) {
       const name = typeof entry.properties.name === "string" && entry.properties.name.trim() ? entry.properties.name.trim() : undefined;
       areas.push({
         id: `lake-${hylakId}-${index}`,

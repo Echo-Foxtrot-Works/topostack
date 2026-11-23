@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Grid3X3, Map as MapIcon, Minus, Square, TrainTrack } from "@lucide/svelte";
+  import { Building2, Grid3X3, Map as MapIcon, Minus, Square, TrainTrack } from "@lucide/svelte";
   import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
   import { LAND_PAINT_OPTIONS, LISTED_LAND_UNITS, PAINT_COLORS, landKindLabel, landUnitLabel, withPaintKind } from "$lib/studio/paint-colors";
-  import { landStroke, type LandClass, type LandsDetailsV1 } from "@topostack/core";
+  import { BUILDING_MIN_ZOOM, DEFAULT_BUILDING_WIDTH_MM, landStroke, type LandClass, type LandsDetailsV1 } from "@topostack/core";
   import Switch from "$lib/studio/StudioSwitch.svelte";
   import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
@@ -105,6 +105,15 @@
         <Switch checked={studio.project.showRail} onCheckedChange={(showRail) => void updateMapDetails({ showRail })} aria-label={t("features.rail")}><span class="toggle-label"><TrainTrack size={16} />{t("features.rail")}</span></Switch>
         {#if studio.project.showRail}
           <div class="toggle-settings"><small class="depth-note">{t("features.railHint")}</small></div>
+        {/if}
+      </div>
+      <div class="toggle-control">
+        <Switch checked={studio.project.showBuildings} onCheckedChange={(showBuildings) => void updateMapDetails({ showBuildings })} aria-label={t("features.buildings")}><span class="toggle-label"><Building2 size={16} />{t("features.buildings")}</span></Switch>
+        {#if studio.project.showBuildings}
+          <div class="toggle-settings">
+            <small class="depth-note">{t("features.buildingsHint", { zoom: BUILDING_MIN_ZOOM })}</small>
+            <div class="field-stack"><LineWidthField label={t("features.width")} fieldLabel={t("features.buildingWidth")} key="buildingMm" fallbackMm={DEFAULT_BUILDING_WIDTH_MM} /></div>
+          </div>
         {/if}
       </div>
       <Switch checked={studio.project.showTransportationLabels} onCheckedChange={(showTransportationLabels) => void updateMapDetails({ showTransportationLabels })} aria-label={t("features.transportationLabels")}><span class="toggle-label"><Minus size={16} />{t("features.transportationLabels")}</span></Switch>

@@ -45,6 +45,7 @@
   "exportBlockNotReal": "Wygeneruj prawdziwe dane terenu przed eksportem plików {files, select, engraving {graweru} other {do wykonania}}.",
   "exportBlockStale": "Zmieniono ustawienia projektu. Wygeneruj teren ponownie przed eksportem.",
   "exportBlockVectorPartial": "Dane szczegółów mapy przekroczyły bezpieczny limit obiektów. Zawęź obszar mapy lub wyłącz niektóre szczegóły mapy, a potem wygeneruj ponownie.",
+  "railContextIncomplete": "Dane o zadaszonych odcinkach torów są niepełne. Wygeneruj mapę ponownie, zmniejsz jej obszar lub wyłącz linie kolejowe.",
   "exportBlockVectorUnavailable": "Dane szczegółów mapy są niedostępne. Wyłącz te szczegóły mapy lub wygeneruj ponownie po przywróceniu usługi.",
   "graphicLoosePieces": "Wycinana grafika przechodzi przez dolny arkusz, więc wyspy wewnątrz jej kształtu wypadną. Zamiast tego graweruj lub nacinaj ją albo zachowaj je, aby wkleić ręcznie.",
   "graphicOmitted": "Pominięto grafikę {number}, bo nie mieści się na materiale. Zmniejsz ją lub przesuń do środka.",

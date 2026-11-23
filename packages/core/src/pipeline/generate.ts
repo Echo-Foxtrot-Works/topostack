@@ -97,7 +97,7 @@ function keptLandAreas(source: SourceBundleV1, config: ProjectConfigV1) {
 // Everything affects terrain unless explicitly known to be downstream of it.
 // New config fields therefore invalidate safely until their dependency is reviewed.
 const TERRAIN_INDEPENDENT_FIELDS = [
-  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showRail", "showTransportationLabels", "aviation", "lands", "landExclusions",
+  "id", "name", "units", "lineStyle", "showRoads", "showTrails", "showRail", "showBuildings", "showTransportationLabels", "aviation", "lands", "landExclusions",
   "showWater", "waterFillPattern", "showBoundaries", "showCoordinateGrid", "showAlignmentGuides",
   "optimizeMaterialUse", "glueMarginMm", "laserKerfMm", "workAreaWidthMm", "workAreaHeightMm",
   "seamOffsetMm", "seamTabs", "showAssemblyLabels", "paintTemplates", "waterInserts", "waterInsertSheetNesting", "airspaceStack", "showElevationLabels",
@@ -324,6 +324,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     units: config.units,
     configFingerprint: projectFingerprint(config),
     sourceKind: source.sourceKind,
+    ...(config.showRail && source.railContextIncomplete ? { railContextIncomplete: true } : {}),
     vectorStatus: source.vectorStatus,
     ...(source.aviationStatus ? { aviationStatus: source.aviationStatus } : {}),
     ...(source.aviationCycle ? { aviationCycle: source.aviationCycle } : {}),

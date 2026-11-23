@@ -91,6 +91,7 @@ export async function preparePreview(lake: PreviewLake, signal?: AbortSignal): P
     showRoads: false,
     showTrails: false,
     showRail: false,
+    showBuildings: false,
     showBoundaries: false,
     showCoordinateGrid: false,
   };

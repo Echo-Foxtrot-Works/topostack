@@ -15,7 +15,16 @@ export type UnitSystem = "metric" | "imperial";
 export const TEXT_FONTS = ["technical", "rounded", "stencil", "hershey-sans", "hershey-serif", "hershey-script", "relief", "jost", "oswald", "lora", "roboto-slab"] as const;
 export type TextFont = typeof TEXT_FONTS[number];
 /** Rail lines ride with roads (kind "road") but have their own toggle, stroke group and no junction rings. */
-export type TransportationClass = "major-road" | "local-road" | "trail" | "rail";
+export type TransportationClass = "major-road" | "local-road" | "trail" | "rail" | "covered-rail";
+
+export function isRailClass(value: string | undefined): value is "rail" | "covered-rail" {
+  return value === "rail" || value === "covered-rail";
+}
+
+/** Covered rail uses a lighter physical stroke than the open track on either side. */
+export function coveredRailWidthMm(style: LineStyleV1): number {
+  return Math.max(0.05, Math.round(style.localRoadMm * 60) / 100);
+}
 /** FAA aviation detail, each drawn and grouped separately in exports. */
 export type AviationClass = "class-b" | "class-c" | "class-d" | "special-use" | "runway" | "airport" | "navaid" | "obstacle";
 /**
@@ -225,8 +234,13 @@ export interface TextStyleV1 {
   sizeMm: number;
 }
 
+/** Show footprint engravings at neighbourhood scale and closer. */
+export const BUILDING_MIN_ZOOM = 13;
+export const DEFAULT_BUILDING_WIDTH_MM = 0.15;
+
 /** Physical stroke hierarchy shared by previews and machine SVGs. */
 export interface LineStyleV1 {
+  buildingMm?: number;
   contourMm: number;
   indexContourMm: number;
   majorRoadMm: number;
@@ -400,6 +414,7 @@ export interface ProjectConfigV1 {
   showTrails: boolean;
   /** Railways from the OSM basemap; off unless asked for, so older projects keep their linework. */
   showRail: boolean;
+  showBuildings: boolean;
   showTransportationLabels: boolean;
   showWater: boolean;
   /** Optional vector pattern engraved inside water areas in flat mode. */
@@ -626,7 +641,7 @@ export interface SourceAttribution {
 
 export interface MarkingFeature {
   id: string;
-  kind: "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
+  kind: "building" | "road" | "trail" | "water" | "boundary" | "grid" | "contour" | "label" | "guide" | "marker" | "aviation" | "land";
   operation: Exclude<Operation, "cut">;
   points: Point2D[];
   label?: string;
@@ -847,6 +862,8 @@ export interface SourceBundleV1 {
   waterPatternAreas?: Polygon2D[];
   /** Inland OSM polygons retained for shoreline fallback and depth retries. */
   inlandWaterAreas?: Polygon2D[];
+  /** Evidence for inferring covered station passages was unavailable or exceeded its budget. */
+  railContextIncomplete?: boolean;
   vectorStatus: "available" | "partial" | "unavailable" | "not-requested";
   /**
    * FAA aviation features, kept apart from `markings` so reloading roads and
@@ -1233,6 +1250,7 @@ export type GeometryWarningCode =
   | "SMALL_FEATURES"
   | "DATA_FALLBACK"
   | "VECTOR_DATA_PARTIAL"
+  | "RAIL_CONTEXT_INCOMPLETE"
   | "VECTOR_DATA_UNAVAILABLE"
   | "LAKE_DATA_UNAVAILABLE"
   | "BATHYMETRY_FALLBACK"
@@ -1291,6 +1309,8 @@ export interface GeometryIRV1 {
   units: UnitSystem;
   configFingerprint: string;
   sourceKind: SourceBundleV1["sourceKind"];
+  /** Evidence for inferring covered station passages was unavailable or exceeded its budget. */
+  railContextIncomplete?: boolean;
   vectorStatus: SourceBundleV1["vectorStatus"];
   aviationStatus?: AviationStatus;
   aviationCycle?: string;
@@ -1377,6 +1397,7 @@ export const DEFAULT_PROJECT: ProjectConfigV1 = {
   showRoads: true,
   showTrails: true,
   showRail: false,
+  showBuildings: false,
   showTransportationLabels: false,
   showWater: true,
   waterFillPattern: "none",

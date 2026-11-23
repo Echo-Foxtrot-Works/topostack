@@ -1,4 +1,11 @@
 {
+  "compareCompositions": "Primerjaj kompozicije",
+  "currentDesign": "Trenutna zasnova",
+  "composition.streets": "Gravura ulic",
+  "composition.shoreline": "Gravura obrežja",
+  "composition.terrain": "Relief terena",
+  "applyComposition": "Uporabi kompozicijo",
+  "noCompositionFeatures": "Izbrani elementi zemljevida v tem izrezu niso vidni.",
   "artworkSize": "Velikost izdelka",
   "cutSize": "Velikost izreza",
   "placeAndSize": "Kraj in velikost",

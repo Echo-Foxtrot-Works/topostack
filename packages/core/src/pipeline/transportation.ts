@@ -1,3 +1,5 @@
+import { dashPolyline } from "../primitives/dash.js";
+import { coveredRailWidthMm, isRailClass } from "../types.js";
 import { clipPolyline, polylineLength, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { isBitmapFont, missingGlyphs } from "../annotate/font-data.js";
 import type { MarkingFeature, Point2D, ProjectConfigV1, TextFont, TransportationClass } from "../types.js";
@@ -39,8 +41,12 @@ function offsetPolyline(points: Point2D[], distanceMm: number): Point2D[] {
   return closed ? [...offset, { ...offset[0]! }] : offset;
 }
 
-/** Unclipped outline paths for a feature drawn as an outlined major road; undefined when it is drawn as its centerline. */
-export function transportationOutlines(points: Point2D[], transportationClass: TransportationClass, config: ProjectConfigV1): Point2D[][] | undefined {
+/** Build real strokes before clipping so the dash phase and road offsets carry across terrain layers. */
+export function transportationStrokePaths(points: Point2D[], transportationClass: TransportationClass, config: ProjectConfigV1): Point2D[][] | undefined {
+  if (transportationClass === "covered-rail") {
+    const width = coveredRailWidthMm(config.lineStyle);
+    return dashPolyline({ points, closed: false }, [Math.max(1.2, width * 7), Math.max(0.7, width * 4)]).map(dash => dash.points);
+  }
   if (transportationClass !== "major-road" || config.lineStyle.roadStyle !== "outlined") return undefined;
   const offsetMm = config.lineStyle.majorRoadSpacingMm / 2;
   return [offsetPolyline(points, -offsetMm), offsetPolyline(points, offsetMm)];
@@ -80,7 +86,7 @@ export function transportationJunctions(features: MarkingFeature[]): Transportat
   const junctions = new Map<string, TransportationJunction>();
   for (const feature of features) {
     const transportationClass = feature.transportationClass ?? (feature.kind === "road" ? "local-road" : undefined);
-    if (!transportationClass || transportationClass === "trail" || transportationClass === "rail" || feature.points.length < 2) continue;
+    if (!transportationClass || transportationClass === "trail" || isRailClass(transportationClass) || feature.points.length < 2) continue;
     // One road contributes at most one arm per place. Vector tiles quantize
     // coordinates, so a doubled vertex - or a loop returning to its own seam -
     // would otherwise reach three arms by itself and engrave a junction ring

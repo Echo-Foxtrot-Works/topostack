@@ -1,3 +1,4 @@
+import { buildingOutlinesEnabled } from "../pipeline/source-requirements.js";
 import { ASSEMBLY, CUT, ENGRAVE, EXPORT_CREDIT, MAX_EXPORT_PACKAGE_BYTES, SCORE, safeName } from "./svg-primitives.js";
 import { ENGRAVE_ONLY, OPERATIONS, masterToSvg, paintTemplateSvg, panelBodies, panelToSvg } from "./svg.js";
 import { fabricationPanels } from "./panel-layout.js";
@@ -571,6 +572,7 @@ export function buildEngravingPackage(generated: GeometryIRV1, config: ProjectCo
     config.showRoads ? "roads" : "",
     config.showTrails ? "trails" : "",
     config.showRail ? "railways" : "",
+    buildingOutlinesEnabled(config) ? "building outlines" : "",
     config.showWater ? `water outlines${config.waterFillPattern !== "none" ? ` with ${config.waterFillPattern} fill` : ""}` : "",
     config.showBoundaries ? "state/province boundaries" : "",
     config.showCoordinateGrid ? "latitude/longitude grid" : "",

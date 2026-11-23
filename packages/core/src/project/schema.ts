@@ -51,7 +51,7 @@ export const AREA_SCHEMA: Schema = {
 export const DETAILS_SCHEMA: Schema = {
   type: "object",
   additionalProperties: false,
-  description: "Map details to include. Anything left out keeps the studio default: water, water depth, roads, trails, elevation labels, north arrow and scale bar on; rail (railway lines), road labels, boundaries and coordinate grid off. Road and rail labels use the romanized name where the local one is in a script the engraving fonts lack.",
+  description: "Map details to include. Anything left out keeps the studio default: water, water depth, roads, trails, elevation labels, north arrow and scale bar on; rail (railway lines), buildings (outlines at neighbourhood scale), road labels, boundaries and coordinate grid off. Road and rail labels use the romanized name where the local one is in a script the engraving fonts lack.",
   properties: Object.fromEntries(PROJECT_REQUEST_DETAIL_KEYS.map((key) => [key, { type: "boolean" }])),
 };
 

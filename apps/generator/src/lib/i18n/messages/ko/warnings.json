@@ -45,6 +45,7 @@
   "exportBlockNotReal": "{files, select, engraving {각인} other {제작}} 파일을 내보내기 전에 실제 지형 데이터를 생성하세요.",
   "exportBlockStale": "프로젝트 설정이 바뀌었습니다. 내보내기 전에 지형을 다시 생성하세요.",
   "exportBlockVectorPartial": "지도 세부 데이터가 안전 피처 한도를 넘었습니다. 지도 영역을 좁히거나 일부 지도 세부 정보를 끈 다음 다시 생성하세요.",
+  "railContextIncomplete": "지붕으로 덮인 철도 구간의 데이터가 불완전합니다. 지도를 다시 생성하거나 지도 영역을 줄이거나 철도를 끄세요.",
   "exportBlockVectorUnavailable": "지도 세부 데이터를 사용할 수 없습니다. 해당 지도 세부 정보를 끄거나 서비스가 복구된 뒤 다시 생성하세요.",
   "graphicLoosePieces": "커팅 그래픽이 바닥 시트를 관통해 도형 안의 섬 부분이 떨어져 나갑니다. 대신 각인이나 스코어로 하거나, 떨어진 조각을 보관해 손으로 다시 접착하세요.",
   "graphicOmitted": "그래픽 {number}이(가) 소재에 맞지 않아 생략되었습니다. 크기를 줄이거나 안쪽으로 옮기세요.",

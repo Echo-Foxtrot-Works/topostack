@@ -6,7 +6,7 @@ export { projectFingerprint } from "./pipeline/fingerprint.js";
 export { CONTOUR_SIMPLIFICATION_TOLERANCE_MM } from "./pipeline/contours.js";
 // Polygon clip inputs appear in exported signatures (paint regions, marker
 // placement), so the prepared form is public even though the primitives stay internal.
-export { distanceToSegment, polylineLength, signedArea, type PreparedPolygons } from "./primitives/geometry2d.js";
+export { boundsOverlap, clipPolyline, preparePolygons, distanceToSegment, polylineLength, ringBounds, signedArea, type Bounds2D, type PreparedPolygons } from "./primitives/geometry2d.js";
 export { labelDimensions, labelLineSegments, labelPathData, labelSvgPaths, roundText, unsupportedLabelCharacters, type LabelLineSegment } from "./annotate/labels.js";
 export { FONT_CATALOG, clearRegisteredFonts, decodeFontGlyphs, fontEntry, isBitmapFont, isFontLoaded, missingGlyphs, projectFonts, registerFont, type FontCatalogEntry, type FontGlyphsV1, type FontKind } from "./annotate/font-data.js";
 export { markerCenterForAnchor, markerIcon, markerPolygons, markerSymbolPaths, unwrapLongitude } from "./annotate/markers.js";
@@ -46,10 +46,11 @@ export { carveWaterDepth } from "./water/water.js";
 export { smoothLakeShorelines } from "./water/lake-shoreline.js";
 export { waterPatternStrokes } from "./water/water-pattern.js";
 export { exportBlockMessage, exportBlockReason, type ExportBlock } from "./export/export-policy.js";
-export { landClassesNeeded, sourceRequirements } from "./pipeline/source-requirements.js";
+export { buildingOutlinesEnabled, landClassesNeeded, sourceRequirements } from "./pipeline/source-requirements.js";
 export { landStroke, type LandStroke } from "./pipeline/lands.js";
 export { AVIATION_DATA_DETAILS, NO_AVIATION, aviationClassEnabled, aviationRequested, aviationStroke, type AviationAltitudeCandidate, type AviationLabelCandidate, type AviationStroke, type AviationSymbolBox } from "./pipeline/aviation.js";
-export { cropRadiusMm } from "./primitives/crop.js";
+export { minimumCaliperWidth } from "./primitives/convex-hull.js";
+export { cropBoundary, cropRadiusMm } from "./primitives/crop.js";
 
 export { executeGeometryTask, type GeometryTask, type GeometryBatch, type GeometryTaskResult } from "./pipeline/generation-tasks.js";
 

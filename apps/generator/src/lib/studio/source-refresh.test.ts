@@ -24,6 +24,17 @@ describe("stale source data", () => {
     expect(stale(loaded({ vectorStatus: "partial" }), { showRoads: false }).vectorStatus).toBe("not-requested");
   });
 
+  it("refreshes footprints when they become visible or their printable size changes", () => {
+    const zoomedOut = { ...DEFAULT_PROJECT, showBuildings: true, location: { ...DEFAULT_PROJECT.location, zoom: 12.99 } };
+    const zoomedIn = { ...zoomedOut, location: { ...zoomedOut.location, zoom: 13 } };
+    const source = loaded();
+    expect(markStaleSourceData(source, { showBuildings: true }, { ...zoomedOut, showBuildings: false }, zoomedOut)).toBe(source);
+    expect(markStaleSourceData(source, { location: zoomedIn.location }, zoomedOut, zoomedIn).vectorStatus).toBe("not-requested");
+    expect(markStaleSourceData(source, { cropShape: "circle" }, zoomedIn, { ...zoomedIn, cropShape: "circle" }).vectorStatus).toBe("not-requested");
+    expect(markStaleSourceData(source, { minimumFeatureMm: 2 }, zoomedIn, { ...zoomedIn, minimumFeatureMm: 2 }).vectorStatus).toBe("not-requested");
+    expect(markStaleSourceData(source, { showBuildings: false }, zoomedIn, { ...zoomedIn, showBuildings: false })).toBe(source);
+  });
+
   it("still reloads on water changes", () => {
     expect(stale(loaded(), { showWater: false }).vectorStatus).toBe("not-requested");
   });
@@ -305,6 +316,20 @@ describe("refreshing map data after a failed or partial load", () => {
     const sample = { ...loaded({ vectorStatus: "not-requested" }), sourceKind: "preview" as const };
     expect(await refreshRequiredMapData(sample, DEFAULT_PROJECT, signal(), deps)).toBe(sample);
     expect(deps.loadVectorMarkings).not.toHaveBeenCalled();
+  });
+
+  it("retries missing rail evidence and can still use healthy map layers with rail disabled", async () => {
+    const deps = dependencies();
+    const source = loaded({ railContextIncomplete: true });
+    await refreshRequiredMapData(source, { ...DEFAULT_PROJECT, showRail: false }, signal(), deps);
+    expect(deps.loadVectorMarkings).not.toHaveBeenCalled();
+    const retried = await refreshRequiredMapData(source, { ...DEFAULT_PROJECT, showRail: true }, signal(), deps);
+    expect(deps.loadVectorMarkings).toHaveBeenCalledOnce();
+    expect(retried.railContextIncomplete).toBeFalsy();
+    vi.mocked(deps.loadVectorMarkings).mockRejectedValue(new Error("offline"));
+    const offline = await refreshRequiredMapData(source, { ...DEFAULT_PROJECT, showRail: true }, signal(), deps);
+    expect(offline).toMatchObject({ vectorStatus: "available", railContextIncomplete: true, markings: source.markings });
+
   });
 
   it("marks a truncated vector load partial and keeps both water layers as pattern areas", async () => {

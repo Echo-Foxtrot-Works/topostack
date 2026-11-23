@@ -1,6 +1,6 @@
 <script lang="ts">
   import { cropRadiusMm, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
-  import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
+  import { markingCap, markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
   import { hiddenByPrefix } from "./placeables";
   import { placementViewBox } from "./viewport";
@@ -54,7 +54,7 @@
         {@const text = labelPaths(marking)}
         {#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} />{/if}
       {:else if marking.points.length > 1}
-        <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.knockout ? shade : marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} />
+        <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.knockout ? shade : marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={markingCap(marking, geometry.lineStyle)} />
       {/if}
     {/each}
   {/each}

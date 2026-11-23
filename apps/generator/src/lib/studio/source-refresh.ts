@@ -1,4 +1,4 @@
-import { AVIATION_DATA_DETAILS, landClassesNeeded, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
+import { AVIATION_DATA_DETAILS, buildingOutlinesEnabled, landClassesNeeded, sourceRequirements, type Point2D, type Polygon2D, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import type { SurveyResult } from "$lib/domain/bathymetry";
 import type { VectorData } from "$lib/domain/vector-loader";
 import { changedProjectKeys, projectPatch } from "$lib/studio/project-patch";
@@ -53,7 +53,13 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   const reloadsLayer = (["showRoads", "showTrails", "showRail", "showBoundaries"] as const).some((key) => key in patch && (patch[key] === true || source.vectorStatus === "partial"));
   // A water paint stencil needs the outlines even with every water drawing off.
   const enablesPaintWater = "paintTemplates" in patch && sourceRequirements(nextProject).water && !sourceRequirements(sourceProject).water;
-  const changesVectorDetails = reloadsLayer || "showWater" in patch || (patch.showWaterDepth === true && !sourceProject.showWater) || enablesPaintWater;
+  const buildings = buildingOutlinesEnabled(nextProject);
+  const hadBuildings = buildingOutlinesEnabled(sourceProject);
+  // Footprints are selected at finished size. Resizing or changing the printable minimum can reveal more.
+  const reloadBuildings = buildings
+    ? !hadBuildings || patch.widthMm !== undefined || patch.heightMm !== undefined || patch.minimumFeatureMm !== undefined || patch.cropShape !== undefined
+    : hadBuildings && source.vectorStatus === "partial";
+  const changesVectorDetails = reloadBuildings || reloadsLayer || "showWater" in patch || (patch.showWaterDepth === true && !sourceProject.showWater) || enablesPaintWater;
   if (changesVectorDetails) next = { ...next, vectorStatus: "not-requested" };
   if (patch.showWaterDepth === true || enablesPaintWater) next = { ...next, lakeDataStatus: "not-requested" };
   const enablesDepthByMode = nextProject.outputMode === "stack" && nextProject.showWaterDepth && sourceProject.outputMode !== "stack";
@@ -95,7 +101,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
   let ocean = (source.waterAreas ?? []).filter((area) => area.kind === "ocean").map((area) => area.polygon);
   let lakes = (source.waterAreas ?? []).filter((area) => area.kind === "lake");
 
-  if (needsVectors && source.vectorStatus !== "available") {
+  if (needsVectors && (source.vectorStatus !== "available" || (config.showRail && source.railContextIncomplete))) {
     try {
       const vector = await loadVectorMarkings(source.bounds, zoom, config, signal);
       ocean = vector.ocean;
@@ -105,37 +111,42 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
         markings: vector.markings,
         waterPatternAreas: [...vector.ocean, ...vector.inland],
         inlandWaterAreas: vector.inland,
+        railContextIncomplete: vector.railContextIncomplete,
         vectorStatus: vector.truncated ? "partial" : "available",
       };
     } catch (error) {
       if (signal.aborted) throw error;
-      ocean = [];
-      inland = [];
-      next = {
-        ...next,
-        markings: next.markings.filter((marking) => marking.kind !== "road" && marking.kind !== "trail" && marking.kind !== "water" && marking.kind !== "boundary"),
-        waterPatternAreas: [],
-        inlandWaterAreas: [],
-        vectorStatus: "unavailable",
-      };
+      // A retry solely for missing station evidence still has a usable copy
+      // of the selected tiles. Keep its other layers if the retry is offline.
+      if (source.vectorStatus !== "available") {
+        ocean = [];
+        inland = [];
+        next = {
+          ...next,
+          markings: next.markings.filter((marking) => marking.kind !== "building" && marking.kind !== "road" && marking.kind !== "trail" && marking.kind !== "water" && marking.kind !== "boundary"),
+          waterPatternAreas: [],
+          inlandWaterAreas: [],
+          vectorStatus: "unavailable",
+        };
+      }
     }
   }
 
-  if (needsAviation && (source.aviationStatus === undefined || source.aviationStatus === "not-requested" || source.aviationStatus === "unavailable")) {
+  if (needsAviation && (source.aviationStatus === undefined || source.aviationStatus === "not-requested" || source.aviationStatus === "unavailable" || source.aviationStatus === "partial")) {
     const aviation = await deps.loadAviation(source.bounds, zoom, config, signal);
     signal.throwIfAborted();
     next = { ...next, ...aviation };
   }
 
-  // Outside FAA coverage the volumes are an empty list; only a missing list loads again.
-  if (needsAirspace && !source.airspaceVolumes) {
+  // An empty list outside FAA coverage is complete. Retry a missing or incomplete load.
+  if (needsAirspace && (!source.airspaceVolumes || source.airspaceStatus === "partial" || source.airspaceStatus === "unavailable")) {
     const airspace = await deps.loadAirspace(source.bounds, zoom, config, signal);
     signal.throwIfAborted();
     next = { ...next, ...airspace };
   }
 
-  // Outside PAD-US the areas are an empty list; only a missing list loads again.
-  if (needsLands && !source.landAreas) {
+  // Empty areas outside PAD-US are also complete.
+  if (needsLands && (!source.landAreas || source.landsStatus === "partial" || source.landsStatus === "unavailable")) {
     const lands = await deps.loadLands(source.bounds, zoom, config, signal);
     signal.throwIfAborted();
     next = { ...next, ...lands };
@@ -179,7 +190,7 @@ export async function refreshRequiredMapData(source: SourceBundleV1, config: Pro
 
 /** Only the settings that change what `refreshRequiredMapData` loads or assembles. */
 function preparationKey(config: ProjectConfigV1): string {
-  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showRail, config.showBoundaries, config.aviation ?? null, config.airspaceStack?.classes ?? null, config.minimumFeatureMm, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
+  return JSON.stringify([sourceRequirements(config), config.showWater, config.showRoads, config.showTrails, config.showRail, buildingOutlinesEnabled(config), config.showBoundaries, config.aviation ?? null, config.airspaceStack?.classes ?? null, config.minimumFeatureMm, config.cropShape, config.widthMm, config.heightMm, config.location.zoom, config.userDepthCharts ?? null]);
 }
 
 /**
@@ -196,7 +207,7 @@ export class SourcePreparationCache {
     const patch = projectPatch(sourceProject, previewProject);
     const key = preparationKey(nextProject);
     // Everything besides `key` that shapes the output for a given input object.
-    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation" || name === "airspaceStack").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null, sourceProject.airspaceStack?.classes ?? null]);
+    const inputSignature = JSON.stringify([sourceProject.widthMm, sourceProject.heightMm, sourceProject.minimumFeatureMm, sourceProject.cropShape, buildingOutlinesEnabled(sourceProject), sourceProject.showWater, sourceProject.outputMode, ...changedProjectKeys(sourceProject, previewProject).filter((name) => name.startsWith("show") || name === "paintTemplates" || name === "aviation" || name === "airspaceStack").sort(), patch.showWaterDepth ?? null, sourceProject.aviation ?? null, sourceProject.airspaceStack?.classes ?? null]);
     const entry = this.entry;
     if (entry && entry.key === key) {
       if (entry.input === active && entry.inputSignature === inputSignature) return entry.output;

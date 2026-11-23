@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
 import type { MultiPolygon, Pair } from "polygon-clipping";
-import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveWaterAreas, dissolveWaterPolygons, joinPaths, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, multiPolygonToAreas, shorelineMarkings, stitchTransportationMarkings } from "./vector-cleanup";
+import { cleanBoundaryMarkings, cleanWaterwayMarkings, clipVectorTileLine, dissolveTilePolygons, dissolveWaterPolygons, joinPaths, limitVectorMarkingGroups, MAX_VECTOR_MARKINGS, multiPolygonToAreas, shorelineMarkings, stitchTransportationMarkings } from "./vector-cleanup";
 
 const p = (x: number, y: number): Point2D => ({ x, y });
 const line = (id: string, points: Array<[number, number]>, extra: Partial<MarkingFeature> = {}): MarkingFeature => ({ id, kind: "water", operation: "score", points: points.map(([x, y]) => p(x, y)), ...extra });
@@ -84,16 +84,16 @@ describe("multiPolygonToAreas", () => {
   });
 });
 
-describe("dissolveWaterAreas", () => {
+describe("dissolveTilePolygons", () => {
   it("is empty for no input", () => {
-    expect(dissolveWaterAreas([], 1)).toEqual([]);
+    expect(dissolveTilePolygons([], 1)).toEqual([]);
     expect(dissolveWaterPolygons([], 1)).toEqual([]);
   });
 
   it("joins tile fragments into one water body without a seam", () => {
     const left: Polygon2D = { outer: square(0, 0, 10, 10), holes: [] };
     const right: Polygon2D = { outer: square(10, 0, 20, 10), holes: [] };
-    const areas = dissolveWaterAreas([left, right], 1);
+    const areas = dissolveTilePolygons([left, right], 1);
     expect(areas).toHaveLength(1);
     const xs = areas[0]!.outer.map((point) => point.x);
     expect([Math.min(...xs), Math.max(...xs)]).toEqual([0, 20]);
@@ -104,7 +104,7 @@ describe("dissolveWaterAreas", () => {
   it("keeps islands as holes and separate lakes apart", () => {
     const lake: Polygon2D = { outer: square(0, 0, 30, 30), holes: [square(10, 10, 20, 20)] };
     const pond: Polygon2D = { outer: square(50, 50, 55, 55), holes: [] };
-    const areas = dissolveWaterAreas([lake, pond], 1);
+    const areas = dissolveTilePolygons([lake, pond], 1);
     expect(areas).toHaveLength(2);
     const withIsland = areas.find((area) => area.holes.length === 1)!;
     expect(signedArea(withIsland.holes[0]!)).toBeLessThan(0);
@@ -128,6 +128,16 @@ describe("shorelineMarkings", () => {
 });
 
 describe("joinPaths", () => {
+  it("joins a long segment within the point budget in either orientation", () => {
+    const line = (id: string, points: Point2D[]): MarkingFeature => ({ id, kind: "road", operation: "engrave", points });
+    const long = Array.from({ length: 140_000 }, (_, i) => p(i + 1, 0));
+    for (const tail of [long, [...long].reverse()]) {
+      const [joined] = joinPaths([line("first", [p(0, 0), p(1, 0)]), line("tail", tail)]);
+      expect(joined!.points).toHaveLength(140_001);
+      expect(joined!.points.at(-1)).toEqual(p(140_000, 0));
+    }
+  });
+
   it("joins pieces at shared degree-two endpoints whichever way they run", () => {
     const joined = joinPaths([line("b", [[10, 0], [20, 0]]), line("a", [[0, 0], [10, 0]]), line("c", [[30, 0], [20, 0]])]);
     expect(joined).toHaveLength(1);

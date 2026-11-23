@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { StripEngineItem } from "./engine.js";
 import { packRectangles, rectangleEngine } from "./rectangles.js";
-import { candidateOrientations, convexHull, rotatedBounds, transformPoints } from "./transform.js";
+import { convexHull } from "../../primitives/convex-hull.js";
+import { candidateOrientations, rotatedBounds, transformPoints } from "./transform.js";
 
 const rect = (width: number, height: number, x = 0, y = 0): Array<[number, number]> => [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
 const placedBounds = (item: StripEngineItem, placement: { rotationDeg: number; x: number; y: number }) =>

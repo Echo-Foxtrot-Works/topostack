@@ -170,7 +170,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     signal.throwIfAborted();
     onStage?.("preparing");
     const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation, airspace, lands] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, ...airspace, ...lands, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, ...("railContextIncomplete" in vector && vector.railContextIncomplete ? { railContextIncomplete: true } : {}), lakeDataStatus: lakes.status, ...aviation, ...airspace, ...lands, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth

@@ -15,7 +15,7 @@
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
+  import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, type GeometryIRV1 } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -413,6 +413,8 @@
       const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
       const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
         score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial, rail: railMaterial,
+        "covered-rail": new THREE.LineBasicMaterial({ color: MARKING_COLORS.rail, linewidth: coveredRailWidthMm(style) }),
+        building: new THREE.LineBasicMaterial({ color: MARKING_COLORS.building, linewidth: style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM }),
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
         "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,
       };
@@ -426,7 +428,7 @@
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
-      runtime.sceneResources.push(engraveMaterial, majorRoadMaterial, localRoadMaterial, trailMaterial, scoreMaterial, boundaryMaterial, coordinateGridMaterial, aviationMaterial, aviationDashedMaterial, specialUseMaterial, landMaterial, labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
+      runtime.sceneResources.push(...Object.values(lineMaterials), labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       activeGeometry.layers.forEach((layer) => {
         const baseZ = layer.index * layer.materialThicknessMm;
         let cached = runtime!.layerMeshes.get(layer.id);
