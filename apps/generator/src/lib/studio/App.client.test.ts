@@ -822,7 +822,7 @@ describe("TopoStack Svelte shell", () => {
     await vi.waitFor(() => expect(bold.getAttribute("aria-checked")).toBe("true"));
     target.querySelector<HTMLButtonElement>('button[role="radio"][aria-label="Flat engraving"]')!.click();
     await vi.waitFor(() => expect(target.querySelector('svg[aria-label="Flat engraving preview"]')).not.toBeNull());
-    await vi.waitFor(() => expect(target.querySelector('.engraving-contours path:not(.index-contour)')?.getAttribute("stroke-width")).toBe("0.24"));
+    await vi.waitFor(() => expect(target.querySelector('.engraving-contours path:not(.index-contour)')?.getAttribute("stroke-width")).toBe("0.2"));
     const dotted = [...target.querySelectorAll<HTMLButtonElement>('.trail-pattern-options button[role="radio"]')].find((button) => button.textContent?.includes("Dotted"))!;
     dotted.click();
     await vi.waitFor(() => expect(dotted.getAttribute("aria-checked")).toBe("true"));

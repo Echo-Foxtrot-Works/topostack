@@ -1,3 +1,4 @@
+import { transportGrade } from "./transportation-classification";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyntheticSource, DEFAULT_PROJECT, type MarkingFeature } from "@topostack/core";
 import { boundsForProject } from "@topostack/core";
@@ -65,6 +66,18 @@ describe("transportation metadata", () => {
       { x: 4, y: 4 },
       { x: 10, y: 4 },
     ]]);
+  });
+
+  it("retains mapped grades across tile cleanup and keeps bridge approaches separate", () => {
+    const bridge = transportGrade({ is_bridge: true });
+    expect(bridge).toEqual({ isBridge: true, transportLevel: 1 });
+    expect(transportGrade({ bridge: "yes", layer: "2" }).transportLevel).toBe(2);
+    expect(transportGrade({ is_tunnel: true }).transportLevel).toBe(-1);
+    expect(transportGrade({ is_bridge: false })).toEqual({});
+    const segment = (id: string, x: number) => ({ id, kind: "road" as const, transportationClass: "major-road" as const, operation: "engrave" as const, points: [{ x, y: 0 }, { x: x + 1, y: 0 }] });
+    const parts = stitchTransportationMarkings([segment("approach", 0), { ...segment("deck", 1), ...bridge }, { ...segment("next tile", 2), ...bridge }]);
+    expect(parts).toHaveLength(2);
+    expect(parts[1]).toMatchObject({ isBridge: true, points: [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }] });
   });
 
   it("stitches road pieces across tile edges without joining forks", () => {

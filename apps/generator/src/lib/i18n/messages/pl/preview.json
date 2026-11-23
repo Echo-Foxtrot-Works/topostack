@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Podgląd graweru płaskiego",
   "engravingZoomControls": "Sterowanie powiększeniem graweru",
   "resetEngravingView": "Zresetuj widok graweru",
-  "legendMinorContour": "Poziomica zwykła",
-  "legendIndexEvery": "Pogrubiona co {interval}",
   "legendContourCount": "{count, plural, one {# poziomica} few {# poziomice} many {# poziomic} other {# poziomicy}}",
   "legendNoContours": "Brak poziomic",
   "legendWaterPattern": "{pattern, select, lines {woda: linie} ripples {woda: fale} dots {woda: kropki} other {woda: {pattern}}}",

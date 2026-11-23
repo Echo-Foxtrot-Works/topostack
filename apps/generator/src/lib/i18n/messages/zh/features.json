@@ -36,7 +36,7 @@
   "buildingWidth": "建筑轮廓线宽",
   "buildingsHint": "地图缩放级别达到 {zoom} 或更高时雕刻建筑轮廓。",
   "rail": "铁路",
-  "railHint": "地面轨道与当地道路使用相同线宽，有遮盖的轨道段用较细的虚线表示。",
+  "railHint": "露天轨道在空间充足处绘制间隔排列的枕木。有顶盖的路段以虚线表示。",
   "transportationLabels": "交通标注",
   "stateProvinceBoundariesName": "州界和省界",
   "stateProvinceBoundaries": "州/省界",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "关闭某个单元即可将其排除在喷漆模板和边界之外，例如公园周围的森林。列出了最大的 {count} 个。",
   "publicLandPaint": "公共土地喷漆",
   "landPaintNote": "每种已开启的类型在每块面板上各有一张纸质模板，按组装后仍可见的土地切割。类型重叠时，由更具体的类型上色：例如公园覆盖其周围的荒野保护区和森林。美国公共土地来自 USGS PAD-US 数据库。",
-  "strokeWidthNote": "描边宽度为 SVG 中的实际物理值。最终雕刻宽度还取决于焦距、功率、速度、材料，以及激光软件将描边视为中心线还是填充形状。"
+  "strokeWidthNote": "预览以 0.20 毫米作为示意刻线宽度。线宽设置控制 SVG 的外观。实际刻线宽度取决于焦点、功率、速度和材料。"
 }

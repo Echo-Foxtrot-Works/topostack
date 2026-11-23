@@ -1,4 +1,4 @@
-import type { TransportationClass } from "@topostack/core";
+import type { MarkingFeature, TransportationClass } from "@topostack/core";
 
 const MAJOR_ROAD_DETAILS = new Set(["motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"]);
 const LOCAL_ROAD_DETAILS = new Set(["tertiary", "tertiary_link", "residential", "service", "unclassified", "road", "raceway", "driveway", "parking_aisle", "alley", "drive-through", "emergency_access"]);
@@ -9,6 +9,16 @@ const RAIL_DETAILS = new Set(["rail", "subway", "light_rail", "tram", "narrow_ga
 const RAIL_SERVICES = new Set(["yard", "siding", "spur", "crossover"]);
 const negative = (value: unknown) => value === false || value === "no";
 const affirmative = (value: unknown) => value === true || value === "yes";
+
+/** Keep vertical transitions separate while stitching tile fragments. */
+export function transportGrade(tags: Record<string, unknown>): Pick<MarkingFeature, "isBridge" | "transportLevel"> {
+  const bridge = affirmative(tags.is_bridge) || affirmative(tags.bridge);
+  const tunnel = affirmative(tags.is_tunnel) || affirmative(tags.tunnel) || tags.tunnel === "building_passage";
+  const raw = tags.layer;
+  const explicit = typeof raw === "number" || (typeof raw === "string" && raw.trim()) ? Number(raw) : NaN;
+  const level = Number.isSafeInteger(explicit) ? explicit : bridge ? 1 : tunnel ? -1 : 0;
+  return { ...(bridge ? { isBridge: true } : {}), ...(level || bridge ? { transportLevel: level } : {}) };
+}
 
 /** A generic tunnel flag alone is only a candidate. Keep genuine underground services out of the fallback. */
 export function classifyRail(tags: Record<string, unknown>): "rail" | "covered-rail" | "rail-tunnel" | undefined {

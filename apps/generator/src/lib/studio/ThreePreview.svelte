@@ -11,11 +11,12 @@
   import { getEmbedded } from "$lib/studio/embed-context";
   import { onMount, untrack } from "svelte";
   import * as THREE from "three";
+  import type { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
   import { placementFrustum, placementViewBox } from "$lib/studio/placement/viewport";
   import { hiddenByPrefix } from "$lib/studio/placement/placeables";
-  import { DEFAULT_BUILDING_WIDTH_MM, airspacePieceMarkings, aviationStroke, coveredRailWidthMm, fittedWaterInsert, labelGeometry, visibleMarkings, type GeometryIRV1, type OperationPath } from "@topostack/core";
+  import { airspacePieceMarkings, aviationStroke, fittedWaterInsert, labelGeometry, visibleMarkings, type GeometryIRV1, type OperationPath } from "@topostack/core";
 
   /**
    * `placement` turns the preview into the backdrop for placement mode: the
@@ -37,7 +38,7 @@
   import { PreviewMotion } from "$lib/studio/preview-motion";
   import { sharedPieceEdges } from "$lib/studio/seam-lines";
   import { PAINT_COLORS } from "$lib/studio/paint-colors";
-  import { airspaceBody, airspaceBodyKey, airspaceRods, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, landPaintStains, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
+  import { airspaceBody, airspaceBodyKey, airspaceRods, type CachedAirspaceBody, addStacked, appendLabel, appendPolyline, applyExploded, batchSegments, burnMaterial, boundsOverlap, type CachedLayer, disposeContent, disposeLayerCache, landPaintStains, layerGrainTexture, layerKey, type LineBatch, makeWoodTexture, markingLift, polygonBounds, shapeFromPolygon, SURFACE_DEPTH_BIAS, waterStainBands, waterStainMask } from "$lib/studio/three-scene";
   const isEmbedded = getEmbedded();
   let zoom = $state(1);
   /**
@@ -387,38 +388,34 @@
       disposeLayerCache(runtime.layerMeshes, reused);
       const style = activeGeometry.lineStyle;
       // The 3D engraving ink is a lighter brown than the flat previews' so it reads on lit wood.
-      const engraveMaterial = new THREE.LineBasicMaterial({ color: 0x39291d, linewidth: style.annotationMm });
-      const majorRoadMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["major-road"], linewidth: style.majorRoadMm });
-      const localRoadMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["local-road"], linewidth: style.localRoadMm });
-      const railMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.rail, linewidth: style.localRoadMm });
+      const engraveMaterial = burnMaterial({ color: 0x39291d });
       const trailMaterial = style.trailPattern === "solid"
-        ? new THREE.LineBasicMaterial({ color: MARKING_COLORS.trail, linewidth: style.trailMm })
-        : new THREE.LineDashedMaterial({
+        ? burnMaterial({ color: MARKING_COLORS.trail })
+        : burnMaterial({ dashed: true,
             color: MARKING_COLORS.trail,
-            linewidth: style.trailMm,
             dashSize: style.trailPattern === "dotted" ? 0.05 : Math.max(style.trailMm * 6, 1.2),
             gapSize: Math.max(style.trailMm * 4, 0.7),
           });
-      const scoreMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.score, linewidth: style.waterMm });
-      const boundaryMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS.boundary, linewidth: style.boundaryMm, dashSize: Math.max(style.boundaryMm * 8, 1.6), gapSize: Math.max(style.boundaryMm * 5, 1) });
+      const scoreMaterial = burnMaterial({ color: MARKING_COLORS.score });
+      const boundaryMaterial = burnMaterial({ dashed: true, color: MARKING_COLORS.boundary, dashSize: Math.max(style.boundaryMm * 8, 1.6), gapSize: Math.max(style.boundaryMm * 5, 1) });
       // WebGL line dashes have no round caps: SVG-style near-zero dots
       // disappear at fitted zoom. Give the preview marks visible length.
-      const coordinateGridMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS.grid, toneMapped: false, linewidth: style.coordinateGridMm, dashSize: Math.max(style.coordinateGridMm * 2, 0.5), gapSize: Math.max(style.coordinateGridMm * 4, 0.7) });
-      const aviationMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.aviation, linewidth: aviationStroke("class-c", style).widthMm });
+      const coordinateGridMaterial = burnMaterial({ dashed: true, color: MARKING_COLORS.grid, toneMapped: false, dashSize: Math.max(style.coordinateGridMm * 2, 0.5), gapSize: Math.max(style.coordinateGridMm * 4, 0.7) });
+      const aviationMaterial = burnMaterial({ color: MARKING_COLORS.aviation });
       const [classDDash = 1.6, classDGap = 1] = aviationStroke("class-d", style).dash ?? [];
-      const aviationDashedMaterial = new THREE.LineDashedMaterial({ color: MARKING_COLORS["aviation-dashed"], linewidth: aviationStroke("class-d", style).widthMm, dashSize: classDDash, gapSize: classDGap });
+      const aviationDashedMaterial = burnMaterial({ dashed: true, color: MARKING_COLORS["aviation-dashed"], dashSize: classDDash, gapSize: classDGap });
       // Special use airspace is solid; its inside hatching arrives as geometry.
-      const specialUseMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS["special-use"], linewidth: aviationStroke("special-use", style).widthMm });
+      const specialUseMaterial = burnMaterial({ color: MARKING_COLORS["special-use"] });
       // Public land boundaries share one solid line here; the cut and engraving previews dash each class.
-      const landMaterial = new THREE.LineBasicMaterial({ color: MARKING_COLORS.land, linewidth: style.boundaryMm });
-      const lineMaterials: Record<MarkingStyleKey, THREE.LineBasicMaterial | THREE.LineDashedMaterial> = {
-        score: scoreMaterial, "major-road": majorRoadMaterial, "local-road": localRoadMaterial, trail: trailMaterial, rail: railMaterial,
-        "covered-rail": new THREE.LineBasicMaterial({ color: MARKING_COLORS.rail, linewidth: coveredRailWidthMm(style) }),
-        building: new THREE.LineBasicMaterial({ color: MARKING_COLORS.building, linewidth: style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM }),
+      const landMaterial = burnMaterial({ color: MARKING_COLORS.land });
+      const lineMaterials: Record<MarkingStyleKey, LineMaterial> = {
+        score: scoreMaterial, "major-road": engraveMaterial, "local-road": engraveMaterial, trail: trailMaterial, rail: engraveMaterial,
+        "covered-rail": engraveMaterial,
+        building: burnMaterial({ color: MARKING_COLORS.building }),
         boundary: boundaryMaterial, grid: coordinateGridMaterial, aviation: aviationMaterial, "aviation-dashed": aviationDashedMaterial,
         "special-use": specialUseMaterial, land: landMaterial, engrave: engraveMaterial,
       };
-      const labelMaterial = new THREE.LineBasicMaterial({ color: 0x21170f, toneMapped: false, linewidth: style.annotationMm });
+      const labelMaterial = burnMaterial({ color: 0x21170f, toneMapped: false });
       const seamMaterial = new THREE.LineBasicMaterial({ color: 0x1a120b, toneMapped: false });
       const markerFillMaterial = new THREE.MeshBasicMaterial({ color: 0x2b2119, side: THREE.DoubleSide });
       // An acrylic insert is a real sheet, clear and glossy, so the stepped
@@ -428,10 +425,10 @@
         color: 0x2f7fb0, transparent: true, opacity: 0.38, roughness: 0.08, metalness: 0,
         side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true,
       });
-      runtime.sceneResources.push(...Object.values(lineMaterials), labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
+      runtime.sceneResources.push(...new Set(Object.values(lineMaterials)), labelMaterial, seamMaterial, markerFillMaterial, acrylicMaterial);
       function drawFaceMarkings(markings: OperationPath[], layerIndex: number, faceZ: number, thickness: number, seams: number[] = []) {
         const top = faceZ + markingLift(thickness);
-        const lineBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+        const lineBatches = new Map<LineMaterial, LineBatch>();
         const labelBatch: LineBatch = { positions: [] };
         const fills: THREE.Shape[] = [];
         const shown = omitMarkings ? [] : markings.filter(({ id }) => !hiddenByPrefix(id, hiddenPrefixes));
@@ -445,7 +442,7 @@
           } else if (marking.points.length > 1) {
             const material = lineMaterials[markingStyleKey(marking)];
             let batch = lineBatches.get(material);
-            if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
+            if (!batch) { batch = { positions: [], ...(material.dashed ? { distances: [] } : {}) }; lineBatches.set(material, batch); }
             appendPolyline(batch, marking.points);
           }
         }
@@ -454,7 +451,7 @@
           mesh.renderOrder = 3;
           addStacked(runtime!.content, mesh, layerIndex, top);
         }
-        if (seams.length) lineBatches.set(seamMaterial, { positions: [...seams] });
+        if (seams.length) addStacked(runtime!.content, batchSegments({ positions: seams }, seamMaterial), layerIndex, top);
         for (const [material, batch] of lineBatches) if (batch.positions.length) addStacked(runtime!.content, batchSegments(batch, material), layerIndex, top);
         if (labelBatch.positions.length) addStacked(runtime!.content, batchSegments(labelBatch, labelMaterial), layerIndex, top + markingLift(thickness) * 0.5);
       }
@@ -526,7 +523,7 @@
           const top = level.zMm + thickness + markingLift(thickness);
           // A level's frost, edges and labels are each one draw call, not one per piece.
           const frost: THREE.Shape[] = [];
-          const edgeBatches = new Map<THREE.LineBasicMaterial | THREE.LineDashedMaterial, LineBatch>();
+          const edgeBatches = new Map<LineMaterial, LineBatch>();
           const labelBatch: LineBatch = { positions: [] };
           for (const piece of level.pieces) {
             levelLayer.set(piece.id, stackIndex);
@@ -537,7 +534,7 @@
               else if (marking.points.length > 1) {
                 const material = lineMaterials[markingStyleKey(marking)];
                 let batch = edgeBatches.get(material);
-                if (!batch) { batch = { positions: [], ...(material instanceof THREE.LineDashedMaterial ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
+                if (!batch) { batch = { positions: [], ...(material.dashed ? { distances: [] } : {}) }; edgeBatches.set(material, batch); }
                 appendPolyline(batch, marking.points);
               }
               if (marking.label && marking.points[0]) appendLabel(labelBatch, marking.label, marking.points[0], marking.labelRotationRad, marking.textStyle);

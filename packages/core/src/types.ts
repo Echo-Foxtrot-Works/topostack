@@ -14,14 +14,17 @@ export type UnitSystem = "metric" | "imperial";
  */
 export const TEXT_FONTS = ["technical", "rounded", "stencil", "hershey-sans", "hershey-serif", "hershey-script", "relief", "jost", "oswald", "lora", "roboto-slab"] as const;
 export type TextFont = typeof TEXT_FONTS[number];
-/** Rail lines ride with roads (kind "road") but have their own toggle, stroke group and no junction rings. */
+/** Rail lines ride with roads (kind "road") but have their own toggle, symbols and stroke group. */
 export type TransportationClass = "major-road" | "local-road" | "trail" | "rail" | "covered-rail";
+
+/** Representative width of one vector pass in the physical map preview, in millimetres. */
+export const SCORE_BURN_WIDTH_MM = 0.2;
 
 export function isRailClass(value: string | undefined): value is "rail" | "covered-rail" {
   return value === "rail" || value === "covered-rail";
 }
 
-/** Covered rail uses a lighter physical stroke than the open track on either side. */
+/** Covered rail's SVG width also sets the cadence of its physical dashes. */
 export function coveredRailWidthMm(style: LineStyleV1): number {
   return Math.max(0.05, Math.round(style.localRoadMm * 60) / 100);
 }
@@ -646,6 +649,9 @@ export interface MarkingFeature {
   points: Point2D[];
   label?: string;
   transportationClass?: TransportationClass;
+  /** Relative OSM grade. Untagged surface linework uses zero. */
+  transportLevel?: number;
+  isBridge?: true;
   aviationClass?: AviationClass;
   /** Public land boundaries, hatching and names: the class that sets the dash. */
   landClass?: LandClass;

@@ -1,11 +1,11 @@
 import { dashPolyline } from "../primitives/dash.js";
-import { coveredRailWidthMm, isRailClass } from "../types.js";
+import { coveredRailWidthMm } from "../types.js";
 import { clipPolyline, polylineLength, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { isBitmapFont, missingGlyphs } from "../annotate/font-data.js";
-import type { MarkingFeature, Point2D, ProjectConfigV1, TextFont, TransportationClass } from "../types.js";
+import type { Point2D, ProjectConfigV1, TextFont, TransportationClass } from "../types.js";
 
 
-function offsetPolyline(points: Point2D[], distanceMm: number): Point2D[] {
+export function offsetPolyline(points: Point2D[], distanceMm: number): Point2D[] {
   // A zero-length leg has no direction, and a {0, 0} normal averaged in cancels
   // a real neighbour out: three identical consecutive points used to collapse
   // the offset back onto the centerline. Drop them before taking normals.
@@ -78,38 +78,4 @@ export function longestPath(paths: Point2D[][]): number {
   let longest = Number.NEGATIVE_INFINITY;
   for (const path of paths) longest = Math.max(longest, polylineLength(path));
   return longest;
-}
-
-interface TransportationJunction { point: Point2D; arms: number; hasMajorRoad: boolean }
-
-export function transportationJunctions(features: MarkingFeature[]): TransportationJunction[] {
-  const junctions = new Map<string, TransportationJunction>();
-  for (const feature of features) {
-    const transportationClass = feature.transportationClass ?? (feature.kind === "road" ? "local-road" : undefined);
-    if (!transportationClass || transportationClass === "trail" || isRailClass(transportationClass) || feature.points.length < 2) continue;
-    // One road contributes at most one arm per place. Vector tiles quantize
-    // coordinates, so a doubled vertex - or a loop returning to its own seam -
-    // would otherwise reach three arms by itself and engrave a junction ring
-    // where no roads cross.
-    const counted = new Set<string>();
-    feature.points.forEach((point, index) => {
-      const key = `${Math.round(point.x * 10)},${Math.round(point.y * 10)}`;
-      if (counted.has(key)) return;
-      counted.add(key);
-      const current = junctions.get(key) ?? { point, arms: 0, hasMajorRoad: false };
-      current.arms += index === 0 || index === feature.points.length - 1 ? 1 : 2;
-      current.hasMajorRoad ||= transportationClass === "major-road";
-      junctions.set(key, current);
-    });
-  }
-  return [...junctions.values()].filter((junction) => junction.arms >= 3 && junction.hasMajorRoad)
-    .sort((left, right) => left.point.y - right.point.y || left.point.x - right.point.x);
-}
-
-export function junctionRing(center: Point2D, radiusMm: number): Point2D[] {
-  const points = Array.from({ length: 20 }, (_, index) => {
-    const angle = index / 20 * Math.PI * 2;
-    return { x: center.x + Math.cos(angle) * radiusMm, y: center.y + Math.sin(angle) * radiusMm };
-  });
-  return [...points, { ...points[0]! }];
 }

@@ -36,7 +36,7 @@
   "buildingWidth": "Szerokość obrysu budynków",
   "buildingsHint": "Obrysy budynków są grawerowane od poziomu powiększenia mapy {zoom}.",
   "rail": "Koleje",
-  "railHint": "Tory na powierzchni mają szerokość dróg lokalnych. Zadaszone odcinki są rysowane cieńszą linią przerywaną.",
+  "railHint": "Na odkrytych torach widać podkłady tam, gdzie jest na nie miejsce. Odcinki zakryte są oznaczone linią przerywaną.",
   "transportationLabels": "Etykiety dróg",
   "stateProvinceBoundariesName": "Granice stanów i prowincji",
   "stateProvinceBoundaries": "Granice stanów/prowincji",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Wyłącz jednostkę, aby pominąć ją w szablonach malarskich i granicach, np. las wokół parku. Wyświetlono największe jednostki ({count}).",
   "publicLandPaint": "Malowanie gruntów publicznych",
   "landPaintNote": "Każdy włączony rodzaj otrzymuje papierowy szablon na każdy panel, wycięty na kształt gruntu widocznego po złożeniu. Tam, gdzie rodzaje się nakładają, maluje się ten bardziej szczegółowy: park zamiast otaczających go obszarów dzikiej przyrody i lasu. Grunty publiczne USA z bazy USGS PAD-US.",
-  "strokeWidthNote": "Szerokości obrysu to fizyczne wartości SVG. Ostateczna szerokość graweru zależy też od ogniskowania, mocy, prędkości, materiału oraz tego, czy oprogramowanie lasera traktuje obrysy jako linie środkowe, czy wypełnione kształty."
+  "strokeWidthNote": "Podgląd pokazuje przykładowy ślad lasera o szerokości 0,20 mm. Ustawienia szerokości określają wygląd SVG. Rzeczywista szerokość śladu zależy od ostrości, mocy, prędkości i materiału."
 }

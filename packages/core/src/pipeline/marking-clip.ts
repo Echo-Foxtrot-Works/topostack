@@ -123,7 +123,7 @@ function markBounds(mark: OperationPath): Bounds2D {
 
 
 /** Material containing the entire mark, for clipping to the exterior of the excluded regions. */
-function surroundingFrame(bounds: Bounds2D): PreparedPolygons {
+export function surroundingFrame(bounds: Bounds2D): PreparedPolygons {
   const minX = bounds.minX - 1, minY = bounds.minY - 1;
   const maxX = bounds.maxX + 1, maxY = bounds.maxY + 1;
   return preparePolygons([{ outer: [{ x: minX, y: minY }, { x: maxX, y: minY }, { x: maxX, y: maxY }, { x: minX, y: maxY }, { x: minX, y: minY }], holes: [] }]);

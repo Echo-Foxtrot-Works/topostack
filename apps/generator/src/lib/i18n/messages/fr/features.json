@@ -36,7 +36,7 @@
   "buildingWidth": "Épaisseur du contour des bâtiments",
   "buildingsHint": "Les contours sont gravés à partir du niveau de zoom {zoom} de la carte.",
   "rail": "Voies ferrées",
-  "railHint": "Les voies en surface ont la largeur des rues locales. Les tronçons couverts apparaissent en tirets plus fins.",
+  "railHint": "Les voies à ciel ouvert portent des traverses si l’espace le permet. Les voies couvertes sont en tirets.",
   "transportationLabels": "Étiquettes de transport",
   "stateProvinceBoundariesName": "Limites d’États et de provinces",
   "stateProvinceBoundaries": "Limites d’États/provinces",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Désactivez une unité pour l’exclure des pochoirs et des limites, comme la forêt autour d’un parc. Les {count} plus grandes sont listées.",
   "publicLandPaint": "Peinture des terres publiques",
   "landPaintNote": "Chaque type activé reçoit un pochoir en papier par panneau, découpé selon la terre qui reste visible après assemblage. Là où les types se chevauchent, le plus spécifique est peint : un parc sur la zone sauvage et la forêt qui l’entourent. Terres publiques des États-Unis issues de la base PAD-US de l’USGS.",
-  "strokeWidthNote": "Les épaisseurs de trait sont des valeurs SVG physiques. L’épaisseur gravée finale dépend aussi de la mise au point, de la puissance, de la vitesse, du matériau et de la façon dont votre logiciel laser traite les traits (lignes centrales ou formes pleines)."
+  "strokeWidthNote": "L’aperçu simule un trait laser de 0,20 mm. Les largeurs règlent le dessin SVG. La largeur réelle du trait dépend de la mise au point, de la puissance, de la vitesse et du matériau."
 }

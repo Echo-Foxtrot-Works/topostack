@@ -1,4 +1,4 @@
-import { coveredRailWidthMm, isRailClass, DEFAULT_BUILDING_WIDTH_MM, aviationStroke, landStroke, type LineStyleV1, type OperationPath } from "@topostack/core";
+import { isRailClass, aviationStroke, landStroke, type LineStyleV1, type OperationPath } from "@topostack/core";
 
 /** The visual class a marking is drawn with, shared by the 2D, engraving, and 3D previews. */
 export type MarkingStyleKey = "score" | "major-road" | "local-road" | "trail" | "rail" | "covered-rail" | "boundary" | "grid" | "aviation" | "aviation-dashed" | "special-use" | "land" | "building" | "engrave";
@@ -21,11 +21,11 @@ export function markingStyleKey(marking: StyledMarking): MarkingStyleKey {
 
 export const MARKING_COLORS: Record<MarkingStyleKey, string> = {
   score: "#365c79",
-  "major-road": "#24180f",
-  "local-road": "#62442f",
-  trail: "#8a5e35",
-  rail: "#3b3550",
-  "covered-rail": "#3b3550",
+  "major-road": "#39291d",
+  "local-road": "#39291d",
+  trail: "#39291d",
+  rail: "#39291d",
+  "covered-rail": "#39291d",
   building: "#796653",
   boundary: "#6f4057",
   grid: "#34404b",
@@ -39,21 +39,6 @@ export const MARKING_COLORS: Record<MarkingStyleKey, string> = {
 
 export function markingColor(marking: StyledMarking): string {
   return MARKING_COLORS[markingStyleKey(marking)];
-}
-
-/** Stroke width in millimetres. Road classes take precedence over the feature kind. */
-export function markingWidth(marking: Pick<OperationPath, "kind" | "transportationClass" | "aviationClass" | "landClass">, style: LineStyleV1): number {
-  if (marking.kind === "aviation" && marking.aviationClass) return aviationStroke(marking.aviationClass, style).widthMm;
-  if (marking.kind === "land" && marking.landClass) return landStroke(marking.landClass, style).widthMm;
-  if (marking.transportationClass === "major-road") return style.majorRoadMm;
-  if (marking.transportationClass === "covered-rail") return coveredRailWidthMm(style);
-  if (marking.transportationClass === "local-road" || marking.transportationClass === "rail") return style.localRoadMm;
-  if (marking.transportationClass === "trail") return style.trailMm;
-  if (marking.kind === "building") return style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM;
-  if (marking.kind === "water") return style.waterMm;
-  if (marking.kind === "boundary") return style.boundaryMm;
-  if (marking.kind === "grid") return style.coordinateGridMm;
-  return style.annotationMm;
 }
 
 export function markingCap(marking: Pick<OperationPath, "kind" | "transportationClass">, style: LineStyleV1) {

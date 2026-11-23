@@ -21,8 +21,6 @@
   "flatEngravingPreview": "平面彫刻のプレビュー",
   "engravingZoomControls": "彫刻のズーム操作",
   "resetEngravingView": "彫刻の表示をリセット",
-  "legendMinorContour": "主曲線",
-  "legendIndexEvery": "{interval} 本ごとに計曲線",
   "legendContourCount": "{count, plural, other {等高線 # 本}}",
   "legendNoContours": "等高線なし",
   "legendWaterPattern": "{pattern, select, lines {線の水域} ripples {波紋の水域} dots {点の水域} other {{pattern}の水域}}",

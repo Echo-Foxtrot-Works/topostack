@@ -36,7 +36,7 @@
   "buildingWidth": "Širina obrisa stavb",
   "buildingsHint": "Obrisi stavb se gravirajo od stopnje povečave zemljevida {zoom} naprej.",
   "rail": "Železnice",
-  "railHint": "Tiri na površju imajo enako širino kot lokalne ceste. Pokriti odseki so prikazani s tanjšo črtkano črto.",
+  "railHint": "Na odprtih progah so prikazani razmaknjeni pragovi, kjer je dovolj prostora. Pokriti odseki so črtkani.",
   "transportationLabels": "Napisi prometnic",
   "stateProvinceBoundariesName": "Meje držav in provinc",
   "stateProvinceBoundaries": "Meje držav/provinc",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Izklopite enoto, da jo izpustite iz šablon za barvanje in mej, na primer gozd okoli parka. Prikazanih je {count} največjih.",
   "publicLandPaint": "Barvanje javnih zemljišč",
   "landPaintNote": "Vsaka vklopljena vrsta dobi papirnato šablono za vsak segment, izrezano po zemljišču, ki ostane vidno po sestavljanju. Kjer se vrste prekrivajo, se barva bolj specifična: park pred divjino in gozdom okoli njega. Javna zemljišča ZDA iz baze USGS PAD-US.",
-  "strokeWidthNote": "Širine potez so fizične vrednosti SVG. Končna širina graviranja je odvisna tudi od goriščne razdalje, moči, hitrosti, materiala in tega, ali vaša programska oprema za laser obravnava poteze kot sredinske črte ali zapolnjene oblike."
+  "strokeWidthNote": "Predogled prikazuje značilno 0,20 mm široko sled laserja. Nastavljene širine določajo videz SVG. Dejanska širina sledi je odvisna od izostritve, moči, hitrosti in materiala."
 }

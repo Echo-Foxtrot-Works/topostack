@@ -36,7 +36,7 @@
   "buildingWidth": "Grosor del contorno de los edificios",
   "buildingsHint": "Los contornos se graban a partir del nivel de zoom {zoom} del mapa.",
   "rail": "Ferrocarriles",
-  "railHint": "Las vías en superficie tienen el grosor de las calles locales. Los tramos cubiertos se dibujan con líneas discontinuas más finas.",
+  "railHint": "Las vías al aire libre llevan traviesas espaciadas donde hay sitio. Las vías cubiertas se dibujan a trazos.",
   "transportationLabels": "Etiquetas de transporte",
   "stateProvinceBoundariesName": "Límites de estados y provincias",
   "stateProvinceBoundaries": "Límites estatales/provinciales",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Desactiva una unidad para dejarla fuera de las plantillas de pintura y los límites, como el bosque alrededor de un parque. Se muestran las {count} más grandes.",
   "publicLandPaint": "Pintura de tierras públicas",
   "landPaintNote": "Cada tipo activado obtiene una plantilla de papel por panel, recortada a la tierra que queda visible tras el montaje. Donde los tipos se solapan, pinta el más específico: un parque sobre el área silvestre y el bosque que lo rodean. Tierras públicas de EE. UU. de la base de datos PAD-US del USGS.",
-  "strokeWidthNote": "Los grosores de trazo son valores SVG físicos. El ancho grabado final también depende del enfoque, la potencia, la velocidad, el material y de si tu software láser trata los trazos como líneas centrales o formas rellenas."
+  "strokeWidthNote": "La vista previa simula una marca de 0,20 mm. Los ajustes de ancho dan estilo al SVG. El ancho real depende del enfoque, la potencia, la velocidad y el material."
 }

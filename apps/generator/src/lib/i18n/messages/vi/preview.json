@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Xem trước khắc phẳng",
   "engravingZoomControls": "Điều khiển thu phóng bản khắc",
   "resetEngravingView": "Đặt lại khung nhìn bản khắc",
-  "legendMinorContour": "Đường đồng mức con",
-  "legendIndexEvery": "Đường cái mỗi {interval}",
   "legendContourCount": "{count, plural, other {# đường đồng mức}}",
   "legendNoContours": "Không có đường đồng mức",
   "legendWaterPattern": "{pattern, select, lines {mặt nước kẻ sọc} ripples {mặt nước gợn sóng} dots {mặt nước chấm} other {mặt nước {pattern}}}",

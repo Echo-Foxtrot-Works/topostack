@@ -21,8 +21,6 @@
   "flatEngravingPreview": "평면 각인 미리보기",
   "engravingZoomControls": "각인 확대/축소 컨트롤",
   "resetEngravingView": "각인 보기 초기화",
-  "legendMinorContour": "주곡선",
-  "legendIndexEvery": "{interval}마다 계곡선",
   "legendContourCount": "{count, plural, other {등고선 #개}}",
   "legendNoContours": "등고선 없음",
   "legendWaterPattern": "{pattern, select, lines {선 무늬 물} ripples {물결 무늬 물} dots {점 무늬 물} other {{pattern} 무늬 물}}",

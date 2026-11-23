@@ -1,6 +1,14 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+import { SCORE_BURN_WIDTH_MM, labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+
+import { LineMaterial, type LineMaterialParameters } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+
+export function burnMaterial(parameters: LineMaterialParameters): LineMaterial {
+  return new LineMaterial({ ...parameters, worldUnits: true, linewidth: SCORE_BURN_WIDTH_MM, alphaToCoverage: true });
+}
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -267,7 +275,16 @@ export function appendPolyline(batch: LineBatch, points: Point2D[]): void {
   }
 }
 
-export function batchSegments(batch: LineBatch, material: THREE.LineBasicMaterial | THREE.LineDashedMaterial): THREE.LineSegments {
+export function batchSegments(batch: LineBatch, material: LineMaterial | THREE.LineBasicMaterial): LineSegments2 | THREE.LineSegments {
+  if (material instanceof LineMaterial) {
+    const geometry = new LineSegmentsGeometry().setPositions(batch.positions);
+    if (batch.distances) {
+      const distances = new THREE.InstancedInterleavedBuffer(new Float32Array(batch.distances), 2, 1);
+      geometry.setAttribute("instanceDistanceStart", new THREE.InterleavedBufferAttribute(distances, 1, 0));
+      geometry.setAttribute("instanceDistanceEnd", new THREE.InterleavedBufferAttribute(distances, 1, 1));
+    }
+    return new LineSegments2(geometry, material);
+  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
   if (batch.distances) geometry.setAttribute("lineDistance", new THREE.Float32BufferAttribute(batch.distances, 1));

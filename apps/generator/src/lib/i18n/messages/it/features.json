@@ -36,7 +36,7 @@
   "buildingWidth": "Spessore dei contorni degli edifici",
   "buildingsHint": "I contorni vengono incisi dal livello di zoom {zoom} in poi.",
   "rail": "Ferrovie",
-  "railHint": "I binari in superficie hanno lo stesso spessore delle strade locali. I tratti coperti sono tratteggiati con una linea più sottile.",
+  "railHint": "I binari a cielo aperto hanno traversine distanziate dove c’è spazio. I tratti coperti sono tratteggiati.",
   "transportationLabels": "Etichette trasporti",
   "stateProvinceBoundariesName": "Confini di stati e province",
   "stateProvinceBoundaries": "Confini stati/province",
@@ -92,5 +92,5 @@
   "landUnitsNoteListed": "Disattiva un’unità per escluderla da mascherine e confini, come la foresta intorno a un parco. Sono elencate le {count} più grandi.",
   "publicLandPaint": "Pittura terreni pubblici",
   "landPaintNote": "Ogni tipo attivo riceve una mascherina di carta per pannello, tagliata sul terreno che resta visibile dopo il montaggio. Dove i tipi si sovrappongono, dipinge quello più specifico: un parco sopra l’area selvaggia e la foresta intorno. Terreni pubblici USA dal database USGS PAD-US.",
-  "strokeWidthNote": "Gli spessori dei tratti sono valori SVG fisici. Lo spessore inciso finale dipende anche da fuoco, potenza, velocità, materiale e da come il software laser tratta i tratti, come linee centrali o forme piene."
+  "strokeWidthNote": "L’anteprima simula una traccia laser di 0,20 mm. Le larghezze impostate si applicano al disegno SVG. La larghezza reale dipende da messa a fuoco, potenza, velocità e materiale."
 }

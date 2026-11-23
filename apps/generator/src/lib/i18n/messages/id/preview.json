@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Pratinjau grafir datar",
   "engravingZoomControls": "Kontrol zoom grafir",
   "resetEngravingView": "Atur ulang tampilan grafir",
-  "legendMinorContour": "Kontur minor",
-  "legendIndexEvery": "Indeks tiap {interval}",
   "legendContourCount": "{count, plural, other {# kontur}}",
   "legendNoContours": "Tidak ada kontur",
   "legendWaterPattern": "{pattern, select, lines {air bergaris} ripples {air beriak} dots {air bertitik} other {air {pattern}}}",

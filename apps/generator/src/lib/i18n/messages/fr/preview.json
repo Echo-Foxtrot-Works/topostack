@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Aperçu de la gravure à plat",
   "engravingZoomControls": "Commandes de zoom de la gravure",
   "resetEngravingView": "Réinitialiser la vue de gravure",
-  "legendMinorContour": "Courbe secondaire",
-  "legendIndexEvery": "Maîtresse toutes les {interval}",
   "legendContourCount": "{count, plural, one {# courbe} other {# courbes}}",
   "legendNoContours": "Aucune courbe",
   "legendWaterPattern": "{pattern, select, lines {eau en lignes} ripples {eau en ondulations} dots {eau en points} other {eau : {pattern}}}",
