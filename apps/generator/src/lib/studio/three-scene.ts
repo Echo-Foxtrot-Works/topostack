@@ -7,7 +7,17 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 
 export function burnMaterial(parameters: LineMaterialParameters): LineMaterial {
-  return new LineMaterial({ ...parameters, worldUnits: true, linewidth: SCORE_BURN_WIDTH_MM, alphaToCoverage: true });
+  // The stack mirrors map Y. LineMaterial builds its stroke faces in camera
+  // space, so their winding does not follow the mirrored object's front face.
+  const material = new LineMaterial({ ...parameters, side: THREE.DoubleSide, linewidth: SCORE_BURN_WIDTH_MM, alphaToCoverage: true });
+  // Project the physical burn at each segment end. A one-CSS-pixel minimum
+  // keeps the street continuous when the fitted model is small on screen.
+  material.vertexShader = material.vertexShader.replace("offset *= linewidth;", `
+    float clipW = position.y < 0.5 ? clipStart.w : clipEnd.w;
+    float pixelsPerMm = 0.5 * resolution.y * projectionMatrix[1][1] / clipW;
+    offset *= max(1.0, linewidth * pixelsPerMm);
+  `);
+  return material;
 }
 
 export interface CachedLayer {
