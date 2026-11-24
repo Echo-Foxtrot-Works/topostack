@@ -1,3 +1,35 @@
+# Atomm review revision — 0.14.0 — 2026-11-24
+
+0.14.0 replaces 0.13.1 for this review. It keeps 0.13.1's layout, languages and SVG part grouping, and adds two map features plus data and export fixes. Everything below about 0.13.1 and earlier still applies.
+
+## What changed since 0.13.1
+
+- **Map features** has two new switches, both translated into all 18 languages: **Railways** (open track with spaced cross-ties where there is room, covered track as dashes) and **Building outlines** (footprints at map zoom 13 and closer, with a width field). Each exports in its own SVG group inside the part, so it can take its own laser setting.
+- Data: sea floors use GEBCO ocean depths; the sea-level sheet follows the mapped coastline; empty high-detail elevation tiles fall back to coarser real terrain; isolated false pits are removed. Dense maps that exceed export limits use coarser map detail instead of failing.
+- Export and preview: roads meet cleanly at junctions and leave gaps under bridges; the 3D stack shows scored linework; sheet nesting keeps cut spacing and sharp corners; ocean soundings, lake levels and airspace rod holes survive generation.
+- Messages: new warnings for generalized building outlines, coarser elevation tiles and incomplete covered-railway data. The Tips export slide now says Open in Studio sends the wood layout and the acrylic files are in Download.
+- Not part of the Atomm package: the xTool Studio and LightBurn per-panel projects (the standalone export dialog only). The embed's Download is unchanged in kind: per-sheet SVGs, engraving SVGs, the master SVG, the assembly guide, the project JSON, README and attribution.
+
+The listing media stay at v11. They were captured from 0.13.1, whose layout and controls are unchanged in 0.14.0; they do not show the two new switches.
+
+## Validation for 0.14.0
+
+Run on `dev` at `99900c5` (the 0.14.0 candidate before the release commit), 2026-11-24:
+
+- CI on that commit: lint, typecheck, coverage, build, budgets, and the browser suites in Chromium, Firefox and WebKit (nine shards) passed, and development deployed. Locally, the same gate passed again (typecheck, zero-warning lint, unused exports, every workspace's unit tests, script tests, production build, web and Worker budgets, `version:check`, `changelog:verify`).
+- `e2e/atomm.spec.ts` (45 cases) and `e2e/localization.spec.ts` (57 cases) passed in all three browsers.
+- The Atomm package was built exactly as CI builds it (`VITE_SITE_ENV=atomm`, production API origin) and passed `verify-atomm-dist`. The unzipped package was then served on its own with a stand-in SDK, its data requests proxied to the development API, and driven through the export hook:
+  - Default layered model: Open in Studio returns one master SVG with 51 root part groups, each named and with its own cut; Download returns the sheet, engraving and master SVGs, the guide, project, README and attribution.
+  - Acrylic water inserts (Crater Lake): Download includes the acrylic SVGs; Open in Studio sends only the wood master (177/177 part groups with a cut).
+  - Public lands (Grand Teton): Download includes national-park paint masks; 120/120 part groups.
+  - Airspace in 3D (Colorado Springs): Download includes the acrylic airspace sheets; the wood master has 67/67 part groups and the ready note says where the acrylic went.
+  - Railways and Building outlines (downtown Denver, Flat engraving): both switches are present in the embed and add track and footprints to the exported SVG; no incomplete-railway warning.
+  - Frames of 790 px and 430 px: no horizontal overflow, Tips reachable.
+  - Each of the 17 non-English locales, every parameter section expanded, Railways on: `<html lang>` follows the locale, no English catalog phrase appears, and nothing in the parameter rail overflows.
+  - No page errors or failed requests in any scenario.
+
+Still to do by hand with the published ZIP: load it in the live platform's Local debug, exercise the real Open in Studio and Download controls, and switch languages with the DevTool Simulator.
+
 # Atomm review revision — 0.13.1 — 2026-11-20
 
 0.13.1 replaces 0.12.0–0.13.0 for this review. It adds the platform's 18 languages to everything 0.12.2 contained; 0.13.1 fixes the unit and view switches, which in 0.13.0 split "Imperial" mid-word and let longer translations run past their button. Tested in the live platform's Local debug in all 18 languages with the DevTool Simulator.
@@ -61,7 +93,7 @@ Use only the v11 media named in `listing.md` and `media-provenance.json`. There 
 
 ## Platform handoff
 
-Upload `topostack-atomm-v0.13.1.zip` from the `atomm-v0.13.1` GitHub release as the application and `topostack-listing-upload-v0.13.1.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
+Upload `topostack-atomm-v0.14.0.zip` from the `atomm-v0.14.0` GitHub release as the application and `topostack-listing-upload-v0.14.0.zip` from the same release for current copy and media. Inspect the uploaded build and exercise its real export controls before submitting for review. Local preparation does not itself upload or resubmit the release, and reviewer acceptance remains unverified.
 
 ## Validation completed
 
