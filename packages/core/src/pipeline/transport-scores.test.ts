@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT, type MarkingFeature, type Point2D } from "../types.js";
 import { generateGeometry } from "./generate.js";
 import { transportScorePaths } from "./transport-scores.js";
+import { uniqueRoadCenterlines } from "./road-junctions.js";
 import { engravingToSvg } from "../export/engraving-svg.js";
 import { svgToLightBurn } from "../export/lightburn.js";
-import { realSource } from "../test-support/sources.js";
+import { parsePathPoints, realSource } from "../test-support/sources.js";
 import { distanceToSegment, pointAt } from "../primitives/geometry2d.js";
 
 const project = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, showRail: true, showEngravingContours: false, showNorthArrow: false, showScaleBar: false };
@@ -153,4 +154,42 @@ describe("score-only transport geometry", () => {
     const covered = { ...rail, transportationClass: "covered-rail" as const };
     expect(transportScorePaths([covered], project).get(covered)!.flat().every(v => v.x === 3 || v.y === 0)).toBe(true);
   });
+});
+
+it("preserves the direction and owners of separated intervals on a shared road", () => {
+  const first = road("island", [p(2, 2), p(4, 4)]);
+  const second = road("second island", [p(6, 6), p(7, 7)]);
+  const reverse = road("reversed", [p(10, 10), p(0, 0)]);
+  expect(uniqueRoadCenterlines([first, second, reverse]).get(reverse)).toEqual([
+    [p(10, 10), p(7, 7)], [p(6, 6), p(4, 4)], [p(2, 2), p(0, 0)],
+  ]);
+});
+
+it("emits each interval just once across thousands of nested, coincident source legs", () => {
+  const roads = Array.from({ length: 5000 }, (_, index) => {
+    const length = 5000 - index;
+    return road(String(index), [p(-length, 0), p(length, 0)]);
+  });
+  const owned = uniqueRoadCenterlines(roads);
+  expect(owned.get(roads[0]!)?.[0]).toHaveLength(10_000);
+  expect(roads.slice(1).every(road => owned.get(road)?.length === 0)).toBe(true);
+});
+
+it.each([0, 1])("scores the physical union of subdivided, overlapping roads on level %i", level => {
+  const routes = [road("first", [p(-20, 0), p(20, 0)]),
+    road("second", [p(30, 0), p(0, 0), p(-10, 0)], { transportLevel: level })];
+  const ir = generateGeometry(project, { ...realSource(project), markings: routes });
+  const markings = ir.layers.flatMap(l => l.markings).filter(m => m.kind === "road");
+  const length = markings.flatMap(m => m.points.slice(1).map((b, i) => Math.hypot(b.x - m.points[i]!.x, b.y - m.points[i]!.y))).reduce((a, b) => a + b, 0);
+  expect(length).toBeCloseTo(level ? 80 : 50);
+  const svg = engravingToSvg(ir, project);
+  const ids = new Set(markings.map(mark => mark.id));
+  const paths = [...svg.matchAll(/<path id="([^"]+)" d="([^"]+)"/g)].filter(path => ids.has(path[1]!));
+  expect(paths).toHaveLength(markings.length);
+  let cutLength = 0;
+  for (const path of paths) for (const subpath of path[2]!.split(/(?=M)/)) {
+    const points = parsePathPoints(subpath);
+    for (let i = 1; i < points.length; i++) cutLength += Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.y - points[i - 1]!.y);
+  }
+  expect(cutLength).toBeCloseTo(level ? 80 : 50);
 });

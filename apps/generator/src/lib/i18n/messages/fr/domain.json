@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Les graphiques SVG doivent faire {sizeMb} Mo au maximum.",
   "terrainServiceStatus": "Le service de terrain a renvoyé {status}.",
   "terrainTileVersionMissing": "La version du jeu de données manque dans la tuile de terrain.",
+  "terrainTileNoData": "La tuile de terrain ne contient aucune donnée d’altitude.",
   "terrainTileVersionsMixed": "Les tuiles de terrain proviennent de versions de données incohérentes. Réessayez sous peu.",
   "terrainUnreachable": "Le service de terrain est injoignable.",
   "waterOutlinesUnassembled": "Les contours de l’eau n’ont pas pu être assemblés.",

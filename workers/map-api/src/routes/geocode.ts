@@ -6,9 +6,9 @@ import { hex } from "../hex";
 
 const MAX_GEOCODER_BYTES = 256_000;
 const GEOCODE_CACHE_SECONDS = 60 * 60 * 24;
-// Empty answers are often transient (partial queries, provider hiccups); keep
+// Empty answers and partial upstream results are often transient. Keep
 // them out of R2 and let browsers hold them only briefly.
-const EMPTY_GEOCODE_CACHE_SECONDS = 5 * 60;
+const SHORT_GEOCODE_CACHE_SECONDS = 5 * 60;
 // Missing Origin headers are allowed and CORS is not access control, so a
 // shared budget caps provider spend across every client. It has its own
 // GEOCODE_GLOBAL_LIMITER binding so generic request traffic cannot drain it.
@@ -87,7 +87,7 @@ function normalizeGeocodeQuery(query: string): string {
 
 /** `query` must already be normalized by normalizeGeocodeQuery. */
 async function cacheKey(env: Env, query: string, limit: number): Promise<string> {
-  const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.GEOCODER_ORIGIN}|geoapify-v2|${query}|${limit}`));
+  const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.GEOCODER_ORIGIN}|geoapify-v3|${query}|${limit}`));
   return `geocode/${hex(keyHash)}.json`;
 }
 
@@ -199,7 +199,7 @@ export async function geocodeResponse(request: Request, env: Env, ctx: Execution
   const normalized = mergeGeoapify(payloads, limit);
   const normalizedBody = JSON.stringify(normalized);
   const cacheLabel = bypassCache ? "BYPASS" : "MISS";
-  if (normalized.length === 0) return new Response(normalizedBody, { headers: jsonHeaders(EMPTY_GEOCODE_CACHE_SECONDS, cacheLabel) });
+  if (payloads.length !== answers.length || normalized.length === 0) return new Response(normalizedBody, { headers: jsonHeaders(SHORT_GEOCODE_CACHE_SECONDS, cacheLabel) });
   if (!bypassCache) writeCache(ctx, "geocoder", () => env.MAP_CACHE.put(key, normalizedBody, { httpMetadata: { contentType: "application/json", cacheControl: `public, max-age=${GEOCODE_CACHE_SECONDS}` } }));
   return new Response(normalizedBody, { headers: jsonHeaders(GEOCODE_CACHE_SECONDS, cacheLabel) });
 }

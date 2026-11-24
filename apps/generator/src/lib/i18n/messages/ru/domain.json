@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Графика SVG должна быть не больше {sizeMb} MB.",
   "terrainServiceStatus": "Сервис рельефа вернул {status}.",
   "terrainTileVersionMissing": "У тайла рельефа нет версии набора данных.",
+  "terrainTileNoData": "Тайл рельефа не содержит данных о высоте.",
   "terrainTileVersionsMixed": "Тайлы рельефа получены из разных версий набора данных. Повторите чуть позже.",
   "terrainUnreachable": "Сервис рельефа недоступен.",
   "waterOutlinesUnassembled": "Не удалось собрать контуры воды.",

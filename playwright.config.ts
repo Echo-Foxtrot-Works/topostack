@@ -10,6 +10,8 @@ if (process.platform === "darwin") mkdirSync(firefoxAppData, { recursive: true }
 
 export default defineConfig({
   testDir: "./e2e",
+  // Apply the workspace source aliases to app modules imported by tests on a clean shard.
+  tsconfig: "./tsconfig.json",
   fullyParallel: true,
   timeout: 60_000,
   forbidOnly: Boolean(process.env.CI),

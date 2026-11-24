@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { absoluteCommands, buildFontGlyphs } from "../build/build-font-glyphs.mjs";
+import { absoluteCommands, buildFontGlyphs, FONT_SOURCES } from "../build/build-font-glyphs.mjs";
+
+import { fontNotices } from "../lib/font-notices.mjs";
+
+test("each shipped engraving family has a packaged license file", () => {
+  assert.deepEqual(fontNotices.map(path => path.split("/")[2]).sort(), FONT_SOURCES.map(font => font.id).sort());
+});
 
 test("committed glyph files and picker samples match their font sources", async () => {
   const outputs = await buildFontGlyphs();

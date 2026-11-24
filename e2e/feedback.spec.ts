@@ -2,7 +2,13 @@ import { expect, test, type Request } from '@playwright/test';
 
 test('studio feedback emails only opted-in context and retains a draft after Escape', async ({ page }) => {
   const sent: unknown[] = [];
-  await page.route('**/v1/feedback', async (route, request: Request) => { sent.push(request.postDataJSON()); await route.fulfill({ status: 204 }); });
+  let finishFirstSend!: () => void;
+  const firstSend = new Promise<void>(resolve => { finishFirstSend = resolve; });
+  await page.route('**/v1/feedback', async (route, request: Request) => {
+    sent.push(request.postDataJSON());
+    if (sent.length === 1) await firstSend;
+    await route.fulfill({ status: 204 });
+  });
   await page.goto('/studio');
   const trigger = page.getByRole('button', { name: 'Feedback', exact: true });
   await trigger.click();
@@ -30,11 +36,21 @@ test('studio feedback emails only opted-in context and retains a draft after Esc
   await expect(dialog.getByLabel('Summary', { exact: true })).toHaveValue('Ridge is coarse & missing detail');
   await dialog.getByRole('checkbox').check();
   await send.click();
+  try {
+    await expect(dialog.getByLabel('Details', { exact: true })).toBeDisabled();
+    await expect(dialog.getByRole('checkbox')).toBeDisabled();
+  } finally { finishFirstSend(); }
   await expect(dialog.getByRole('status')).toContainText('Thanks!');
   expect(sent).toHaveLength(1);
   expect(sent[0]).toMatchObject({ kind: 'terrain', summary: 'Ridge is coarse & missing detail', replyTo: 'maker@example.com', context: { selectedLocation: expect.any(Object) } });
   await dialog.getByRole('button', { name: 'Send more feedback' }).click();
   await expect(dialog.getByLabel('Summary', { exact: true })).toHaveValue('');
+  await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+  await dialog.getByLabel('Summary', { exact: true }).fill('Follow-up');
+  await dialog.getByLabel('Details', { exact: true }).fill('Send only these words.');
+  await send.click();
+  await expect(dialog.getByRole('status')).toContainText('Thanks!');
+  expect(sent[1]).toEqual({ kind: 'terrain', summary: 'Follow-up', details: 'Send only these words.' });
 });
 
 test('mobile feedback keeps long reports when sending fails and survives clipboard denial', async ({ page }) => {
@@ -48,10 +64,13 @@ test('mobile feedback keeps long reports when sending fails and survives clipboa
   const details = '湖'.repeat(3000);
   await dialog.getByLabel('Details', { exact: true }).fill(details);
   await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+  const publicLink = dialog.getByRole('link', { name: /open a GitHub issue and paste the report/i });
+  expect(new URL((await publicLink.getAttribute('href'))!).searchParams.has('body')).toBe(false);
+  await expect(dialog.getByRole('button', { name: 'Copy report' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Send feedback' }).click();
   const alert = dialog.getByRole('alert');
   await expect(alert).toContainText('could not be sent');
-  const link = alert.getByRole('link', { name: /open a GitHub issue and paste the report/ });
+  const link = alert.getByRole('link', { name: /open a GitHub issue and paste the report/i });
   expect(new URL((await link.getAttribute('href'))!).searchParams.has('body')).toBe(false);
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } }));
   await alert.getByRole('button', { name: 'Copy report' }).click();

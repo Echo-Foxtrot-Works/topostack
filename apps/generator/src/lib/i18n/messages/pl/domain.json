@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Grafiki SVG mogą mieć maksymalnie {sizeMb} MB.",
   "terrainServiceStatus": "Usługa terenu zwróciła kod {status}.",
   "terrainTileVersionMissing": "W kafelku terenu brakuje wersji zbioru danych.",
+  "terrainTileNoData": "Kafelek terenu nie zawiera danych wysokościowych.",
   "terrainTileVersionsMixed": "Kafelki terenu pochodzą z niespójnych wersji zbioru danych. Spróbuj ponownie za chwilę.",
   "terrainUnreachable": "Nie można połączyć się z usługą terenu.",
   "waterOutlinesUnassembled": "Nie udało się złożyć konturów wód.",

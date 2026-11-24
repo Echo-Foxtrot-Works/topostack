@@ -17,7 +17,7 @@
   "lakesBodySources": "Dasar terukur berasal dari pengukuran bawah air atau data medan. Jika danau tidak memilikinya, dasarnya dimodelkan dari garis pantai, lereng di sekitarnya, dan perkiraan kedalaman yang dipublikasikan. Keduanya tidak mencerminkan permukaan air saat ini.",
   "lakesBodyControls": "Eksagerasi kedalaman memperdalam dasar danau relatif terhadap bukit. Batasi lapisan kedalaman membatasi jumlah lembar di bawah daratan terendah, dan Sesuaikan kedalaman danau memampatkan tiap danau ke batas itu sambil mempertahankan garis pantainya.",
   "exportTitle": "Periksa ekspor",
-  "exportBody": "Untuk relief berlapis, atur lebar dan tinggi bahan di Ekspor. Bagian ditata otomatis dengan margin 3 mm dan jarak 2 mm; pilih Gunakan tata letak saat ini untuk selesai lebih awal. Buka di Studio mengirim satu SVG yang dapat diedit dari seluruh tata letak. Unduh mencakup karya, pengaturan, dan kredit data, ditambah panduan perakitan untuk relief berlapis.",
+  "exportBody": "Untuk relief berlapis, atur lebar dan tinggi bahan di Ekspor. Bagian ditata otomatis dengan margin 3 mm dan jarak 2 mm; pilih Gunakan tata letak saat ini untuk selesai lebih awal. Untuk relief berlapis, Buka di Studio mengirim tata letak bagian kayu dalam satu SVG yang dapat diedit. File akrilik tersedia melalui Unduh. Unduh mencakup karya, pengaturan, dan kredit data, ditambah panduan perakitan untuk relief berlapis.",
   "assemblyTitle": "Perakitan",
   "assemblyBody": "Simpan bagian yang ditata bersama lembarnya dan lem dari lapisan terendah ke atas, mengikuti panduan perakitan. Coba pasang bagian kecil sebelum memotong seluruh proyek."
 }

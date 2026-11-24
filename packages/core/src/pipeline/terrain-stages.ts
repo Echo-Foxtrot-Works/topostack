@@ -1,5 +1,5 @@
 import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, clipContours, contourToMm, roundContourRing } from "./contours.js";
-import { groundWidthMFor, planTerrainStack } from "./stack-plan.js";
+import { engravingContourIntervalM, groundWidthMFor, planTerrainStack } from "./stack-plan.js";
 import { cropElevationRange } from "../primitives/crop.js";
 import { contours } from "d3-contour";
 import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
@@ -68,7 +68,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // Size the stack from land alone. A coastal map's grid minimum is the abyssal
   // plain, and dividing the whole of that across the sheet budget is what used
   // to squeeze the land into a layer or two.
-  const { landMin, landMax, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
+  const { landMin, landMax, waterMin, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
   const engravedContours = flatEngraving && config.showEngravingContours;
@@ -97,14 +97,14 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
     : stack.metersPerLayer > 0
       ? Math.max(MIN_LAYER_COUNT, Math.ceil((landMax - ladderBase) / stack.metersPerLayer - 1e-9) + (landRelief === 0 ? 1 : 0))
       : stack.layerCount;
-  const contourStepM = flatEngraving ? landRelief / (config.engravingContourCount + 1) : stack.metersPerLayer;
+  const contourStepM = flatEngraving ? engravingContourIntervalM(landRelief, engravedContours ? config.engravingContourCount : 0) : stack.metersPerLayer;
   const thresholds = Array.from({ length: ladderLayerCount }, (_, index) => ladderBase + contourStepM * index);
 
   // Water deeper than the ladder reaches is flattened at its floor rather than
   // silently punching through the base sheet.
   const water = config.fitLakeDepth && !flatEngraving ? fitLakesToLadder(carved, config, ladderBase) : carved;
   const { grid: modelGrid, clamped } = clampCarveToLadder(water.grid, ladderBase);
-  if (clamped && !flatEngraving) warnings.push({
+  if (clamped && !flatEngraving && (water === carved ? waterMin : cropElevationRange(config, water.grid, water.waterMask).waterMin) < ladderBase) warnings.push({
     code: "WATER_DEPTH_CLAMPED",
     ...(!config.fitLakeDepth && carved.surfaces.some((surface) => surface.kind === "lake" && surface.bedElevationM < ladderBase && surface.surfaceElevationM > ladderBase) ? { action: "fit-lake-depth" as const } : {}),
     message: `Water here is deeper than the ${stack.depthLayerCount} sheet${stack.depthLayerCount === 1 ? "" : "s"} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.`,

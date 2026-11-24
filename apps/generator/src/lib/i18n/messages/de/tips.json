@@ -17,7 +17,7 @@
   "lakesBodySources": "Gemessene Seeböden stammen aus Unterwasser-Vermessungen oder den Geländedaten. Wo ein See keine hat, wird sein Boden aus der Uferlinie, den umliegenden Hängen und veröffentlichten Tiefenschätzungen modelliert. Beides gibt nicht den heutigen Wasserstand wieder.",
   "lakesBodyControls": "Die Tiefenüberhöhung vertieft Seeböden im Verhältnis zu den Hügeln. „Tiefenschichten begrenzen“ legt fest, wie viele Platten unter das tiefste Land reichen, und „Seetiefe anpassen“ staucht jeden See in diesen Rahmen, ohne seine Uferlinie zu ändern.",
   "exportTitle": "Export prüfen",
-  "exportBody": "Lege bei Schichtreliefs Materialbreite und -höhe im Export fest. Die Teile werden automatisch mit 3 mm Rand und 2 mm Abstand angeordnet; wähle „Aktuelle Anordnung verwenden“, um früher abzuschließen. „In Studio öffnen“ sendet ein bearbeitbares SVG der gesamten Anordnung. „Herunterladen“ liefert die Vorlagen, Einstellungen und Datenquellen, bei Schichtreliefs außerdem eine Montageanleitung.",
+  "exportBody": "Lege bei Schichtreliefs Materialbreite und -höhe im Export fest. Die Teile werden automatisch mit 3 mm Rand und 2 mm Abstand angeordnet; wähle „Aktuelle Anordnung verwenden“, um früher abzuschließen. Bei Schichtreliefs sendet „In Studio öffnen“ die Anordnung der Holzteile als ein bearbeitbares SVG. Acryldateien sind unter „Herunterladen“ verfügbar. „Herunterladen“ liefert die Vorlagen, Einstellungen und Datenquellen, bei Schichtreliefs außerdem eine Montageanleitung.",
   "assemblyTitle": "Montage",
   "assemblyBody": "Lass die verschachtelten Teile bei ihren Platten und klebe von der untersten Schicht nach oben, wie in der Montageanleitung beschrieben. Probiere die Passung an einem kleinen Teil, bevor du das ganze Projekt schneidest."
 }

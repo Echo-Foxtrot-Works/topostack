@@ -193,7 +193,7 @@ describe("airspace supports on their own", () => {
     const layers = [sheet(0, square(-100, -4.75, 100, 4.75)), sheet(1, square(-100, -4.75, 100, 4.75))];
     const result = stack(plate("A1-1", square(-40, -7, 40, 7)));
     result.rod.fitClearanceMm = 0.5;
-    placeAirspaceSupports(result, layers, [], 3, 0.8, []);
+    placeAirspaceSupports(result, layers, [], 3, []);
     expect(result.columns).toHaveLength(0);
     expect(result.levels).toHaveLength(0);
   });
@@ -202,7 +202,7 @@ describe("airspace supports on their own", () => {
     const layers = [sheet(0, square(-5, -5, 5, 5)), sheet(1, square(-5, -5, 5, 5))];
     const result = stack(plate("A1-1", square(-35, -35, 35, 35)));
     result.rod = { ...result.rod, joint: "through", sizeMm: 2, socketDepthMm: 3 };
-    placeAirspaceSupports(result, layers, [], 3, 0.8, []);
+    placeAirspaceSupports(result, layers, [], 3, []);
     // Three rods would fit only 5.8 mm apart, below the through grid's 8 mm.
     expect(result.columns).toHaveLength(0);
     expect(result.levels).toHaveLength(0);
@@ -212,7 +212,7 @@ describe("airspace supports on their own", () => {
     const layers = [sheet(0, square(-350, -350, 350, 350)), sheet(1, square(-350, -350, 350, 350))];
     const result = stack(plate("A1-1", square(-300, -300, 300, 300)));
     const warnings: GeometryIRV1["warnings"] = [];
-    placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+    placeAirspaceSupports(result, layers, [], 3, warnings);
     expect(result.columns).toHaveLength(16);
     expect(warnings.map((warning) => warning.code)).toContain("AIRSPACE_OVERHANG");
   });
@@ -221,7 +221,7 @@ describe("airspace supports on their own", () => {
     const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, 100, 100)), sheet(2, square(-100, -100, 100, 100))];
     const lake = { id: "W1", lakeKey: "lake", surfaceId: "lake", layerIndex: 2, polygons: [{ outer: square(-60, -60, 60, 60), holes: [] }], markings: [] };
     const result = stack(plate("A1-1", square(-80, -80, 80, 80)));
-    placeAirspaceSupports(result, layers, [lake], 3, 0.8, []);
+    placeAirspaceSupports(result, layers, [lake], 3, []);
     expect(result.columns.length).toBeGreaterThan(0);
     for (const column of result.columns) expect(inside(column.point, lake.polygons)).toBe(false);
   });
@@ -232,7 +232,7 @@ describe("airspace supports on their own", () => {
     const warnings: GeometryIRV1["warnings"] = [];
     const result = stack(plate("A1-1", square(-40, 9, 40, 19)));
     result.rod = { ...result.rod, joint: "through" };
-    placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+    placeAirspaceSupports(result, layers, [], 3, warnings);
     expect(warnings).toEqual([]);
     expect(result.columns.length).toBeGreaterThanOrEqual(2);
     for (const column of result.columns) expect(column.point.y % 8).not.toBe(0);
@@ -251,7 +251,7 @@ describe("airspace supports on their own", () => {
       const result = levels([30, [plate("A1-1", square(-80, -30, -20, 30))]], [33, [plate("A2-1", square(-80, -30, 80, 30))]]);
       result.rod = { ...result.rod, joint };
       const warnings: GeometryIRV1["warnings"] = [];
-      placeAirspaceSupports(result, flat(), [], 3, 0.8, warnings);
+      placeAirspaceSupports(result, flat(), [], 3, warnings);
       expect(warnings).toEqual([]);
       const top = result.levels[1]!.pieces[0]!;
       expect(top.resting).toBe(true);
@@ -270,7 +270,7 @@ describe("airspace supports on their own", () => {
       const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, -30, 100))];
       const warnings: GeometryIRV1["warnings"] = [];
       const result = levels([6, [plate("A1-1", square(-80, -30, 80, 30))]]);
-      placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+      placeAirspaceSupports(result, layers, [], 3, warnings);
       expect(warnings).toEqual([]);
       expect(result.levels[0]!.pieces[0]!.resting).toBe(true);
       const under = heads(result, "A1-1");
@@ -282,7 +282,7 @@ describe("airspace supports on their own", () => {
 
     it("never stands a rod of no length under a piece lying partly on another", () => {
       const result = levels([30, [plate("A1-1", square(-80, -30, -20, 30))]], [33, [plate("A2-1", square(-30, -30, 80, 30))]]);
-      placeAirspaceSupports(result, flat(), [], 3, 0.8, []);
+      placeAirspaceSupports(result, flat(), [], 3, []);
       expect(result.levels[1]!.pieces[0]!.resting).toBeFalsy();
       const segments = result.columns.flatMap((column) => column.segments);
       expect(segments.every((segment) => segment.topMm - segment.bottomMm > 1)).toBe(true);
@@ -293,7 +293,7 @@ describe("airspace supports on their own", () => {
       const small = (id: string) => plate(id, square(0, 0, 40, 40));
       const warnings: GeometryIRV1["warnings"] = [];
       const result = levels([30, [small("A1-1")]], [33, [small("A2-1")]], [36, [small("A3-1")]]);
-      placeAirspaceSupports(result, flat(), [], 3, 0.8, warnings);
+      placeAirspaceSupports(result, flat(), [], 3, warnings);
       expect(warnings).toEqual([]);
       expect(result.columns).toHaveLength(2);
       expect(heads(result, "A1-1")).toHaveLength(2);
@@ -304,7 +304,7 @@ describe("airspace supports on their own", () => {
     const layers = [sheet(0, square(-100, -100, 100, 100)), sheet(1, square(-100, -100, 100, 100))];
     const warnings: GeometryIRV1["warnings"] = [];
     const result = stack(plate("A1-1", square(-80, -2, 80, 2)));
-    placeAirspaceSupports(result, layers, [], 3, 0.8, warnings);
+    placeAirspaceSupports(result, layers, [], 3, warnings);
     expect(result.levels).toHaveLength(0);
     expect(warnings.map((warning) => warning.code)).toEqual(["AIRSPACE_PIECE_UNSUPPORTED"]);
   });

@@ -9,9 +9,10 @@ export const lakeOutline = Array.from({ length: 180 }, (_, i) => {
 });
 
 /** One z0 MVT in a PMTiles archive, with enough coordinate precision for a small lake. */
-export function lakeArchive(centre = lakeCentre): Buffer {
+export function lakeArchive(centre = lakeCentre, source?: "coarse-lake" | "map-water"): Buffer {
   const extent = 2 ** 24;
-  const ring = lakeOutline.map(([lon, lat]) => [lon - lakeCentre.lon + centre.lon, lat - lakeCentre.lat + centre.lat] as [number, number]).map(([lon, lat]) => [Math.round((lon + 180) / 360 * extent), Math.round((1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * extent)] as [number, number]).reverse();
+  const shore = source === "coarse-lake" ? lakeOutline.filter((_, index) => index % 6 === 0) : lakeOutline;
+  const ring = shore.map(([lon, lat]) => [lon - lakeCentre.lon + centre.lon, lat - lakeCentre.lat + centre.lat] as [number, number]).map(([lon, lat]) => [Math.round((lon + 180) / 360 * extent), Math.round((1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * extent)] as [number, number]).reverse();
   const geometry: number[] = [];
   let x = 0, y = 0;
   for (const [i, point] of ring.entries()) {
@@ -25,7 +26,7 @@ export function lakeArchive(centre = lakeCentre): Buffer {
   const pbf = new PbfWriter();
   pbf.writeMessage(3, (_, layer) => {
     layer.writeVarintField(15, 2);
-    layer.writeStringField(1, "lakes");
+    layer.writeStringField(1, source === "map-water" ? "water" : "lakes");
     layer.writeVarintField(5, extent);
     for (const key of ["hylak_id", "name", "area_km2"]) layer.writeStringField(3, key);
     layer.writeMessage(4, (_, value) => value.writeVarintField(4, 900001), null);

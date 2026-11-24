@@ -229,7 +229,6 @@ describe("ocean grids", () => {
 
   it("keeps the archived Monterey Bay sounding through mosaic repair and resampling", async () => {
     const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
-    const tile = { z: 9, x: 82, worldX: 82, y: 199 };
     const png = readFileSync(new URL("./fixtures/gebco-monterey-z9.png", import.meta.url));
     expect(decodeTerrainPng(png, true)[147 * 256 + 132]).toBe(-314);
     mocks.getHeader.mockResolvedValue({ tileType: 2, minZoom: 0, maxZoom: 9, minLon: -180, minLat: -85.0511, maxLon: 180, maxLat: 85.0511 });
@@ -238,9 +237,8 @@ describe("ocean grids", () => {
     vi.stubGlobal("fetch", async () => new Response(elevationPng(() => -50), { headers: { "x-topostack-dataset": "mapzen-fixture" } }));
     // Start on the sounding's pixel center so its exact depth reaches the final grid.
     const westX = 82 * 256 + 132.5, northY = 199 * 256 + 147.5;
-    const window = { zoom: 9, tiles: [tile], westX, northY, eastX: westX + 64, southY: northY + 64 };
-    const bounds = { west: worldXToLon(westX, 9), east: worldXToLon(window.eastX, 9), north: worldYToLat(northY, 9), south: worldYToLat(window.southY, 9) };
-    const result = await loadElevation(window, bounds);
+    const bounds = { west: worldXToLon(westX, 9), east: worldXToLon(westX + 64, 9), north: worldYToLat(northY, 9), south: worldYToLat(northY + 64, 9) };
+    const result = await loadElevation(bounds, 9);
     expect(result.elevation.values[0]).toBe(-314);
     expect(result.elevationRepairCount).toBe(0);
     expect(result.terrainSelection.sources).toContainEqual(expect.objectContaining({ id: "gebco-2026-ocean-v1" }));

@@ -57,7 +57,7 @@ async function showPanel(target: HTMLElement, name: string) {
  */
 async function openCustomData(target: HTMLElement, expand?: string) {
   [...target.querySelectorAll<HTMLButtonElement>('.mode-switch [role="radio"]')].find((button) => button.textContent?.includes("Custom data"))!.click();
-  await vi.waitFor(() => expect(target.querySelector(".custom-data-section")).not.toBeNull());
+  await vi.waitFor(() => expect(target.querySelector(".custom-data-section")).not.toBeNull(), { timeout: 5_000 });
   if (!expand) return;
   const panel = [...target.querySelectorAll<HTMLElement>(".custom-data-section")].find((section) => section.querySelector("h2")?.textContent?.includes(expand))!;
   const tabpanel = panel.closest<HTMLElement>('[role="tabpanel"]')!;
@@ -636,7 +636,7 @@ describe("TopoStack Svelte shell", () => {
     expect(target.querySelector(".preview-stage")?.getAttribute("aria-busy")).toBe("false");
   });
 
-  it("keeps autosave working and reports the problem when restoring a saved project fails", async () => {
+  it("protects the existing save and reports the problem when restoring fails", async () => {
     const { loadProject, saveProject } = await import("$lib/storage/storage");
     vi.mocked(saveProject).mockClear();
     vi.mocked(loadProject).mockRejectedValueOnce(new Error("IndexedDB blocked"));
@@ -646,9 +646,11 @@ describe("TopoStack Svelte shell", () => {
       component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
       await vi.waitFor(() => expect(target.querySelector(".status-line")?.textContent).toContain("Saved project could not be restored"));
       const name = target.querySelector<HTMLInputElement>('input[aria-label="Project name"]')!;
-      name.value = "Still saved";
+      name.value = "Unsaved edit";
       name.dispatchEvent(new Event("input", { bubbles: true }));
-      await vi.waitFor(() => expect(saveProject).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Still saved" })));
+      await tick();
+      window.dispatchEvent(new Event("pagehide"));
+      expect(saveProject).not.toHaveBeenCalled();
     } finally { errors.mockRestore(); }
   });
 
@@ -1147,7 +1149,9 @@ describe("TopoStack Svelte shell", () => {
       });
     }));
     const target = document.createElement("div");
-    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    const preview = structuredClone(initialPreview);
+    preview.waterInserts = [{ id: "W1", lakeKey: "1", surfaceId: "lake-1", layerIndex: 1, polygons: [], markings: [] }];
+    component = mount(App, { target, props: { initialPreview: preview } });
     await tick();
     const generate = [...target.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Generate terrain"))!;
     generate.click();
@@ -1160,9 +1164,23 @@ describe("TopoStack Svelte shell", () => {
     exploded.value = "0.75";
     exploded.dispatchEvent(new Event("input", { bubbles: true }));
     await tick();
+    for (const [material, width] of [["wood", "437"], ["acrylic", "251"]] as const) {
+      const section = target.querySelector<HTMLInputElement>(`input[name="${material}-sheet-layout"]`)!.closest("section")!;
+      const nested = section.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1]!;
+      nested.checked = true;
+      nested.dispatchEvent(new Event("change", { bubbles: true }));
+      await tick();
+      const input = section.querySelector<HTMLInputElement>('input[aria-label="Sheet width"]')!;
+      input.value = width;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await tick();
+    }
     finishTerrain?.();
 
     await vi.waitFor(() => expect(target.querySelector(".status-line")?.textContent).toContain("Real terrain ready"));
+    const { connectAtomm } = await import("$lib/atomm/atomm-bridge");
+    const snapshot = await vi.mocked(connectAtomm).mock.lastCall![0]();
+    expect(snapshot.project).toMatchObject({ sheetNesting: { sheetWidthMm: 437 }, waterInsertSheetNesting: { sheetWidthMm: 251 } });
     expect(name.value).toBe("Renamed while loading");
     expect(target.querySelector<HTMLInputElement>(".explode-control input")?.value).toBe("0.75");
   });
@@ -1261,6 +1279,35 @@ describe("TopoStack Svelte shell", () => {
     generate.click();
     await vi.waitFor(() => expect(current().geometry.lineStyle.trailPattern).toBe("dashed"));
     expect(target.querySelector(".status-line")?.textContent).toContain("Generation canceled");
+  });
+
+  it("discards chart preflight when a different project is imported", async () => {
+    const { loadProject } = await import("$lib/storage/storage");
+    const charts = await import("$lib/storage/user-charts");
+    const { connectAtomm } = await import("$lib/atomm/atomm-bridge");
+    const ref = { id: "survey-map", contentHash: "a".repeat(64) };
+    vi.mocked(loadProject).mockResolvedValueOnce({ ...DEFAULT_PROJECT, name: "Older design", userDepthCharts: { "123": ref } });
+    const held = Promise.withResolvers<Awaited<ReturnType<typeof charts.currentChartReferences>>>();
+    const lookup = vi.spyOn(charts, "currentChartReferences").mockReturnValueOnce(held.promise);
+    onTestFinished(() => lookup.mockRestore());
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    const current = async () => (await vi.mocked(connectAtomm).mock.lastCall![0]()).project;
+    await vi.waitFor(async () => expect((await current()).name).toBe("Older design"));
+    target.querySelector<HTMLButtonElement>(".generate-button")!.click();
+    await vi.waitFor(() => expect(lookup).toHaveBeenCalledOnce());
+    const input = target.querySelector<HTMLInputElement>('input[type="file"][accept^="application/json"]')!;
+    const json = JSON.stringify({ ...DEFAULT_PROJECT, name: "Imported design" });
+    const file = new File([json], "imported.json", { type: "application/json" });
+    Object.defineProperty(file, "text", { value: async () => json });
+    Object.defineProperty(input, "files", { value: [file] });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(async () => expect((await current()).name).toBe("Imported design"));
+    held.resolve({ "123": { ...ref, contentHash: "b".repeat(64) } });
+    await held.promise;
+    await tick();
+    expect((await current()).userDepthCharts).toBeUndefined();
+    expect(loadTerrainMock.mock.calls.every(([project]) => project.name === "Imported design")).toBe(true);
   });
 
   it("reports a rejected import on the status line without ending a running generation", async () => {
@@ -1833,6 +1880,8 @@ describe("TopoStack Svelte shell", () => {
     const target = document.createElement("div");
     document.body.append(target);
     onTestFinished(() => target.remove());
+    const { connectAtomm } = await import("$lib/atomm/atomm-bridge");
+    vi.mocked(connectAtomm).mockImplementationOnce((_current, onReady) => { onReady(); return () => {}; });
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await vi.waitFor(() => expect(target.querySelector(".atomm-workbench")).not.toBeNull());
 

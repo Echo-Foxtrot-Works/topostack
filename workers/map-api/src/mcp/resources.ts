@@ -1,6 +1,5 @@
 import { PROJECT_REQUEST_LIMITS, PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
 import { buildManifest } from "../manifest";
-import { aviationSources, landsSources, servedBathymetryArchives, servedTerrainArchives } from "../routes/archive";
 import { PREVIEW_URI, previewListing, readPreview } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -14,7 +13,7 @@ interface ResourceDefinition {
   title: string;
   description: string;
   mimeType: string;
-  read: (context: { siteOrigin: string; datasetVersion: string }) => string;
+  read: (context: ResourceContext) => string | Promise<string>;
 }
 
 /** The material and sizing guide, also the body of the published agent skill (routes/discovery.ts). */
@@ -80,7 +79,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "TopoStack data sources and licenses",
     description: "Every terrain, lake and map source TopoStack draws from, with its license and coverage.",
     mimeType: "application/json",
-    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, servedTerrainArchives(), servedBathymetryArchives(), aviationSources, landsSources), null, 2),
+    read: async ({ env }) => JSON.stringify(await buildManifest(env), null, 2),
   },
   {
     uri: "topostack://schema/project-request-v1",
@@ -92,15 +91,15 @@ export const RESOURCES: ResourceDefinition[] = [
   },
 ];
 
-export interface ResourceContext { siteOrigin: string; apiOrigin: string; datasetVersion: string; assets?: Fetcher }
+export interface ResourceContext { siteOrigin: string; apiOrigin: string; env: Env }
 
 export function resourceListings(context: Pick<ResourceContext, "apiOrigin">) {
   return [...RESOURCES.map(({ read: _read, ...resource }) => resource), previewListing(context.apiOrigin)];
 }
 
 export async function readResource(uri: string, context: ResourceContext) {
-  if (uri === PREVIEW_URI) return readPreview(context.assets, context.apiOrigin);
+  if (uri === PREVIEW_URI) return readPreview(context.env.ASSETS, context.apiOrigin);
   const resource = RESOURCES.find((entry) => entry.uri === uri);
   if (!resource) throw new RpcError(RPC_ERRORS.resourceNotFound, "Resource not found.", { uri });
-  return { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text: resource.read(context) }] };
+  return { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text: await resource.read(context) }] };
 }

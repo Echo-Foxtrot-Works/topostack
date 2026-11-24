@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { unzipSync } from "fflate";
 
+/** Model coordinates in millimetres, before the master lays layers out on panels. */
+function artworkBounds(paths: string[]) {
+  const points = paths.flatMap(d => [...d.matchAll(/[ML]\s*(-?[\d.e+-]+)[ ,]+(-?[\d.e+-]+)/gi)].map(m => [Number(m[1]), Number(m[2])] as const));
+  expect(points.length).toBeGreaterThan(1);
+  return points.reduce<[number, number, number, number]>(([left, top, right, bottom], [x, y]) =>
+    [Math.min(left, x), Math.min(top, y), Math.max(right, x), Math.max(bottom, y)], [Infinity, Infinity, -Infinity, -Infinity]);
+}
+
 for (const output of ["Layered relief", "Flat engraving"]) {
   test(`${output}: real terrain retains placed annotations through export and reload`, async ({ page }, testInfo) => {
     // Two real generations (before export and after reload) each allow 120 seconds.
@@ -27,6 +35,8 @@ for (const output of ["Layered relief", "Flat engraving"]) {
     await page.keyboard.press("+");
     await scale.focus();
     await page.keyboard.press("Shift+ArrowDown");
+    const kinds = ["plaque", "north", "scale"] as const;
+    const draftBounds = await Promise.all(kinds.map(async kind => artworkBounds(await page.locator(`[data-placement-draft="${kind}"] path`).evaluateAll(paths => paths.map(path => path.getAttribute("d")!)))));
     const positions = await Promise.all([title, compass, scale].map(item => item.getAttribute("d")));
     await page.locator(".placement-toolbar").getByRole("button", { name: "Done", exact: true }).click();
     await expect(title).toHaveCount(0);
@@ -50,6 +60,14 @@ for (const output of ["Layered relief", "Flat engraving"]) {
     const master = Buffer.from(files[masterFile!]!).toString("utf8");
     expect(master).toContain('data-operation="ENGRAVE"');
     expect(master).not.toMatch(/NaN|Infinity/);
+    for (const [index, kind] of kinds.entries()) {
+      const exported = await page.evaluate(({ master, kind }) => {
+        const doc = new DOMParser().parseFromString(master, "image/svg+xml");
+        return [...doc.querySelectorAll(`path[id^="${kind}-"]`)].map(path => path.getAttribute("d")!);
+      }, { master, kind });
+      const measured = artworkBounds(exported);
+      for (const [axis, bound] of measured.entries()) expect(Math.abs(bound - draftBounds[index]![axis]!)).toBeLessThan(0.02);
+    }
     await testInfo.attach("placed-annotations.svg", { body: master, contentType: "image/svg+xml" });
     await page.keyboard.press("Escape");
     await page.reload();

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildChartFromImage } from "./chart-build";
 import { joinReviewContours, prepareChartReview, reviewAlignment, reviewGeometryIssues } from "./chart-review";
-import { decodeChartDepths, parseUserChartBathymetry } from "@topostack/data-contracts/chart-bathymetry";
+import { decodeChartDepths, encodeChartDepths, parseUserChartBathymetry } from "@topostack/data-contracts/chart-bathymetry";
 
+import { gridDepths } from "@topostack/chart-trace/grid";
+import { sampleChartDepths } from "./user-bathymetry";
 import { reviewFixture, square } from "./testing/chart-review-fixture";
 
 describe("first release contour review", () => {
@@ -107,5 +109,52 @@ describe("explicit contour topology", () => {
     delete review.contours[2]!.interiorValue;
     review.contours[1]!.interiorValue = 12;
     expect(reviewGeometryIssues(review, request).some(i => i.code === "interior-child")).toBe(true);
+  });
+});
+
+describe("raster fidelity of a reviewed basin", () => {
+  function basin(gapPixels: number) {
+    const { review, request } = reviewFixture();
+    request.image = { width: 2000, height: 2000, data: new Uint8ClampedArray(2000 * 2000 * 4) };
+    request.resolutionM = 5;
+    for (const point of review.controlPoints) { point.x *= 20; point.y *= 20; }
+    review.contours = [square("shore", 0, null), square("shallow", 20, 5), square("deep", 20 + gapPixels / 20, 75)];
+    for (const c of review.contours) c.points = c.points.map(([x,y]) => [x * 20, y * 20]);
+    return request;
+  }
+
+  const built = new Map<number, ReturnType<typeof buildChartFromImage>>();
+  function resolvedBasin(gap: number) {
+    if (!built.has(gap)) built.set(gap, buildChartFromImage(basin(gap)));
+    return built.get(gap)!.record;
+  }
+
+  it.each([4, 12])("retains a 75 m basin with contours separated by %i source pixels", gap => {
+    const record = resolvedBasin(gap);
+    const depths = sampleChartDepths(record, record.grid.bounds, { width: 128, height: 128 });
+    expect(depths[64 * 128 + 64]).toBeCloseTo(75, 1);
+  }, 60_000);
+
+  it("retains a legacy averaged chart for backup but refuses to carve its missing contour", () => {
+    const record = resolvedBasin(4);
+    const previous = gridDepths({ water: { outer: record.lake.outline }, contours: record.contours.map(c => ({ ...c, interiorDepthM: c.depthM })), resolutionM: 5 });
+    const restored = parseUserChartBathymetry({
+      ...record, review: { version: 1, profile: "contour-topology-v1", reviewedAt: "2026-05-04T00:00:00Z", contours: true, alignment: true, layers: true },
+      grid: { ...record.grid, width: previous.width, height: previous.height, bounds: previous.bounds, depthsDm: encodeChartDepths(previous.depthsM) },
+    });
+    expect(() => sampleChartDepths(restored, restored.grid.bounds, { width: 128, height: 128 })).toThrow(/reviewed 5 m contour/);
+    expect(() => sampleChartDepths({ ...record, review: restored.review }, record.grid.bounds, { width: 128, height: 128 })).not.toThrow();
+  }, 60_000);
+
+  it("rejects incompatible reviewed depths even at the maximum supported raster size", () => {
+    expect(() => buildChartFromImage(basin(0.1))).toThrow(/grid resolution/);
+  });
+
+  it("accepts a reviewed depth rounded on the producer's Float32 grid", () => {
+    const { review, request } = reviewFixture();
+    review.contours[1]!.value = 2.35;
+    const { record } = buildChartFromImage(request);
+    record.review = { version: 1, profile: "contour-topology-v1", reviewedAt: "2026-05-04T00:00:00Z", contours: true, alignment: true, layers: true };
+    expect(() => sampleChartDepths(record, record.grid.bounds, { width: 32, height: 32 })).not.toThrow();
   });
 });

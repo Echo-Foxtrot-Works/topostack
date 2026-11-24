@@ -146,6 +146,21 @@ export interface CustomGraphicV1 {
 /** Graphics take the same three laser operations as everything else. */
 export type GraphicOperation = Operation;
 export const GRAPHIC_OPERATIONS: readonly GraphicOperation[] = ["engrave", "score", "cut"];
+const FLAT_GRAPHIC_OPERATIONS: readonly GraphicOperation[] = ["engrave", "score"];
+
+export function graphicOperationsFor(mode: ProjectConfigV1["outputMode"]): readonly GraphicOperation[] {
+  return mode === "engraving" ? FLAT_GRAPHIC_OPERATIONS : GRAPHIC_OPERATIONS;
+}
+
+/** A single-surface engraving keeps a former cut's outline as linework. */
+export function graphicOperationFor(mode: ProjectConfigV1["outputMode"], operation: GraphicOperation): GraphicOperation {
+  return mode === "engraving" && operation === "cut" ? "score" : operation;
+}
+
+export function graphicsForOutputMode(mode: ProjectConfigV1["outputMode"], graphics: PlacedGraphicV1[] | undefined): PlacedGraphicV1[] | undefined {
+  if (mode !== "engraving" || !graphics?.some(item => item.operation === "cut")) return graphics;
+  return graphics.map(item => ({ ...item, operation: graphicOperationFor(mode, item.operation) }));
+}
 
 /**
  * One use of a custom graphic on the piece. Anchored like the north arrow, so

@@ -1,6 +1,6 @@
 import type { AirspaceStackForm, ProjectConfigV1 } from "../types.js";
 import { AIRSPACE_DEFAULT_CAP_FT, airspaceMaterial } from "../pipeline/airspace-settings.js";
-import { groundWidthMFor, planTerrainStack } from "../pipeline/stack-plan.js";
+import { engravingContourIntervalM, groundWidthMFor, planTerrainStack } from "../pipeline/stack-plan.js";
 import { EARTH_RADIUS_M, FEET_PER_METER } from "../primitives/units.js";
 import { boundsForProject } from "./bounds.js";
 
@@ -64,7 +64,7 @@ export function planFromRelief(config: ProjectConfigV1, relief: ReliefSample): M
     heightOfModelMm: flat ? config.materialThicknessMm : stack.stackHeightMm,
     requestedVerticalExaggeration: config.verticalExaggeration,
     fittedVerticalExaggeration: flat ? config.verticalExaggeration : stack.verticalExaggeration,
-    metersPerStep: flat ? config.showEngravingContours ? reliefM / config.engravingContourCount : 0 : stack.metersPerLayer,
+    metersPerStep: flat ? engravingContourIntervalM(reliefM, config.showEngravingContours ? config.engravingContourCount : 0) : stack.metersPerLayer,
     scaleDenominator: groundWidthM > 0 ? Math.round(groundWidthM * 1000 / config.widthMm) : 0,
     groundWidthKm: groundWidthM / 1000,
     groundHeightKm: groundHeightM / 1000,

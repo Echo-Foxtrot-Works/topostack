@@ -1,6 +1,7 @@
 import { PROTOMAPS_BASEMAP_VERSION, PROTOMAPS_SNAPSHOT, VECTOR_MAX_ZOOM } from "./dataset";
 import type { SurveySource, TerrainSource } from "@topostack/data-contracts/source-catalog";
-import type { AviationSources } from "@topostack/data-contracts/aviation-tiles";
+import type { ArchiveRelease } from "@topostack/data-contracts/archive-release";
+import { aviationRegistration, aviationSources, currentAviationRelease, landsSources, servedBathymetryArchives, servedTerrainArchives } from "./routes/archive";
 import type { LandsSources } from "@topostack/data-contracts/land-tiles";
 import { MERCATOR_MAX_LATITUDE } from "@topostack/core/project";
 
@@ -13,6 +14,7 @@ interface ManifestSource {
   id?: string;
   archive?: string;
   optional?: boolean;
+  release?: Pick<ArchiveRelease, "sha256" | "bytes" | "etag" | "objectKey">;
   verticalDatum?: string;
   minZoom?: number;
   maxZoom?: number;
@@ -38,8 +40,9 @@ function bathymetryEntry(source: SurveySource, archive: string): ManifestSource 
   return { name: source.name, url: source.url, attribution: source.license, archive };
 }
 
-function aviationEntry(sources: AviationSources): ManifestSource {
-  return { id: sources.dataset, name: `${sources.name}, NASR cycle ${sources.nasrCycle}`, url: sources.url, license: sources.license, version: sources.nasrCycle, archive: "/v1/aviation.pmtiles", optional: true, maxZoom: sources.maxZoom };
+function aviationEntry({ sha256, bytes, etag, objectKey }: ArchiveRelease): ManifestSource {
+  const sources = aviationSources;
+  return { release: { sha256, bytes, etag, objectKey }, id: sources.dataset, name: `${sources.name}, NASR cycle ${sources.nasrCycle}`, url: sources.url, license: sources.license, version: sources.nasrCycle, archive: "/v1/aviation.pmtiles", optional: true, maxZoom: sources.maxZoom };
 }
 
 function landsEntry(sources: LandsSources): ManifestSource {
@@ -47,11 +50,15 @@ function landsEntry(sources: LandsSources): ManifestSource {
   return { id: sources.dataset, name: canada ? `${sources.name}; ${canada.name}` : sources.name, url: sources.url, license: canada ? `${sources.license} ${canada.license}` : sources.license, version: sources.padusVersion, archive: "/v1/lands.pmtiles", optional: true, minZoom: sources.minZoom, maxZoom: sources.maxZoom };
 }
 
-export function buildManifest(datasetVersion: string, terrainSources: ReadonlyArray<{ source: TerrainSource; path: string }>, bathymetrySources: ReadonlyArray<{ source: SurveySource; path: string }>, aviation?: AviationSources, lands?: LandsSources) {
+export async function buildManifest(env: Env) {
+  const aviation = await currentAviationRelease(env);
+  const terrainSources = servedTerrainArchives(env.ENVIRONMENT);
+  const bathymetrySources = servedBathymetryArchives(env.ENVIRONMENT);
   return {
     schemaVersion: 1,
     capabilities: { archiveReleases: 1, upstreamProbes: 1 },
-    datasetVersion,
+    datasetVersion: env.DATASET_VERSION,
+    registrations: { aviation: aviationRegistration(env) },
     coverage: { projection: "Web Mercator", minLatitude: -MERCATOR_MAX_LATITUDE, maxLatitude: MERCATOR_MAX_LATITUDE, landOnly: true, vectorMaxZoom: VECTOR_MAX_ZOOM },
     sources: [
       { name: "Mapzen Terrain Tiles", url: "https://registry.opendata.aws/terrain-tiles/", attribution: "See Mapzen source attribution" },
@@ -63,7 +70,7 @@ export function buildManifest(datasetVersion: string, terrainSources: ReadonlyAr
       { id: "openfreemap-buildings", name: "OpenFreeMap building footprints", url: "https://openfreemap.org/", license: "© OpenMapTiles (CC BY 4.0), OpenStreetMap contributors (ODbL)", optional: true, minZoom: 13, maxZoom: 14 },
       { name: "OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright", license: "ODbL" },
       ...(aviation ? [aviationEntry(aviation)] : []),
-      ...(lands ? [landsEntry(lands)] : []),
+      landsEntry(landsSources),
     ] satisfies ManifestSource[],
   };
 }

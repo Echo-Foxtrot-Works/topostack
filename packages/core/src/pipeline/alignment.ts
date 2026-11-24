@@ -1,6 +1,6 @@
 import { addLabelObstacles, indexLabelLayer } from "../annotate/label-placement.js";
 import { clipPolyline, preparePolygons } from "../primitives/geometry2d.js";
-import { offsetClosedRing } from "../primitives/offset.js";
+import { offsetClosedRing, offsetPolygons, clipPolygons } from "../primitives/offset.js";
 import { alignmentOutlineInsetMm, hiddenLabelMarking, placeHiddenLabel } from "./hidden-marks.js";
 import type { LayerIR, OperationPath, Polygon2D, ProjectConfigV1 } from "../types.js";
 
@@ -8,7 +8,10 @@ import type { LayerIR, OperationPath, Polygon2D, ProjectConfigV1 } from "../type
 export function alignmentGuideMarkings(config: ProjectConfigV1, layer: LayerIR, nextLayer: Pick<LayerIR, "index" | "polygons" | "pieces">, outlines?: Polygon2D[]): OperationPath[] {
   const markings: OperationPath[] = [];
   if (!nextLayer.polygons.length) return markings;
-  const material = preparePolygons(layer.polygons);
+  // Clip the entire burn to the glue area, including holes in either sheet.
+  // Keep the outline slightly inside this clip to avoid coincident boundaries.
+  const reach = config.lineStyle.annotationMm / 2;
+  const material = preparePolygons(offsetPolygons(clipPolygons(layer.polygons, nextLayer.polygons, "intersection"), -reach - 0.05, "round"));
   const layerNumber = String(layer.index + 1).padStart(2, "0");
   const nextLayerNumber = String(nextLayer.index + 1).padStart(2, "0");
   const labelIndex = indexLabelLayer(layer.polygons, layer.markings);

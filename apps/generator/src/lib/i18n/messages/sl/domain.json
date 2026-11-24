@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Grafike SVG smejo imeti največ {sizeMb} MB.",
   "terrainServiceStatus": "Storitev terena je vrnila {status}.",
   "terrainTileVersionMissing": "Ploščici terena manjka različica nabora podatkov.",
+  "terrainTileNoData": "Ploščica terena ne vsebuje podatkov o nadmorski višini.",
   "terrainTileVersionsMixed": "Ploščice terena izvirajo iz neskladnih različic nabora podatkov. Kmalu poskusite znova.",
   "terrainUnreachable": "Storitev terena ni dosegljiva.",
   "waterOutlinesUnassembled": "Obrisov vode ni bilo mogoče sestaviti.",

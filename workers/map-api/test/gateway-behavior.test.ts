@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv } from "cloudflare:workers";
+import { aviationSources } from "../src/routes/archive";
 import worker from "../src/index";
 import { ARCHIVE_HEAD_TTL_MS, ARCHIVE_NEGATIVE_TTL_MS, cachedArchiveHead, resetArchiveHeadCache } from "../src/archive-head";
 import { normalizeClientAddress } from "../src/http";
@@ -16,11 +17,12 @@ const denyAll = () => ({ limit: vi.fn(async (_options: RateLimitOptions) => ({ s
 const terrainKey = (path: string) => `terrain/${env.DATASET_VERSION}/terrarium/${path}.png`;
 const current = { terrainValidation: "png-v1", provenance: "v2" };
 
-async function seedRelease(logicalKey: string, fill: number) {
-  const digest = "b".repeat(64);
+async function seedRelease(logicalKey: string, fill: number, dataset = "fixture") {
+  const data = new Uint8Array(200).fill(fill);
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", data)), byte => byte.toString(16).padStart(2, "0")).join("");
   const objectKey = `archives/${digest}/12345678-1234-1234-1234-123456789abc.pmtiles`;
-  const head = await env.VECTOR_DATA.put(objectKey, new Uint8Array(200).fill(fill));
-  const release = { schemaVersion: 1, logicalKey, objectKey, dataset: "fixture", sha256: digest, bytes: 200, etag: head!.httpEtag, verifiedAt: "2026-09-16T00:00:00Z" };
+  const head = await env.VECTOR_DATA.put(objectKey, data);
+  const release = { schemaVersion: 1, logicalKey, objectKey, dataset, sha256: digest, bytes: 200, etag: head!.httpEtag, verifiedAt: "2026-09-16T00:00:00Z" };
   await env.VECTOR_DATA.put(`releases/${logicalKey}.json`, JSON.stringify(release));
   return { objectKey, etag: head!.httpEtag };
 }
@@ -73,11 +75,28 @@ describe("PMTiles archive releases", () => {
 
   it("serves the promoted FAA aviation archive by range", async () => {
     const aviationKey = "aviation/current.pmtiles";
-    await seedRelease(aviationKey, 9);
+    await seedRelease(aviationKey, 8, "faa-previous");
+    const before = await worker.fetch(request("/v1/aviation.pmtiles", { headers: { range: "bytes=0-3" } }), env, context);
+    expect(before.status).toBe(503);
+    expect(before.headers.get("cache-control")).toBe("no-store");
+    const manifest = await worker.fetch(request("/v1/manifest"), env, context);
+    expect(manifest.headers.get("cache-control")).toBe("no-store");
+    expect(await manifest.json()).toMatchObject({
+      sources: expect.not.arrayContaining([expect.objectContaining({ archive: "/v1/aviation.pmtiles" })]),
+      registrations: { aviation: { dataset: aviationSources.dataset } },
+    });
+    await seedRelease(aviationKey, 9, aviationSources.dataset);
+    const promoted = await worker.fetch(request("/v1/manifest"), env, context);
+    expect(await promoted.json()).toMatchObject({ sources: expect.arrayContaining([expect.objectContaining({
+      id: aviationSources.dataset, archive: "/v1/aviation.pmtiles", release: expect.objectContaining({ bytes: 200 }),
+    })]) });
     try {
       const ranged = await worker.fetch(request("/v1/aviation.pmtiles", { headers: { range: "bytes=0-3" } }), env, context);
       expect(ranged.status).toBe(206);
+      expect(ranged.headers.get("x-topostack-dataset")).toBe(aviationSources.dataset);
       expect(new Uint8Array(await ranged.arrayBuffer())).toEqual(new Uint8Array(4).fill(9));
+      const wrongPin = await worker.fetch(request("/v1/aviation.pmtiles", { headers: { range: "bytes=0-3" } }), { ...env, ENVIRONMENT: "production" }, context);
+      expect(wrongPin.status).toBe(503);
       expectCors(ranged);
     } finally {
       await env.VECTOR_DATA.delete(`releases/${aviationKey}.json`);
@@ -127,6 +146,18 @@ describe("PMTiles archive releases", () => {
     expect(new Uint8Array(await replaced.arrayBuffer())).toEqual(new Uint8Array([9, 9]));
   });
 
+  it.each(["conditional", "expanded"])("refreshes a cached head for a %s range immediately after replacement", async (mode) => {
+    const original = await env.VECTOR_DATA.put(logicalKey, new Uint8Array(150).fill(1));
+    const warm = await worker.fetch(request("/v1/lakes.pmtiles", { headers: { range: "bytes=0-1" } }), env, context);
+    await warm.arrayBuffer();
+    const replacement = await env.VECTOR_DATA.put(logicalKey, new Uint8Array(200).fill(9));
+    const headers: Record<string, string> = mode === "expanded" ? { range: "bytes=160-161" } : { range: "bytes=0-1", "if-none-match": original!.httpEtag };
+    const result = await worker.fetch(request("/v1/lakes.pmtiles", { headers }), env, context);
+    expect(result.status).toBe(206);
+    expect(result.headers.get("etag")).toBe(replacement!.httpEtag);
+    expect(new Uint8Array(await result.arrayBuffer())).toEqual(new Uint8Array([9, 9]));
+  });
+
   it("answers HEAD and If-None-Match from a fresh R2 head after an in-place overwrite", async () => {
     await env.VECTOR_DATA.put(logicalKey, new Uint8Array(150).fill(1));
     const warm = await worker.fetch(request("/v1/lakes.pmtiles", { headers: { range: "bytes=0-0" } }), env, context);
@@ -154,10 +185,9 @@ describe("PMTiles archive releases", () => {
     expect(limiter.limit.mock.calls.map(([options]) => options.key)).toEqual(Array(2).fill("anonymous:archive-meta"));
   });
 
-  it("keeps a browser revalidating cached ranges off the metadata budget and memo", async () => {
+  it("checks the active ETag before renewing a browser range without charging the metadata budget", async () => {
     // Ranges are served with max-age, so a returning visitor revalidates each
-    // one with If-None-Match. Charging those, or evicting the memo for them,
-    // turned hundreds of cached reads per generation back into R2 reads and 429s.
+    // one with If-None-Match. The metadata rate limiter must permit that burst.
     await seedRelease(logicalKey, 5);
     const limiter = allowAll();
     const meteredEnv = { ...env, REQUEST_LIMITER: limiter } as unknown as Env;
@@ -167,7 +197,7 @@ describe("PMTiles archive releases", () => {
 
     const revalidated = await worker.fetch(request("/v1/lakes.pmtiles", { headers: { "if-none-match": etag, range: "bytes=0-1" } }), meteredEnv, context);
     expect(revalidated.status).toBe(304);
-    expect(revalidated.headers.get("x-topostack-r2-reads")).toBe("0");
+    expect(revalidated.headers.get("x-topostack-r2-reads")).toBe("2");
     expect(limiter.limit).not.toHaveBeenCalled();
 
     const ranged = await worker.fetch(request("/v1/lakes.pmtiles", { headers: { "if-none-match": '"stale"', range: "bytes=0-1" } }), meteredEnv, context);

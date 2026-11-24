@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "SVG グラフィックは {sizeMb} MB 以下にしてください。",
   "terrainServiceStatus": "地形サービスが {status} を返しました。",
   "terrainTileVersionMissing": "地形タイルにデータセットのバージョンがありません。",
+  "terrainTileNoData": "地形タイルに標高データがありません。",
   "terrainTileVersionsMixed": "地形タイルのデータセットのバージョンが一致しません。しばらくしてからもう一度お試しください。",
   "terrainUnreachable": "地形サービスに接続できませんでした。",
   "waterOutlinesUnassembled": "水域の輪郭を組み立てられませんでした。",

@@ -1,4 +1,4 @@
-import type { GeometryIRV1, Point2D, Polygon2D } from "@topostack/core";
+import { cropRadiusMm, openContourPath, type GeometryIRV1, type Point2D, type Polygon2D, type ProjectConfigV1 } from "@topostack/core";
 
 /**
  * Draws generated geometry as a small SVG for the in-chat preview: a layered
@@ -75,20 +75,27 @@ export function renderStack(ir: Pick<GeometryIRV1, "widthMm" | "heightMm" | "lay
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ${viewTop} ${width} ${height}" width="100%" role="img" aria-label="Preview of ${layers.length} stacked sheets">${paths}</svg>`;
 }
 
-/** A flat engraving as its contour lines seen from above; every fifth line is heavier, as index contours are. */
-export function renderContours(ir: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers">, options: RenderOptions & { indexInterval?: number } = {}): string {
+type EngravingConfig = Pick<ProjectConfigV1, "cropShape" | "engravingIndexInterval" | "showEngravingBorder" | "showEngravingContours">;
+
+/** A flat engraving with the same open contours and optional border as the artwork. */
+export function renderContours(ir: Pick<GeometryIRV1, "widthMm" | "heightMm" | "layers">, config: EngravingConfig, options: RenderOptions = {}): string {
   const width = options.width ?? 640;
   const margin = 12;
   const scale = (width - margin * 2) / ir.widthMm;
   const height = Math.ceil(ir.heightMm * scale + margin * 2);
-  const project = (point: Point2D): [number, number] => [width / 2 + point.x * scale, height / 2 + point.y * scale];
-  const interval = options.indexInterval ?? 5;
-  const layers = [...ir.layers].sort((a, b) => a.index - b.index);
-  const lines = layers.map((layer, order) => {
-    const d = polygonsPath(layer.polygons, project);
-    if (!d) return "";
-    const index = order > 0 && order % interval === 0;
-    return `<path d="${d}" fill="none" stroke="currentColor" stroke-opacity="${index ? 0.95 : 0.6}" stroke-width="${index ? 1.3 : 0.6}"/>`;
-  }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" role="img" aria-label="Preview of ${layers.length} engraved contour lines">${lines}</svg>`;
+  const crop = { widthMm: ir.widthMm, heightMm: ir.heightMm, cropShape: config.cropShape };
+  const layers = config.showEngravingContours ? ir.layers.filter((layer) => layer.index > 0).toSorted((a, b) => a.index - b.index) : [];
+  const lines = layers.map((layer) => {
+    const index = layer.index % config.engravingIndexInterval === 0;
+    return layer.polygons.flatMap((polygon) => [polygon.outer, ...polygon.holes].map((ring) => {
+      const d = openContourPath(ring, crop);
+      return d ? `<path d="${d}" stroke-opacity="${index ? 0.95 : 0.6}" stroke-width="${(index ? 1.3 : 0.6) / scale}"/>` : "";
+    })).join("");
+  }).filter(Boolean);
+  const border = config.showEngravingBorder
+    ? crop.cropShape === "circle"
+      ? `<circle r="${cropRadiusMm(crop)}"/>`
+      : `<rect x="${-crop.widthMm / 2}" y="${-crop.heightMm / 2}" width="${crop.widthMm}" height="${crop.heightMm}"/>`
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" role="img" aria-label="Preview of ${lines.length} engraved contour lines"><g fill="none" stroke="currentColor" stroke-width="${0.6 / scale}" transform="translate(${width / 2} ${height / 2}) scale(${scale})">${lines.join("")}${border}</g></svg>`;
 }

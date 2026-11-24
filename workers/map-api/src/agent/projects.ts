@@ -1,4 +1,4 @@
-import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, MERCATOR_MAX_LATITUDE, parseProject, parseProjectRequest, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
+import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, MERCATOR_MAX_LATITUDE, parseProject, parseProjectRequest, parseProjectRequestPatch, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
 import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-contracts/share-link";
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
@@ -168,10 +168,9 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
   if (bbox !== null) {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));
     const [west, south, east, north] = parts as [number, number, number, number];
-    // West greater than east crosses the antimeridian, as in GeoJSON.
-    const bounds = { west, south, east: west > east ? east + 360 : east, north };
-    if (parts.length !== 4 || Math.abs(west) > 180 || Math.abs(east) > 180 || !isMercatorBounds(bounds)) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with south < north; west greater than east crosses the antimeridian.`);
-    return bounds;
+    const ground = areaGround({ bounds: { west, south, east, north } });
+    if (parts.length !== 4 || "errors" in ground) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with south < north; west greater than east crosses the antimeridian.`);
+    return ground.bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];
   const ground = areaGround({ center: { lat, lon }, widthKm });
@@ -180,12 +179,22 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
 }
 
 /**
- * The ground a request `area` covers, or the parser's issues. The model size
- * is a placeholder: coverage depends only on the area.
+ * Use an exact geographic bounding box for coverage. A center and ground
+ * width without an explicit box describe a square in the Mercator plane.
  */
 export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: RequestIssue[] } {
-  const parsed = parseProjectRequest({ requestVersion: 1, area, widthMm: 100, heightMm: 100 });
-  return parsed.ok ? { bounds: areaBounds(parsed.value.area, 100, 100) } : { errors: parsed.errors };
+  const parsed = parseProjectRequestPatch({ area });
+  if (!parsed.ok) return { errors: parsed.errors };
+  const value = parsed.value.area;
+  if (!value) return { errors: [{ path: "area", message: "Required: the area to check." }] };
+  let bounds: GeoBounds;
+  if ("bounds" in value) {
+    const { west, south, east, north } = value.bounds;
+    bounds = { west, south, east: west > east ? east + 360 : east, north };
+  } else {
+    bounds = areaBounds(value, 100, 100);
+  }
+  return isMercatorBounds(bounds) ? { bounds } : { errors: [{ path: "area", message: "The area extends outside the mapped world." }] };
 }
 
 /** The credits a project's sources require, as the resolve route and the link tool return them. */

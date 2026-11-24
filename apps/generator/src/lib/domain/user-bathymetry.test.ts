@@ -75,6 +75,21 @@ describe("sampleChartDepths", () => {
 describe("applyUserCharts", () => {
   const dimensions = { widthMm: 10, heightMm: 10 };
 
+  it("keeps another lake's survey outage retryable after applying a chart", async () => {
+    const second = lake({ id: "other-lake", hylakId: 43 });
+    const charts = new Map([["42", loaded(rampChart())]]);
+    const initial = await applyUserCharts({ ...surveyed([lake(), second]), status: "unavailable" }, charts, bounds, grid, undefined, dimensions);
+    expect(initial.status).toBe("partial");
+    expect(initial.areas[0]?.bathymetryOrigin).toBe("chart");
+    expect(initial.areas[1]?.bathymetry).toBeUndefined();
+    const complete = await applyUserCharts({ ...surveyed([lake()]), status: "unavailable" }, charts, bounds, grid, undefined, dimensions);
+    expect(complete.status).toBe("available");
+    const recovered = { ...second, bathymetry: { width: 9, height: 9, depthsM: new Float32Array(81).fill(12), sampleSpacingM: 50 } };
+    const retry = await applyUserCharts(surveyed([lake(), recovered]), charts, bounds, grid, undefined, dimensions);
+    expect(retry.status).toBe("available");
+    expect(retry.areas[1]?.bathymetry).toBe(recovered.bathymetry);
+  });
+
   it("replaces a lake's provider depths and records the chart", async () => {
     const provider = new Float32Array(81).fill(99);
     const result = await applyUserCharts(surveyed([lake({ bathymetry: { width: 9, height: 9, depthsM: provider, sampleSpacingM: 50 } })]),

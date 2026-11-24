@@ -127,7 +127,7 @@ export interface PackageOptions {
  */
 function nestedLayout(ir: GeometryIRV1, resolved: SheetNestSettingsResult, plan: SheetNestPlanV1, labels?: ProjectConfigV1, material = "sheet"): NestedLayout {
   if (!resolved.ok) throw new Error(resolved.error);
-  const parts = nestableParts(ir, resolved.settings.spacingMm);
+  const parts = nestableParts(ir, resolved.settings);
   if (sheetNestJobKey(parts, resolved.settings) !== plan.jobKey) throw new Error(`The ${material} layout is out of date. Nest the parts again, or export the original panels.`);
   const problems = verifySheetPlan(parts, plan);
   if (problems.length) throw new Error(`The ${material} layout is not valid: ${problems[0]}`);

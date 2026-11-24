@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { tick, type Snippet } from "svelte";
   import { Lightbulb, PanelLeftClose, PanelLeftOpen } from "@lucide/svelte";
   import AtommTips from "$lib/atomm/AtommTips.svelte";
   import { t } from "$lib/i18n/i18n.svelte";
@@ -12,6 +12,14 @@
     parameters: Snippet<[(trigger: HTMLButtonElement) => void]>; preview: Snippet<[(trigger: HTMLButtonElement) => void]>; dialogs: Snippet;
   } = $props();
   let collapsed = $state(false);
+  let collapseButton = $state<HTMLButtonElement>();
+  let expandButton = $state<HTMLButtonElement>();
+  async function setCollapsed(next: boolean, trigger: HTMLButtonElement) {
+    const hadFocus = document.activeElement === trigger;
+    collapsed = next;
+    await tick();
+    if (hadFocus && collapsed === next) (next ? expandButton : collapseButton)?.focus();
+  }
   let connectionSlow = $state(false);
   $effect(() => {
     if (ready) { connectionSlow = false; return; }
@@ -25,10 +33,10 @@
 </script>
 
 <!-- Rendered skeleton from Atomm layout-3-generate: lead / canvas / parameters. -->
-<div class="atomm-workbench gen-app" lang="en">
+<div class="atomm-workbench gen-app">
   <div class="gen-body">
-    <aside class="gen-rail gen-rail-lead" aria-label={t("workbench.railTitle")} hidden={collapsed}>
-      <div class="gen-rail-header"><span class="gen-rail-title">{t("workbench.railTitle")}</span><button type="button" class="btn-plate" aria-label={t("workbench.collapseRail")} aria-expanded="true" onclick={() => collapsed = true}><PanelLeftClose size={16} aria-hidden="true" /></button></div>
+    <aside id="atomm-lead-rail" class="gen-rail gen-rail-lead" aria-label={t("workbench.railTitle")} hidden={collapsed}>
+      <div class="gen-rail-header"><span class="gen-rail-title">{t("workbench.railTitle")}</span><button bind:this={collapseButton} type="button" class="btn-plate" aria-label={t("workbench.collapseRail")} aria-controls="atomm-lead-rail" aria-expanded="true" onclick={(event) => setCollapsed(true, event.currentTarget)}><PanelLeftClose size={16} aria-hidden="true" /></button></div>
       <div class="gen-rail-scroll">
         <div class="gen-rail-content">{@render leadHeader()}{@render lead()}{@render generate()}</div>
       </div>
@@ -36,7 +44,7 @@
     <main class="gen-canvas" class:lead-collapsed={collapsed} aria-label={t("workbench.canvasLabel")}>
       {@render preview(openLakeDepthHelp)}
       <!-- Collapsed, the rail becomes a 40px pill that keeps its title. -->
-      {#if collapsed}<button type="button" class="gen-rail-collapsed" aria-label={t("workbench.expandRail")} aria-expanded="false" onclick={() => collapsed = false}><span class="gen-rail-title">{t("workbench.railTitle")}</span><PanelLeftOpen size={16} aria-hidden="true" /></button>{/if}
+      {#if collapsed}<button bind:this={expandButton} type="button" class="gen-rail-collapsed" aria-label={t("workbench.expandRail")} aria-controls="atomm-lead-rail" aria-expanded="false" onclick={(event) => setCollapsed(false, event.currentTarget)}><span class="gen-rail-title">{t("workbench.railTitle")}</span><PanelLeftOpen size={16} aria-hidden="true" /></button>{/if}
       <button bind:this={tipsTrigger} type="button" class="btn-tips atomm-tips" onclick={(event) => { tipsReturnFocus = event.currentTarget; tips.open(); }}><Lightbulb size={20} aria-hidden="true" />{t("workbench.tipsButton")}</button>
     </main>
     <aside class="gen-rail gen-rail-params" aria-label={t("workbench.parametersLabel")}>

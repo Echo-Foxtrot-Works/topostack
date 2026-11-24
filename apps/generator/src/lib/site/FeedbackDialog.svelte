@@ -17,6 +17,7 @@
   const link = $derived(feedbackLink(type, summary, body));
   const replyValid = $derived(!replyTo.trim() || isFeedbackEmail(replyTo.trim()));
   const valid = $derived(Boolean(summary.trim() && details.trim()) && replyValid);
+  const sendFailed = $derived(result === 'rate-limited' || result === 'failed');
   $effect(() => {
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
@@ -39,6 +40,10 @@
   }
 </script>
 
+{#snippet publicIssueLink()}
+  <a href={link.url} target="_blank" rel="noopener noreferrer">{link.needsPaste ? 'Open a GitHub issue and paste the report' : 'Continue on GitHub'} ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a>
+{/snippet}
+
 <dialog bind:this={dialog} class="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-description" onclose={onClose}>
   <header><h2 id="feedback-title">Help improve TopoStack</h2><button class="close" type="button" aria-label="Close feedback" onclick={() => dialog.close()}>×</button></header>
   {#if result === 'sent'}
@@ -47,7 +52,7 @@
   {:else}
   <p id="feedback-description">Report a problem, suggest a feature, or flag terrain and lake data for investigation. No account needed.</p>
   <form onsubmit={submit} novalidate>
-    <div class="fields">
+    <fieldset class="fields" disabled={sending} aria-label="Feedback draft">
       <label>Feedback type<select bind:value={type}>{#each Object.entries(FEEDBACK_TYPES) as [value, option]}<option {value}>{option.label}</option>{/each}</select></label>
       <label>Summary<input bind:value={summary} maxlength="120" required placeholder="A short description" /></label>
       <label>Details<textarea bind:value={details} maxlength="4000" required rows="5" aria-describedby="feedback-hint"></textarea></label>
@@ -59,18 +64,18 @@
         <label class="context-option"><input type="checkbox" bind:checked={includeContext} />Include location, settings, and data sources</label>
         <p class="hint">Optional. Includes coordinates and source diagnostics, but no project name or custom markers. Review the exact details below.</p>
       {/if}
-    </div>
+    </fieldset>
     <p class="privacy">Your report is emailed privately to the TopoStack maintainer. It is not published.</p>
     <div class="actions">
       <button class="primary" type="submit" disabled={!valid || sending} aria-busy={sending}>{sending ? 'Sending…' : 'Send feedback'}</button>
     </div>
   </form>
-  {#if result === 'rate-limited' || result === 'failed'}
-    <p class="send-error" role="alert">{result === 'rate-limited' ? 'Too much feedback at once. Wait a minute and try again, or' : 'Feedback could not be sent. Try again, or'} <a href={link.url} target="_blank" rel="noopener noreferrer">{link.needsPaste ? 'open a GitHub issue and paste the report' : 'continue on GitHub'} ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a>. <button type="button" class="link-button" onclick={copyReport}>Copy report</button></p>
+  {#if sendFailed}
+    <p class="send-error" role="alert">{result === 'rate-limited' ? 'Too much feedback at once. Wait a minute and try again.' : 'Feedback could not be sent. Try again.'} {@render publicIssueLink()}. <button type="button" class="link-button" onclick={copyReport}>Copy report</button></p>
   {/if}
   {#if copyStatus}<p role="status">{copyStatus}</p>{/if}
   <details open={copyStatus.startsWith('Copy is unavailable')}><summary>Review report{includeContext ? ' and shared context' : ''}</summary><textarea class="report-preview" aria-label="Report preview" readonly rows="9" value={body}></textarea></details>
-  <p class="existing">Prefer a public issue? {#if valid}<a href={link.url} target="_blank" rel="noopener noreferrer">Continue on GitHub ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a> (account required){:else}Fill in the summary and details to open a prefilled GitHub issue{/if} · <a href={ISSUE_TRACKER} target="_blank" rel="noopener noreferrer">Browse existing feedback ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a></p>
+  <p class="existing">Prefer a public issue? {#if valid}{@render publicIssueLink()} (account required){#if link.needsPaste && !sendFailed} · <button type="button" class="link-button" onclick={copyReport}>Copy report</button>{/if}{:else}Fill in the summary and details to open a GitHub issue{/if} · <a href={ISSUE_TRACKER} target="_blank" rel="noopener noreferrer">Browse existing feedback ↗<span class="ldt-sr-only"> (opens in a new tab)</span></a></p>
   {/if}
 </dialog>
 
@@ -80,7 +85,7 @@
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   h2 { font-size: 21px; line-height: 1.3; margin: 0; }
   p { margin: 12px 0; }
-  .fields { display: grid; gap: 12px; }
+  .fields { display: grid; gap: 12px; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
   label { display: grid; gap: 6px; font-weight: 500; }
   input:not([type=checkbox]), select, textarea { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--loidolt-border); border-radius: 5px; background: var(--loidolt-surface); color: var(--loidolt-text); padding: 10px; font: inherit; }
   textarea { resize: vertical; }

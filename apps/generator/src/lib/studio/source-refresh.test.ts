@@ -146,6 +146,16 @@ describe("public land areas", () => {
     expect(deps.loadLands).toHaveBeenCalledTimes(2);
   });
 
+  it.each([{ minimumFeatureMm: 0.8 }, { widthMm: 500 }, { heightMm: 375 }])("loads land again after a finished-size edit %o", async (patch) => {
+    const before = { ...painting("national-park"), minimumFeatureMm: 5 };
+    const after = { ...before, ...patch };
+    const source = loaded({ landAreas: [], landsStatus: "available" });
+    const deps = dependencies({ loadLands: vi.fn(async () => ({ landAreas: [park], landsStatus: "available" as const })) });
+    const refreshed = await new SourcePreparationCache(deps).prepare(source, before, after, after, new AbortController().signal);
+    expect(deps.loadLands).toHaveBeenCalledOnce();
+    expect(refreshed.landAreas).toEqual([park]);
+  });
+
   it("reloads when a newly painted class was not loaded, and only filters otherwise", () => {
     const source = loaded({ landAreas: [park], landsStatus: "available" });
     const parks = painting("national-park");
@@ -193,6 +203,16 @@ describe("airspace volumes", () => {
     await refreshRequiredMapData(refreshed, stacked, new AbortController().signal, deps);
     await refreshRequiredMapData(loaded({ airspaceVolumes: [], airspaceStatus: "not-covered" }), stacked, new AbortController().signal, deps);
     expect(deps.loadAirspace).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([{ minimumFeatureMm: 0.8 }, { widthMm: 500 }, { heightMm: 375 }])("reloads airspace at its new physical scale %o", async (patch) => {
+    const before = { ...stacked, minimumFeatureMm: 5 };
+    const after = { ...before, ...patch };
+    const source = loaded({ airspaceVolumes: [], airspaceStatus: "available" });
+    const deps = dependencies({ loadAirspace: vi.fn(async () => ({ airspaceVolumes: [sector], airspaceStatus: "available" as const })) });
+    const refreshed = await new SourcePreparationCache(deps).prepare(source, before, after, after, new AbortController().signal);
+    expect(deps.loadAirspace).toHaveBeenCalledOnce();
+    expect(refreshed.airspaceVolumes).toEqual([sector]);
   });
 
   it("reloads when a switch needs sectors the source was loaded without", () => {

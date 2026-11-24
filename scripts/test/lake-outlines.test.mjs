@@ -21,14 +21,15 @@ test("outline release pins the source catalog, directory and coverage audit", as
 });
 
 const object = (text) => { const bytes = Buffer.from(text); return { bytes, sha256: digest(bytes), file: `${digest(bytes)}.json` }; };
-function storage({ corrupt = false, existing = false, metadata = true } = {}) {
-  const calls = [], stored = new Map();
-  return { calls, request: async (key, init) => {
+function storage({ corrupt = false, existing = [], metadata = true } = {}) {
+  const calls = [], stored = new Map(existing.map((entry) => [`lake-outlines/${entry.file}`, corrupt ? Buffer.from("broken") : entry.bytes]));
+  return { calls, stored, request: async (key, init) => {
     calls.push([key, init.method]);
     if (init.method === "PUT") {
       assert.equal(init.headers["if-none-match"], "*");
+      if (stored.has(key)) return new Response(null, { status: 412 });
       stored.set(key, corrupt ? Buffer.from("broken") : init.body);
-      return new Response(null, { status: existing ? 412 : 200 });
+      return new Response(null, { status: 200 });
     }
     const bytes = stored.get(key);
     return new Response(bytes, { headers: { "content-length": String(bytes.length), etag: '"verified"', ...(metadata ? { "x-amz-meta-sha256": key.split("/").at(-1).slice(0, -5) } : {}) } });
@@ -40,14 +41,16 @@ test("index is published only after all shards have passed full remote verificat
   const remote = storage();
   await publishOutlines(remote.request, objects);
   assert.deepEqual(remote.calls.slice(-2), [[`lake-outlines/${objects[2].file}`, "PUT"], [`lake-outlines/${objects[2].file}`, "GET"]]);
-  const retry = storage({ existing: true });
+  const retry = storage({ existing: objects });
   await publishOutlines(retry.request, objects);
+  assert.deepEqual(retry.calls, remote.calls);
+  for (const entry of objects) assert.equal(retry.stored.get(`lake-outlines/${entry.file}`), entry.bytes);
 });
 
 test("corrupt uploads or existing objects prevent publication of the index", async () => {
   for (const existing of [false, true]) {
     const objects = [object("first"), object("index")];
-    const remote = storage({ corrupt: true, existing });
+    const remote = storage({ corrupt: true, existing: existing ? [objects[0]] : [] });
     await assert.rejects(publishOutlines(remote.request, objects), /mismatch|verification/);
     assert(!remote.calls.some(([key]) => key.endsWith(objects[1].file)));
   }
@@ -55,7 +58,8 @@ test("corrupt uploads or existing objects prevent publication of the index", asy
 
 
 test("pre-existing objects without integrity metadata cannot publish a release", async () => {
-  const remote = storage({ existing: true, metadata: false });
-  await assert.rejects(publishOutlines(remote.request, [object("first"), object("index")]), /metadata mismatch/);
+  const objects = [object("first"), object("index")];
+  const remote = storage({ existing: objects, metadata: false });
+  await assert.rejects(publishOutlines(remote.request, objects), /metadata mismatch/);
   assert.equal(remote.calls.length, 2);
 });

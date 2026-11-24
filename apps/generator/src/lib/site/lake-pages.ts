@@ -67,6 +67,7 @@ export interface LakePage {
   sources: Pick<LakeDirectorySource, "name" | "url" | "kind" | "license">[];
   lakes: LakeListing[];
   children: LakePageLink[];
+  grouping?: RegionConfig["split"];
   largest: LakeListing[];
   total: number;
 }
@@ -260,6 +261,7 @@ function buildPages(directory: LakeDirectory): { pages: Map<string, LakePage>; r
       sources: sourceInfo,
       lakes: listed.map((lake) => listing(lake, region.split === "county" ? countyOf(lake) : region.sources.length > 1 ? lake.region : undefined, listed.length <= NOTE_LIMIT)),
       children,
+      ...(children.length ? { grouping: region.split } : {}),
       largest: top.map((lake) => listing(lake)),
       total: lakes.length,
     });

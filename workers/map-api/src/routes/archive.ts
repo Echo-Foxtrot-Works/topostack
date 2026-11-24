@@ -1,11 +1,12 @@
 import rawSurveyCatalog from "../../../../scripts/data/lake-bathymetry.json";
 import rawTerrainCatalog from "../../../../scripts/data/terrain-sources.json";
+import aviationProductionRelease from "../../../../scripts/data/faa-aviation-production-release.json";
 import rawAviationSources from "../../../../scripts/data/faa-aviation-sources.json";
 import rawLandsSources from "../../../../scripts/data/public-lands-sources.json";
 import { validateAviationSources } from "@topostack/data-contracts/aviation-tiles";
 import { validateLandsSources } from "@topostack/data-contracts/land-tiles";
 import { sourceAvailableIn, validateSurveyCatalog, validateTerrainCatalog, type SurveySource } from "@topostack/data-contracts/source-catalog";
-import { cachedArchiveHead, evictArchiveHead } from "../archive-head";
+import { cachedArchiveHead, evictArchiveHead, type ResolvedArchive } from "../archive-head";
 import { edgeCacheKey, matchEdge, teeToEdge } from "../edge-cache";
 import { etagMatches, json } from "../http";
 
@@ -40,6 +41,28 @@ const bathymetryCatalog = validateSurveyCatalog(rawSurveyCatalog);
 export const terrainArchives = terrainCatalog.sources.map((source) => ({ source, path: `/v1/terrain-sources/${source.id}.pmtiles`, key: `terrain-sources/${source.id}.pmtiles` }));
 /** The pinned FAA build this deployment advertises; the archive metadata must match it. */
 export const aviationSources = validateAviationSources(rawAviationSources);
+/** Registration is deployed before its production archive is promoted. */
+export function aviationRegistration(env: Env) {
+  return { dataset: aviationSources.dataset, ...(env.ENVIRONMENT === "production" ? { sha256: aviationProductionRelease.sha256 } : {}) };
+}
+
+function registeredAviationRelease(resolved: ResolvedArchive, env: Env) {
+  const expected = aviationRegistration(env);
+  const release = resolved.release;
+  if (!resolved.head || release?.dataset !== expected.dataset) return;
+  if (env.ENVIRONMENT === "production" && (release.sha256 !== aviationProductionRelease.sha256
+    || release.objectKey !== aviationProductionRelease.objectKey || release.etag !== aviationProductionRelease.etag
+    || release.bytes !== aviationProductionRelease.bytes)) return;
+  return release;
+}
+
+/** Manifest reads also refresh the range route's memo so a promotion is immediately visible. */
+export async function currentAviationRelease(env: Env) {
+  evictArchiveHead(AVIATION_ARCHIVE_KEY);
+  try { return registeredAviationRelease(await cachedArchiveHead(env.VECTOR_DATA, AVIATION_ARCHIVE_KEY), env); }
+  catch { return undefined; } // A missing or invalid optional release must not hide the other sources.
+}
+
 /** The pinned PAD-US build this deployment advertises; the archive metadata must match it. */
 export const landsSources = validateLandsSources(rawLandsSources);
 
@@ -131,10 +154,8 @@ export function parseRangeHeader(header: string | null, size: number): ParsedRan
  * A conditional request that carries a Range is not one of these: it is an
  * ordinary range read that a browser is revalidating after `max-age`. Those
  * arrive in the same hundreds-per-generation bursts as unconditional ranges, so
- * charging them would 429 a returning visitor mid-generation, and evicting the
- * memo would re-resolve the release pointer for every one of them. Their 304 or
- * body is safe from the memo: the range read itself is conditional on the
- * memoized etag and retries once the precondition fails.
+ * charging them would 429 a returning visitor mid-generation. Responses without
+ * a conditional body read recheck the head before reporting 304 or 416.
  */
 export function isArchiveMetadataRequest(request: Request): boolean {
   return request.method === "HEAD" || (request.headers.has("if-none-match") && !request.headers.has("range"));
@@ -152,6 +173,11 @@ export async function pmtilesResponse(request: Request, env: Env, ctx: Execution
     });
   }
   const head = resolved.head;
+  if (archive.key === AVIATION_ARCHIVE_KEY && !registeredAviationRelease(resolved, env)) {
+    return json({ error: "Registered FAA aviation data is temporarily unavailable." }, {
+      status: 503, headers: { "retry-after": String(INVALID_RELEASE_RETRY_SECONDS), "cache-control": "no-store" },
+    });
+  }
   if (!head) return json({ error: `${archive.label} archive has not been provisioned.` }, { status: 404 });
   const headers = new Headers({
     "etag": head.httpEtag,
@@ -159,14 +185,19 @@ export async function pmtilesResponse(request: Request, env: Env, ctx: Execution
     "content-type": "application/vnd.pmtiles",
     "cache-control": `public, max-age=${ARCHIVE_CACHE_SECONDS}`,
     "x-topostack-cache": "R2",
-    "x-topostack-dataset": env.DATASET_VERSION,
+    "x-topostack-dataset": archive.key === AVIATION_ARCHIVE_KEY ? aviationSources.dataset : env.DATASET_VERSION,
   });
-  if (etagMatches(request.headers.get("if-none-match"), head.httpEtag)) return new Response(null, { status: 304, headers });
+  const matches = etagMatches(request.headers.get("if-none-match"), head.httpEtag);
+  const range = parseRangeHeader(request.headers.get("range"), head.size);
+  if (!retried && !isArchiveMetadataRequest(request) && (matches || range.kind === "unsatisfiable")) {
+    evictArchiveHead(archive.key);
+    return pmtilesResponse(request, env, ctx, archive, true);
+  }
+  if (matches) return new Response(null, { status: 304, headers });
   if (request.method === "HEAD") {
     headers.set("content-length", String(head.size));
     return new Response(null, { headers });
   }
-  const range = parseRangeHeader(request.headers.get("range"), head.size);
   if (range.kind === "missing") {
     return json({ error: "A bounded Range header is required for PMTiles archives." }, { status: 400, headers });
   }
