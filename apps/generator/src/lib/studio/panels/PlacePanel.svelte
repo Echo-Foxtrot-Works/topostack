@@ -1,25 +1,17 @@
 <script lang="ts">
   import { Circle, Square } from "@lucide/svelte";
-  import { displayLength, MAX_PROJECT_DIMENSION_MM, projectFingerprint, type ProjectConfigV1 } from "@topostack/core";
+  import { displayLength, MAX_PROJECT_DIMENSION_MM, type ProjectConfigV1 } from "@topostack/core";
   import LengthField from "$lib/studio/StudioLengthField.svelte";
   import { SHAPE_OPTIONS } from "$lib/studio/options";
   import LocationPicker from "$lib/studio/panels/LocationPicker.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
   import UnitSwitch from "$lib/studio/panels/UnitSwitch.svelte";
-  import { LazyComponent } from "$lib/studio/lazy-component";
   import { getStudio } from "$lib/studio/studio-context";
   import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
 
   const studio = getStudio();
   const { navigateChoice, shownLength, storedLength, updateFabrication } = studio;
   const engraving = $derived(studio.project.outputMode === "engraving");
-  const comparison = new LazyComponent(() => import("$lib/studio/CompositionDialog.svelte"));
-  const Dialog = $derived(comparison.component);
-  let comparing = $state.raw<ProjectConfigV1>();
-  const canCompare = $derived(studio.geometry.sourceKind === "real" && !studio.previewBusy && !studio.placement && !studio.terrainDataStale && studio.geometry.configFingerprint === projectFingerprint(studio.project));
-  $effect(() => {
-    if (comparing && (!canCompare || comparing !== studio.project)) comparing = undefined;
-  });
 </script>
 
 <!-- Where the model is and how big. The embed keeps the location in its lead rail, so its block is the size alone. -->
@@ -37,14 +29,4 @@
       <LengthField label={t("place.height")} unit={studio.shownLengthUnit} value={shownLength(studio.project.heightMm)} min={studio.project.units === "imperial" ? 0.001 : 0.01} max={displayLength(MAX_PROJECT_DIMENSION_MM, studio.project.units)} step={studio.project.units === "imperial" ? 0.01 : 1} disabled={studio.project.cropShape === "circle"} onCommit={(shown) => { const heightMm = storedLength(shown); if (heightMm !== studio.project.heightMm) void updateFabrication({ heightMm }); }} />
     </div>
   </div>
-  {#if studio.geometry.sourceKind === "real"}
-    <div class="detail-group">
-      <button type="button" class="btn btn-secondary" disabled={!canCompare} onclick={() => { comparing = studio.project; comparison.load(); }}>{t("place.compareCompositions")}</button>
-      {#if comparing === studio.project && canCompare}
-        {#if Dialog}<Dialog onClose={() => comparing = undefined} />
-        {:else if comparison.failed}<p role="alert">{t("status.outputGeometryFailed")} <button type="button" onclick={() => comparison.load()}>{t("app.retry")}</button></p>
-        {:else}<small role="status">{t("status.busyRefreshing")}</small>{/if}
-      {/if}
-    </div>
-  {/if}
 </PanelFrame>

@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "構図を比較",
-  "currentDesign": "現在のデザイン",
-  "composition.streets": "街路の彫刻",
-  "composition.shoreline": "水辺の彫刻",
-  "composition.terrain": "地形の立体模型",
-  "applyComposition": "この構図を適用",
-  "noCompositionFeatures": "この範囲には選択した地物が表示されません。",
   "artworkSize": "作品サイズ",
   "cutSize": "カットサイズ",
   "placeAndSize": "場所とサイズ",

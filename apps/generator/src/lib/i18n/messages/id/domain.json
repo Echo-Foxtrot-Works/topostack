@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Grafik SVG harus berukuran {sizeMb} MB atau lebih kecil.",
   "terrainServiceStatus": "Layanan medan mengembalikan {status}.",
   "terrainTileVersionMissing": "Ubin medan tidak memiliki versi dataset.",
+  "terrainTileNoData": "Petak medan tidak berisi data elevasi.",
   "terrainTileVersionsMixed": "Ubin medan berasal dari versi dataset yang tidak konsisten. Coba lagi sebentar lagi.",
   "terrainUnreachable": "Layanan medan tidak dapat dijangkau.",
   "waterOutlinesUnassembled": "Garis tepi air tidak dapat disusun.",

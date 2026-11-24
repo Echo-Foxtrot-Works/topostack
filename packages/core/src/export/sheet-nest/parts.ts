@@ -1,8 +1,9 @@
 import { distanceToSegment, pointInRing, segmentsIntersect, ringBounds, signedArea, simplifyClosedRing } from "../../primitives/geometry2d.js";
 import { offsetClosedRing } from "../../primitives/offset.js";
-import type { GeometryIRV1, NestPartV1, Point2D } from "../../types.js";
+import type { GeometryIRV1, NestPartV1, Point2D, ResolvedSheetNestSettings } from "../../types.js";
 import { nestFamilies, rootPolygonByPolygon } from "../panel-layout.js";
-import { DEFAULT_SHEET_NESTING } from "./resolve.js";
+import { packRectangles } from "./rectangles.js";
+import { allowedOrientations, DEFAULT_SHEET_NESTING } from "./resolve.js";
 import { convexHull } from "../../primitives/convex-hull.js";
 
 /** Vertex budget per outline sent to the packer; more costs time without better layouts. */
@@ -37,7 +38,7 @@ export function partOutline(outer: Point2D[], kerfMm: number, maxVertices = MAX_
  * donor's root polygon; everything else is a part of its own. Seam-split
  * layers already hold one polygon per piece.
  */
-export function nestableParts(ir: GeometryIRV1, spacingMm = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
+export function nestableParts(ir: GeometryIRV1, settings: number | ResolvedSheetNestSettings = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
   const parts: NestPartV1[] = [];
   for (const family of nestFamilies(ir)) {
     const roots = rootPolygonByPolygon(ir, family);
@@ -73,7 +74,7 @@ export function nestableParts(ir: GeometryIRV1, spacingMm = DEFAULT_SHEET_NESTIN
     }
   }
   const polygonIndexOf = (part: NestPartV1) => Number.parseInt(part.id.slice(part.id.indexOf(":") + 1), 10);
-  return clusterSmallParts(parts, spacingMm).sort((left, right) => left.rootLayerIndex - right.rootLayerIndex || polygonIndexOf(left) - polygonIndexOf(right));
+  return clusterSmallParts(parts, settings).sort((left, right) => left.rootLayerIndex - right.rootLayerIndex || polygonIndexOf(left) - polygonIndexOf(right));
 }
 
 /** Parts smaller than this (about 20 × 20 mm) may be grouped with their neighbours. */
@@ -113,7 +114,8 @@ function hasClearance(a: Point2D[], b: Point2D[], spacing: number): boolean {
  * other on the sheet and are found together. A group is only formed while
  * its hull stays compact, so it never wastes more than a small area.
  */
-export function clusterSmallParts(parts: NestPartV1[], spacingMm = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
+export function clusterSmallParts(parts: NestPartV1[], settings: number | ResolvedSheetNestSettings = DEFAULT_SHEET_NESTING.spacingMm): NestPartV1[] {
+  const spacingMm = typeof settings === "number" ? settings : settings.spacingMm;
   const small = parts.filter((part) => part.areaMm2 < SMALL_PART_MM2).sort((left, right) => right.areaMm2 - left.areaMm2 || left.id.localeCompare(right.id));
   const taken = new Set<string>();
   const merged: NestPartV1[] = [];
@@ -132,6 +134,12 @@ export function clusterSmallParts(parts: NestPartV1[], spacingMm = DEFAULT_SHEET
         const next = convexHull([...hull, ...candidate.outline]);
         const ownArea = groupArea + candidate.areaMm2;
         if (Math.abs(signedArea(next)) > CLUSTER_HULL_RATIO * ownArea) continue;
+        // Grouping is optional. Preserve separate movable islands if their rigid
+        // hull cannot fit the usable stock in any permitted orientation.
+        if (typeof settings !== "number") {
+          const item = { outline: next.slice(0, -1).map(p => [p.x, p.y] as [number, number]), orientationsDeg: allowedOrientations(settings.rotation) };
+          if (!packRectangles([item], settings.sheetHeightMm - 2 * settings.marginMm, 0, settings.sheetWidthMm - 2 * settings.marginMm).placements.length) continue;
+        }
         if (!group.every((member) => hasClearance(member.outline, candidate.outline, spacingMm))) continue;
         group.push(candidate);
         groupArea = ownArea;

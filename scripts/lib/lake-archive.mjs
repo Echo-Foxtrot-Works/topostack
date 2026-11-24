@@ -3,6 +3,8 @@
  * run whose output only replaces the previous archive once it completed.
  */
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { run } from "./process.mjs";
 import { once } from "node:events";
 import { rename, rm } from "node:fs/promises";
 
@@ -22,16 +24,15 @@ export function assertExecutable(command, { install, args = ["--version"] } = {}
  * Streams newline-delimited GeoJSON into tippecanoe and returns whatever
  * `emit` returns.
  *
- * The archive is built at `<outputPath>.part` and renamed only after a clean
+ * The archive is built at `a unique sibling ending in .pmtiles` and renamed only after a clean
  * exit, so a mid-run failure - a full disk, a killed process, a malformed
  * feature - leaves the previous good archive in place instead of a truncated
  * one. Both the child and its stdin get an `error` listener: without them a
  * missing binary or a closed pipe is an unhandled event that kills the build
  * with no usable message.
  */
-export async function writeTilesetArchive({ outputPath, args = [], command = "tippecanoe", spawnProcess = spawn, emit }) {
-  const partPath = `${outputPath}.part`;
-  await rm(partPath, { force: true });
+export async function writeTilesetArchive({ outputPath, args = [], command = "tippecanoe", spawnProcess = spawn, verify = (path) => run(process.env.PMTILES_BIN ?? "pmtiles", ["verify", path]), emit }) {
+  const partPath = `${outputPath}.${randomUUID()}.part.pmtiles`;
   const writer = spawnProcess(command, ["--output", partPath, "--force", ...args], { stdio: ["pipe", "inherit", "inherit"] });
   let failure = null;
   const fail = (error) => { failure ??= error; };
@@ -61,6 +62,7 @@ export async function writeTilesetArchive({ outputPath, args = [], command = "ti
     const { code, signal } = await closed;
     if (failure) throw failure;
     if (code !== 0) throw new Error(`${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}.`);
+    await verify(partPath);
     await rename(partPath, outputPath);
     return result;
   } catch (error) {

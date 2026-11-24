@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "So sánh bố cục",
-  "currentDesign": "Thiết kế hiện tại",
-  "composition.streets": "Khắc bản đồ đường phố",
-  "composition.shoreline": "Khắc đường bờ",
-  "composition.terrain": "Phù điêu địa hình",
-  "applyComposition": "Áp dụng bố cục",
-  "noCompositionFeatures": "Các đối tượng bản đồ đã chọn không xuất hiện trong vùng này.",
   "artworkSize": "Kích thước tác phẩm",
   "cutSize": "Kích thước cắt",
   "placeAndSize": "Địa điểm và kích thước",

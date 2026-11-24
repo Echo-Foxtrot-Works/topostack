@@ -65,7 +65,7 @@ Explore the code, ask questions, suggest improvements, or contribute through [Gi
 
 ## Feedback
 
-Use **Feedback** in the studio or page footer to report bugs, request features, or flag low-quality terrain and lake data. Optionally include reviewable location and source diagnostics. Reports open as prefilled GitHub issues; a GitHub account and submission on GitHub are required. See the [feedback workflow and triage guide](docs/feedback.md).
+Use **Feedback** in the studio or page footer to report bugs, request features, or flag low-quality terrain and lake data. Optionally include reviewable location and source diagnostics. You can send feedback anonymously through the form or choose to open a public GitHub issue. See the [feedback workflow and triage guide](docs/feedback.md).
 
 ## Contributing
 

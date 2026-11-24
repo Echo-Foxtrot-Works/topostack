@@ -128,6 +128,15 @@ const listed = [...llms.matchAll(/\]\((https:\/\/[^)]+)\)/g)].map((match) => mat
 assert.deepEqual(listed.filter((url) => url !== origin + "/studio" && url !== lakeSitemap).sort(), indexable.filter((url) => !url.startsWith(origin + "/lake/")).toSorted(), "llms.txt must list exactly the indexable pages other than /lake/ pages");
 assert.equal(listed.includes(origin + "/studio"), production, "llms.txt names the studio and says why it is excluded");
 assert.equal(listed.includes(lakeSitemap), production, "llms.txt points to the lakes sitemap");
+if (production) {
+  assert.match(llms, /^- TopoStack content pages answer `Accept: text\/markdown` with a Markdown version\.$/m);
+  assert.match(llms, /^- \[Studio\]\([^)]+\): the interactive editor opens as HTML/m);
+  for (const url of listed.filter(url => url !== origin + "/studio" && url !== lakeSitemap)) {
+    const path = new URL(url).pathname.slice(1) || "index";
+    assert.ok(builtPaths.has(path + ".md"), url + ": advertised Markdown page");
+  }
+}
+assert.ok(!builtPaths.has("studio.md"), "Studio remains an HTML editor");
 const robots = await readFile(new URL("robots.txt", dist), "utf8");
 assert.ok(robots.startsWith("User-agent: *\nAllow: /\n"));
 assert.equal(robots.includes("Sitemap: " + origin + "/sitemap.xml"), production);
@@ -137,6 +146,19 @@ assert.match(robots, /^Content-Signal: search=yes, ai-input=yes, ai-train=no$/m,
 if (environment !== "atomm") for (const file of htmlFiles) {
   if (file === "404.html" || file === "studio.html" || file === "about.html") continue;
   assert.ok(builtPaths.has(file.replace(/\.html$/, ".md")), file + ": Markdown twin");
+}
+if (environment !== "atomm") {
+  for (const [region, browse, tail] of [
+    ["minnesota", "Browse by county", "Lakes in other counties"],
+    ["ontario", "Browse by name", "Records published without a lake name"],
+    ["united-states", "Browse by state", "Other lake and reservoir records"],
+  ]) {
+    const html = await readFile(new URL(`lakes/${region}.html`, dist), "utf8");
+    const document = new JSDOM(html).window.document;
+    const headings = [...document.querySelectorAll("main h2")].map(heading => heading.textContent.trim());
+    assert.ok(headings.includes(browse), region + ": browse heading");
+    assert.ok(headings.includes(tail), region + ": lake remainder heading");
+  }
 }
 const headers = await readFile(new URL("_headers", dist), "utf8");
 assert.ok(headers.includes("https://static.cloudflareinsights.com"), "Analytics allowed by CSP");

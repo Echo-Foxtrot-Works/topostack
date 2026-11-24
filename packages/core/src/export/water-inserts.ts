@@ -4,7 +4,7 @@ import { acrylicPanelGroups } from "../pipeline/water-insert-panels.js";
 import { panelBounds, type FabricationPanel } from "./panel-layout.js";
 import { nestableParts } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings, type SheetNestSettingsResult } from "./sheet-nest/resolve.js";
-import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1 } from "../types.js";
+import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1, ResolvedSheetNestSettings } from "../types.js";
 
 /**
  * The inserts as a geometry of their own, so the panel, SVG, master and
@@ -93,7 +93,7 @@ export function resolveAcrylicNestSettings(config: ProjectConfigV1): SheetNestSe
 }
 
 /** Acrylic parts to nest: one per insert, named by its `W` id. Empty without inserts. */
-export function acrylicNestableParts(ir: GeometryIRV1, spacingMm?: number): NestPartV1[] {
+export function acrylicNestableParts(ir: GeometryIRV1, settings?: number | ResolvedSheetNestSettings): NestPartV1[] {
   const acrylic = acrylicGeometry(ir, { markings: false });
-  return acrylic ? nestableParts(acrylic, spacingMm) : [];
+  return acrylic ? nestableParts(acrylic, settings) : [];
 }

@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Gráficos SVG devem ter {sizeMb} MB ou menos.",
   "terrainServiceStatus": "O serviço de terreno retornou {status}.",
   "terrainTileVersionMissing": "Falta a versão do conjunto de dados no tile de terreno.",
+  "terrainTileNoData": "O bloco de terreno não contém dados de elevação.",
   "terrainTileVersionsMixed": "Os tiles de terreno vieram de versões de dados diferentes. Tente de novo em instantes.",
   "terrainUnreachable": "Não foi possível acessar o serviço de terreno.",
   "waterOutlinesUnassembled": "Não foi possível montar os contornos de água.",

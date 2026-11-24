@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { unzipSync } from "fflate";
+import polygonClipping, { type Pair } from "polygon-clipping";
+import { DEFAULT_PROJECT, distanceToSegment, type Point2D } from "@topostack/core";
+import { shareUrl } from "@topostack/data-contracts/share-link";
 
 test("nests the parts onto stock sheets with sparrow and exports one file per sheet", async ({ page }) => {
   test.setTimeout(180_000);
@@ -9,7 +12,8 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
   await page.route("**/v1/events", (route) => route.fulfill({ status: 204 }));
 
-  await page.goto("/studio");
+  const split = { ...DEFAULT_PROJECT, workAreaWidthMm: 175, workAreaHeightMm: 140, optimizeMaterialUse: false };
+  await page.goto("/studio" + new URL(shareUrl(split, "https://example.test/studio")).hash);
   await expect(page.getByRole("tab", { name: "Place", exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: /generate terrain/i }).first().click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
@@ -47,10 +51,68 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   expect(names.some((name) => /-panel-|layer-\d+\.svg$/.test(name))).toBe(false);
   const manifest = JSON.parse(Buffer.from(files["crater-lake-project.json"]!).toString("utf8"));
   expect(manifest.result.fabrication.sheetNesting.engine).toMatchObject({ name: "sparrow", jaguaVersion: "0.8.3" });
-  const sheet = Buffer.from(files["crater-lake-sheet-01.svg"]!).toString("utf8");
-  expect(sheet).toContain('viewBox="0 0 400 300"');
-  // Each placed piece is its own root-level group, moved onto the sheet by its own matrix.
-  expect(sheet).toMatch(/<g id="layer-\d+-part-\d+--p1" data-name="[^"]+"[^>]* data-part="[^"]+" data-layers="[^"]+" transform="matrix\(/);
+  const panels: { filename: string; layerIds: string[]; parts: { label: string }[] }[] = manifest.result.fabrication.panels;
+  expect(panels.map(panel => panel.filename).sort()).toEqual(names.filter(name => /-sheet-\d+\.svg$/.test(name)).sort());
+  expect(manifest.result.fabrication.workArea.columns).toBeGreaterThan(1);
+  const { marginMm: margin, spacingMm: spacing } = manifest.result.fabrication.sheetNesting.settings;
+  let neighbouringPieces = 0;
+  for (const panel of panels) {
+    const markup = Buffer.from(files[panel.filename]!).toString("utf8");
+    const measured = await page.evaluate(svg => {
+      const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+      const root = doc.documentElement as unknown as SVGSVGElement;
+      const layers = new Set<string>(), labels = new Set<string>();
+      const rings: Point2D[][] = [];
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, vertices = 0;
+      for (const path of root.querySelectorAll<SVGPathElement>('[data-operation="CUT"] path')) {
+        const layer = /^(layer-\d+)-cut-/.exec(path.id)?.[1];
+        if (!layer) throw new Error("Unidentified wood cut " + path.id);
+        layers.add(layer);
+        const label = path.closest("[data-part]")?.getAttribute("data-part");
+        if (!label) throw new Error("Cut without a placed part " + path.id);
+        labels.add(label);
+        let matrix = new DOMMatrix();
+        for (let node: Element | null = path; node && node !== root; node = node.parentElement) {
+          const transform = (node as SVGGraphicsElement).transform.baseVal.consolidate();
+          if (transform) matrix = new DOMMatrix([transform.matrix.a, transform.matrix.b, transform.matrix.c, transform.matrix.d, transform.matrix.e, transform.matrix.f]).multiply(matrix);
+        }
+        const ring: Point2D[] = [];
+        for (const match of path.getAttribute("d")!.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)) {
+          const point = new DOMPoint(Number(match[1]), Number(match[2])).matrixTransform(matrix);
+          ring.push({ x: point.x, y: point.y });
+          vertices++;
+          minX = Math.min(minX, point.x); minY = Math.min(minY, point.y);
+          maxX = Math.max(maxX, point.x); maxY = Math.max(maxY, point.y);
+        }
+        if (!path.id.includes("-hole-")) rings.push(ring);
+      }
+      return { rings, layers: [...layers].sort(), labels: [...labels].sort(), bounds: [minX, minY, maxX, maxY], vertices, viewBox: root.getAttribute("viewBox") };
+    }, markup);
+    expect(measured.viewBox).toBe("0 0 400 300");
+    expect(measured.vertices).toBeGreaterThan(2);
+    expect(measured.layers).toEqual([...panel.layerIds].sort());
+    expect(measured.labels).toEqual(panel.parts.map(part => part.label).sort());
+    expect(measured.bounds[0]!).toBeGreaterThanOrEqual(margin - 0.02);
+    expect(measured.bounds[1]!).toBeGreaterThanOrEqual(margin - 0.02);
+    expect(measured.bounds[2]!).toBeLessThanOrEqual(400 - margin + 0.02);
+    expect(measured.bounds[3]!).toBeLessThanOrEqual(300 - margin + 0.02);
+    // Measure the emitted cut rings after the root group transform. Optimizing
+    // donor material is off, so every outer ring is an independently cut piece.
+    const pairs = (ring: Point2D[]): Pair[] => ring.map(({ x, y }) => [x, y]);
+    const vertexGap = (first: Point2D[], second: Point2D[]) => {
+      let gap = Infinity;
+      for (const point of first) for (let i = 0; i < second.length; i++) {
+        gap = Math.min(gap, distanceToSegment(point, second[i]!, second[(i + 1) % second.length]!));
+      }
+      return gap;
+    };
+    for (const [index, a] of measured.rings.entries()) for (const b of measured.rings.slice(index + 1)) {
+      expect(polygonClipping.intersection([pairs(a)], [pairs(b)])).toHaveLength(0);
+      expect(Math.min(vertexGap(a, b), vertexGap(b, a))).toBeGreaterThanOrEqual(spacing - 0.02);
+      neighbouringPieces++;
+    }
+  }
+  expect(neighbouringPieces).toBeGreaterThan(0);
   const readme = Buffer.from(files["README.txt"]!).toString("utf8");
   expect(readme).toContain("sparrow");
 

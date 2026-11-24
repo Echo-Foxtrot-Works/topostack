@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "SVG-Grafiken dürfen höchstens {sizeMb} MB groß sein.",
   "terrainServiceStatus": "Der Geländedienst hat {status} zurückgegeben.",
   "terrainTileVersionMissing": "Bei einer Geländekachel fehlt die Datensatzversion.",
+  "terrainTileNoData": "Die Geländekachel enthält keine Höhendaten.",
   "terrainTileVersionsMixed": "Die Geländekacheln stammen aus unterschiedlichen Datensatzversionen. Versuche es gleich noch einmal.",
   "terrainUnreachable": "Der Geländedienst ist nicht erreichbar.",
   "waterOutlinesUnassembled": "Die Gewässerumrisse konnten nicht zusammengesetzt werden.",

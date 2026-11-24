@@ -7,7 +7,6 @@ import type { PlaceResult } from "$lib/domain/geocode";
 import type { studioFeedbackContext } from "$lib/site/feedback";
 import type { ExportPhase } from "$lib/studio/export-notice";
 import type { HistoryAvailability } from "$lib/studio/history";
-import type { CompositionPreview } from "$lib/studio/map-compositions";
 import type { LazyComponent } from "$lib/studio/lazy-component";
 import type { PlaceableId, PlacementSession } from "$lib/studio/placement/placeables";
 import type { countDetailMarkings, DisclosureId, modeledLakes, PanelId, visibleWarnings } from "$lib/studio/preview-summary";
@@ -141,7 +140,6 @@ export interface StudioContext {
   workAreaLength(value: number): number;
 
   // Edits
-  applyComposition(base: ProjectConfigV1, preview: CompositionPreview): void;
   updateProject(patch: Partial<ProjectConfigV1>): void;
   updateFabrication(patch: Partial<ProjectConfigV1>, delayMs?: number): Promise<void>;
   updateMapDetails(patch: Partial<ProjectConfigV1>, delayMs?: number): Promise<void>;

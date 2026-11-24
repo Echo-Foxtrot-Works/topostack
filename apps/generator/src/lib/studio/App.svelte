@@ -11,9 +11,9 @@
   import { trackUsage } from "$lib/site/usage";
   import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { boundsForProject, exportBlockMessage, exportBlockReason } from "@topostack/core";
+  import { boundsForProject, exportBlockMessage, exportBlockReason, graphicsForOutputMode } from "@topostack/core";
   import { exportBlockText } from "$lib/i18n/warnings";
-  import { errorText, localMessage } from "$lib/i18n/errors";
+  import { errorText } from "$lib/i18n/errors";
   import { readProjectFile } from "$lib/studio/project-file";
   import { copyShareLink as copyDesignLink, shareDesign as shareDesignLink } from "$lib/studio/share-design";
   import { loadProject } from "$lib/storage/storage";
@@ -31,7 +31,6 @@
   import { readAtommLocale } from "$lib/atomm/atomm-locale";
   import { formatNumber, t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import { ProjectHistory } from "$lib/studio/history";
-  import type { CompositionPreview } from "$lib/studio/map-compositions";
   import { PanelState } from "$lib/studio/panel-state.svelte";
   import { keepsPendingWork as keepsPendingEdits, refreshKindFor } from "$lib/studio/edit-classification";
   import { autosaveProject } from "$lib/studio/autosave.svelte";
@@ -180,9 +179,7 @@
   const themeColor = $derived.by(() => { void theme.resolved; return readRoleColor(document.documentElement, "background") ?? ""; });
   let booted = $state(false);
   let historyAvailability = $state({ canUndo: false, canRedo: false });
-  type CompositionSnapshot = CompositionPreview & { sourceProject: ProjectConfigV1 };
-  type HistoryEntry = ProjectConfigV1 | CompositionSnapshot;
-  const projectHistory = new ProjectHistory<HistoryEntry>((availability) => { historyAvailability = availability; });
+  const projectHistory = new ProjectHistory((availability) => { historyAvailability = availability; });
   // Worker lifecycle, edit revisions, and debounced refreshes. Every edit that
   // affects generation invalidates it, so stale work can never commit.
   const pipeline = new PreviewPipeline(() => loadGeometryClient(untrack(() => takeWarmWorker)));
@@ -440,8 +437,8 @@
     // so no English flashes first; a host that never answers gets English.
     let localeLoaded!: () => void;
     const atommLocale = new Promise<void>((resolve) => { localeLoaded = resolve; });
-    // The platform SDK loads synchronously before the app; without it there is no language to wait for.
-    const localeTimeout = window.setTimeout(() => localeLoaded(), window.atomm ? ATOMM_LOCALE_WAIT_MS : 0);
+    // A public iframe can still be loading the SDK when the app mounts.
+    const localeTimeout = window.setTimeout(localeLoaded, embeddedInPlatform ? ATOMM_LOCALE_WAIT_MS : 0);
     if (embeddedInPlatform) void Promise.all([import("$lib/atomm/AtommWorkbench.svelte"), atommLocale]).then(([module]) => { if (!cancelled) AtommWorkbench = module.default; }).catch(() => { if (!cancelled) atommLayoutFailed = true; });
     const disconnectAtomm = connectAtomm(() => {
       if (!embeddedInPlatform) return { geometry, project, sheetPlan: sheetNesting.exportPlan, acrylicSheetPlan: acrylicSheetNesting.exportPlan };
@@ -495,8 +492,7 @@
       openExample: (next, previous) => openProject(next, previous),
       setStatus: (message) => { status = message; },
     }).then(({ autosave }) => {
-      // Autosave must start even when restoring failed, or later edits are lost,
-      // unless it would overwrite a saved project that could not be backed up.
+      // A failed primary read or backup leaves both persistence keys protected.
       if (!cancelled && autosave) booted = true;
       if (!cancelled) loadRealTerrain();
       window.clearTimeout(startupWait);
@@ -509,7 +505,7 @@
     if (!embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm" && typeof agentContext?.registerTool === "function") {
       void import("$lib/studio/webmcp").then(({ connectWebMcp }) => { if (!cancelled) disconnectWebMcp = connectWebMcp(agentContext, webMcpHost()); });
     }
-    return () => { cancelled = true; window.clearTimeout(startupWait); disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
+    return () => { cancelled = true; window.clearTimeout(startupWait); window.clearTimeout(localeTimeout); disconnectAtomm(); disconnectWebMcp(); exportNotice.dispose(); sheetNesting.dispose(); acrylicSheetNesting.dispose(); automaticNesting.dispose(); generationAbort?.abort(); pipeline.dispose(); placement.dispose(); };
   });
 
   autosaveProject(() => project, () => booted, () => { status = t("status.localSaveUnavailable"); });
@@ -577,39 +573,6 @@
     void updateFabrication({ verticalExaggeration });
   }
 
-  // Retain source and artwork only for a composition transition. Capture its
-  // inverse when traversed so Redo also restores the version actually left.
-  function compositionSnapshot(): CompositionSnapshot {
-    return { project, sourceProject, source: activeSource, geometry };
-  }
-
-  function inverseEntry(target: HistoryEntry): HistoryEntry {
-    return "geometry" in target && !terrainDataStale && geometry.configFingerprint === currentFingerprint
-      ? compositionSnapshot() : project;
-  }
-
-  /** Adopt the exact preview the maker chose, with one discrete undo step. */
-  function applyComposition(base: ProjectConfigV1, preview: CompositionPreview): void {
-    if (project !== base || previewBusy || placement.session || terrainDataStale) return;
-    if (exportBlockMessage(preview.geometry, preview.project)) return;
-    projectHistory.push(compositionSnapshot());
-    installComposition(preview, preview.project);
-    status = previewUpdatedStatus("fabrication", activeSource, project, sourceRequirements(project));
-  }
-
-  function installComposition(preview: CompositionPreview, preparedFor: ProjectConfigV1): void {
-    invalidatePendingPreview();
-    project = preview.project;
-    sourceProject = preparedFor;
-    activeSource = preview.source;
-    geometry = preview.geometry;
-    selectedAirspaceLevel = undefined;
-    selectedLayer = featuredLayerIndex(geometry);
-    mode = defaultModeFor(project.outputMode);
-    previewNotice = "";
-    generationState = "ready";
-  }
-
   function updateDepthLayerLimit(value: number): void {
     if (!Number.isFinite(value)) return;
     const waterDepthLayerLimit = Math.max(1, Math.round(value));
@@ -656,12 +619,7 @@
    * cosmetic change patches the preview in place, and anything else rebuilds
    * the preview from the retained source.
    */
-  function restoreProject(target: HistoryEntry, action: "Undo" | "Redo"): void {
-    if ("geometry" in target) {
-      installComposition(target, target.sourceProject);
-      status = t("status.historyApplied", { action: action === "Undo" ? "undo" : "redo" });
-      return;
-    }
+  function restoreProject(target: ProjectConfigV1, action: "Undo" | "Redo"): void {
     const changed = changedProjectKeys(project, target);
     const sourceChanged = changedProjectKeys(target, sourceProject);
     // Like the edits themselves, undoing a rename or restyle keeps Generate running.
@@ -691,8 +649,8 @@
     loadRealTerrain();
   }
 
-  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(inverseEntry); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
-  function redo(): void { if (placement.session) return; const next = projectHistory.redo(inverseEntry); if (next) restoreProject(next, "Redo"); }
+  function undo(): boolean { if (placement.session) return false; const previous = projectHistory.undo(project); if (previous) restoreProject(previous, "Undo"); return Boolean(previous); }
+  function redo(): void { if (placement.session) return; const next = projectHistory.redo(project); if (next) restoreProject(next, "Redo"); }
 
   function handleHistoryKey(event: KeyboardEvent): void {
     const shortcut = historyShortcut(event);
@@ -715,10 +673,10 @@
   function appendLoadWarnings(next: GeometryIRV1, loaded: Pick<TerrainLoadResult, "fallback" | "fallbackReason" | "waterWarning">): void {
     if (loaded.fallback) {
       next.warnings.push(loaded.fallbackReason
-        ? { code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain. (${loaded.fallbackReason})`, messageKey: "mapServiceFallbackBecause", params: { reason: localMessage(loaded.fallbackReason) } }
+        ? { code: "DATA_FALLBACK", message: `The map service was unavailable, so this preview uses deterministic sample terrain. (${loaded.fallbackReason})`, messageKey: "mapServiceFallbackBecause", params: { reason: loaded.fallbackReason } }
         : { code: "DATA_FALLBACK", message: "The map service was unavailable, so this preview uses deterministic sample terrain.", messageKey: "mapServiceFallback" });
     }
-    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})`, messageKey: "waterOutlinesFailed", params: { reason: localMessage(loaded.waterWarning) } });
+    if (loaded.waterWarning) next.warnings.push({ code: "LAKE_DATA_UNAVAILABLE", message: `Water outlines could not be applied, so the terrain has no water adjustment. (${loaded.waterWarning})`, messageKey: "waterOutlinesFailed", params: { reason: loaded.waterWarning } });
   }
 
   const styleOf = (config: ProjectConfigV1) => JSON.stringify([config.lineStyle, config.textStyle]);
@@ -777,6 +735,11 @@
 
   function updateFabrication(patch: Partial<ProjectConfigV1>, delayMs = PREVIEW_REFRESH_DELAY_MS): Promise<void> {
     patch = edits.retainAirspaceThickness(project, patch);
+    if (patch.outputMode === "engraving") {
+      const placed = patch.placedGraphics ?? project.placedGraphics;
+      const graphics = graphicsForOutputMode("engraving", placed);
+      if (graphics !== placed) patch = { ...patch, placedGraphics: graphics };
+    }
     const updatesCustomData = patch.markers !== undefined || patch.customLines !== undefined || "customGraphics" in patch || "placedGraphics" in patch;
     const nextWidth = patch.widthMm ?? project.widthMm;
     const nextHeight = patch.heightMm ?? project.heightMm;
@@ -826,27 +789,23 @@
 
   /** An `automatic` run is the embed loading terrain on its own: it keeps the current view and skips the progress toasts. */
   async function generate({ automatic = false }: { automatic?: boolean } = {}): Promise<void> {
-    // A chart saved again since a lake took it (a project imported with a newer
-    // copy) carves as it is now, so the project says so before it is built:
-    // otherwise the design's fingerprint would name content that was not carved.
-    // This is bookkeeping, not an edit, so it is not an undo step.
-    // When the chart store cannot be read, the references stay as they are and
-    // loading warns about any chart it cannot find.
-    const charts = project.userDepthCharts;
-    if (charts) {
-      const current = await import("$lib/storage/user-charts").then(({ currentChartReferences }) => currentChartReferences(charts)).catch(() => charts);
-      if (current !== project.userDepthCharts) project = { ...project, userDepthCharts: current };
-    }
     invalidatePendingPreview();
     const revision = pipeline.revision;
     const controller = new AbortController(); generationAbort = controller;
-    const generationProject: ProjectConfigV1 = { ...project, location: { ...project.location, bounds: boundsForProject(project) } };
+    let generationProject: ProjectConfigV1 = project;
     generationState = "loading"; generationStep = 1; status = t("status.fetchingElevation");
     trackUsage("generation_started", generationProject.outputMode);
     const progressToast = automatic ? Promise.resolve(undefined) : showToast({ type: "info", message: t("status.toastBuildingLayers"), duration: 0 });
     // Throws at each await boundary once canceled (AbortError) or superseded by a newer edit.
     const checkpoint = () => { controller.signal.throwIfAborted(); if (!pipeline.isCurrent(revision)) throw new DOMException("Generation superseded", "AbortError"); };
     try {
+      const charts = generationProject.userDepthCharts;
+      if (charts) {
+        const current = await import("$lib/storage/user-charts").then(({ currentChartReferences }) => currentChartReferences(charts)).catch(() => charts);
+        checkpoint();
+        if (current !== charts) project = { ...project, userDepthCharts: current };
+      }
+      generationProject = { ...project, location: { ...project.location, bounds: boundsForProject(project) } };
       const { loadTerrain } = await terrainLoaders();
       checkpoint();
       const loaded = await loadTerrain(generationProject, controller.signal, (stage) => {
@@ -870,7 +829,7 @@
       // Cosmetic edits deliberately do not cancel expensive terrain work. Merge
       // their latest values instead of replacing them with the request snapshot.
       // Names are bookkeeping and do not cancel a run either; keep the ones typed meanwhile.
-      const completedProject = { ...builtProject, name: project.name, explodedPreview: project.explodedPreview, markers: edits.withLiveNames(builtProject.markers, project.markers), customLines: edits.withLiveNames(builtProject.customLines, project.customLines) };
+      const completedProject = { ...builtProject, name: project.name, explodedPreview: project.explodedPreview, sheetNesting: project.sheetNesting, waterInsertSheetNesting: project.waterInsertSheetNesting, markers: edits.withLiveNames(builtProject.markers, project.markers), customLines: edits.withLiveNames(builtProject.customLines, project.customLines) };
       const completedGeometry = { ...next, projectName: completedProject.name };
       dismissedWarnings = [];
       void sourcePreparation?.then((cache) => cache.clear(), () => undefined);
@@ -976,7 +935,6 @@
 
   // The sidebar panels and preview read App state through this object; see StudioContext.
   provideStudio({
-    applyComposition,
     get project() { return project; },
     get sourceProject() { return sourceProject; },
     get activeSource() { return activeSource; },

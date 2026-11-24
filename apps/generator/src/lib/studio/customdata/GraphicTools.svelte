@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Crosshair, ImageUp, Move, Shapes, Trash2 } from "@lucide/svelte";
-  import { GRAPHIC_OPERATIONS, iconShapePolygons, lengthUnit, displayLength, MAX_CUSTOM_DATA_NAME_LENGTH, type CustomGraphicV1, type GraphicOperation } from "@topostack/core";
+  import { graphicOperationsFor, iconShapePolygons, lengthUnit, displayLength, MAX_CUSTOM_DATA_NAME_LENGTH, type CustomGraphicV1, type GraphicOperation } from "@topostack/core";
   import * as edits from "$lib/studio/project-edits";
   import { graphicPlaceableId } from "$lib/studio/placement/placeables";
   import { polygonsPath } from "$lib/studio/svg-path";
@@ -33,7 +33,7 @@
     <button type="button" class="marker-add-button" onclick={() => input.click()} disabled={uploading || !edits.canAddCustomGraphic(studio.project)}><ImageUp size={13} />{uploading ? "Reading SVG…" : "Upload SVG"}</button>
   </div>
   {#if graphics.length === 0}
-    <small class="marker-empty">Upload an SVG, such as a logo or a badge, then place it on the piece. Each graphic can be engraved, scored as an outline, or cut out of the sheet it sits on.</small>
+    <small class="marker-empty">Upload an SVG, such as a logo or a badge, then place it on the piece. {studio.project.outputMode === "engraving" ? "Engrave it as a filled shape or score its outline." : "Each graphic can be engraved, scored as an outline, or cut out of the sheet it sits on."}</small>
   {:else}
     <div class="marker-icon-list" aria-label="Uploaded graphics">
       {#each graphics as graphic (graphic.id)}
@@ -63,7 +63,7 @@
             </div>
             <!-- While placing, the preview's toolbar owns these; its draft would overwrite a change here. -->
             <span class="marker-icon-anchor graphic-operation" role="radiogroup" aria-label={`What the laser does with ${label}`}>
-              {#each GRAPHIC_OPERATIONS as operation (operation)}
+              {#each graphicOperationsFor(studio.project.outputMode) as operation (operation)}
                 {@const chosen = item.operation === operation}
                 <button type="button" role="radio" aria-checked={chosen} data-state={chosen ? "on" : "off"} tabindex={chosen ? 0 : -1} disabled={placing} onclick={() => applyCustomDataEdit(edits.updatePlacedGraphic(studio.project, item.id, { operation }))} onkeydown={navigateChoice}>{OPERATION_LABELS[operation]}</button>
               {/each}
@@ -74,5 +74,5 @@
     </div>
   {/if}
   <input bind:this={input} data-graphic-import class="ldt-visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept=".svg,image/svg+xml" onchange={(event) => { const target = event.currentTarget; uploading = true; void importGraphic(target.files?.[0]).finally(() => { target.value = ""; uploading = false; }); }} />
-  <small class="marker-note">Graphics sit on whichever sheet shows at each point, like markers. Engraved graphics are filled; strokes become outlines and white areas are left out. A cut opens the sheet so the one below shows through; islands inside a cut through the bottom sheet fall out.</small>
+  <small class="marker-note">Graphics sit on whichever sheet shows at each point, like markers. Engraved graphics are filled; strokes become outlines and white areas are left out. {studio.project.outputMode === "engraving" ? "Changing a layered cut graphic to a flat engraving scores its outline." : "A cut opens the sheet so the one below shows through; islands inside a cut through the bottom sheet fall out."}</small>
 </div>

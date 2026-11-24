@@ -1,7 +1,7 @@
 import { flushSync, mount, tick, unmount } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, type Point2D, type ProjectConfigV1 } from "@topostack/core";
+import { DEFAULT_PROJECT, generateGeometry, fittedWaterInsert, type GeometryIRV1, type Point2D, type ProjectConfigV1 } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 import { draftProject, graphicPlaceableId, placeableFor, placementContext, type PlaceableId, type PlacementSession } from "./placeables";
 import { placementViewBox } from "./viewport";
@@ -33,7 +33,7 @@ afterEach(async () => {
 });
 
 /** Mounts a controlled layer: `onChange` feeds the next session back in, as the studio does. */
-function render(options: { project?: ProjectConfigV1; selected?: PlaceableId; interactive?: boolean } = {}) {
+function render(options: { geometry?: GeometryIRV1; project?: ProjectConfigV1; selected?: PlaceableId; interactive?: boolean } = {}) {
   const base = options.project ?? project;
   const state = new SvelteMap<string, PlacementSession>([["session", { selected: options.selected ?? "north", draft: {} }]]);
   const onChange = vi.fn((session: PlacementSession) => { state.set("session", session); });
@@ -42,7 +42,7 @@ function render(options: { project?: ProjectConfigV1; selected?: PlaceableId; in
   component = mount(PlacementLayer, {
     target,
     props: {
-      geometry, hiddenPrefixes: ["north-", "scale-"], project: base, context, widthMm: geometry.widthMm, heightMm: geometry.heightMm, marginMm: MARGIN_MM,
+      geometry: options.geometry ?? geometry, hiddenPrefixes: ["north-", "scale-"], project: base, context, widthMm: geometry.widthMm, heightMm: geometry.heightMm, marginMm: MARGIN_MM,
       interactive: options.interactive ?? true,
       get session() { return state.get("session")!; },
       onChange, onDone, onCancel,
@@ -288,4 +288,18 @@ describe("PlacementLayer", () => {
       expect(target.querySelector("button.placement-remove")).toBeNull();
     });
   });
+});
+
+
+it("shows a crossing road on the fitted acrylic while placing artwork", () => {
+  const insert = {
+    id: "W1", lakeKey: "42", surfaceId: "bowl", layerIndex: 0,
+    polygons: [{ outer: [{ x: -40, y: -20 }, { x: 40, y: -20 }, { x: 40, y: 20 }, { x: -40, y: 20 }, { x: -40, y: -20 }], holes: [] }],
+    markings: [{ id: "causeway", operation: "engrave" as const, kind: "road" as const, points: [{ x: -40, y: 5 }, { x: 40, y: 5 }] }],
+  };
+  const material = { thicknessMm: 3, kerfMm: 0.15, fitClearanceMm: 0.1, ledgeMm: 2 };
+  const { svg } = render({ geometry: { ...geometry, waterInsertMaterial: material, waterInserts: [insert] } });
+  const points = fittedWaterInsert(insert, material.fitClearanceMm).markings[0]!.points;
+  const d = points.map((p, index) => `${index ? "L" : "M"}${p.x} ${p.y}`).join(" ");
+  expect(svg.querySelector(`[data-placement-artwork] path[d="${d}"]`)).not.toBeNull();
 });

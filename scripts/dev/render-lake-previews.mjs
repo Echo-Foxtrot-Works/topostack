@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { sha256Hex } from "../lib/hash.mjs";
+import { previewCheckpoints, previewInputHash, previewIsCurrent } from "../lib/lake-preview-cache.mjs";
+import { writeFileAtomic } from "../lib/files.mjs";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -32,7 +34,8 @@ const { values: args } = parseArgs({ options: {
 } });
 const out = resolve(args.out ?? ".topostack/lake-previews");
 // One at a time by default: the map API rate-limits uncached terrain per client, and this shares its limits with visitors.
-const concurrency = Math.max(1, Number(args.concurrency ?? 1));
+const concurrency = Number(args.concurrency ?? 1);
+if (!Number.isSafeInteger(concurrency) || concurrency < 1) throw new Error("Concurrency must be a positive integer.");
 process.env.VITE_MAP_API_URL = args.api ?? process.env.VITE_MAP_API_URL ?? "https://topostack.app";
 try { execFileSync("cwebp", ["-version"], { stdio: "ignore" }); } catch { throw new Error("cwebp is required (brew install webp)."); }
 
@@ -56,13 +59,9 @@ try {
   await mkdir(out, { recursive: true });
   const manifestPath = join(out, "manifest.json");
   const manifest = existsSync(manifestPath) ? JSON.parse(await readFile(manifestPath, "utf8")) : { rendererVersion: RENDERER_VERSION, api: process.env.VITE_MAP_API_URL, lakes: {} };
-  const inputHash = (lake) => sha256Hex(JSON.stringify([RENDERER_VERSION, process.env.VITE_MAP_API_URL, directory.updated, lake.id, lake.bounds])).slice(0, 16);
-
-  const queue = slugs.filter((slug) => {
-    const entry = manifest.lakes[slug];
-    return !(entry && entry.inputHash === inputHash(lakes.get(bySlug.get(slug).id)) && existsSync(join(out, `${slug}.webp`)));
-  });
-  console.log(`${slugs.length - queue.length} up to date, ${queue.length} to render with concurrency ${concurrency}.`);
+  const queue = [...new Set(slugs)];
+  const checkpoint = previewCheckpoints(manifestPath, manifest);
+  let reused = 0;
   const failures = [];
   let done = 0;
   const started = Date.now();
@@ -84,18 +83,22 @@ try {
       }
     }
     const t1 = Date.now();
-    const image = renderPreview(prepared.input);
-    const png = join(out, `${slug}.png`);
-    await writeFile(png, PNG.sync.write({ width: image.width, height: image.height, data: Buffer.from(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength) }));
+    const inputHash = previewInputHash([RENDERER_VERSION, process.env.VITE_MAP_API_URL, lake, place.name, place.place, directory.sources.find((source) => source.id === lake.sourceId)], prepared);
     const webp = join(out, `${slug}.webp`);
-    execFileSync("cwebp", ["-quiet", "-q", "82", "-m", "6", png, "-o", webp]);
-    await rm(png);
-    const { size } = await stat(webp);
+    if (await previewIsCurrent(manifest.lakes[slug], inputHash, webp)) {
+      reused++;
+      return;
+    }
+    const image = renderPreview(prepared.input);
+    const png = PNG.sync.write({ width: image.width, height: image.height, data: Buffer.from(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength) });
+    const encoded = execFileSync("cwebp", ["-quiet", "-q", "82", "-m", "6", "-o", "-", "--", "-"], { input: png, maxBuffer: 32 * 1024 * 1024 });
+    await writeFileAtomic(webp, encoded);
+    const size = encoded.byteLength;
     manifest.lakes[slug] = {
       name: place.name, place: place.place, width: image.width, height: image.height, bytes: size,
       maxDepthM: Math.round(image.maxDepthM * 10) / 10, contourIntervalM: image.contourIntervalM, surveyedShare: Math.round(image.surveyedShare * 1000) / 1000,
       surveys: prepared.datasetVersion.split("+").filter((id) => surveyIds.has(id)), bathymetryStatus: prepared.bathymetryStatus, datasetVersion: prepared.datasetVersion, bounds: prepared.bounds,
-      grid: [prepared.input.width, prepared.input.height], inputHash: inputHash(lake), renderedAt: new Date().toISOString(),
+      grid: [prepared.input.width, prepared.input.height], inputHash, sha256: sha256Hex(encoded), renderedAt: new Date().toISOString(),
       timingMs: { data: t1 - t0, render: Date.now() - t1 },
     };
     done++;
@@ -103,7 +106,7 @@ try {
   }
 
   const pending = [...queue];
-  await Promise.all(Array.from({ length: concurrency }, async () => {
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
     for (let slug = pending.shift(); slug; slug = pending.shift()) {
       try { await renderOne(slug); } catch (error) {
         failures.push(slug);
@@ -113,15 +116,15 @@ try {
         await rm(join(out, `${slug}.webp`), { force: true });
       }
       // Keep the manifest current so an interrupted run resumes where it stopped.
-      await writeFile(manifestPath, JSON.stringify(manifest, null, 1) + "\n");
+      await checkpoint();
     }
   }));
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 1) + "\n");
+  await checkpoint();
 
   const cards = Object.entries(manifest.lakes).sort(([a], [b]) => a.localeCompare(b)).map(([slug, entry]) => `<figure><img src="${slug}.webp" width="${entry.width}" height="${entry.height}" loading="lazy" alt=""><figcaption><strong>${entry.name}</strong>, ${entry.place} · max ${entry.maxDepthM} m · contours every ${entry.contourIntervalM} m · surveyed ${Math.round(entry.surveyedShare * 100)}% · ${(entry.bytes / 1024).toFixed(0)} KB</figcaption></figure>`).join("\n");
   await writeFile(join(out, "index.html"), `<!doctype html><meta charset="utf-8"><title>Lake previews</title><style>body{font:14px system-ui;margin:24px;background:#f4f1ea}figure{display:inline-block;width:480px;margin:0 16px 24px 0;vertical-align:top}img{width:100%;height:auto;border:1px solid #ccc}</style>\n${cards}\n`);
   const seconds = (Date.now() - started) / 1000;
-  console.log(`Rendered ${done} in ${seconds.toFixed(0)} s (${done ? (seconds / done).toFixed(1) : "–"} s each); ${failures.length} failed${failures.length ? `: ${failures.join(", ")}` : ""}. Review ${join(out, "index.html")}`);
+  console.log(`Reused ${reused}, rendered ${done} in ${seconds.toFixed(0)} s (${done ? (seconds / done).toFixed(1) : "–"} s each); ${failures.length} failed${failures.length ? `: ${failures.join(", ")}` : ""}. Review ${join(out, "index.html")}`);
   if (failures.length) process.exitCode = 1;
 } finally {
   await vite.close();

@@ -17,7 +17,7 @@
   "lakesBodySources": "Surveyed floors come from underwater measurements or the terrain data. Where a lake has none, its floor is modelled from the shoreline, the slopes around it and published depth estimates. Neither reflects today's water level.",
   "lakesBodyControls": "Depth exaggeration deepens lake floors relative to the hills. Limit depth layers caps how many sheets go below the lowest land, and Fit lake depth compresses each lake into that allowance while keeping its shoreline.",
   "exportTitle": "Check the export",
-  "exportBody": "For layered reliefs, set material width and height in Export. Pieces arrange automatically with 3 mm margins and 2 mm spacing; choose Use current layout to finish early. Open in Studio sends one editable SVG of the entire layout. Download includes the artwork, settings and data credits, plus an assembly guide for layered reliefs.",
+  "exportBody": "For layered reliefs, set material width and height in Export. Pieces arrange automatically with 3 mm margins and 2 mm spacing; choose Use current layout to finish early. For layered reliefs, Open in Studio sends the wood layout as one editable SVG. Acrylic files are available in Download. Download includes the artwork, settings and data credits, plus an assembly guide for layered reliefs.",
   "assemblyTitle": "Assembly",
   "assemblyBody": "Keep the nested pieces with their sheets and glue from the lowest layer upward, following the assembly guide. Test-fit a small piece before cutting the whole project."
 }

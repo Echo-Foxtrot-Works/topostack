@@ -1,6 +1,21 @@
 import { pageSecurityPolicy } from "../scripts/lib/static-headers.mjs";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import { PbfWriter } from "pbf";
+
+function landcoverTile(): Buffer {
+  const tile = new PbfWriter();
+  tile.writeMessage(3, (_, layer) => {
+    layer.writeStringField(1, "landcover");
+    layer.writeMessage(2, (_, feature) => {
+      feature.writeVarintField(3, 3); // Polygon covering the tile.
+      feature.writePackedVarint(4, [9, 0, 0, 26, 8192, 0, 0, 8192, 8191, 0, 15]);
+    }, null);
+    layer.writeVarintField(5, 4096);
+    layer.writeVarintField(15, 2);
+  }, null);
+  return Buffer.from(tile.finish());
+}
 
 for (const output of ["Layered relief", "Flat engraving"]) {
   test(`renders basemap data in ${output} under the production security policy`, async ({ page, baseURL }) => {
@@ -78,14 +93,25 @@ for (const failure of ["source metadata", "tiles", "worker", "stalled style"]) {
         ],
       } });
     });
-    await page.route("https://tiles.openfreemap.org/test*", route => route.fulfill({ status: 503, body: "Unavailable" }));
-    await page.route("https://tiles.openfreemap.org/test-tiles/**", route => route.fulfill({ status: 503, body: "Unavailable" }));
-    if (failure === "worker") await page.route("**/maplibre-gl-worker-*.js", route => route.abort());
+    await page.route("https://tiles.openfreemap.org/test-source", route => route.fulfill({ status: 503, body: "Unavailable" }));
+    const tile = landcoverTile();
+    await page.route("https://tiles.openfreemap.org/test-tiles/**", route => failure === "tiles"
+      ? route.fulfill({ status: 503, body: "Unavailable" })
+      : route.fulfill({ contentType: "application/vnd.mapbox-vector-tile", body: tile }));
+    let blockedWorkers = 0;
+    if (failure === "worker") {
+      // Confirm that the same style and tile data work with the worker available.
+      await page.goto("/studio");
+      await page.getByRole("radio", { name: "Map", exact: true }).click();
+      await expect(page.locator(".map-caption")).toContainText("Drag the map to choose your terrain", { timeout: 15_000 });
+      await page.route("**/maplibre-gl-worker-*.js", route => { blockedWorkers += 1; return route.abort(); });
+    }
     await page.goto("/studio");
     await page.getByRole("radio", { name: "Map", exact: true }).click();
     // A worker fetch can reject immediately, before the loading state is observed.
     if (failure !== "worker") await expect(page.locator(".map-caption")).toContainText("Loading map");
     await expect(page.locator(".preview-notice")).toContainText("Map could not load", { timeout: 25_000 });
+    if (failure === "worker") expect(blockedWorkers).toBeGreaterThan(0);
     await expect(page.getByRole("radio", { name: "Cut layers", exact: true })).toHaveAttribute("aria-checked", "true");
     await page.locator(".location-card").click();
     await expect(page.getByRole("dialog", { name: "Choose anywhere" })).toBeVisible();

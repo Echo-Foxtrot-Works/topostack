@@ -9,6 +9,11 @@ export function groundWidthMFor(bounds: GeoBounds): number {
   return Math.abs((bounds.east - bounds.west) * radians) * EARTH_RADIUS_M * Math.cos(((bounds.north + bounds.south) / 2) * radians);
 }
 
+/** Contours mark interior elevations, leaving one interval at each end. */
+export function engravingContourIntervalM(reliefM: number, count: number): number {
+  return count > 0 ? reliefM / (count + 1) : 0;
+}
+
 /**
  * Resolve a config and its terrain relief into physical stack dimensions.
  *

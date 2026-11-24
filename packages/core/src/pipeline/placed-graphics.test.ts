@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, generateGeometry, layerToSvg, placedGraphicPlacementAt, projectFingerprint, validateProject, type CustomGraphicV1, type PlacedGraphicV1, type Polygon2D, type ProjectConfigV1 } from "../index.js";
+import { buildProjectPackage, DEFAULT_PROJECT, generateGeometry, parseProject, layerToSvg, placedGraphicPlacementAt, projectFingerprint, validateProject, type CustomGraphicV1, type PlacedGraphicV1, type Polygon2D, type ProjectConfigV1 } from "../index.js";
 import { gridSource } from "../test-support/sources.js";
 import { operationBody } from "../test-support/svg.js";
 
@@ -96,8 +96,20 @@ describe("placed graphics in generation", () => {
   it("warns when a cut through the bottom sheet leaves islands with nothing under them", () => {
     const corner = generateGeometry(withGraphic({ operation: "cut", placement: { anchor: "top-left", offset: { x: 0, y: 0 } } }), source);
     expect(corner.warnings.some(({ code }) => code === "GRAPHIC_LOOSE_PIECES")).toBe(true);
-    const flat = generateGeometry(withGraphic({ operation: "cut" }, { ...base, outputMode: "engraving" }), source);
-    expect(flat.warnings.some(({ code }) => code === "GRAPHIC_LOOSE_PIECES")).toBe(true);
+  });
+
+  it("keeps a legacy flat cut graphic as outlined engraving in the downloaded file", async () => {
+    const legacy = withGraphic({ operation: "cut" }, { ...base, outputMode: "engraving" });
+    const migrated = parseProject(legacy);
+    expect(migrated.placedGraphics![0]!.operation).toBe("score");
+    for (const settings of [legacy, migrated]) {
+      const ir = generateGeometry(settings, source);
+      expect(ir.layers[0]!.polygons[0]!.holes).toEqual([]);
+      expect(ir.warnings.some(({ code }) => code === "GRAPHIC_LOOSE_PIECES")).toBe(false);
+      const svg = await buildProjectPackage(ir, settings).master.blob.text();
+      expect(svg).toContain("graphic-placed-0001-score-");
+      expect(svg).not.toContain('data-operation="CUT"');
+    }
   });
 
   it("omits a graphic too large for the material with a warning", () => {

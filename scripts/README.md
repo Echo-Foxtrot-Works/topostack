@@ -38,7 +38,7 @@ Local helpers; nothing in CI depends on them.
 | `capture-readme-assets.mjs` | Screenshot the studio and workflows for the README images | manual |
 | `make-readme-media.mjs` | Turn the Atomm cover loop into the README's animated preview, `docs/images/topostack-stack.webp` (needs `ffmpeg` and `img2webp`, or `FFMPEG_PATH` / `IMG2WEBP_PATH`); see `docs/images/README.md` | manual |
 | `atomm-native-capture.mjs` | Capture-only renderer access used by the listing script; preserves real meshes/materials and renders each motion frame at its output resolution; never ships in the app | helper |
-| `capture-atomm-listing.mjs` | Capture current Atomm listing cards and videos (`TOPOSTACK_APP_URL=http://127.0.0.1:5284 node scripts/dev/capture-atomm-listing.mjs`; requires Playwright Chromium and `ffmpeg`, or `FFMPEG_PATH`); see `docs/images/README.md` | manual |
+| `capture-atomm-listing.mjs` | Capture the Atomm cover and gallery PNGs with Playwright Chromium (`TOPOSTACK_CAPTURE_URL=http://127.0.0.1:5284 node scripts/dev/capture-atomm-listing.mjs`); see `docs/images/README.md` | manual |
 | `capture-atomm-tips.mjs` | Capture the Atomm Tips walkthrough pictures from the studio running as the embed (`node scripts/dev/capture-atomm-tips.mjs` against `npm run dev`; needs `cwebp`); see `docs/images/README.md` | manual |
 | `capture-examples.mjs` | Generate each example project in the studio and save its render, sharing card and project file (`node scripts/dev/capture-examples.mjs [slug ...]` against `npm run dev`; needs `cwebp`) | manual |
 | `capture-social-cards.mjs` | Draw the 1200×630 sharing cards for guides, hubs and lake regions into `apps/generator/static/images/cards/` from pictures already in the repository and the lake directory (`node scripts/dev/capture-social-cards.mjs [name ...]`; Playwright Chromium only, no dev server); see [seo-operations.md](../docs/seo-operations.md). Card layout: `lib/social-card.mjs` | manual |
@@ -149,6 +149,7 @@ The changelog, version consistency, and the Atomm marketplace bundle. See [chang
 | `checksum-atomm.mjs` | Write and verify the SHA-256 of the packaged Atomm ZIP | `npm run release:atomm` |
 | `package-atomm-listing.mjs` | Package the Atomm marketplace listing (copy and cover assets) | `npm run package:atomm-listing` |
 | `package-atomm.mjs` | Build and package the Atomm static artifact as a versioned ZIP | `npm run package:atomm` |
+| `publish-web-release.mjs` | Create the web release or resume publication from its verified tag | CI after production deployment |
 | `publish-atomm-release.mjs` | Tag, draft, upload, and publish the Atomm GitHub release for a version, with the changelog since the previous one | CI/workflows (automatically after production CI) |
 | `validate-submission-env.mjs` | Fail-closed gate for Atomm packaging: the embedded map API URL must be production | run by `package-atomm.mjs`; also manual |
 | `versions.mjs` | Check or bump the one release version across workspaces, the lockfile, and the Atomm manifest | `npm run version:check`; `npm run version:main`; CI/workflows |

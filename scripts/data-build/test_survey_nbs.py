@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import rasterio
@@ -11,6 +12,7 @@ from rasterio.warp import transform_geom
 from shapely.geometry import box, mapping, shape
 
 from nbs_inventory import parse_rat
+import survey_nbs
 from survey_nbs import above_datum_share, metres, prepare, survey_depths, survey_values, utm_crs
 from tile_writer import write_grid
 from test_nbs_inventory import ROWS, rat_xml
@@ -121,6 +123,39 @@ class PrepareTests(unittest.TestCase):
         reason, out = self.run_prepare(np.full((100, 100), -5.0), np.zeros((100, 100)), polygon)
         self.assertEqual(reason, 'No survey cells inside the outline')
         self.assertFalse(out.exists())
+
+
+class PreparedCacheTests(unittest.TestCase):
+    def test_changed_contributor_table_matches_a_clean_build(self):
+        lake = {'hylakId': 1, 'tiles': ['T'], 'title': 'Lake', 'aliases': [], 'region': 'Test', 'surveyedShare': 1}
+        tile = {'url': 'tile', 'sha256': '1' * 64, 'ratUrl': 'rat', 'ratSha256': 'a' * 64, 'resolution': '4m'}
+        pins = {'lakes': [lake], 'tiles': {'T': tile}, 'hydrolakes': {'sha256': '2' * 64}, 'scheme': {}}
+
+        class Writer:
+            def __init__(self):
+                self.grids = []
+
+            def add(self, path, key):
+                self.grids.append({'tilesWritten': 1})
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            raster = root / 'tile.tif'
+            write_tile(raster, np.full((100, 100), -5.0), np.full((100, 100), 7))
+            polygon = lake_polygon(ORIGIN[0] + 100, ORIGIN[1] - 100, ORIGIN[0] + 300, ORIGIN[1] - 300)
+            def build(cache, eligible):
+                cache.mkdir(exist_ok=True)
+                writer = Writer()
+                with patch.object(survey_nbs, 'load_pins', return_value=(pins, [lake])), \
+                     patch.object(survey_nbs, 'hydrolakes', return_value={1: polygon}), \
+                     patch.object(survey_nbs, 'fetch', return_value={'T': (raster, np.array(eligible))}):
+                    survey_nbs.nbs({'id': 'test-v1'}, cache, writer, None, write_grid)
+                return writer.grids
+            warm = root / 'warm'
+            self.assertEqual(len(build(warm, [7])), 1)
+            tile['ratSha256'] = 'b' * 64
+            self.assertEqual(build(warm, []), [])
+            self.assertEqual(build(root / 'cold', []), [])
 
 
 class SelectionTests(unittest.TestCase):

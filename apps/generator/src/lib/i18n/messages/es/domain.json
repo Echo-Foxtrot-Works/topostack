@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Los gráficos SVG deben pesar {sizeMb} MB o menos.",
   "terrainServiceStatus": "El servicio de terreno devolvió {status}.",
   "terrainTileVersionMissing": "A la tesela de terreno le falta la versión del conjunto de datos.",
+  "terrainTileNoData": "La tesela de terreno no contiene datos de elevación.",
   "terrainTileVersionsMixed": "Las teselas de terreno vienen de versiones de datos distintas. Inténtalo de nuevo en breve.",
   "terrainUnreachable": "No se pudo conectar con el servicio de terreno.",
   "waterOutlinesUnassembled": "No se pudieron montar los contornos de agua.",

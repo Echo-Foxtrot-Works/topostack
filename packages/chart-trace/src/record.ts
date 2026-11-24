@@ -124,6 +124,7 @@ export function buildChartRecord(request: ChartRecordRequest): { record: UserCha
     spots,
     resolutionM: request.resolutionM,
     method: request.method ?? "harmonic",
+    preserveContourDepths: request.explicitInteriors,
     ...(intervalM === undefined ? {} : { intervalM }),
     maxSide: CHART_BATHYMETRY_LIMITS.maxGridSide,
   });

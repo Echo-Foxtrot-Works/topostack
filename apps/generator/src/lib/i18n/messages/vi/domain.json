@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Hình SVG phải từ {sizeMb} MB trở xuống.",
   "terrainServiceStatus": "Dịch vụ địa hình trả về {status}.",
   "terrainTileVersionMissing": "Ô địa hình thiếu phiên bản tập dữ liệu.",
+  "terrainTileNoData": "Ô địa hình không có dữ liệu độ cao.",
   "terrainTileVersionsMixed": "Các ô địa hình đến từ những phiên bản tập dữ liệu không đồng nhất. Hãy thử lại sau ít phút.",
   "terrainUnreachable": "Không kết nối được dịch vụ địa hình.",
   "waterOutlinesUnassembled": "Không ghép được đường viền mặt nước.",

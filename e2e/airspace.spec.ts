@@ -74,8 +74,37 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   expect(guide).toContain("Build the airspace");
   const manifest = JSON.parse(Buffer.from(Object.entries(files).find(([name]) => name.endsWith("-project.json"))![1]).toString("utf8"));
   expect(manifest.project.airspaceStack).toMatchObject({ form: "tiers", tint: "chart" });
-  expect(manifest.result.fabrication.airspaceStack.sectors.length).toBeGreaterThan(0);
-  expect(manifest.result.fabrication.airspaceStack.levels.length).toBeGreaterThan(0);
+  const stack = manifest.result.fabrication.airspaceStack;
+  expect(stack.sectors.length).toBeGreaterThan(0);
+  expect(stack.levels.length).toBeGreaterThan(0);
+  // Match each rod seat to its physical kerf-compensated hole on the downloaded wood panel.
+  const holes = new Map<string, { x: number; y: number; width: number; height: number }[]>();
+  for (const { filename } of manifest.result.fabrication.panels) {
+    const svg = Buffer.from(files[filename]!).toString("utf8");
+    for (const path of svg.matchAll(/id="(layer-\d+)-cut-\d+-hole-\d+-offset-\d+" d="([^"]+)"/g)) {
+      const points = [...path[2]!.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)];
+      const xs = points.map(p => Number(p[1])), ys = points.map(p => Number(p[2]));
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const layer = path[1]!;
+      const rings = holes.get(layer) ?? [];
+      rings.push({ x: (maxX + minX) / 2, y: (maxY + minY) / 2, width: maxX - minX, height: maxY - minY });
+      holes.set(layer, rings);
+    }
+  }
+  const diameter = stack.rod.sizeMm + 2 * stack.rod.fitClearanceMm - manifest.result.fabrication.laserKerfMm;
+  let sockets = 0;
+  for (const column of stack.columns) for (const segment of column.segments) {
+    if (segment.seat.kind !== "terrain") continue;
+    for (const index of segment.seat.socketLayerIndices) {
+      const layer = manifest.result.layers[index].id;
+      const seat = holes.get(layer)?.find(hole => Math.hypot(hole.x - column.point.x, hole.y - column.point.y) < 0.01);
+      expect(seat, column.id + " on " + layer).toBeDefined();
+      expect(seat!.width).toBeCloseTo(diameter, 2);
+      expect(seat!.height).toBeCloseTo(diameter, 2);
+      sockets++;
+    }
+  }
+  expect(sockets).toBeGreaterThan(0);
 });
 
 test("adds blue acrylic plates to the downloaded share PNG", async ({ page }, testInfo) => {

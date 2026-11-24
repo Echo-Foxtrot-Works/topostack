@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { LayerIR, Polygon2D } from "@topostack/core";
+import { DEFAULT_PROJECT, type LayerIR, type Polygon2D } from "@topostack/core";
 import { rampColor, renderContours, renderStack } from "./render";
 
-const square = (half: number): Polygon2D => ({ outer: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }], holes: [] });
+const square = (half: number): Polygon2D => ({ outer: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }, { x: -half, y: -half }], holes: [] });
 const layer = (index: number, half: number): LayerIR => ({ id: `layer-${index}`, index, elevationM: index * 100, materialThicknessMm: 3, polygons: [square(half)], markings: [], pieces: [] });
 const model = { widthMm: 300, heightMm: 200, layers: [layer(2, 40), layer(0, 100), layer(1, 70)] };
 
@@ -22,9 +22,25 @@ describe("preview drawing", () => {
 
   it("draws a flat engraving as contour lines with heavier index lines", () => {
     const layers = Array.from({ length: 11 }, (_, index) => layer(index, 100 - index * 8));
-    const svg = renderContours({ widthMm: 300, heightMm: 200, layers }, { indexInterval: 5 });
-    expect(svg.match(/<path /g)).toHaveLength(11);
-    expect(svg.match(/stroke-width="1.3"/g)).toHaveLength(2);
+    const svg = renderContours({ widthMm: 300, heightMm: 200, layers }, { ...DEFAULT_PROJECT, engravingIndexInterval: 5 });
+    expect(svg.match(/<path /g)).toHaveLength(10);
+    expect(svg.match(/stroke-opacity="0.95"/g)).toHaveLength(2);
+    expect(svg).toContain('aria-label="Preview of 10 engraved contour lines"');
+    expect(svg).toContain('<rect x="-150" y="-100" width="300" height="200"/>');
+  });
+
+  it("removes clipped crop edges and renders the border only when selected", () => {
+    const clipped: Polygon2D = { outer: [{ x: 0, y: -100 }, { x: 150, y: -100 }, { x: 150, y: 100 }, { x: 0, y: 100 }, { x: 0, y: -100 }], holes: [] };
+    const ir = { ...model, layers: [layer(0, 100), { ...layer(1, 100), polygons: [clipped] }] };
+    const open = renderContours(ir, { ...DEFAULT_PROJECT, showEngravingBorder: false });
+    expect(open).toContain('<path d="M0 100L0 -100"');
+    expect(open).not.toContain('<rect');
+    const empty = renderContours(ir, { ...DEFAULT_PROJECT, showEngravingContours: false, showEngravingBorder: false });
+    expect(empty).not.toMatch(/<(path|rect|circle)\b/);
+    expect(empty).toContain('aria-label="Preview of 0 engraved contour lines"');
+    const circle = renderContours({ ...ir, heightMm: ir.widthMm }, { ...DEFAULT_PROJECT, cropShape: "circle", showEngravingContours: false });
+    expect(circle).toContain('<circle r="150"/>');
+    expect(circle).not.toContain('<path');
   });
 
   it("colors low sheets green and the highest pale", () => {

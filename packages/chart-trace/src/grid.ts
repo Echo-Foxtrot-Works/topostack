@@ -51,6 +51,8 @@ export interface GridRequest {
   spots?: GridSpot[];
   resolutionM: number;
   method?: GridMethod;
+  /** Distinct reviewed constraints must survive in the grid used for carving. */
+  preserveContourDepths?: boolean;
   /** Contour interval; inferred from the contour depths when absent. */
   intervalM?: number;
   /** Largest grid side in cells; resolution coarsens to fit. */
@@ -297,7 +299,12 @@ function distanceInRegion(cells: readonly number[], inRegion: Uint8Array, width:
   return out;
 }
 
+class UnresolvedContourError extends Error {
+  constructor() { super("Reviewed depth contours cannot be represented separately at this grid resolution. Use a higher-detail chart workflow."); }
+}
+
 export interface HarmonicInput {
+  preserveContourDepths?: boolean;
   layout: GridLayout;
   mask: Uint8Array;
   /** Contours and spots in metre coordinates. */
@@ -332,12 +339,15 @@ export function harmonicGridMetres(input: HarmonicInput): Float32Array {
       for (let step = 0; step <= steps; step += 1) {
         const cell = cellAt(x1 + ((x2 - x1) * step) / steps, y1 + ((y2 - y1) * step) / steps);
         if (cell < 0 || !mask[cell] || burned.has(cell)) continue;
+        const previous = owner[cell]!;
+        if (input.preserveContourDepths && previous >= 0 && contours[previous]!.depthM !== depth) throw new UnresolvedContourError();
         burned.add(cell);
         sum[cell] = sum[cell]! + depth;
         count[cell] = count[cell]! + 1;
         if (owner[cell]! < 0) owner[cell] = index;
       }
     }
+    if (input.preserveContourDepths && !burned.size) throw new UnresolvedContourError();
   });
   const fixed = new Float64Array(cells);
   for (let cell = 0; cell < cells; cell += 1) fixed[cell] = !mask[cell] ? LAND : count[cell] ? sum[cell]! / count[cell]! : FREE;
@@ -444,7 +454,8 @@ export function gridDepths(request: GridRequest): DepthGrid {
   }
   const spanX = maxX - minX;
   const spanY = maxY - minY;
-  const resolution = Math.max(request.resolutionM, spanX / maxSide, spanY / maxSide) * (1 + 1e-9);
+  const finest = Math.max(spanX, spanY) / maxSide * (1 + 1e-9);
+  let resolution = Math.max(request.resolutionM * (1 + 1e-9), finest);
   const contours = request.contours.map((contour) => ({ ...contour, line: contour.line.map(([lon, lat]) => frame.toLocal(lon, lat)) }));
   const spots = (request.spots ?? []).map((spot) => {
     const [x, y] = frame.toLocal(spot.lon, spot.lat);
@@ -459,8 +470,16 @@ export function gridDepths(request: GridRequest): DepthGrid {
     ];
     ({ layout, values: depthsM } = tinGridMetres(points, rings, resolution));
   } else {
-    layout = waterLayout(rings, resolution);
-    depthsM = harmonicGridMetres({ layout, mask: fillRings(rings, layout), contours, spots, ...(request.intervalM === undefined ? {} : { intervalM: request.intervalM }) });
+    for (;;) {
+      layout = waterLayout(rings, resolution);
+      try {
+        depthsM = harmonicGridMetres({ layout, mask: fillRings(rings, layout), contours, spots, intervalM: request.intervalM, preserveContourDepths: request.preserveContourDepths });
+        break;
+      } catch (error) {
+        if (!(error instanceof UnresolvedContourError) || resolution <= finest) throw error;
+        resolution = Math.max(finest, resolution / 2);
+      }
+    }
   }
   const [west, north] = frame.toLonLat(layout.left, layout.top);
   const [east, south] = frame.toLonLat(layout.left + layout.width * layout.resolution, layout.top - layout.height * layout.resolution);

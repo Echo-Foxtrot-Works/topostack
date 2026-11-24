@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getMany } from "idb-keyval";
 import { DEFAULT_PROJECT } from "@topostack/core";
 
 const store = vi.hoisted(() => new Map<string, unknown>());
@@ -97,7 +98,16 @@ describe("saved project restore", () => {
     saveProjectUnloadCopy({ ...DEFAULT_PROJECT, name: "Only copy" });
     await expect(loadProject()).resolves.toMatchObject({ name: "Only copy" });
     failReads.enabled = true;
-    await expect(loadProject()).resolves.toMatchObject({ name: "Only copy" });
+    await expect(loadProject()).rejects.toMatchObject({ recovery: { name: "Only copy" }, backupKey: undefined });
+  });
+
+  it("retries an interrupted read before enabling writes to an existing project", async () => {
+    await saveProject({ ...DEFAULT_PROJECT, name: "Original design" });
+    vi.mocked(getMany).mockRejectedValueOnce(new DOMException("Interrupted", "AbortError"));
+    await expect(loadProject()).resolves.toMatchObject({ name: "Original design" });
+    failReads.enabled = true;
+    await expect(loadProject()).rejects.toMatchObject({ backupKey: undefined });
+    expect(store.get("topostack:project:v1")).toMatchObject({ name: "Original design" });
   });
 
   it("still backs up an unreadable IndexedDB copy when a newer unload copy exists", async () => {
@@ -105,7 +115,7 @@ describe("saved project restore", () => {
     const raw = { ...DEFAULT_PROJECT, widthMm: "wide" };
     store.set("topostack:project:v1", raw);
     saveProjectUnloadCopy({ ...DEFAULT_PROJECT, name: "Copy" });
-    await expect(loadProject()).rejects.toBeInstanceOf(UnreadableSavedProjectError);
+    await expect(loadProject()).resolves.toMatchObject({ name: "Copy" });
     expect(store.get(PROJECT_BACKUP_KEY)).toMatchObject({ value: raw });
   });
 

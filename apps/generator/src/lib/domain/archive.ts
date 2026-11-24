@@ -91,6 +91,7 @@ export function createArchive(url: string, operationSignal?: AbortSignal): Archi
   let reusedReader = false;
   /** Metadata or tiles were returned, so a later generation change can no longer be retried safely. */
   let delivered = false;
+  let staleReader: CachedArchive | undefined;
   let refresh: Promise<void> | undefined;
   const evict = () => { if (entry && readers.get(url) === entry) readers.delete(url); };
 
@@ -125,21 +126,26 @@ export function createArchive(url: string, operationSignal?: AbortSignal): Archi
     const work = (async () => {
       try {
         const result = await attempt(current, task, combined);
-        if (returnsData) delivered = true;
-        return result;
+        if (current !== staleReader) {
+          if (returnsData) delivered = true;
+          return result;
+        }
       } catch (error) {
         if (!(error instanceof ArchiveChangedError) || combined?.aborted) throw error;
-        if (current === entry) {
+        if (!refresh) {
           if (!reusedReader || delivered) throw error;
           reusedReader = false;
+          staleReader = current;
           refresh = refreshReader(current);
-        }
-        if (!refresh) throw error;
-        await refresh;
-        const result = await attempt(entry!, task, combined);
-        if (returnsData) delivered = true;
-        return result;
+        } else if (current !== staleReader) throw error;
       }
+      // Siblings still reading the superseded archive join the same refresh,
+      // including requests whose old tile bytes arrived successfully.
+      await refresh;
+      combined?.throwIfAborted();
+      const result = await attempt(entry!, task, combined);
+      if (returnsData) delivered = true;
+      return result;
     })();
     // Evict on genuine failures even if this operation stopped waiting.
     work.catch(() => { if (!combined?.aborted) evict(); });

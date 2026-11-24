@@ -412,7 +412,7 @@ function holdPiece(context: Context, piece: AirspacePieceIR, prepared: PreparedP
  * are removed. Runs before the work-area split and the material nests, which
  * then treat each socket as an ordinary hole.
  */
-export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[], inserts: WaterInsertIR[], woodMm: number, minimumFeatureMm: number, warnings: GeometryWarning[]): void {
+export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[], inserts: WaterInsertIR[], woodMm: number, warnings: GeometryWarning[]): void {
   const rod = stack.rod;
   const context: Context = {
     stack, layers, woodMm,
@@ -497,19 +497,20 @@ export function placeAirspaceSupports(stack: AirspaceStackIR, layers: LayerIR[],
   });
   if (context.rods) {
     for (const entry of context.rods.values()) standing.push({ point: entry.point, seat: entry.seat, bottomMm: entry.bottomMm, headPieceId: entry.headPieceId, topMm: entry.topMm, ...(entry.throughPieceIds.length ? { throughPieceIds: entry.throughPieceIds } : {}) });
-    cutRodHoles(stack, context.rods, rod, minimumFeatureMm);
+    cutRodHoles(stack, context.rods, rod);
   }
   stack.columns = buildColumns(standing);
   stack.backingSheet = standing.some((entry) => entry.seat.kind === "terrain" && entry.seat.floorLayerIndex < 0);
   stack.cutList = cutList(stack.columns);
-  cutSockets(stack.columns, layers, rod, minimumFeatureMm);
+  cutSockets(stack.columns, layers, rod);
   engraveLocators(stack, rod);
 }
 
 interface Standing extends Candidate { headPieceId: string; topMm: number; throughPieceIds?: string[] }
 
 /** A hole, the rod's size plus its fit clearance, in every piece a through rod passes; frost stops at it too. */
-function cutRodHoles(stack: AirspaceStackIR, rods: Map<string, ThroughRod>, rod: AirspaceRodSettingsV1, minimumFeatureMm: number): void {
+function cutRodHoles(stack: AirspaceStackIR, rods: Map<string, ThroughRod>, rod: AirspaceRodSettingsV1): void {
+  // Material was already filtered. These functional holes retain their explicit fit.
   const holes = new Map<string, Polygon2D[]>();
   for (const entry of rods.values()) for (const id of entry.throughPieceIds) {
     holes.set(id, [...(holes.get(id) ?? []), { outer: rodFootprint(entry.point, rod, rod.fitClearanceMm), holes: [] }]);
@@ -517,8 +518,8 @@ function cutRodHoles(stack: AirspaceStackIR, rods: Map<string, ThroughRod>, rod:
   for (const level of stack.levels) for (const piece of level.pieces) {
     const cut = holes.get(piece.id);
     if (!cut) continue;
-    piece.polygons = normalizedPolygons(clipPolygons(piece.polygons, cut, "difference"), minimumFeatureMm);
-    if (piece.frost) piece.frost = normalizedPolygons(clipPolygons(piece.frost, cut, "difference"), minimumFeatureMm);
+    piece.polygons = normalizedPolygons(clipPolygons(piece.polygons, cut, "difference"), 0);
+    if (piece.frost) piece.frost = normalizedPolygons(clipPolygons(piece.frost, cut, "difference"), 0);
   }
 }
 
@@ -563,7 +564,7 @@ function cutList(columns: AirspaceColumnIR[]): AirspaceRodCutIR[] {
 }
 
 /** Each terrain seat's socket, cut through its sheets with the rod's fit clearance; one boolean per sheet. */
-function cutSockets(columns: AirspaceColumnIR[], layers: LayerIR[], rod: AirspaceRodSettingsV1, minimumFeatureMm: number): void {
+function cutSockets(columns: AirspaceColumnIR[], layers: LayerIR[], rod: AirspaceRodSettingsV1): void {
   const holes = new Map<number, Polygon2D[]>();
   for (const column of columns) for (const segment of column.segments) {
     if (segment.seat.kind !== "terrain") continue;
@@ -573,7 +574,7 @@ function cutSockets(columns: AirspaceColumnIR[], layers: LayerIR[], rod: Airspac
   }
   for (const [index, footprints] of holes) {
     const layer = layers.find((entry) => entry.index === index);
-    if (layer) layer.polygons = normalizedPolygons(clipPolygons(layer.polygons, footprints, "difference"), minimumFeatureMm);
+    if (layer) layer.polygons = normalizedPolygons(clipPolygons(layer.polygons, footprints, "difference"), 0);
   }
 }
 

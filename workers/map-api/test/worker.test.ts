@@ -233,14 +233,18 @@ describe("geocoder proxy", () => {
     vi.stubGlobal("fetch", byType({ ...rainier, amenity: new Response("down", { status: 503 }) }));
     const partial = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20partial", { headers: origin }), configuredEnv, context);
     expect(partial.status).toBe(200);
+    expect(partial.headers.get("cache-control")).toContain("max-age=300");
     expect((await partial.json<Array<{ place_id: string }>>()).map(({ place_id }) => place_id)).toEqual(["town"]);
+    vi.stubGlobal("fetch", byType(rainier));
+    const recovered = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20partial", { headers: origin }), configuredEnv, context);
+    expect((await recovered.json<Array<{ place_id: string }>>()).map(({ place_id }) => place_id)).toEqual(["peak", "town"]);
     vi.stubGlobal("fetch", byType({ default: new Response("down", { status: 503 }), amenity: new Response("down", { status: 500 }) }));
     const failed = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20outage", { headers: origin }), configuredEnv, context);
     expect(failed.status).toBe(502);
   });
 
   it("refreshes expired cached results and limits browser freshness to the remaining age", async () => {
-    const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${configuredEnv.GEOCODER_ORIGIN}|geoapify-v2|cache age regression|5`));
+    const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${configuredEnv.GEOCODER_ORIGIN}|geoapify-v3|cache age regression|5`));
     const key = `geocode/${Array.from(new Uint8Array(keyHash)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}.json`;
     const stored = [{ place_id: "cached", display_name: "Cached place", lat: 1, lon: 2 }];
     await workerEnv.MAP_CACHE.put(key, JSON.stringify(stored));
@@ -565,9 +569,10 @@ describe("optional HRDEM terrain archive", () => {
     const manifest = await response.json() as { sources: unknown[] };
     expect(manifest.sources).toContainEqual(expect.objectContaining({ id: "nrcan-hrdem-alexander-v1", optional: true, verticalDatum: "CGVD2013" }));
   });
-  it("advertises the pinned FAA aviation cycle as optional", async () => {
+  it("separates the registered FAA dataset from active coverage when its archive is missing", async () => {
     const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
-    expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^faa-aviation-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/aviation.pmtiles", optional: true }));
+    expect(manifest).toMatchObject({ registrations: { aviation: { dataset: expect.stringMatching(/^faa-aviation-/) } } });
+    expect(manifest.sources).not.toContainEqual(expect.objectContaining({ archive: "/v1/aviation.pmtiles" }));
   });
   it("advertises the pinned PAD-US public lands build as optional", async () => {
     const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };

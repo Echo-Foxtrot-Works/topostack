@@ -17,7 +17,7 @@ Include lake-floor relief using surveyed bathymetry where available, with terrai
 
 For layered projects, set your material width and height and let automatic nesting arrange the pieces. Watch the layout improve, or keep the current layout to finish early. The Export view shows every nested sheet beside the list of files it will produce and explains the processing colors.
 
-Open in Studio sends one editable SVG of the entire layout, with each piece in its own named group, so its outline, engraving and score lines move together. Download provides the complete project bundle, including artwork, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
+Open in Studio sends one editable SVG, with each piece in its own named group, so its outline, engraving and score lines move together. For layered reliefs, that SVG contains the wood layout. Download provides the complete project bundle, including separate acrylic files when applicable, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
 
 Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated terrain for Crater Lake and five other places, including real survey data where available. Images are software renders and screenshots, not photographs of physical builds or machine runs.
 

@@ -1,13 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import production from "../data/faa-aviation-production-release.json" with { type: "json" };
+import { requireActiveAviation, verifyAviationRange } from "../lib/aviation-deployment.mjs";
 import { activateAviationRelease } from "../provision/activate-aviation-release.mjs";
 
 const body = new Uint8Array(127).fill(3);
 const sha256 = createHash("sha256").update(body).digest("hex");
 const candidate = { schemaVersion: 1, logicalKey: "aviation/current.pmtiles", dataset: "faa-fixture-v2", bytes: body.length, sha256, objectKey: `archives/${sha256}/12345678-1234-1234-1234-123456789abc.pmtiles`, etag: '"candidate"', verifiedAt: "2026-10-10T00:00:00Z" };
 const previous = { ...candidate, dataset: "faa-fixture-v1", sha256: "a".repeat(64), objectKey: `archives/${"a".repeat(64)}/12345678-1234-1234-1234-123456789abc.pmtiles` };
-const manifest = { capabilities: { archiveReleases: 1 }, sources: [{ archive: "/v1/aviation.pmtiles", id: candidate.dataset }] };
+const manifest = { capabilities: { archiveReleases: 1 }, registrations: { aviation: { dataset: candidate.dataset, sha256 } }, sources: [] };
 function scenario({ active = false, corrupt = false, conflict = false } = {}) {
   const events = [], receipts = [];
   const request = async (key, init) => {
@@ -42,8 +44,9 @@ test("an already active FAA archive is verified without rewriting its rollback t
 test("FAA activation refuses a registration mismatch before touching R2", async () => {
   const s = scenario();
   await assert.rejects(activateAviationRelease({ ...s.options, dataset: "different" }), /committed registration/);
-  await assert.rejects(activateAviationRelease({ ...s.options, manifest: { ...manifest, sources: [] } }), /Deploy the registered/);
+  await assert.rejects(activateAviationRelease({ ...s.options, manifest: { ...manifest, registrations: {} } }), /Deploy the registered/);
   await assert.rejects(activateAviationRelease({ ...s.options, manifest: { ...manifest, capabilities: {} } }), /Deploy the registered/);
+  await assert.rejects(activateAviationRelease({ ...s.options, manifest: { ...manifest, registrations: { aviation: { dataset: candidate.dataset, sha256: previous.sha256 } } } }), /Deploy the registered/);
   await assert.rejects(activateAviationRelease({ ...s.options, checkpoint: undefined }), /rollback checkpoint/);
   assert.equal(s.events.length, 0);
 });
@@ -59,4 +62,18 @@ test("a concurrent FAA pointer change fails and preserves a rollback receipt", a
   await assert.rejects(activateAviationRelease(s.options), /promotion failed/);
   assert.equal(s.receipts.length, 1);
   assert.deepEqual(s.receipts[0].previousRelease, previous);
+});
+
+test("the post-promotion check requires the exact active production FAA release and both range identities", () => {
+  const source = { archive: "/v1/aviation.pmtiles", id: production.dataset, release: production };
+  const registrations = { aviation: { dataset: production.dataset, sha256: production.sha256 } };
+  assert.throws(() => requireActiveAviation({ registrations, sources: [] }, "production"), /does not serve/);
+  assert.throws(() => requireActiveAviation({ registrations, sources: [{ ...source, release: { ...production, etag: '"other"' } }] }, "production"), /production release pin/);
+  assert.equal(requireActiveAviation({ registrations, sources: [source] }, "production"), source);
+  for (const [offset, length] of [[0, 127], [10240, 512]]) {
+    const response = new Response(null, { status: 206, headers: { etag: production.etag, "content-range": `bytes ${offset}-${offset + length - 1}/${production.bytes}` } });
+    verifyAviationRange(response, production, offset, length);
+    response.headers.set("etag", '"previous"');
+    assert.throws(() => verifyAviationRange(response, production, offset, length), /byte range differs/);
+  }
 });

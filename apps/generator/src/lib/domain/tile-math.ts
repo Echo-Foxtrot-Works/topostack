@@ -30,16 +30,19 @@ export function artworkToLonLat(bounds: GeoBounds, widthMm: number, heightMm: nu
 export interface DataTile { x: number; worldX: number; y: number; z: number }
 export interface TileWindow { zoom: number; westX: number; eastX: number; northY: number; southY: number; tiles: DataTile[] }
 
-function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
+function tileWindow(bounds: GeoBounds, zoom: number, nativePixelHalo: number): TileWindow {
   const westX = lonToWorldX(bounds.west, zoom);
   const eastX = lonToWorldX(bounds.east, zoom);
   const northY = latToWorldY(bounds.north, zoom);
   const southY = latToWorldY(bounds.south, zoom);
   const scale = 2 ** zoom;
-  const minWorldX = Math.floor(westX / TILE_SIZE);
-  const maxWorldX = Math.floor((eastX - 1e-6) / TILE_SIZE);
-  const minY = Math.max(0, Math.floor(northY / TILE_SIZE));
-  const maxY = Math.min(scale - 1, Math.floor((southY - 1e-6) / TILE_SIZE));
+  // Vector crops have an exclusive upper edge (tolerate projection round-off).
+  // Raster crops need every native pixel center that contributes nonzero weight.
+  const lastTile = (edge: number) => nativePixelHalo ? Math.ceil((edge + nativePixelHalo) / TILE_SIZE) - 1 : Math.floor((edge - 1e-6) / TILE_SIZE);
+  const minWorldX = Math.floor((westX - nativePixelHalo) / TILE_SIZE);
+  const maxWorldX = lastTile(eastX);
+  const minY = Math.max(0, Math.floor((northY - nativePixelHalo) / TILE_SIZE));
+  const maxY = Math.min(scale - 1, lastTile(southY));
   const count = (maxWorldX - minWorldX + 1) * (maxY - minY + 1);
   if (!Number.isSafeInteger(count) || count < 1 || count > MAX_DATA_TILES) throw new Error("The selected area is too large at this zoom. Zoom in and try again.");
   const tiles: TileWindow["tiles"] = [];
@@ -53,10 +56,10 @@ function tileWindow(bounds: GeoBounds, zoom: number): TileWindow {
 }
 
 /** Downshift from the requested zoom until the window fits the bounded tile budget. */
-export function fittingTileWindow(bounds: GeoBounds, requestedZoom: number, minimumZoom = 0): TileWindow {
+export function fittingTileWindow(bounds: GeoBounds, requestedZoom: number, minimumZoom = 0, nativePixelHalo = 0): TileWindow {
   let zoom = Math.max(minimumZoom, requestedZoom);
   while (true) {
-    try { return tileWindow(bounds, zoom); }
+    try { return tileWindow(bounds, zoom, nativePixelHalo); }
     catch (error) {
       if (zoom <= minimumZoom || !(error instanceof Error) || !error.message.includes("too large")) throw error;
       zoom -= 1;

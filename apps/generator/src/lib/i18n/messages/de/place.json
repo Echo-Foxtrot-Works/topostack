@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "Kompositionen vergleichen",
-  "currentDesign": "Aktueller Entwurf",
-  "composition.streets": "Straßengravur",
-  "composition.shoreline": "Ufergravur",
-  "composition.terrain": "Geländerelief",
-  "applyComposition": "Komposition übernehmen",
-  "noCompositionFeatures": "Die ausgewählten Kartenelemente sind in diesem Ausschnitt nicht zu sehen.",
   "artworkSize": "Vorlagengröße",
   "cutSize": "Schnittgröße",
   "placeAndSize": "Ort und Größe",

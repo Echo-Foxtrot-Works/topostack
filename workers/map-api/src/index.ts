@@ -8,11 +8,11 @@ import { PREVIEW_PATH, previewResponse } from "./routes/lake-previews";
 import { measureBucket } from "./data-metrics";
 import { clientKey, corsHeaders, isAllowedOrigin, json, methodNotAllowed, rateLimitExceeded, withCors } from "./http";
 import { buildManifest } from "./manifest";
-import { ARCHIVE_ROUTES, archiveServed, aviationSources, configureArchiveEnvironment, type ArchiveRoute, isArchiveMetadataRequest, landsSources, pmtilesResponse, servedBathymetryArchives, servedTerrainArchives } from "./routes/archive";
+import { ARCHIVE_ROUTES, archiveServed, configureArchiveEnvironment, type ArchiveRoute, isArchiveMetadataRequest, pmtilesResponse } from "./routes/archive";
 import { API_CATALOG_PATH, apiCatalogResponse, ARD_PATHS, ardResponse, SKILL_PATH, skillResponse, SKILLS_INDEX_PATH, skillsIndexResponse } from "./routes/discovery";
 import { feedbackResponse } from "./routes/feedback";
 import { geocodeResponse } from "./routes/geocode";
-import { healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
+import { deploymentIdentity, healthResponse, probeUpstreams, readinessResponse, upstreamHealth } from "./routes/health";
 import { isSitePage, sitePageResponse } from "./routes/pages";
 import { isHighVolumeCacheHit, REQUEST_LOG_SAMPLE_RATE, shouldLogRequest } from "./request-log";
 import { BUILDING_TILE_PATH, buildingResponse } from "./routes/buildings";
@@ -113,9 +113,9 @@ const EXACT_ROUTES = new Map<string, Handler>([
   ["/health", limited("root", (_request, env) => healthResponse(env))],
   ["/ready", limited("root", (_request, env) => readinessResponse(env))],
   ["/v1/upstream-health", limited("upstream-health", (_request, env) => upstreamHealth(env))],
-  ["/v1/manifest", limited("manifest", (_request, env) => json(
-    buildManifest(env.DATASET_VERSION, servedTerrainArchives(env.ENVIRONMENT), servedBathymetryArchives(env.ENVIRONMENT), aviationSources, landsSources),
-    { headers: { "cache-control": PUBLIC_HOUR_CACHE } },
+  ["/v1/manifest", limited("manifest", async (_request, env) => json(
+    { ...await buildManifest(env), deployment: deploymentIdentity(env) },
+    { headers: { "cache-control": "no-store" } },
   ))],
   ["/v1/geocode", limited("geocode", (request, env, ctx, url) => geocodeResponse(request, env, ctx, url))],
   ["/v1/coverage", limited("coverage", (request, env, _ctx, url) => coverageRouteResponse(url, { request, env }))],

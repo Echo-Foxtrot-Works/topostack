@@ -16,12 +16,12 @@ const MAX_UNLOAD_COPY_LENGTH = 1_000_000;
 export const PROJECT_BACKUP_KEY = "topostack:project:v1:unreadable-backup";
 
 /**
- * The saved project exists but does not parse. Its raw value was copied to
- * `backupKey` when that succeeded; without a backup, autosave must not run.
+ * Reading or parsing the primary failed. A backup key means its raw value
+ * was preserved and autosave can safely resume.
  */
 export class UnreadableSavedProjectError extends Error {
   override readonly name = "UnreadableSavedProjectError";
-  constructor(readonly backupKey: string | undefined, cause: unknown) {
+  constructor(readonly backupKey: string | undefined, cause: unknown, readonly recovery?: ProjectConfigV1) {
     super(backupKey ? "Saved project could not be read · a backup copy was kept" : "Saved project could not be read · autosave paused to protect it", { cause });
   }
 }
@@ -38,11 +38,14 @@ export async function loadProject(): Promise<ProjectConfigV1 | undefined> {
   const unloadCopy = readUnloadCopy();
   let value: unknown;
   let savedAt: unknown;
+  const read = () => getMany<unknown>([PROJECT_KEY, PROJECT_SAVED_AT_KEY]);
   try {
-    [value, savedAt] = await getMany<unknown>([PROJECT_KEY, PROJECT_SAVED_AT_KEY]);
+    // A single aborted transaction can be retried on a new transaction.
+    [value, savedAt] = await read().catch(read);
   } catch (error) {
-    console.warn("TopoStack: saved projects are unavailable in this browser.", error);
-    return unloadCopy ? parseUnloadCopy(unloadCopy) : undefined;
+    // The primary could be newer than the unload copy. Let the editor open
+    // that copy while protecting both storage keys until a successful read.
+    throw new UnreadableSavedProjectError(undefined, error, unloadCopy && parseUnloadCopy(unloadCopy));
   }
   if (value === undefined) return unloadCopy ? parseUnloadCopy(unloadCopy) : undefined;
   let saved: ProjectConfigV1;
@@ -53,8 +56,10 @@ export async function loadProject(): Promise<ProjectConfigV1 | undefined> {
     try {
       await set(PROJECT_BACKUP_KEY, { backedUpAt: new Date().toISOString(), reason: error instanceof Error ? error.message : String(error), value });
     } catch (backupError) {
-      throw new UnreadableSavedProjectError(undefined, backupError);
+      throw new UnreadableSavedProjectError(undefined, backupError, unloadCopy && parseUnloadCopy(unloadCopy));
     }
+    const recovered = unloadCopy && parseUnloadCopy(unloadCopy);
+    if (recovered) return recovered;
     throw new UnreadableSavedProjectError(PROJECT_BACKUP_KEY, error);
   }
   // An IndexedDB copy without a time predates the unload copy, so the copy wins.
