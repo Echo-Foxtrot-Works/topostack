@@ -1,11 +1,9 @@
 import type { AirspaceVolumeV1, GeoBounds, Polygon2D, ProjectConfigV1 } from "@topostack/core";
-import { AIRSPACE_VOLUME_MAX_ZOOM, aviationCovers, parseAviationArchiveMetadata, parseAviationProperties, type AviationPropertiesByLayer } from "@topostack/data-contracts/aviation-tiles";
+import { AIRSPACE_VOLUME_MAX_ZOOM, aviationCovers, parseAviationProperties, type AviationPropertiesByLayer } from "@topostack/data-contracts/aviation-tiles";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
-import { apiBase } from "$lib/domain/api-base";
 import { cropRectangle, piecesInCrop, polygonArea } from "$lib/domain/area-pieces";
-import { createArchive } from "$lib/domain/archive";
-import { AVIATION_SOURCES } from "$lib/domain/aviation-provider";
+import { AVIATION_SOURCES, openAviationArchive } from "$lib/domain/aviation-provider";
 import { createFeatureBudget, yieldForCancellation } from "$lib/domain/feature-budget";
 import { mapTiles } from "$lib/domain/tile-requests";
 import { archiveTileWindow } from "$lib/domain/tile-math";
@@ -51,9 +49,7 @@ export async function loadAirspaceVolumes(
   signal?.throwIfAborted();
   const layers = new Set<VolumeLayer>([...(request.classes ? ["airspace_volumes" as const] : []), ...(request.specialUse ? ["sua_volumes" as const] : [])]);
   if (!layers.size || !aviationCovers(AVIATION_SOURCES, bounds)) return { volumes: [], status: "not-covered" };
-  const archive = createArchive(`${apiBase()}/v1/aviation.pmtiles`, signal);
-  const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
-  const { nasrCycle } = parseAviationArchiveMetadata(metadata);
+  const { archive, header, metadata, nasrCycle } = await openAviationArchive(signal);
   // Older archives have chart linework but no 3D sectors. Missing layers are
   // unavailable data, not evidence that the crop contains no airspace.
   const published = (metadata as { vector_layers?: Array<{ id?: string }> }).vector_layers;

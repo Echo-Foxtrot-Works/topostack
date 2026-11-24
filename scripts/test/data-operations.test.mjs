@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { stageArchive } from "../lib/archive-provisioning.mjs";
+import { stageArchive, verifyVectorSchema } from "../lib/archive-provisioning.mjs";
 import { GEOCODE_EXPIRY_RULE, reconcileCacheLifecycle, hasGeocodeExpiry, lifecycleSatisfies, retiredTerrainRule, terrainVersionsFromPrefixes } from "../lib/cache-lifecycle.mjs";
 import { DAY_MS, planArchivePrune, pointersUnchanged, readReleasePointers } from "../lib/archive-pruning.mjs";
 import { parseListObjectsXml, listObjects, retryReads } from "../lib/r2-s3.mjs";
@@ -153,15 +153,26 @@ test("the live dataset version comes from the deployed manifest and fails closed
   await assert.rejects(liveDatasetVersion("https://example.test", async () => new Response(null, { status: 502 })), /live manifest/);
 });
 
+test("checks dataset-specific MVT schemas before provisioning implicitly named archives", () => {
+  const lakes = { vector_layers: [{ id: "lakes", fields: { hylak_id: "Number", area_km2: "Number", dmax_m: "Number" } }] };
+  const map = { vector_layers: ["roads", "water", "boundaries"].map(id => ({ id, fields: { kind: "String" } })) };
+  for (const [name, own, wrong] of [["globathy", lakes, map], ["protomaps", map, lakes]]) {
+    verifyVectorSchema({ tile_type: "mvt" }, own, name);
+    assert.throws(() => verifyVectorSchema({ tile_type: "png" }, own, name), /MVT archive/);
+    assert.throws(() => verifyVectorSchema({ tile_type: "mvt" }, wrong, name), /layer/);
+  }
+  assert.throws(() => verifyVectorSchema({ tile_type: "mvt" }, { vector_layers: [{ id: "lakes", fields: {} }] }, "globathy"), /Number field hylak_id/);
+});
+
 const now = Date.parse("2026-09-17T00:00:00Z");
 const archiveKey = (n) => `archives/${String(n).repeat(64)}/12345678-1234-1234-1234-123456789abc.pmtiles`;
 const object = (key, ageDays, size = 100) => ({ key, size, uploaded: new Date(now - ageDays * DAY_MS) });
 const pointer = (patch) => ({ key: "releases/osm/current.pmtiles.json", etag: '"p"', release: { ...release, verifiedAt: new Date(now - 60 * DAY_MS).toISOString(), ...patch } });
 test("pruning keeps active, rollback and recent archives and removes superseded ones", () => {
   const plan = planArchivePrune({ now, pointers: [pointer({ objectKey: archiveKey(1), previousObjectKey: archiveKey(2) })],
-    archives: [object(archiveKey(1), 90), object(archiveKey(2), 90), object(archiveKey(3), 90), object(archiveKey(4), 3), object("archives/stray.bin", 90)] });
+    protectedKeys: [archiveKey(5)], archives: [object(archiveKey(5), 90), object(archiveKey(1), 90), object(archiveKey(2), 90), object(archiveKey(3), 90), object(archiveKey(4), 3), object("archives/stray.bin", 90)] });
   assert.deepEqual(Object.fromEntries([...plan.keep, ...plan.remove].map(({ key, reason }) => [key, reason])), {
-    [archiveKey(1)]: "active", [archiveKey(2)]: "rollback", [archiveKey(3)]: "superseded", [archiveKey(4)]: "recent", "archives/stray.bin": "unrecognized",
+    [archiveKey(1)]: "active", [archiveKey(2)]: "rollback", [archiveKey(3)]: "superseded", [archiveKey(4)]: "recent", [archiveKey(5)]: "deployment", "archives/stray.bin": "unrecognized",
   });
   assert.equal(plan.removeBytes, 100);
 });

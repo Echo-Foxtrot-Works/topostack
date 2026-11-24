@@ -49,7 +49,7 @@ Not part of the Atomm package: the standalone site's phone layout (bottom settin
 ## Review exercises
 
 1. Open each parameter section in Layered relief and Flat engraving. Labels share one start edge and controls one end edge, including the new Water, public-land and Aviation rows; numeric fields keep their 92 px width and two-option settings are segmented controls.
-2. In Water, turn on **Acrylic water inserts**. The 3D view shows the lake as acrylic. In Export, both Nesting material cards lay out sheets, and Open in Studio and Download include the acrylic pieces.
+2. In Water, turn on **Acrylic water inserts**. The 3D view shows the lake as acrylic. In Export, both Nesting material cards lay out sheets. Verify that Open in Studio sends the wood layout and that Download includes the separate acrylic files.
 3. Choose a US national park (for example Crater Lake). In Map features, turn on public land boundaries and paint; the 2D and Export views show the outlines and the paint-mask artwork.
 4. Choose a place near an airport (for example Colorado Springs). In Aviation (US), turn on airspace; then turn on **Airspace in 3D** and check the acrylic levels and rods in 3D and Export.
 5. Switch to Export, change the material size, finish nesting, and exercise the real host's Open in Studio and Download controls.
@@ -57,7 +57,7 @@ Not part of the Atomm package: the standalone site's phone layout (bottom settin
 
 ## Media
 
-Use only the v10 media named in `listing.md` and `media-provenance.json`. There is a still cover built for the 272 × 204 grid card and nine gallery cards. They show Crater Lake and five other places, plus acrylic water inserts, public-land paint and acrylic airspace. All of it is rendered by this revision's embedded studio from live terrain and survey data, and the backdrops are each place's own engraving artwork. The cover is a still image; no cover video is uploaded. The SDK mount/export hook used for capture is a stand-in, so the media does not claim native Studio validation.
+Use only the v11 media named in `listing.md` and `media-provenance.json`. There is a still cover built for the 272 × 204 grid card and nine gallery cards. They show Crater Lake and five other places, plus acrylic water inserts, public-land paint and acrylic airspace. All of it is rendered by this revision's embedded studio from live terrain and survey data, and the backdrops are each place's own engraving artwork. The cover is a still image; no cover video is uploaded. The SDK mount/export hook used for capture is a stand-in, so the media does not claim native Studio validation.
 
 ## Platform handoff
 

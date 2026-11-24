@@ -20,6 +20,14 @@ import { clipVectorTileLine, joinPaths } from "$lib/domain/vector-cleanup";
 
 export const AVIATION_SOURCES = validateAviationSources(rawAviationSources);
 
+/** Give each FAA registration its own browser cache key and verify the returned bytes' source dates. */
+export async function openAviationArchive(signal?: AbortSignal) {
+  const archive = createArchive(`${apiBase()}/v1/aviation.pmtiles?dataset=${AVIATION_SOURCES.dataset}`, signal);
+  const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
+  const { nasrCycle } = parseAviationArchiveMetadata(metadata, AVIATION_SOURCES);
+  return { archive, header, metadata, nasrCycle };
+}
+
 /** Pieces of line decoded before stitching, and airports and navaids kept, per load. Beyond either the result is partial. */
 const MAX_AVIATION_LINES = 6_000;
 export const MAX_AVIATION_POINTS = 1_500;
@@ -137,9 +145,7 @@ export async function loadAviationMarkings(bounds: GeoBounds, requestedZoom: num
   signal?.throwIfAborted();
   const layers = wantedLayers(config);
   if (!layers.size || !aviationCovers(AVIATION_SOURCES, bounds)) return { markings: [], status: "not-covered", attribution: [] };
-  const archive = createArchive(`${apiBase()}/v1/aviation.pmtiles`, signal);
-  const [header, metadata] = await Promise.all([archive.getHeader(), archive.getMetadata()]);
-  const { nasrCycle } = parseAviationArchiveMetadata(metadata);
+  const { archive, header, nasrCycle } = await openAviationArchive(signal);
   signal?.throwIfAborted();
   const { window, projectPoint } = archiveTileWindow(header, bounds, Math.round(requestedZoom) + 1, config);
   const consumeGeometry = createFeatureBudget();

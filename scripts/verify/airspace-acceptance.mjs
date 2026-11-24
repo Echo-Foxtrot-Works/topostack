@@ -23,7 +23,7 @@ assert(!selected || crops.some((crop) => crop.name === selected), "Unknown crop.
 const bytes = await readFile(archivePath), digest = sha256Hex(bytes);
 const http = createHttpServer((request, response) => {
   const range = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range ?? "");
-  if (request.url !== "/v1/aviation.pmtiles" || !range) { response.writeHead(404).end(); return; }
+  if (new URL(request.url, "http://localhost").pathname !== "/v1/aviation.pmtiles" || !range) { response.writeHead(404).end(); return; }
   const start = Number(range[1]), end = Math.min(Number(range[2]), bytes.length - 1);
   if (start > end || end - start > 8_000_000) { response.writeHead(416).end(); return; }
   response.writeHead(206, { "Content-Type": "application/octet-stream", "Accept-Ranges": "bytes", "Content-Range": `bytes ${start}-${end}/${bytes.length}`, "Content-Length": end - start + 1, ETag: `"${digest}"` }).end(bytes.subarray(start, end + 1));

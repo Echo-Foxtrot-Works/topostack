@@ -10,8 +10,12 @@ const UPSTREAM_HEALTH_KEY = "health/upstreams-v1.json";
 const MAX_HEALTH_RECORD_BYTES = 4096;
 const HEALTH_FRESH_MS = 2 * 60 * 60 * 1000;
 
+export function deploymentIdentity(env: Env) {
+  return { commit: env.DEPLOYMENT_COMMIT, id: env.WORKER_VERSION?.id };
+}
+
 export function healthResponse(env: Env): Response {
-  return json({ service: "topostack-map-api", status: "ok", environment: env.ENVIRONMENT });
+  return json({ service: "topostack-map-api", status: "ok", environment: env.ENVIRONMENT, deployment: deploymentIdentity(env) });
 }
 
 export async function readinessResponse(env: Env): Promise<Response> {
@@ -29,6 +33,7 @@ export async function readinessResponse(env: Env): Promise<Response> {
     service: "topostack-map-api",
     status: ready ? "ready" : "not_ready",
     environment: env.ENVIRONMENT,
+    deployment: deploymentIdentity(env),
     dependencies: {
       lakeOutlines: { status: outlineCheck.status === "rejected" ? "unavailable" : outlineCheck.value ? "available" : "missing", key: OUTLINE_INDEX_KEY },
       terrain: { status: "configured" },

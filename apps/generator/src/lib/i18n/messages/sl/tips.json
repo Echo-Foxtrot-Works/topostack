@@ -17,7 +17,7 @@
   "lakesBodySources": "Izmerjena dna izvirajo iz podvodnih meritev ali podatkov terena. Kjer jih jezero nima, se njegovo dno modelira iz obalne črte, okoliških pobočij in objavljenih ocen globine. Nobeno ne odraža današnje gladine vode.",
   "lakesBodyControls": "Povečanje globine poglobi dna jezer glede na hribe. Omeji globinske plasti omeji, koliko plošč seže pod najnižje kopno, Prilagodi globino jezera pa vsako jezero stisne v ta okvir in ohrani njegovo obalno črto.",
   "exportTitle": "Preverite izvoz",
-  "exportBody": "Pri večplastnih reliefih nastavite širino in višino materiala v Izvozu. Kosi se razporedijo samodejno z robovi 3 mm in razmikom 2 mm; za predčasen zaključek izberite Uporabi trenutno razporeditev. Odpri v Studiu pošlje en urejljiv SVG celotne razporeditve. Prenos vključuje grafiko, nastavitve in navedbe virov, pri večplastnih reliefih pa še montažni vodnik.",
+  "exportBody": "Pri večplastnih reliefih nastavite širino in višino materiala v Izvozu. Kosi se razporedijo samodejno z robovi 3 mm in razmikom 2 mm; za predčasen zaključek izberite Uporabi trenutno razporeditev. Pri večplastnih reliefih Odpri v Studiu pošlje razporeditev lesenih kosov v eni urejljivi datoteki SVG. Datoteke za akril so na voljo pri izbiri Prenos. Prenos vključuje grafiko, nastavitve in navedbe virov, pri večplastnih reliefih pa še montažni vodnik.",
   "assemblyTitle": "Sestavljanje",
   "assemblyBody": "Gnezdene kose hranite skupaj z njihovimi ploščami in jih lepite od najnižje plasti navzgor po montažnem vodniku. Pred rezanjem celotnega projekta preizkusite prileganje majhnega kosa."
 }

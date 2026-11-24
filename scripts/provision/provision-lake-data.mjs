@@ -1,5 +1,5 @@
 import { cloudflareClient } from "../lib/cloudflare-client.mjs";
-import { assertDigestPinPolicy, parseArchiveFlags, provisionWithReceipt, statArchive, verifyArchiveDigest, verifyPmtilesHeader } from "../lib/archive-provisioning.mjs";
+import { assertDigestPinPolicy, parseArchiveFlags, provisionWithReceipt, statArchive, verifyArchiveDigest, verifyPmtilesHeader, verifyVectorSchema } from "../lib/archive-provisioning.mjs";
 /**
  * Upload registered lake bathymetry or additional terrain archives.
  *
@@ -64,8 +64,9 @@ if ((!raster && header.minzoom !== 0) || !Number.isInteger(header.minzoom) || he
   throw new Error(`Expected a zoom 0-${EXPECTED_MAX_ZOOM} archive; received zoom ${header.minzoom}-${header.maxzoom}.`);
 }
 
-if (raster) {
-  const metadata = JSON.parse(await capture(pmtilesBin, ["show", archivePath, "--metadata"]));
+const metadata = JSON.parse(await capture(pmtilesBin, ["show", archivePath, "--metadata"]));
+if (!raster) verifyVectorSchema(header, metadata, "globathy");
+else {
   if (header.tile_type !== "png" || metadata.topostack_dataset !== DATASET_SNAPSHOT || metadata.topostack_encoding !== raster.encoding || (terrain && metadata.topostack_vertical_datum !== terrain.verticalDatum)) {
     throw new Error("Expected the registered numeric PNG archive. Refusing to upload a different dataset.");
   }

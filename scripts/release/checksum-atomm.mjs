@@ -1,3 +1,5 @@
+import { requireActiveAviation, verifyAviationRange } from "../lib/aviation-deployment.mjs";
+import { fetchWithRetry, releaseEvidence } from "../lib/deployment-fetch.mjs";
 import { execFileSync } from "node:child_process";
 import { sha256Hex } from "../lib/hash.mjs";
 import { readFile } from "node:fs/promises";
@@ -28,13 +30,16 @@ const archiveUrl = new URL(`../../apps/generator/${files.archive}`, import.meta.
 const archive = await readFile(archiveUrl);
 const digest = sha256Hex(archive);
 
-async function readApi(path) {
-  const response = await fetch(new URL(path, apiOrigin), { signal: AbortSignal.timeout(15_000) });
-  if (!response.ok) throw new Error(`Release evidence ${path} returned HTTP ${response.status}.`);
-  return response.json();
-}
-const [manifest, readiness] = await Promise.all([readApi("/v1/manifest"), readApi("/ready")]);
 const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const { frontend, manifest, readiness } = await releaseEvidence(apiOrigin, commit, "production", { allowRolloutStatuses: true });
+assert.equal(frontend.version, versions.version);
+const aviation = requireActiveAviation(manifest, "production");
+await fetchWithRetry(apiOrigin, aviation.archive, { headers: { range: "bytes=0-126" } }, {
+  readResponse: async (response) => {
+    await response.body?.cancel();
+    verifyAviationRange(response, aviation.release, 0, 127);
+  },
+});
 const build = JSON.parse(execFileSync("unzip", ["-p", fileURLToPath(archiveUrl), "version.json"], { encoding: "utf8" }));
 assert.equal(build.environment, "atomm");
 assert.equal(build.version, versions.version);
@@ -42,12 +47,14 @@ assert.equal(build.atommVersion, versions.atommVersion);
 assert.equal(build.commit, commit);
 const receipt = {
   ...versions,
-  schemaVersion: 1,
+  schemaVersion: 2,
+  frontend, deployment: readiness.deployment,
   createdAt: new Date().toISOString(),
   commit,
   workingTreeDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()),
   archive: files.archive, sha256: digest, bytes: archive.byteLength,
   apiOrigin, datasetVersion: manifest.datasetVersion,
+  aviation: aviation.release,
   vectorData: readiness.dependencies.vectorData,
   lakeData: readiness.dependencies.lakeData,
 };

@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "กราฟิก SVG ต้องมีขนาดไม่เกิน {sizeMb} MB",
   "terrainServiceStatus": "บริการภูมิประเทศส่งสถานะ {status}",
   "terrainTileVersionMissing": "ไทล์ภูมิประเทศไม่มีเวอร์ชันชุดข้อมูล",
+  "terrainTileNoData": "ไทล์ภูมิประเทศไม่มีข้อมูลระดับความสูง",
   "terrainTileVersionsMixed": "ไทล์ภูมิประเทศมาจากชุดข้อมูลต่างเวอร์ชันกัน ลองอีกครั้งในอีกสักครู่",
   "terrainUnreachable": "เชื่อมต่อบริการภูมิประเทศไม่ได้",
   "waterOutlinesUnassembled": "ประกอบเส้นขอบแหล่งน้ำไม่สำเร็จ",

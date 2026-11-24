@@ -226,7 +226,7 @@ describe("startup restore", () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const failing = host();
     failing.loadProject.mockRejectedValueOnce(new Error("IndexedDB blocked"));
-    await expect(restoreStartupProject(failing.value)).resolves.toEqual({ autosave: true });
+    await expect(restoreStartupProject(failing.value)).resolves.toEqual({ autosave: false });
     expect(failing.statuses).toEqual(["Saved project could not be restored · starting from the sample preview"]);
     const cancelled = host({ isCancelled: () => true });
     cancelled.loadProject.mockResolvedValueOnce(DEFAULT_PROJECT);

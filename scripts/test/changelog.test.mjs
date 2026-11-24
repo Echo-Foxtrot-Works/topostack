@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { delimiter, dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 import {
   changelogMarkdown, checkBranch, inferPullRequest, newFragment, notesBetween, notesFor, prepareRelease,
@@ -143,4 +143,78 @@ test("the repository's own changelog is valid and agrees with the package versio
   const repository = new URL("../../", import.meta.url);
   await verifyRelease(repository);
   await readFragments(repository);
+});
+
+test("an invalid release date preserves every version file, fragment and rendered changelog", async (t) => {
+  const repo = await fixture(t);
+  await addOnBranch(repo, "fix/date", { "date.md": fragment("fix", "Date") });
+  await assert.rejects(prepareRelease({ base: repo.base, date: "invalid" }));
+  assert.equal(repo.git("status", "--porcelain"), "");
+});
+
+test("preparation resumes after interruption without consuming new fragments or overwriting an edited manifest", async (t) => {
+  const repo = await fixture(t);
+  const fragmentPath = new URL("changelog/unreleased/first.md", repo.base);
+  await writeFile(fragmentPath, fragment("fix", "First queued change"));
+  const source = new URL("../../", import.meta.url);
+  for (const folder of ["scripts/release", "scripts/lib"]) await mkdir(new URL(folder, repo.base), { recursive: true });
+  for (const path of ["scripts/release/changelog.mjs", "scripts/release/versions.mjs", "scripts/lib/files.mjs", "scripts/lib/main-module.mjs"]) {
+    await copyFile(new URL(path, source), new URL(path, repo.base));
+  }
+  await symlink(fileURLToPath(new URL("node_modules", source)), new URL("node_modules", repo.base), "junction");
+  const npm = (date, extraEnv = {}) => spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "changelog:prepare", "--", "--date", date], {
+    cwd: repo.directory, encoding: "utf8", timeout: 30_000, shell: process.platform === "win32",
+    env: { ...process.env, PATH: `${dirname(process.execPath)}${delimiter}${process.env.PATH}`, npm_config_cache: join(repo.directory, "npm-cache"), ...extraEnv },
+  });
+
+  // End the child immediately after a manifest replacement. Neither normal
+  // cleanup nor the function return runs, but npm and JS imports still work.
+  const preload = new URL("interrupt.mjs", repo.base);
+  await writeFile(preload, `
+    import { promises as fs } from "node:fs";
+    import { syncBuiltinESMExports } from "node:module";
+    import { fileURLToPath } from "node:url";
+    const expectedPath = fileURLToPath(new URL(process.env.TOPOSTACK_TEST_RELEASE_FILE, import.meta.url));
+    const rename = fs.rename;
+    fs.rename = async (from, to) => {
+      await rename(from, to);
+      if (process.env.TOPOSTACK_TEST_RELEASE_MOVE === "from" ? from === expectedPath : to === expectedPath) process.exit(85);
+    };
+    syncBuiltinESMExports();
+  `);
+  const interrupt = (date, path, move) => {
+    const run = npm(date, { NODE_OPTIONS: `--import=${preload.href}`, TOPOSTACK_TEST_RELEASE_FILE: path, TOPOSTACK_TEST_RELEASE_MOVE: move });
+    assert.equal(run.status, 85, `${run.error ?? ""}\n${run.stdout}\n${run.stderr}`);
+  };
+  interrupt("2026-09-21", "apps/generator/package.json", "to");
+  const version = nextVersion(repo.version, "patch");
+  assert.equal(JSON.parse(await readFile(new URL("package.json", repo.base), "utf8")).version, version);
+  assert.equal(JSON.parse(await readFile(new URL("apps/generator/package.json", repo.base), "utf8")).version, version);
+
+  const nextFragment = new URL("changelog/unreleased/later.md", repo.base);
+  await writeFile(nextFragment, fragment("fix", "Next release"));
+  const manifest = new URL("packages/core/package.json", repo.base);
+  const before = await readFile(manifest, "utf8");
+  const edited = before.replace('"private": true', '"private": true, "testEdit": true');
+  await writeFile(manifest, edited);
+  await assert.rejects(prepareRelease({ base: repo.base }), /packages\/core\/package\.json changed during release preparation/);
+  assert.equal(await readFile(manifest, "utf8"), edited);
+  assert.equal((await readFragments(repo.base)).length, 2);
+  assert.equal(JSON.parse(await readFile(new URL("apps/generator/package.json", repo.base), "utf8")).version, version);
+
+  await writeFile(manifest, before);
+  assert.equal((await prepareRelease({ base: repo.base, dryRun: true })).version, version);
+  interrupt("2026-09-22", "changelog/unreleased/first.md", "from");
+  await assert.rejects(readFile(fragmentPath), { code: "ENOENT" });
+  assert.deepEqual(await readVersions(repo.base), { version, atommVersion: version });
+  const completed = npm("2026-09-22", { GITHUB_OUTPUT: join(repo.directory, "release-output") });
+  assert.equal(completed.status, 0, `${completed.error ?? ""}\n${completed.stdout}\n${completed.stderr}`);
+  assert.equal(await readFile(new URL("release-output", repo.base), "utf8"), `version=${version}\n`);
+  await assert.rejects(readFile(fragmentPath), { code: "ENOENT" });
+  assert.equal(await readFile(nextFragment, "utf8"), fragment("fix", "Next release"));
+  const { releases } = await verifyRelease(repo.base);
+  assert.deepEqual(releases.map((release) => release.version), [version, repo.version]);
+  assert.equal(releases[0].date, "2026-09-21");
+  assert.deepEqual(releases[0].entries.map(({ title }) => title), ["First queued change"]);
+  assert.deepEqual(await readdir(new URL(".topostack/", repo.base)), []);
 });

@@ -15,7 +15,8 @@ const bundle = new URL("../../workers/map-api/dist/index.js", import.meta.url);
 // schema, plan estimate and notes, and the guide paragraph).
 // The neighborhood building gateway uses a bounded protobuf reader to send
 // only the footprint layer from each upstream tile (about 87.8 kB gzip).
-const BUDGET_GZIP = 89_000;
+// Revision evidence and the active FAA release check bring the script to 89.3 kB gzip.
+const BUDGET_GZIP = 90_000;
 
 // Identifiers that only exist in the geometry engine and its dependencies.
 const FORBIDDEN = ["ClipperLib", "contourDensity", "polygon-clipping", "generateGeometry", "buildFabricationPackage", "planSheets"];

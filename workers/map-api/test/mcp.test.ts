@@ -75,6 +75,16 @@ describe("MCP server through the SDK client", () => {
     await client.close();
   });
 
+  it("reports no contours in text when a flat design disables them", async () => {
+    stubTerrain();
+    const client = await connect();
+    const result = await client.callTool({ name: "plan_model", arguments: { area: { center: { lat: 46.8523, lon: -121.7603 }, widthKm: 20 }, output: "flat", contourCount: 0 } });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ plan: { output: "flat", metersPerStep: 0 } });
+    expect(result.content).toMatchObject([{ type: "text", text: expect.stringContaining("flat engraving, 300 × 200 mm, no contours") }]);
+    await client.close();
+  });
+
   it("returns fixable request problems as a tool error the model can read", async () => {
     const client = await connect();
     const result = await client.callTool({ name: "create_studio_link", arguments: { area: { center: { lat: 46.85, lon: 400 }, widthKm: 20 }, output: "3d" } });
@@ -145,12 +155,31 @@ describe("MCP server through the SDK client", () => {
     await client.close();
   });
 
+  it("uses the same exact box as REST, including wrapped longitudes", async () => {
+    const client = await connect();
+    for (const [west, south, east, north] of [[-122.8, 42.5, -121.4, 42.55], [-122.8, 42.89, -121.4, 43.02], [177, 28, -177, 30]] as const) {
+      const result = await client.callTool({ name: "check_coverage", arguments: { area: { bounds: { west, south, east, north } } } });
+      expect(result.isError).toBeFalsy();
+      const response = await worker.fetch(new Request(`https://api.topostack.test/v1/coverage?bbox=${west},${south},${east},${north}`), env, context);
+      expect(response.status).toBe(200);
+      expect(result.structuredContent).toEqual(await response.json());
+      if (west === -122.8) {
+        const lakes = (result.structuredContent as { lakeSurveys: Array<{ id: string }> }).lakeSurveys.map(({ id }) => id);
+        expect(lakes.includes("usgs-crater-lake-v1")).toBe(south >= 42.89);
+      }
+    }
+    await client.close();
+  });
+
   it("serves the guide, the data sources and the request schema", async () => {
     const client = await connect();
     const { resources } = await client.listResources();
     expect(resources.map(({ uri }) => uri)).toEqual(["topostack://guide/making-a-model", "topostack://data/sources", "topostack://schema/project-request-v1", "ui://topostack/terrain-preview.html"]);
     const guide = await client.readResource({ uri: "topostack://guide/making-a-model" });
     expect((guide.contents[0] as { text: string }).text).toMatch(/## Layered or flat/);
+    const data = await client.readResource({ uri: "topostack://data/sources" });
+    const manifest = await (await worker.fetch(new Request("https://api.topostack.test/v1/manifest"), env, context)).json<{ sources: unknown[]; registrations: unknown }>();
+    expect(JSON.parse((data.contents[0] as { text: string }).text)).toMatchObject({ sources: manifest.sources, registrations: manifest.registrations });
     const schema = await client.readResource({ uri: "topostack://schema/project-request-v1" });
     expect(JSON.parse((schema.contents[0] as { text: string }).text)).toMatchObject({ required: ["requestVersion", "area"] });
     await expect(client.readResource({ uri: "topostack://nothing" })).rejects.toThrow(/not found/i);

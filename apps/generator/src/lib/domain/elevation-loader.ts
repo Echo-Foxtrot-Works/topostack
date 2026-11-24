@@ -26,7 +26,9 @@ function loadMapzen(window: TileWindow, signal?: AbortSignal) {
 
 // Decode numeric PNG channels directly, then interpolate elevations at native
 // pixel centers. Browser image/canvas APIs can alter the encoded heights.
-export async function loadElevation(window: TileWindow, bounds: GeoBounds, signal?: AbortSignal) {
+export async function loadElevation(bounds: GeoBounds, maxZoom: number, signal?: AbortSignal) {
+  // Bilinear samples straddle a native pixel center at each crop edge.
+  let window = fittingTileWindow(bounds, maxZoom, 0, 0.5);
   const requestedZoom = window.zoom;
   const minimumZoom = Math.max(0, requestedZoom - MAX_MAPZEN_FALLBACK_LEVELS);
   let responses;
@@ -39,7 +41,7 @@ export async function loadElevation(window: TileWindow, bounds: GeoBounds, signa
       if (!(error instanceof TerrainTileNoDataError) || window.zoom <= minimumZoom) throw error;
       // Retry the same crop with original tiles from one coarser level. A
       // consistent mosaic avoids artificial joins between zoom levels.
-      window = fittingTileWindow(bounds, window.zoom - 1, minimumZoom);
+      window = fittingTileWindow(bounds, window.zoom - 1, minimumZoom, 0.5);
     }
   }
   const preferred = await applyPreferredTerrain(apiBase(), bounds, responses.map(({ tile, values }) => ({ ...tile, values })), signal);

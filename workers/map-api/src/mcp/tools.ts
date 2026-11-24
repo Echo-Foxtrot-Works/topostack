@@ -45,7 +45,7 @@ function planText(result: ProjectPlan): string {
   const { project, plan } = result;
   const size = `${number(project.widthMm)} × ${number(project.heightMm)} mm${project.shape === "circle" ? " circle" : ""}`;
   const body = plan.output === "flat"
-    ? `flat engraving, ${size}, about one contour every ${number(plan.metersPerStep)} m`
+    ? `flat engraving, ${size}, ${plan.metersPerStep > 0 ? `about one contour every ${number(plan.metersPerStep, 3)} m` : "no contours"}`
     : `layered, ${size}, about ${plan.sheetCount} sheets of ${number(plan.materialThicknessMm, 2)} mm (${number(plan.heightOfModelMm)} mm tall), ${number(plan.fittedVerticalExaggeration, 2)}× vertical exaggeration`;
   return [
     `${project.placeLabel}: ${body}. Scale 1:${number(plan.scaleDenominator)}; ground ${number(plan.groundWidthKm, 1)} × ${number(plan.groundHeightKm, 1)} km; elevation ${number(plan.minElevationM)}–${number(plan.maxElevationM)} m.`,
@@ -132,7 +132,7 @@ export const TOOLS: ToolDefinition[] = [
     name: "check_coverage",
     title: "Check data coverage",
     description: "List candidate data sources for an area.",
-    inputSchema: { type: "object", required: ["area"], additionalProperties: false, properties: { area: AREA_SCHEMA } },
+    inputSchema: { type: "object", required: ["area"], additionalProperties: false, properties: { area: { ...AREA_SCHEMA, description: "The ground to check. A bounding box is used exactly as supplied. A center and ground width describe a square in the map projection." } } },
     outputSchema: coverageResultSchema(ATTRIBUTION_SCHEMA),
     annotations: readOnly("Check data coverage"),
     run: async (args, context) => {

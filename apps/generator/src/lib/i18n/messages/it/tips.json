@@ -17,7 +17,7 @@
   "lakesBodySources": "I fondali rilevati provengono da misurazioni subacquee o dai dati del terreno. Dove un lago non ne ha, il fondale è modellato dalla riva, dai pendii circostanti e da stime di profondità pubblicate. Nessuno dei due riflette il livello attuale dell’acqua.",
   "lakesBodyControls": "L’esagerazione della profondità rende i fondali più profondi rispetto alle colline. Limita strati di profondità fissa quante lastre scendono sotto la terra più bassa, e Adatta profondità dei laghi comprime ogni lago in quel margine mantenendone la riva.",
   "exportTitle": "Controlla l’esportazione",
-  "exportBody": "Per i rilievi a strati, imposta larghezza e altezza del materiale in Esporta. I pezzi si dispongono automaticamente con margini di 3 mm e spaziatura di 2 mm; scegli Usa il layout attuale per finire prima. Apri in Studio invia un SVG modificabile dell’intero layout. Scarica include la grafica, le impostazioni e i crediti dei dati, più una guida di montaggio per i rilievi a strati.",
+  "exportBody": "Per i rilievi a strati, imposta larghezza e altezza del materiale in Esporta. I pezzi si dispongono automaticamente con margini di 3 mm e spaziatura di 2 mm; scegli Usa il layout attuale per finire prima. Per i rilievi a strati, Apri in Studio invia il layout dei pezzi in legno in un unico SVG modificabile. I file per l’acrilico sono disponibili in Scarica. Scarica include la grafica, le impostazioni e i crediti dei dati, più una guida di montaggio per i rilievi a strati.",
   "assemblyTitle": "Montaggio",
   "assemblyBody": "Tieni i pezzi con le rispettive lastre e incolla dallo strato più basso verso l’alto, seguendo la guida di montaggio. Prova l’incastro di un pezzo piccolo prima di tagliare l’intero progetto."
 }

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { generateGeometry } from "../../pipeline/generate.js";
-import { pointInRing, realSource } from "../../test-support/sources.js";
+import { gridSource, scaledForLayers, pointInRing, realSource } from "../../test-support/sources.js";
 import { DEFAULT_PROJECT, type NestPartV1, type Point2D } from "../../types.js";
 import { sheetNestJobKey } from "./job-key.js";
 import { MAX_OUTLINE_VERTICES, clusterSmallParts, nestableParts, partOutline } from "./parts.js";
+import { planSheets } from "./plan-sheets.js";
+import { rectangleEngine } from "./rectangles.js";
+import { verifySheetPlan } from "./verify.js";
+import { buildFabricationPackage } from "../packages.js";
 import { DEFAULT_SHEET_NESTING } from "./resolve.js";
 import { signedArea } from "../../primitives/geometry2d.js";
 
@@ -132,4 +136,17 @@ describe("small part groups", () => {
     const polygons = parts.flatMap((part) => part.members.flatMap((member) => member.polygonIndexes.map((index) => `${member.layerIndex}:${index}`)));
     expect(new Set(polygons).size).toBe(polygons.length);
   });
+});
+
+it("nests separate seam islands when their rigid cluster would exceed the stock", async () => {
+  const settings = { ...DEFAULT_SHEET_NESTING, sheetWidthMm: 22.2, sheetHeightMm: 25, marginMm: 0, spacingMm: 2 };
+  const base = { ...DEFAULT_PROJECT, widthMm: 44, heightMm: 20, northArrowSizeMm: 12, workAreaWidthMm: 22.2, workAreaHeightMm: 25, laserKerfMm: 0.2, seamOffsetMm: 0, seamTabs: false, optimizeMaterialUse: false, sheetNesting: settings };
+  const [project, source] = scaledForLayers(base, gridSource(base, 181, (x, y) => Math.abs(Math.abs(x * 22) - 8.6) < 6 && Math.abs(y * 10) < 5 ? 50 : 0), 2);
+  const ir = generateGeometry(project, source);
+  const parts = nestableParts(ir, settings);
+  const plan = await planSheets(parts, settings, { engine: rectangleEngine, budgetMs: 0 });
+  expect(parts.map(part => part.label)).toEqual(["L01-A1", "L01-B1", "L02-A1", "L02-B1"]);
+  expect(plan.sheets).toHaveLength(3);
+  expect(verifySheetPlan(parts, plan)).toEqual([]);
+  expect(buildFabricationPackage(ir, project, { sheetPlan: plan }).files.filter(file => /sheet-\d+\.svg$/.test(file.filename))).toHaveLength(3);
 });

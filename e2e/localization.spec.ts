@@ -108,6 +108,9 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
     test.setTimeout(120_000);
     const studio = await openEmbed(page, locale);
     await expect(studio.locator("html")).toHaveAttribute("lang", tag);
+    const control = studio.locator(".gen-params-content .section-disclosure").first();
+    await expect(control).toBeVisible();
+    expect(await control.evaluate(button => button.closest("[lang]")?.getAttribute("lang"))).toBe(tag);
     await expandEverything(studio);
     // The parameter rail's section titles are translated, not English.
     const titles = await studio.locator(".gen-params-content .section-disclosure").allInnerTexts();
@@ -138,13 +141,11 @@ for (const [locale, tag] of Object.entries(LOCALE_TAGS)) {
     expect(overflow, `layout problems in ${locale}`).toEqual([]);
     // The Export view's contents card wraps its longer lines instead of scrolling sideways.
     const exportView = studio.locator(".mode-switch [role='radio']").last();
-    if (await exportView.isEnabled()) {
-      await exportView.click();
-      const manifest = studio.locator(".export-manifest");
-      if (await manifest.isVisible({ timeout: 30_000 }).catch(() => false)) {
-        expect(await manifest.evaluate((card) => card.scrollWidth - card.clientWidth), `export card scrolls sideways in ${locale}`).toBeLessThanOrEqual(1);
-      }
-    }
+    await expect(exportView).toBeEnabled({ timeout: 30_000 });
+    await exportView.click();
+    const manifest = studio.locator(".export-manifest");
+    await expect(manifest).toBeVisible({ timeout: 30_000 });
+    expect(await manifest.evaluate((card) => card.scrollWidth - card.clientWidth), `export card scrolls sideways in ${locale}`).toBeLessThanOrEqual(1);
   });
 }
 

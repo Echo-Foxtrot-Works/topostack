@@ -17,12 +17,16 @@ describe("Atomm bridge", () => {
     script.src = "https://static-res.makextool.com/scripts/js/generator-sdk/platform-sdk.js";
     document.head.append(script);
     const { connectAtomm } = await import("$lib/atomm/atomm-bridge");
-    const on = vi.fn(); const ready = vi.fn();
+    const on = vi.fn().mockImplementationOnce(() => { throw new Error("Host not ready"); });
+    const ready = vi.fn();
     const disconnect = connectAtomm(() => { throw new Error("Not exporting in this test"); }, ready);
     await vi.advanceTimersByTimeAsync(6000);
     window.atomm = { lifecycle: { on } } as unknown as AtommSdk;
     script.dispatchEvent(new Event("load"));
     expect(on).toHaveBeenCalledOnce();
+    expect(ready).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(on).toHaveBeenCalledTimes(2);
     expect(ready).toHaveBeenCalledOnce();
     disconnect();
     script.dispatchEvent(new Event("load"));
@@ -106,4 +110,34 @@ describe("Atomm bridge", () => {
     vi.useRealTimers();
   });
 
+  it("sends the wood master to Studio and includes separate acrylic in Download", async () => {
+    const { createAtommExport: exportArtwork } = await vi.importActual<typeof import("$lib/studio/export-policy")>("$lib/studio/export-policy");
+    const { lat, lon } = DEFAULT_PROJECT.location;
+    const project = {
+      ...DEFAULT_PROJECT, name: "Bowl", waterDepthLayerLimit: 6,
+      location: { ...DEFAULT_PROJECT.location, bounds: { west: lon - 0.042, east: lon + 0.042, south: lat - 0.029, north: lat + 0.029 } },
+      waterInserts: { kerfMm: 0.1, fitClearanceMm: 0.1, excludedLakeIds: [] },
+    };
+    const size = 64;
+    const values = Float32Array.from({ length: size * size }, (_, index) => {
+      const x = (index % size / (size - 1) - 0.5) * project.widthMm;
+      const y = (Math.floor(index / size) / (size - 1) - 0.5) * project.heightMm;
+      return 1500 + Math.max(0, Math.hypot(x, y) - 42) * 4;
+    });
+    const outer = Array.from({ length: 64 }, (_, index) => {
+      const angle = index / 64 * Math.PI * 2;
+      return { x: Math.cos(angle) * 40, y: Math.sin(angle) * 40 };
+    });
+    outer.push(outer[0]!);
+    const geometry = generateGeometry(project, {
+      ...createSyntheticSource(project, 2), sourceKind: "real",
+      elevation: { width: size, height: size, values, min: Math.min(...values), max: Math.max(...values) },
+      waterAreas: [{ id: "bowl", kind: "lake", name: "Bowl", hylakId: 42, maxDepthM: 150, meanDepthM: 60, polygon: { outer, holes: [] } }],
+    });
+    expect(geometry.waterInserts).toHaveLength(1);
+    const studio = await exportArtwork(geometry, project, "openInStudio");
+    expect(studio).toMatchObject({ filename: "bowl-master.svg" });
+    const download = await exportArtwork(geometry, project, "download");
+    expect(Array.isArray(download) && download.map(({ filename }) => filename)).toEqual(expect.arrayContaining(["bowl-master.svg", "bowl-acrylic-master.svg", "bowl-assembly-guide.html"]));
+  });
 });

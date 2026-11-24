@@ -1,3 +1,5 @@
+import { parseArchiveRelease } from "@topostack/data-contracts/archive-release";
+import candidate from "../data/faa-aviation-production-release.json" with { type: "json" };
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { DEVELOPMENT_BUCKET, PRODUCTION_BUCKET } from "../lib/archive-provisioning.mjs";
@@ -36,7 +38,8 @@ async function readState({ list, request }) {
 for (const bucket of buckets) {
   const client = await temporaryR2Client({ cloudflare: api, accountId, bucket, parentAccessKeyId, permission: apply ? "object-read-write" : "object-read-only" });
   const state = await readState(client);
-  const plan = planArchivePrune({ ...state, graceDays, includeLegacy });
+  const protectedKeys = bucket === PRODUCTION_BUCKET ? [parseArchiveRelease(candidate, "aviation/current.pmtiles").objectKey] : [];
+  const plan = planArchivePrune({ ...state, protectedKeys, graceDays, includeLegacy });
   console.log(`\n${bucket}: keep ${plan.keep.length} (${gib(plan.keepBytes)}), remove ${plan.remove.length} (${gib(plan.removeBytes)}); grace cutoff ${plan.cutoff}`);
   for (const entry of plan.keep) console.log(`  keep   ${entry.reason.padEnd(19)} ${entry.key} (${gib(entry.size)})`);
   for (const entry of plan.remove) console.log(`  remove ${entry.reason.padEnd(19)} ${entry.key} (${gib(entry.size)}, uploaded ${entry.uploaded})`);

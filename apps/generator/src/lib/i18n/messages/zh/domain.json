@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "SVG 图形不得超过 {sizeMb} MB。",
   "terrainServiceStatus": "地形服务返回 {status}。",
   "terrainTileVersionMissing": "地形瓦片缺少数据集版本。",
+  "terrainTileNoData": "地形瓦片没有高程数据。",
   "terrainTileVersionsMixed": "地形瓦片来自不一致的数据集版本。请稍后重试。",
   "terrainUnreachable": "无法连接地形服务。",
   "waterOutlinesUnassembled": "无法组合水域轮廓。",

@@ -73,14 +73,21 @@ describe("feedback email", () => {
     expect((await feedbackResponse(request(), busy.env)).status).toBe(429);
     expect(send).not.toHaveBeenCalled();
   });
-  it("reports missing configuration and send failures without leaking details", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  it("reports missing configuration and send failures without leaking details in responses or logs", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const unconfigured = feedbackEnv({ FEEDBACK_EMAIL_TO: "" } as Partial<Env>);
     expect((await feedbackResponse(request(), unconfigured.env)).status).toBe(503);
-    const failing = feedbackEnv({ FEEDBACK_EMAIL: { send: vi.fn(async () => { throw Object.assign(new Error("unverified"), { code: "E_SENDER_NOT_VERIFIED" }); }) } } as unknown as Partial<Env>);
-    const response = await feedbackResponse(request(), failing.env);
+    const privateReport = { ...submission, replyTo: "maker@example.com", context: { lakeCount: 1 } };
+    const send = vi.fn(async () => { throw Object.assign(new Error(privateReport.details), { code: privateReport.replyTo }); });
+    const failing = feedbackEnv({ FEEDBACK_EMAIL: { send } } as unknown as Partial<Env>);
+    const response = await feedbackResponse(request(privateReport), failing.env);
+    expect(send).toHaveBeenCalledOnce();
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: "Feedback could not be sent." });
+    expect(log.mock.calls).toEqual([
+      [JSON.stringify({ message: "feedback_unconfigured" })],
+      [JSON.stringify({ message: "feedback_send_failed" })],
+    ]);
   });
   it("only accepts POST and answers preflights with POST", async () => {
     expect((await exports.default.fetch(new Request("http://localhost:5273/v1/feedback"))).status).toBe(405);

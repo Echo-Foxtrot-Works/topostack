@@ -12,11 +12,15 @@ import { temporaryR2Client, verifyParentToken } from "../lib/r2-s3.mjs";
 
 const logicalKey = "aviation/current.pmtiles";
 
+function deployedRegistrationMatches(manifest, release) {
+  const registration = manifest?.registrations?.aviation;
+  return manifest?.capabilities?.archiveReleases === 1 && registration?.dataset === release.dataset && registration?.sha256 === release.sha256;
+}
+
 export async function activateAviationRelease({ candidate, dataset, request, manifest, promote = false, checkpoint }) {
   const release = parseArchiveRelease(candidate, logicalKey);
   if (release.dataset !== dataset) throw new Error("Staged FAA release differs from the committed registration.");
-  if (promote && (manifest?.capabilities?.archiveReleases !== 1
-    || !manifest.sources?.some(source => source.archive === "/v1/aviation.pmtiles" && source.id === dataset))) {
+  if (promote && !deployedRegistrationMatches(manifest, release)) {
     throw new Error("Deploy the registered FAA dataset before activating its archive.");
   }
   if (promote && typeof checkpoint !== "function") throw new Error("FAA promotion requires a rollback checkpoint.");
@@ -35,12 +39,12 @@ export async function activateAviationRelease({ candidate, dataset, request, man
   return stageArchive({ ...release, id, request, promote: true, upload: async () => {}, checkpoint });
 }
 
-async function deployedManifest(origin, dataset) {
+async function deployedManifest(origin, release) {
   const deadline = Date.now() + 180_000;
   do {
     try {
       const manifest = await fetchGatewayJson(origin, "/v1/manifest");
-      if (manifest.sources?.some(source => source.archive === "/v1/aviation.pmtiles" && source.id === dataset)) return manifest;
+      if (deployedRegistrationMatches(manifest, release)) return manifest;
     } catch (error) {
       console.warn(`Waiting for the deployed FAA registration: ${error.message}`);
     }
@@ -66,7 +70,7 @@ if (isMainModule(import.meta.url)) {
   const parentAccessKeyId = await verifyParentToken(cloudflare);
   const { request } = await temporaryR2Client({ cloudflare, accountId: process.env.CLOUDFLARE_ACCOUNT_ID, bucket: PRODUCTION_BUCKET, parentAccessKeyId,
     permission: promote ? "object-read-write" : "object-read-only", objects: [candidate.objectKey, `releases/${logicalKey}.json`] });
-  const manifest = promote ? await deployedManifest(bucketDeployment(PRODUCTION_BUCKET).origin, sources.dataset) : undefined;
+  const manifest = promote ? await deployedManifest(bucketDeployment(PRODUCTION_BUCKET).origin, candidate) : undefined;
   const result = await activateAviationRelease({ candidate, dataset: sources.dataset, request, manifest, promote,
     checkpoint: receipt => writeJsonAtomic(receiptPath, { bucket: PRODUCTION_BUCKET, ...receipt }) });
   if (receiptPath) await writeJsonAtomic(receiptPath, { bucket: PRODUCTION_BUCKET, ...result });

@@ -19,6 +19,7 @@ export async function inspectPreviews(directory) {
     const entry = manifest.lakes[slug];
     const bytes = await readFile(join(directory, `${slug}.webp`));
     const sha256 = digest(bytes);
+    if (entry.sha256 !== undefined && entry.sha256 !== sha256) throw new Error(`${slug}: preview does not match its checkpoint, resume rendering before publishing`);
     const file = `${sha256.slice(0, 24)}.webp`;
     lakes[slug] = { file, sha256, bytes: bytes.length, width: entry.width, height: entry.height,
       maxDepthM: entry.maxDepthM, contourIntervalM: entry.contourIntervalM, surveyedShare: entry.surveyedShare, surveys: entry.surveys, renderedAt: entry.renderedAt };

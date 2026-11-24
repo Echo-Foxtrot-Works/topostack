@@ -601,6 +601,6 @@ function piecesAndRods(config: ProjectConfigV1, source: SourceBundleV1, layers: 
   if (piecesOverlap(levels, material.thicknessMm)) warnings.push({ code: "AIRSPACE_PIECES_OVERLAP", message: "Airspace acrylic pieces overlap at the same height. Use plates or disable overlapping airspace classes, then regenerate before exporting.", messageKey: "airspacePiecesOverlap" });
   const stack: AirspaceStackIR = { form: settings.form, thicknessMm: material.thicknessMm, kerfMm: material.kerfMm, ceilingCapFt, mmPerMeter: scale.mmPerMeter, topMm: 0, levels, sectors, rod: { ...settings.rod }, ...(source.airspaceCycle ? { cycle: source.airspaceCycle } : {}), columns: [], cutList: [], backingSheet: false };
   // Rods hold the pieces, and their sockets become holes in the sheets; a piece no rod can hold is left out.
-  placeAirspaceSupports(stack, layers, inserts, t, config.minimumFeatureMm, warnings);
+  placeAirspaceSupports(stack, layers, inserts, t, warnings);
   return stack;
 }

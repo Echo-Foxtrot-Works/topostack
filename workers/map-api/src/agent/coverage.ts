@@ -56,7 +56,7 @@ export function areaCoverage(bounds: GeoBounds, sources: {
   const surveys = (sources.surveys ?? servedBathymetryArchives()).filter(({ source }) => copies.some((copy) => intersects(source, copy)))
     .map(({ source }) => ({ id: source.id, name: source.name, license: source.license }));
   const faa = sources.aviation ?? aviationSources;
-  const aviation = copies.some((copy) => aviationCovers(faa, copy)) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;
+  const aviation = aviationCovers(faa, bounds) ? { name: faa.name, nasrCycle: faa.nasrCycle, license: faa.license } : null;
   const registration = sources.lands ?? landsSources;
   const touched = new Set(copies.flatMap((copy) => landSourcesCovering(registration, copy)));
   const publicLands = [

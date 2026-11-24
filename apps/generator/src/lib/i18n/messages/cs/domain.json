@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Grafiky SVG mohou mít nejvýše {sizeMb} MB.",
   "terrainServiceStatus": "Služba terénu vrátila {status}.",
   "terrainTileVersionMissing": "Dlaždici terénu chybí verze datové sady.",
+  "terrainTileNoData": "Dlaždice terénu neobsahuje žádné výškové údaje.",
   "terrainTileVersionsMixed": "Dlaždice terénu pocházejí z nekonzistentních verzí datové sady. Zkuste to za chvíli znovu.",
   "terrainUnreachable": "Službu terénu se nepodařilo kontaktovat.",
   "waterOutlinesUnassembled": "Obrysy vody se nepodařilo sestavit.",

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { labelDimensions } from "../annotate/labels.js";
-import { distanceToSegment, pointInRing } from "../test-support/sources.js";
+import { distanceToSegment, parsePathPoints, pointInRing, realSource } from "../test-support/sources.js";
+import { layerToSvg } from "../export/svg.js";
+import { generateGeometry } from "./generate.js";
 import { DEFAULT_PROJECT, type LayerIR, type LayerPieceV1, type OperationPath, type Point2D, type Polygon2D } from "../types.js";
 import { alignmentGuideMarkings } from "./alignment.js";
-import { alignmentOutlineInsetMm } from "./hidden-marks.js";
+import { alignmentOutlineInsetMm, hiddenMarkIssues } from "./hidden-marks.js";
 
 const config = { ...DEFAULT_PROJECT, laserKerfMm: 0.5 };
 
@@ -99,4 +101,21 @@ describe("alignment guide markings", () => {
     const top = label!.points[0]!.y;
     expect(top > 0 || top + height < 0).toBe(true);
   });
+});
+
+it("keeps the full guide stroke out of upper cutouts and away from the lower edge", () => {
+  const project = { ...config, laserKerfMm: 0.2, lineStyle: { ...config.lineStyle, annotationMm: 1 } };
+  const lower = layer(0, [rect(-50, -50, 50, 50)]);
+  const rim = rect(-50, -50, 50, 50);
+  rim.holes = [rect(-49.5, -25, -28, 25).outer.reverse()];
+  const upper = layer(1, [rim]);
+  lower.markings = alignmentGuideMarkings(project, lower, upper);
+  expect(outlines(lower.markings).length).toBeGreaterThan(0);
+  expect(hiddenMarkIssues({ layers: [lower, upper], lineStyle: project.lineStyle })).toEqual([]);
+  const ir = { ...generateGeometry(project, realSource(project)), layers: [lower, upper], fabricationNests: [] };
+  const svg = layerToSvg(ir, lower);
+  const paths = [...svg.matchAll(/<path id="(alignment-[^"]+-outline-\d+)" d="([^"]+)"/g)];
+  expect(paths.length).toEqual(outlines(lower.markings).length);
+  const exported = paths.map(([, id, data]): OperationPath => ({ id: id!, operation: "engrave", kind: "guide", points: parsePathPoints(data!) }));
+  expect(hiddenMarkIssues({ layers: [{ ...lower, markings: exported }, upper], lineStyle: project.lineStyle })).toEqual([]);
 });

@@ -16,7 +16,7 @@
     <div><dt>Paint templates <span>ZIP · layered</span></dt><dd>With <strong>Water paint templates</strong> on: a paper stencil for each panel that has visible water, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Acrylic inserts <span>ZIP · layered</span></dt><dd>With <strong>Acrylic water inserts</strong> on: the acrylic panels or sheets, their engraving-only companions and the acrylic master, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Airspace <span>ZIP · layered</span></dt><dd>With <strong>Airspace in 3D</strong> on: the airspace panels, their engraving-only companions, a master for each acrylic colour, and the backing sheet when rods go through the bottom layer, plus README.txt and ATTRIBUTION.txt.</dd></div>
-    <div><dt>Assembly guide <span>SVG · layered</span></dt><dd>The stacking reference on its own.</dd></div>
+    <div><dt>Assembly guide <span>HTML · layered</span></dt><dd>The printable assembly booklet on its own.</dd></div>
     <div><dt>Project settings <span>JSON</span></dt><dd>Your settings, for backup or to continue on another device. Always available, even when artwork export is blocked.</dd></div>
   </dl>
   <p>ZIP and file names start with your project name, lower-cased with spaces replaced by hyphens. The examples below use <code>my-map</code>. The combined download is limited to 100 MB; if a project exceeds it, reduce the map details or the size of the map area.</p>
