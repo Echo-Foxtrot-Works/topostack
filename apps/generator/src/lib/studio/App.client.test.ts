@@ -786,7 +786,7 @@ describe("TopoStack Svelte shell", () => {
     });
     expect(artwork.getAttribute("viewBox")).toBe(settledViewBox);
     viewport.dispatchEvent(pointerEvent("pointerup", 110, 108));
-    await vi.waitFor(() => expect(panLayer.style.transform).toBe("translate3d(0, 0, 0)"));
+    await vi.waitFor(() => expect(panLayer.style.transform).toBe("translate3d(0px, 0px, 0px)"));
     expect(artwork.getAttribute("viewBox")).toBe(settledViewBox);
     expect(target.querySelector<HTMLElement>(".svg-canvas")?.style.transform).not.toContain("translate3d(0px, 0px");
   });
@@ -1445,6 +1445,8 @@ describe("TopoStack Svelte shell", () => {
       signal.addEventListener("abort", () => reject(new DOMException("Canceled", "AbortError")), { once: true });
     }));
     const target = document.createElement("div");
+    document.body.append(target);
+    onTestFinished(() => target.remove());
     component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
     await tick();
     for (const label of ["Roads", "Trails", "Water outlines", "Water depth"]) {
