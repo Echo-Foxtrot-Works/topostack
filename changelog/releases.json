@@ -2,6 +2,126 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "0.14.0",
+      "date": "2026-11-24",
+      "entries": [
+        {
+          "type": "feature",
+          "title": "Add railways to your maps, with romanized names where the local script can't be engraved",
+          "body": "Turn on **Railways** under Map features to engrave above-ground rail lines from OpenStreetMap, in their own SVG group so you can give them their own laser setting. Yards and sidings are left out. Road and rail labels in scripts the engraving fonts can't draw, such as Japanese, now use the English or romanized name, so 東海道本線 engraves as \"Tokaido Main Line\" instead of disappearing.",
+          "pr": 300
+        },
+        {
+          "type": "feature",
+          "title": "Sea floors now use GEBCO's global ocean depths, about four times sharper than before",
+          "body": "Layered models and engravings that reach the sea now carve the sea floor from the GEBCO_2026 grid (about 460 m) instead of the coarse ocean in the base terrain, everywhere in the world. Trenches, canyons and shelves such as Suruga Bay and the Japan Trench now show their shape. Coastlines and land are unchanged, and inland models load exactly as before.",
+          "pr": 306
+        },
+        {
+          "type": "feature",
+          "title": "Engrave building outlines on neighborhood maps",
+          "body": "Turn on **Features → Building outlines** to put station buildings and other mapped footprints alongside roads and railways at zoom 13 and closer. Courtyards and shared walls engrave once, and the minimum feature size applies at every orientation. Adjust their line width and give the buildings group its own laser setting. The Street engraving composition includes them automatically.",
+          "pr": 310
+        },
+        {
+          "type": "feature",
+          "title": "Follow railway tracks through covered stations",
+          "body": "With **Railways** on, covered sections engrave as thin dashes between the solid surface tracks. Studio uses the mapped route through the station and exports the dashes as individual strokes. If station data is incomplete, retry or turn off Railways to export the other map details.",
+          "pr": 310
+        },
+        {
+          "type": "improvement",
+          "title": "Layered coastlines now follow the mapped shore instead of the coarse elevation data",
+          "body": "The sea-level sheet of a layered model is now cut along the OpenStreetMap coastline, so shores, islands and harbours line up with the engraved shoreline instead of stepping along the elevation data's coarse pixels. Reclaimed land that older elevation data still showed as sea, such as Hiroshima's port, is now land.",
+          "pr": 308
+        },
+        {
+          "type": "improvement",
+          "title": "Clearer streets and railways for single-pass scoring",
+          "body": "Roads meet cleanly at junctions, mapped bridges leave gaps in the line below, and open tracks gain spaced cross-ties wherever neighbouring lines leave room. The map preview shows a representative 0.20 mm burn for single-pass lines. Street and railway bends now round gently between junctions, bridge gaps and rail ties.",
+          "pr": 314
+        },
+        {
+          "type": "improvement",
+          "title": "Keep dash gaps and separate filled artwork on laser import",
+          "body": "In SVGs downloaded from TopoStack, assign black artwork to Engrave or Fill and blue lines to Score or Line. Dashed trails and boundaries keep their gaps in both SVG and LightBurn projects. In LightBurn you can select a whole dashed feature or move a filled letter together with its holes.",
+          "pr": 317
+        },
+        {
+          "type": "improvement",
+          "title": "Open each panel on its own canvas or page",
+          "body": "In Export → Individual files, download an xTool Studio project or a LightBurn project with pages. Each panel or nested sheet keeps its cuts and markings together. LightBurn pages require version 2.2 or later. Separate LightBurn files are also available for older versions.",
+          "pr": 317
+        },
+        {
+          "type": "improvement",
+          "title": "Retire the composition preset picker",
+          "body": "Choose **Layered** or **Flat** and use the studio panels to adjust individual map features. Designs saved with the former presets keep their settings.",
+          "pr": 321
+        },
+        {
+          "type": "fix",
+          "title": "Keep dense maps exportable with water outlines",
+          "body": "Dense maps now try a coarser level of map detail when the finest available tiles exceed export limits. This lets projects such as Hiroshima Bay export with water outlines enabled, with less fine detail on the busiest maps.",
+          "pr": 309
+        },
+        {
+          "type": "fix",
+          "title": "Preserve terrain, engraving details and sheet clearances in exports",
+          "body": "Ocean soundings, lake levels and reviewed islands survive generation and export. Complete project downloads now carry every referenced depth chart. Sheet nesting preserves cut spacing and can fit narrow parts diagonally. Wood and acrylic downloads respect the selected material, and LightBurn panels keep each piece grouped with its engraving. Circular contours and engraved acrylic inserts preview the laser paths. Saved preview images show raised airspace plates.",
+          "pr": 311
+        },
+        {
+          "type": "fix",
+          "title": "Keep sharp corners visible in nested sheet previews",
+          "body": "The sheet layout preview now shows the full corners of pieces with detailed outlines, including while nesting is in progress.",
+          "pr": 312
+        },
+        {
+          "type": "fix",
+          "title": "Build real terrain where detailed elevation tiles are empty",
+          "body": "When detailed elevation is missing, projects such as Mount Etna can use original elevation tiles from a coarser map zoom. Studio warns when it uses the coarser tiles, and the export records the zoom.",
+          "pr": 313
+        },
+        {
+          "type": "fix",
+          "title": "Recover missing map details on islands and near borders",
+          "body": "Maps can use OpenStreetMap park, preserve and military outlines when the official land archive has no matching units in the selected area. Wildlife refuge outlines are also available across the US Minor Outlying Islands and the Hawaiian Islands National Wildlife Refuge. Aviation maps at French Frigate Shoals can now engrave the FAA’s HFS airport symbol.",
+          "pr": 313
+        },
+        {
+          "type": "fix",
+          "title": "Remove isolated false pits from fine terrain models",
+          "body": "Fine-detail models can now repair a single spurious low elevation next to a confirmed terrain-data defect. This corrects false drops on maps such as Kyiv and Yamoussoukro. Regenerate saved projects to use the corrected terrain.",
+          "pr": 313
+        },
+        {
+          "type": "fix",
+          "title": "Roads are visible on the 3D stack",
+          "body": "The assembled 3D preview now shows scored roads, railways and other linework on the exposed terrain layers.",
+          "pr": 315
+        },
+        {
+          "type": "fix",
+          "title": "More complete neighborhood building outlines",
+          "body": "Building outlines now use detailed neighborhood footprints at zoom 13 and closer. The minimum feature size still controls which buildings and courtyards fit on the finished piece. Studio tells you when it uses the coarser basemap outlines.",
+          "pr": 316
+        },
+        {
+          "type": "fix",
+          "title": "Restore detailed building outlines in the hosted Studio",
+          "body": "Opening a neighborhood project with **Building outlines** enabled now loads the detailed footprints in the hosted Studio and its exports.",
+          "pr": 318
+        },
+        {
+          "type": "fix",
+          "title": "Saved designs recover safely and cut files match assembly instructions",
+          "body": "Studio recovers a valid saved design after a storage interruption and keeps stock settings edited during generation. Airspace rod holes survive minimum-feature filtering, and depth charts flag contours that the lake grid cannot resolve.",
+          "pr": 322
+        }
+      ]
+    },
+    {
       "version": "0.13.1",
       "date": "2026-11-20",
       "entries": [
