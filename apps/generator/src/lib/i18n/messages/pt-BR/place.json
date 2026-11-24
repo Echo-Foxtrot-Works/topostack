@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "Comparar composições",
-  "currentDesign": "Design atual",
-  "composition.streets": "Gravação de ruas",
-  "composition.shoreline": "Gravação de margens",
-  "composition.terrain": "Relevo do terreno",
-  "applyComposition": "Aplicar composição",
-  "noCompositionFeatures": "Os elementos selecionados não aparecem neste recorte.",
   "artworkSize": "Tamanho da arte",
   "cutSize": "Tamanho do corte",
   "placeAndSize": "Local e tamanho",

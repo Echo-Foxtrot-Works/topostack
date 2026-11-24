@@ -1,11 +1,4 @@
 {
-  "compareCompositions": "Сравнить композиции",
-  "currentDesign": "Текущий проект",
-  "composition.streets": "Гравировка улиц",
-  "composition.shoreline": "Гравировка берегов",
-  "composition.terrain": "Рельеф местности",
-  "applyComposition": "Применить композицию",
-  "noCompositionFeatures": "Выбранные объекты карты не видны в этой области.",
   "artworkSize": "Размер гравировки",
   "cutSize": "Размер изделия",
   "placeAndSize": "Место и размер",
