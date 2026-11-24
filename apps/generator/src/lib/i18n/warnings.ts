@@ -1,12 +1,16 @@
 import type { ExportBlock, GeometryWarning } from "@topostack/core";
+import { localMessage } from "$lib/i18n/errors";
 import type { MessageParams } from "$lib/i18n/format";
 import { hasMessage, t } from "$lib/i18n/i18n.svelte";
 import type { MessageKey } from "$lib/i18n/messages/en/index";
 
 type Keyed = Pick<GeometryWarning, "message" | "messageKey" | "params">;
 
-/** Airspace class ids core passes as `airspaceClasses`, named in the studio's language. */
-function localParams(params: Keyed["params"]): MessageParams | undefined {
+/** Name known domain details when rendering, including after the Atomm locale arrives. */
+function localParams({ messageKey, params }: Keyed): MessageParams | undefined {
+  if ((messageKey === "mapServiceFallbackBecause" || messageKey === "waterOutlinesFailed") && typeof params?.reason === "string") {
+    return { ...params, reason: localMessage(params.reason) };
+  }
   const classes = params?.airspaceClasses;
   if (!Array.isArray(classes)) return params;
   return { ...params, airspaceClasses: classes.map((id) => (hasMessage(`warnings.airspaceClass.${id}`) ? t(`warnings.airspaceClass.${id}` as MessageKey) : id)) };
@@ -20,7 +24,7 @@ function localParams(params: Keyed["params"]): MessageParams | undefined {
  */
 export function warningText(warning: Keyed): string {
   const name = warning.messageKey;
-  return name && hasMessage(`warnings.${name}`) ? t(`warnings.${name}` as MessageKey, localParams(warning.params)) : warning.message;
+  return name && hasMessage(`warnings.${name}`) ? t(`warnings.${name}` as MessageKey, localParams(warning)) : warning.message;
 }
 
 /** Why export is blocked (`exportBlockMessage` from core), in the studio's language. */

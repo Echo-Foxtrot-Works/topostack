@@ -35,6 +35,7 @@ def request(url, parameters):
 
 def snapshot(url, output, where='1=1', batch_size=200):
     metadata = request(url, {'f': 'json'})
+    revision = (metadata.get('editingInfo') or {}).get('lastEditDate')
     listing = request(url + '/query', {'f': 'json', 'where': where, 'returnIdsOnly': 'true'})
     ids = sorted(listing['objectIds'])
     if not ids or len(ids) != len(set(ids)):
@@ -50,9 +51,9 @@ def snapshot(url, output, where='1=1', batch_size=200):
         parameters = {'f': 'geojson', 'objectIds': ','.join(map(str, wanted)),
                       'outFields': '*', 'outSR': '4326', 'returnGeometry': 'true'}
         # Cache identity includes the endpoint and selection, not only page number.
-        identity = hashlib.sha256((url + json.dumps(parameters, sort_keys=True)).encode()).hexdigest()
+        identity = hashlib.sha256(json.dumps([url, revision, parameters], sort_keys=True).encode()).hexdigest()
         try:
-            cached = json.loads(path.read_text()) if path.exists() else None
+            cached = json.loads(path.read_text()) if revision and path.exists() else None
         except (OSError, ValueError):
             cached = None
         def fetch(wanted_ids):
@@ -70,15 +71,17 @@ def snapshot(url, output, where='1=1', batch_size=200):
                 first = fetch(wanted_ids[:middle])
                 second = fetch(wanted_ids[middle:])
                 return {'type': 'FeatureCollection', 'features': first['features'] + second['features']}
-        data = cached['data'] if cached and cached.get('identity') == identity else fetch(wanted)
+        reusable = cached and cached.get('identity') == identity
+        data = cached['data'] if reusable else fetch(wanted)
         features = data.get('features', [])
         actual = [f.get('properties', {}).get(field, f.get('id')) for f in features]
         if data.get('exceededTransferLimit') or len(actual) != len(wanted) or set(actual) != set(wanted):
             raise ValueError(f'Incomplete survey page {index}: expected {len(wanted)}, received {len(actual)}')
         features.sort(key=lambda f: f.get('properties', {}).get(field, f.get('id')))
-        temporary = path.with_suffix('.part')
-        temporary.write_text(json.dumps({'identity': identity, 'data': data}, separators=(',', ':')))
-        temporary.replace(path)
+        if revision and not reusable:
+            temporary = path.with_suffix('.part')
+            temporary.write_text(json.dumps({'identity': identity, 'data': data}, separators=(',', ':')))
+            temporary.replace(path)
         return features
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -110,6 +113,8 @@ def snapshot(url, output, where='1=1', batch_size=200):
     after = request(url + '/query', {'f': 'json', 'where': where, 'returnIdsOnly': 'true'})
     if sorted(after['objectIds']) != ids:
         raise ValueError('Survey object IDs changed during capture; repeat in a fresh cache')
+    if revision and (request(url, {'f': 'json'}).get('editingInfo') or {}).get('lastEditDate') != revision:
+        raise ValueError('Survey revision changed during capture; repeat the snapshot')
     partial.replace(output)
     with output.open('rb') as stream:
         checksum = hashlib.file_digest(stream, 'sha256').hexdigest()

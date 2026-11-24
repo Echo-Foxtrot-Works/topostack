@@ -1,8 +1,9 @@
 // No external dependencies: the hourly production monitor runs this file
 // straight from a checkout, so it must not need an
 // `npm ci`; the jsdom-based SEO checks run separately (scripts/verify/verify-seo-http.mjs).
+import { requireActiveAviation, verifyAviationRange } from "../lib/aviation-deployment.mjs";
 import { gunzipSync } from "node:zlib";
-import { fetchWithRetry as fetchDeploymentResponse } from "../lib/deployment-fetch.mjs";
+import { fetchWithRetry as fetchDeploymentResponse, releaseEvidence, revisionJson } from "../lib/deployment-fetch.mjs";
 
 const deploymentTarget = process.env.WORKER_URL;
 const publicAppUrl = process.env.PUBLIC_APP_URL ?? deploymentTarget;
@@ -27,7 +28,10 @@ async function fetchJson(base, path) {
   return await (await fetchWithRetry(base, path, { headers: { accept: "application/json" } })).json();
 }
 
-const deploymentHealth = await fetchJson(deploymentBase, "/health");
+const expectedCommit = process.env.EXPECTED_COMMIT;
+const rollout = { allowRolloutStatuses: process.env.DEPLOYMENT_ROLLOUT === "1" };
+const evidence = expectedCommit ? await releaseEvidence(publicBase, expectedCommit, expectedEnvironment, { ...rollout, deploymentBase }) : undefined;
+const deploymentHealth = evidence?.deploymentHealth ?? await revisionJson(deploymentBase, "/health", expectedCommit, rollout);
 if (deploymentHealth?.service !== "topostack-map-api" || deploymentHealth?.status !== "ok" || deploymentHealth?.environment !== expectedEnvironment) throw new Error(`Unexpected deployment-target health response: ${JSON.stringify(deploymentHealth)}`);
 
 // Verify both public entry points so a healthy homepage cannot hide a missing editor.
@@ -36,9 +40,12 @@ for (const path of ["/", "/studio"]) {
   const contentType = appResponse.headers.get("content-type") ?? "";
   const appHtml = await appResponse.text();
   if (!contentType.includes("text/html") || !appHtml.includes("data-sveltekit-preload-data")
-    || (path === "/studio" && !appHtml.includes("static-res.makextool.com/scripts/js/generator-sdk/platform-sdk.js"))
+    || (path === "/studio" && !appHtml.includes("Preparing your terrain preview"))
     || (path === "/" && !/href=["'][^"']*studio["']/.test(appHtml))) {
     throw new Error(`The public deployment did not return the TopoStack frontend at ${path}.`);
+  }
+  if (/<script\b[^>]*\bsrc=["']https:\/\/static-res\.makextool\.com\/scripts\/js\/generator-sdk\/platform-sdk\.js["']/.test(appHtml)) {
+    throw new Error(`The public frontend at ${path} loads the Atomm SDK outside the embed.`);
   }
   if (!appResponse.headers.get("content-security-policy")?.includes("default-src 'self'")
     || appResponse.headers.get("x-content-type-options") !== "nosniff"
@@ -76,10 +83,10 @@ if (!(robots.headers.get("content-type") ?? "").includes("text/plain") || !robot
   throw new Error(`robots.txt is no longer a permissive plain-text file: ${JSON.stringify(robotsBody.slice(0, 200))}`);
 }
 
-const health = await fetchJson(publicBase, "/health");
+const health = evidence?.publicHealth ?? await revisionJson(publicBase, "/health", expectedCommit, rollout);
 if (health?.service !== "topostack-map-api" || health?.status !== "ok" || health?.environment !== expectedEnvironment) throw new Error(`Unexpected Worker health response: ${JSON.stringify(health)}`);
 
-const readiness = await fetchJson(publicBase, "/ready");
+const readiness = evidence?.readiness ?? await fetchJson(publicBase, "/ready");
 if (readiness?.service !== "topostack-map-api" || readiness?.status !== "ready" || readiness?.environment !== expectedEnvironment || readiness?.dependencies?.geocoder?.status !== "configured" || readiness?.dependencies?.vectorData?.status !== "available" || readiness?.dependencies?.lakeData?.status !== "available" || readiness?.dependencies?.lakeOutlines?.status !== "available") {
   throw new Error(`Unexpected Worker readiness response: ${JSON.stringify(readiness)}`);
 }
@@ -119,6 +126,15 @@ const vectorHeader = new Uint8Array(await vectorResponse.arrayBuffer());
 if (new TextDecoder().decode(vectorHeader.subarray(0, 7)) !== "PMTiles" || vectorHeader[7] !== 3) throw new Error("The vector archive did not return a PMTiles v3 header.");
 if (vectorHeader[101] !== 12) throw new Error("The deployed vector archive has max zoom " + String(vectorHeader[101] ?? "unknown") + "; expected 12.");
 
+// Use the release served by the gateway and a tile containing Shinjuku Station.
+const buildings = await fetchJson(publicBase, "/v1/buildings");
+if (typeof buildings?.release !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(buildings.release)) throw new Error("The building gateway returned an invalid release.");
+const buildingTile = await fetchWithRetry(publicBase, `/v1/buildings/${buildings.release}/14/14549/6451.pbf`, { headers: { origin: atommOrigin } });
+verifyPublicCors(buildingTile);
+if (!buildingTile.headers.get("content-type")?.includes("application/vnd.mapbox-vector-tile") || new Uint8Array(await buildingTile.arrayBuffer())[0] !== 0x1a) {
+  throw new Error("The building gateway did not return the neighborhood vector layer for Shinjuku Station.");
+}
+
 if (readiness?.dependencies?.lakeData?.status === "available") {
   const lakeResponse = await fetchWithRetry(publicBase, "/v1/lakes.pmtiles", { headers: { range: "bytes=0-126", origin: atommOrigin } });
   verifyPublicCors(lakeResponse);
@@ -128,18 +144,19 @@ if (readiness?.dependencies?.lakeData?.status === "available") {
   }
 }
 
-const manifest = await fetchJson(publicBase, "/v1/manifest");
+const manifest = evidence?.manifest ?? await fetchJson(publicBase, "/v1/manifest");
 if (manifest?.schemaVersion !== 1 || manifest?.coverage?.vectorMaxZoom !== 12 || typeof manifest?.datasetVersion !== "string" || !Array.isArray(manifest?.sources)) throw new Error("The deployed Worker returned an invalid data manifest.");
 
 // FAA aviation and public lands are optional for /ready, so nothing above
 // notices when their archive is missing or older than the registration the
 // Worker advertises: projects using them would then fail to load or carry the
 // wrong features. When the manifest names an archive, it must serve exactly that dataset.
-async function verifyOptionalArchive(path, label, provisionScript) {
-  const advertised = manifest.sources.find((source) => source?.archive === path);
+async function verifyOptionalArchive(path, label, provisionScript, requiredSource) {
+  const advertised = requiredSource ?? manifest.sources.find((source) => source?.archive === path);
   if (!advertised) return;
   const response = await fetchWithRetry(publicBase, path, { headers: { range: "bytes=0-126", origin: atommOrigin } });
   verifyPublicCors(response);
+  if (requiredSource) verifyAviationRange(response, requiredSource.release, 0, 127);
   const headerBytes = new Uint8Array(await response.arrayBuffer());
   if (response.status !== 206 || new TextDecoder().decode(headerBytes.subarray(0, 7)) !== "PMTiles" || headerBytes[7] !== 3) {
     throw new Error(`The ${label} archive did not return a PMTiles v3 header range (HTTP ${response.status}). Provision ${advertised.id} with ${provisionScript}.`);
@@ -151,13 +168,14 @@ async function verifyOptionalArchive(path, label, provisionScript) {
   const compression = headerBytes[97];
   if (!metadataLength || metadataLength > 1_000_000 || (compression !== 1 && compression !== 2)) throw new Error(`The ${label} archive header has unreadable metadata.`);
   const metadataResponse = await fetchWithRetry(publicBase, path, { headers: { range: `bytes=${metadataOffset}-${metadataOffset + metadataLength - 1}`, origin: atommOrigin } });
+  if (requiredSource) verifyAviationRange(metadataResponse, requiredSource.release, metadataOffset, metadataLength);
   const metadataBytes = Buffer.from(await metadataResponse.arrayBuffer());
   const metadata = JSON.parse((compression === 2 ? gunzipSync(metadataBytes) : metadataBytes).toString("utf8"));
   if (metadata?.topostack_dataset !== advertised.id) {
     throw new Error(`The ${label} archive serves ${metadata?.topostack_dataset ?? "no dataset"}, but the Worker advertises ${advertised.id}. Provision the pinned archive with ${provisionScript}.`);
   }
 }
-await verifyOptionalArchive("/v1/aviation.pmtiles", "aviation", "scripts/provision/provision-aviation-data.mjs");
+await verifyOptionalArchive("/v1/aviation.pmtiles", "aviation", "scripts/provision/provision-aviation-data.mjs", requireActiveAviation(manifest, expectedEnvironment));
 await verifyOptionalArchive("/v1/lands.pmtiles", "public lands", "scripts/provision/provision-lands-data.mjs");
 
 console.log(`Verified ${expectedEnvironment} TopoStack app and API at ${publicBase.origin} (deployment ${deploymentTarget})`);

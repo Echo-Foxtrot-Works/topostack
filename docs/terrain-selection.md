@@ -12,6 +12,7 @@ The current policy is `terrain-priority-v1`:
 | --- | --- | --- |
 | 300 | Approved lidar DTM, including NRCan HRDEM mosaics | Valid pixels within provisioned regions |
 | 200 | Approved national DTM, including NRCan MRDEM-30 | Valid pixels within provisioned regions |
+| 100 | Ocean bathymetry grid (`kind: "bathymetry-grid"`) | Pixels the base terrain already has at or below sea level |
 | Fallback | Existing Mapzen composite | Existing worldwide terrain service |
 
 Priority is a reviewed quality decision, not a claim that finer nominal pixels
@@ -31,8 +32,14 @@ remains tied to the map zoom and each archive's limits.
 
 ## Coverage and failure behavior
 
-Bounding boxes and zoom limits are candidate filters. Only valid decoded pixels
-claim coverage. Higher-ranked valid pixels are never overwritten; missing tiles
+Bounding boxes and the archive's minZoom are candidate filters. A request finer
+than an archive's maxZoom reads the ancestor tiles at that zoom once each and
+upsamples them bilinearly; a corner the archive leaves transparent takes the
+base value, so a coarse grid feathers into the base terrain over one source cell.
+Ocean grids (`bathymetry-grid`) only replace pixels that both they and the base
+terrain put below sea level, and are never fetched for tiles whose base terrain
+is all above it: they deepen the sea but never move the coastline or lift land.
+Only valid decoded pixels claim coverage. Higher-ranked valid pixels are never overwritten; missing tiles
 and transparent pixels fall through. A malformed or unavailable archive is
 rejected atomically, leaving the next source and base terrain available. The base
 service is still required to load successfully before overlays are applied.
@@ -43,10 +50,38 @@ Unavailable candidates are reported. The same selection policy, contributions,
 and attempted sources travel with geometry and export metadata. These fractions
 measure interpolation contribution, not a survey accuracy or land-area estimate.
 
-Current preferred sources use CGVD2013. Mapzen's composite datum is source-dependent;
-no vertical datum correction is claimed. Mixed-source boundaries can still need
-review. A new provider with a different datum needs a deliberate normalization
-step and fixtures before being accepted by the catalog validator.
+Registered sources declare one of three height systems, all orthometric metres
+near mean sea level: `CGVD2013` (Canada), `JP-TP` (Japan's Tokyo Peil heights;
+GSI's April 2025 JGD2024 revision moved them by at most +57/−67 cm, so both
+generations share the label) and `MSL` (GEBCO ocean depths). Their mutual
+offsets are under a metre, far below a laser-cut layer, so they mix without
+transformation. Mapzen's composite datum is source-dependent; no vertical datum
+correction is claimed. Mixed-source boundaries can still need review. A provider
+whose heights are not near mean sea level (ellipsoidal heights, or a datum offset
+of metres) needs a normalization step and fixtures before the validator accepts
+a new label.
+
+Valid samples depend on the kind: land models accept −500 to 9,000 m, and
+`bathymetry-grid` sources −11,000 to +10 m (`terrainValueRange` in
+`packages/data-contracts/src/source-catalog.ts`; `tile_writer.encode` takes the
+same range when building).
+
+## Sources awaiting approval
+
+Some publishers require permission before their data is copied and served; Japan's
+GSI elevation tiles need a Survey Act (測量法) approval. Such a source is registered
+with `"availability": "development"` and `"approval": { "required": true }`:
+
+- Development servers and the dev site load it; production and Atomm builds drop
+  it (`apps/generator/src/lib/domain/data-environment.ts`), and so do their
+  attribution pages.
+- The production Worker answers its archive path with 404 and leaves it out of the
+  manifest, coverage answers and MCP resources (`servedTerrainArchives` and
+  `servedBathymetryArchives` in `workers/map-api/src/routes/archive.ts`).
+- `provision-lake-data.mjs` refuses `--prod` for it.
+- The catalog validator rejects `"availability": "all"` while the approval has no
+  `reference`. Promotion is one change: add the approval number as
+  `approval.reference`, set availability to `all`, and provision with `--prod`.
 
 ## Discover and prepare an area
 

@@ -82,6 +82,16 @@ describe("studio WebMCP tools", () => {
     expect((await tool("topostack_set_area").execute({ area: { center: { lat: 99, lon: 0 }, widthKm: 5 } })).isError).toBe(true);
   });
 
+  it("rejects missing areas and crops that extend beyond Mercator before changing the design", async () => {
+    const { tool, host, project } = fakeHost();
+    const before = project();
+    const setArea = tool("topostack_set_area");
+    expect((await setArea.execute({ placeLabel: "No coordinates" })).isError).toBe(true);
+    expect((await setArea.execute({ area: { center: { lat: 84.95, lon: 0 }, widthKm: 100 } })).isError).toBe(true);
+    expect(host.setLocation).not.toHaveBeenCalled();
+    expect(project()).toEqual(before);
+  });
+
   it("generates, reporting failure as an error", async () => {
     const failing = fakeHost({ generationState: () => "error", status: () => "Terrain service unavailable" });
     const result = await failing.tool("topostack_generate_preview").execute({});

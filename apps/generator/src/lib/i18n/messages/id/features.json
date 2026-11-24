@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Utuh",
   "trailPatternOption.dashed": "Putus-putus",
   "trailPatternOption.dotted": "Titik-titik",
+  "buildings": "Garis luar bangunan",
+  "buildingWidth": "Lebar garis luar bangunan",
+  "buildingsHint": "Denah bangunan diukir mulai tingkat zoom peta {zoom}.",
+  "rail": "Rel kereta",
+  "railHint": "Rel terbuka menampilkan bantalan dengan jarak teratur jika ruang cukup. Rel tertutup digambar dengan garis putus-putus.",
   "transportationLabels": "Label jalan",
   "stateProvinceBoundariesName": "Batas negara bagian dan provinsi",
   "stateProvinceBoundaries": "Batas negara bagian/provinsi",
@@ -78,8 +83,8 @@
   "names": "Nama",
   "hatchInsideName": "Arsir bagian dalam batas lahan publik",
   "hatchInsideEdge": "Arsir tepi bagian dalam",
-  "landNotCovered": "Tidak ada lahan publik jenis ini di sini. Di luar Amerika Serikat dan Kanada, lahan publik berasal dari OpenStreetMap jika sudah dipetakan: taman nasional, cagar alam, dan lahan militer, tanpa nama.",
-  "landFromOpenStreetMap": "Di luar Amerika Serikat dan Kanada, lahan publik berasal dari OpenStreetMap jika sudah dipetakan: taman nasional, cagar alam, dan lahan militer, tanpa nama.",
+  "landNotCovered": "Tidak ada lahan publik jenis ini di sini.",
+  "landFromOpenStreetMap": "Di sini, lahan publik berasal dari OpenStreetMap jika sudah dipetakan: taman nasional, cagar alam, dan lahan militer, tanpa nama.",
   "landBoundariesNote": "Tiap jenis memiliki pola putus-putus sendiri. Lebarnya sama dengan batas negara bagian dan provinsi. Nama ditempatkan di dalam unit terbesar yang cukup ruang.",
   "publicLandInArea": "Lahan publik di area ini",
   "includeUnit": "Sertakan {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Matikan unit untuk mengecualikannya dari stensil dan batas, misalnya hutan di sekitar taman. {count} unit terbesar ditampilkan.",
   "publicLandPaint": "Cat lahan publik",
   "landPaintNote": "Setiap jenis yang aktif mendapat stensil kertas per panel, dipotong sesuai lahan yang tetap terlihat setelah perakitan. Jika jenis tumpang tindih, yang lebih spesifik yang dicat: taman di atas kawasan alam liar dan hutan di sekitarnya. Lahan publik AS dari basis data USGS PAD-US.",
-  "strokeWidthNote": "Lebar goresan adalah nilai fisik SVG. Lebar grafir akhir juga bergantung pada fokus, daya, kecepatan, bahan, dan apakah perangkat lunak laser Anda memperlakukan goresan sebagai garis tengah atau bentuk terisi."
+  "strokeWidthNote": "Pratinjau menampilkan contoh jejak laser selebar 0,20 mm. Pengaturan lebar menentukan tampilan SVG. Lebar jejak sebenarnya bergantung pada fokus, daya, kecepatan, dan bahan."
 }

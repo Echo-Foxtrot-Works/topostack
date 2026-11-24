@@ -51,6 +51,10 @@ test("offers the studio's tools to a browser agent through WebMCP", async ({ pag
 
   const before = await call("topostack_get_design");
   expect(before.structuredContent).toMatchObject({ design: { output: "layered", materialThicknessMm: DEFAULT_PROJECT.materialThicknessMm } });
+  expect((await call("topostack_set_area", {})).isError).toBe(true);
+  expect((await call("topostack_set_area", { area: { center: { lat: 84.95, lon: 0 }, widthKm: 100 } })).isError).toBe(true);
+  expect((await call("topostack_get_design")).structuredContent?.design).toEqual(before.structuredContent?.design);
+  expect((await call("topostack_undo")).content[0]?.text).toContain("Nothing to undo");
 
   const updated = await call("topostack_update_design", { materialThicknessMm: 6, details: { roads: false } });
   expect(updated.isError).toBeFalsy();

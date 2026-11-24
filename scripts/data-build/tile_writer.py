@@ -29,8 +29,15 @@ WORLD = 20037508.342789244
 digest = file_sha256
 
 
-def encode(values, elevation=False):
-    valid = np.isfinite(values) & (values >= (-500 if elevation else 0)) & (values <= (9000 if elevation else 1500))
+def encode(values, elevation=False, value_range=None):
+    """Terrarium RGBA; samples outside the encoding's range become transparent.
+
+    value_range overrides the default limits: (-500, 9000) for elevations,
+    (0, 1500) for depths. Ocean grids pass (-11000, 10), matching
+    terrainValueRange in packages/data-contracts/src/source-catalog.ts.
+    """
+    low, high = value_range or ((-500, 9000) if elevation else (0, 1500))
+    valid = np.isfinite(values) & (values >= low) & (values <= high)
     code = np.rint((np.where(valid, values, 0) + 32768) * 256).astype(np.uint32)
     rgba = np.zeros((*values.shape, 4), dtype=np.uint8)
     rgba[..., 0], rgba[..., 1], rgba[..., 2], rgba[..., 3] = code >> 16, (code >> 8) & 255, code & 255, valid * 255
@@ -124,8 +131,11 @@ class TileWriter:
         complete_receipt(receipt) may enrich and validate the receipt before it is
         written; if it raises, no receipt is left beside the archive.
         """
-        metadata = {'name':self.source['name'], 'format':'png', 'type':'overlay', 'version':'1', 'minzoom':str(self.db.execute('SELECT min(zoom_level) FROM tiles').fetchone()[0]),
-                    'center':f"{(self.source['bounds'][0]+self.source['bounds'][2])/2},{(self.source['bounds'][1]+self.source['bounds'][3])/2},8",
+        minzoom = self.db.execute('SELECT min(zoom_level) FROM tiles').fetchone()[0]
+        # PMTiles requires the centre zoom inside the archive's zoom range.
+        center_zoom = min(max(8, minzoom or 0), self.source['maxZoom'])
+        metadata = {'name':self.source['name'], 'format':'png', 'type':'overlay', 'version':'1', 'minzoom':str(minzoom),
+                    'center':f"{(self.source['bounds'][0]+self.source['bounds'][2])/2},{(self.source['bounds'][1]+self.source['bounds'][3])/2},{center_zoom}",
                     'maxzoom':str(self.source['maxZoom']), 'bounds':','.join(map(str,self.source['bounds'])),
                     'topostack_dataset':self.source['id'], 'topostack_encoding':self.source['encoding'],
                     'attribution':self.source['url'], 'description':self.source['license']}

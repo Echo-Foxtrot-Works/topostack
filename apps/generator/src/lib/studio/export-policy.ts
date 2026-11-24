@@ -1,4 +1,5 @@
 import { buildProjectPackage, exportBlockMessage, svgToLightBurn, type ExportFile, type FabricationPackageV1, type GeometryIRV1, type GuideFont, type ProjectConfigV1, type SheetNestPlanV1 } from "@topostack/core";
+import { projectFileCharts } from "$lib/studio/project-file";
 import { exportBlockText } from "$lib/i18n/warnings";
 import jostUrl from "@loidolt/theme-styles/fonts/Jost-Medium.woff2?url";
 import archivoUrl from "@loidolt/theme-styles/fonts/Archivo-Regular.woff2?url";
@@ -55,13 +56,17 @@ export async function withLightBurnProjects(output: FabricationPackageV1): Promi
   return { ...output, files: [...output.files, ...projects] };
 }
 
-/** Keep assembly ids in Atomm's standard line-engraving group, including its guide. */
-export async function buildAtommPackage(geometry: GeometryIRV1, project: ProjectConfigV1, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1) {
-  const output = buildProjectPackage(geometry, project, { guideFonts: fonts, sheetPlan, acrylicSheetPlan });
+/** Atomm classifies blue strokes and blue fills separately in its processing dialog. */
+export async function buildAtommPackage(geometry: GeometryIRV1, project: ProjectConfigV1, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1, includeProjectFile = true) {
+  const charts = includeProjectFile ? await projectFileCharts(project) : [];
+  const output = buildProjectPackage(geometry, project, { guideFonts: fonts, sheetPlan, acrylicSheetPlan, charts, includeProjectFile });
   const files = await Promise.all(output.files.map(async file => {
-    if (!/\.(svg|html|txt)$/.test(file.filename)) return file;
+    const artwork = file.filename.endsWith(".svg");
+    if (!artwork && file.filename !== "README.txt" && !file.filename.endsWith("-assembly-guide.html")) return file;
     const original = await file.blob.text();
-    const text = original.replace(/#00A651/gi, "#2366FF").replace(/engraved in green/g, "engraved in blue").replace(/green id/g, "blue id");
+    const text = artwork
+      ? original.replace(/ (fill|stroke)="#00A651"/g, ' $1="#2366FF"').replaceAll(' fill="#000000"', ' fill="#2366FF"')
+      : original.replace(/^ASSEMBLY #00A651$/m, "ASSEMBLY #2366FF").replace(/engraved in green/g, "engraved in blue").replace(/green id/g, "blue id");
     return text === original ? file : { ...file, blob: new Blob([text], { type: file.blob.type }) };
   }));
   return { ...output, files, master: files.find(file => file.filename === output.master.filename)! };
@@ -82,6 +87,6 @@ export function acrylicOutsideStudio(geometry: GeometryIRV1): string {
 export async function createAtommExport(geometry: GeometryIRV1, project: ProjectConfigV1, intent: ExportIntent, fonts: readonly GuideFont[] = [], sheetPlan?: SheetNestPlanV1, acrylicSheetPlan?: SheetNestPlanV1) {
   const reason = exportBlockText(exportBlockMessage(geometry, project));
   if (reason) throw new Error(reason);
-  const output = await buildAtommPackage(geometry, project, fonts, sheetPlan, acrylicSheetPlan);
+  const output = await buildAtommPackage(geometry, project, fonts, sheetPlan, acrylicSheetPlan, intent === "download");
   return intent === "openInStudio" ? { filename: output.master.filename, blob: output.master.blob } : output.files;
 }

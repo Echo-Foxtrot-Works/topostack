@@ -2,22 +2,48 @@ import { mapTiles } from "$lib/domain/tile-requests";
 import { apiBase } from "$lib/domain/api-base";
 import type { GeoBounds, SourceBundleV1 } from "@topostack/core";
 import { networkSignal } from "$lib/domain/network";
-import { decodeTerrainPng } from "@topostack/data-contracts/terrain-png";
+import { decodeTerrainPng, TERRAIN_NO_DATA, TERRAIN_STATUS_HEADER, TerrainTileNoDataError } from "@topostack/data-contracts/terrain-png";
 import { applyPreferredTerrain } from "$lib/domain/terrain-sources";
 import { repairElevationSpikes } from "$lib/domain/elevation-cleanup";
-import { TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
+import { fittingTileWindow, TILE_SIZE, type TileWindow } from "$lib/domain/tile-math";
 
-// Decode numeric PNG channels directly, then interpolate elevations at native
-// pixel centers. Browser image/canvas APIs can alter the encoded heights.
-export async function loadElevation(window: TileWindow, bounds: GeoBounds, signal?: AbortSignal) {
-  const responses = await mapTiles(window.tiles, async (tile, signal) => {
+const MAX_MAPZEN_FALLBACK_LEVELS = 2;
+
+function loadMapzen(window: TileWindow, signal?: AbortSignal) {
+  return mapTiles(window.tiles, async (tile, signal) => {
     // Public tile URLs survive dataset releases; revalidate before fabrication.
     const response = await fetch(`${apiBase()}/v1/terrain/${tile.z}/${tile.x}/${tile.y}.png`, { signal: networkSignal(signal), cache: "no-cache" });
-    if (!response.ok) throw new Error(`Terrain service returned ${response.status}.`);
+    if (!response.ok) {
+      await response.body?.cancel();
+      if (response.status === 404 && response.headers.get(TERRAIN_STATUS_HEADER) === TERRAIN_NO_DATA) throw new TerrainTileNoDataError();
+      throw new Error(`Terrain service returned ${response.status}.`);
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
     signal?.throwIfAborted();
     return { tile, response, values: decodeTerrainPng(bytes) };
   }, signal);
+}
+
+// Decode numeric PNG channels directly, then interpolate elevations at native
+// pixel centers. Browser image/canvas APIs can alter the encoded heights.
+export async function loadElevation(bounds: GeoBounds, maxZoom: number, signal?: AbortSignal) {
+  // Bilinear samples straddle a native pixel center at each crop edge.
+  let window = fittingTileWindow(bounds, maxZoom, 0, 0.5);
+  const requestedZoom = window.zoom;
+  const minimumZoom = Math.max(0, requestedZoom - MAX_MAPZEN_FALLBACK_LEVELS);
+  let responses;
+  while (true) {
+    try {
+      responses = await loadMapzen(window, signal);
+      break;
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (!(error instanceof TerrainTileNoDataError) || window.zoom <= minimumZoom) throw error;
+      // Retry the same crop with original tiles from one coarser level. A
+      // consistent mosaic avoids artificial joins between zoom levels.
+      window = fittingTileWindow(bounds, window.zoom - 1, minimumZoom, 0.5);
+    }
+  }
   const preferred = await applyPreferredTerrain(apiBase(), bounds, responses.map(({ tile, values }) => ({ ...tile, values })), signal);
   const minTileX = Math.min(...window.tiles.map((tile) => tile.worldX));
   const minTileY = Math.min(...window.tiles.map((tile) => tile.y));
@@ -42,8 +68,8 @@ export async function loadElevation(window: TileWindow, bounds: GeoBounds, signa
   }
   if (datasetVersions.size > 1) throw new Error("Terrain tiles came from inconsistent dataset versions. Try again shortly.");
 
-  // Use the stitched native raster so tile boundaries are ordinary neighbors.
-  const elevationRepairCount = repairElevationSpikes(mosaic, mosaicWidth, mosaicHeight);
+  // Repair Mapzen artifacts using only Mapzen neighbors, including across tile edges.
+  const elevationRepairCount = repairElevationSpikes(mosaic, mosaicWidth, mosaicHeight, terrainOwners, window.zoom);
 
   // Output samples i in 0..width-1 span [westX, eastX] edge to edge, matching
   // the contourToMm/sampleElevation convention in core (grid.width - 1 spans
@@ -82,7 +108,7 @@ export async function loadElevation(window: TileWindow, bounds: GeoBounds, signa
     }
   }
   const terrainSelection: NonNullable<SourceBundleV1["terrainSelection"]> = {
-    policy: "terrain-priority-v1", attempts: preferred.attempts,
+    policy: "terrain-priority-v1", attempts: preferred.attempts, mapzenZoom: { requested: requestedZoom, used: window.zoom },
     sources: [
       { id: "mapzen", name: "Mapzen composite terrain", verticalDatum: "Source-dependent", fraction: contributions[0]! / values.length },
       ...preferred.selectedSources.map((source, index) => ({ id: source.id, name: source.name, nativeResolutionM: source.nativeResolutionM, verticalDatum: source.verticalDatum, fraction: contributions[index + 1]! / values.length })),

@@ -3,7 +3,6 @@ import type { StripEngine, StripEngineItem, StripEnginePlacement } from "./engin
 import { sheetNestJobKey } from "./job-key.js";
 import { packRectangles } from "./rectangles.js";
 import { allowedOrientations } from "./resolve.js";
-import { candidateOrientations, rotatedBounds } from "./transform.js";
 import { PLACEMENT_TOLERANCE_MM, verifySheet } from "./verify.js";
 
 export class SheetNestError extends Error {
@@ -65,19 +64,6 @@ export async function planSheets(parts: NestPartV1[], settings: ResolvedSheetNes
   }));
   const area = (indexes: number[]) => indexes.reduce((sum, index) => sum + parts[index]!.areaMm2, 0);
 
-  const oversize = parts.filter((part) => !candidateOrientations(part.outline, orientations).some((rotation) => {
-    const bounds = rotatedBounds(part.outline, rotation);
-    return bounds.maxX - bounds.minX <= usableWidth + PLACEMENT_TOLERANCE_MM && bounds.maxY - bounds.minY <= usableHeight + PLACEMENT_TOLERANCE_MM;
-  }));
-  if (oversize.length) {
-    const labels = oversize.map((part) => part.label);
-    throw new SheetNestError(
-      `${labels.join(", ")} ${labels.length === 1 ? "is" : "are"} larger than the usable ${format(usableWidth)} × ${format(usableHeight)} mm sheet. Use a larger sheet, or set a machine work area so the model is split into pieces that fit.`,
-      "oversize",
-      labels,
-    );
-  }
-
   const toSheet = (indexes: number[], placements: StripEnginePlacement[], stripWidth: number, method: Sheet["method"]): Sheet => ({
     placements: placements.map((placement): NestPlacementV1 => ({
       partId: parts[indexes[placement.index]!]!.id,
@@ -95,7 +81,16 @@ export async function planSheets(parts: NestPartV1[], settings: ResolvedSheetNes
     let remaining = indexes;
     while (remaining.length) {
       const packed = packRectangles(remaining.map((index) => items[index]!), usableHeight, spacing, usableWidth);
-      // Every part fits a sheet on its own (checked above), so each pass places at least one.
+      // A fresh empty skyline tries every remaining part and allowed orientation.
+      // Reporting its failures here keeps the size check and packing tolerances identical.
+      if (!packed.placements.length) {
+        const labels = [...remaining].sort((a, b) => a - b).map((index) => parts[index]!.label);
+        throw new SheetNestError(
+          `${labels.join(", ")} ${labels.length === 1 ? "is" : "are"} larger than the usable ${format(usableWidth)} × ${format(usableHeight)} mm sheet. Use a larger sheet, or set a machine work area so the model is split into pieces that fit.`,
+          "oversize",
+          labels,
+        );
+      }
       sheets.push(toSheet(remaining, packed.placements, packed.stripWidth, "rectangles"));
       remaining = packed.unplaced.map((position) => remaining[position]!);
     }

@@ -1,10 +1,10 @@
 import outlineRelease from "../../../scripts/data/lake-outlines-release.json";
-import { terrainPng } from "./terrain-fixture";
+import { elevationPng, terrainPng } from "./terrain-fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env as workerEnv, exports } from "cloudflare:workers";
 import mapWorker from "../src/index";
 import { isAllowedOrigin } from "../src/http";
-import { parseRangeHeader } from "../src/routes/archive";
+import { archiveServed, ARCHIVE_ROUTES, configureArchiveEnvironment, parseRangeHeader, servedBathymetryArchives, servedTerrainArchives, terrainArchives } from "../src/routes/archive";
 import { geocodeLimit, isGeocoderConfigured, normalizeGeoapify } from "../src/routes/geocode";
 import { validTile } from "../src/routes/terrain";
 import { resetArchiveHeadCache } from "../src/archive-head";
@@ -233,14 +233,18 @@ describe("geocoder proxy", () => {
     vi.stubGlobal("fetch", byType({ ...rainier, amenity: new Response("down", { status: 503 }) }));
     const partial = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20partial", { headers: origin }), configuredEnv, context);
     expect(partial.status).toBe(200);
+    expect(partial.headers.get("cache-control")).toContain("max-age=300");
     expect((await partial.json<Array<{ place_id: string }>>()).map(({ place_id }) => place_id)).toEqual(["town"]);
+    vi.stubGlobal("fetch", byType(rainier));
+    const recovered = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20partial", { headers: origin }), configuredEnv, context);
+    expect((await recovered.json<Array<{ place_id: string }>>()).map(({ place_id }) => place_id)).toEqual(["peak", "town"]);
     vi.stubGlobal("fetch", byType({ default: new Response("down", { status: 503 }), amenity: new Response("down", { status: 500 }) }));
     const failed = await mapWorker.fetch(new Request("http://example.com/v1/geocode?q=Mount%20Rainier%20outage", { headers: origin }), configuredEnv, context);
     expect(failed.status).toBe(502);
   });
 
   it("refreshes expired cached results and limits browser freshness to the remaining age", async () => {
-    const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${configuredEnv.GEOCODER_ORIGIN}|geoapify-v2|cache age regression|5`));
+    const keyHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${configuredEnv.GEOCODER_ORIGIN}|geoapify-v3|cache age regression|5`));
     const key = `geocode/${Array.from(new Uint8Array(keyHash)).map((byte) => byte.toString(16).padStart(2, "0")).join("")}.json`;
     const stored = [{ place_id: "cached", display_name: "Cached place", lat: 1, lon: 2 }];
     await workerEnv.MAP_CACHE.put(key, JSON.stringify(stored));
@@ -345,7 +349,39 @@ describe("terrain proxy", () => {
     })));
     const response = await exports.default.fetch("http://example.com/v1/terrain/11/321/705.png", { headers: origin });
     expect(response.status).toBe(502);
+    expect(response.headers.has("x-topostack-terrain-status")).toBe(false);
     expect(await response.json()).toMatchObject({ error: "Terrain origin returned an invalid tile" });
+  });
+
+  it("reports fully empty native terrain as NoData without storing the invalid tile", async () => {
+    const tile = "14/8873/6333.png";
+    const key = `terrain/${workerEnv.DATASET_VERSION}/terrarium/${tile}`;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => -32768), {
+      headers: { "content-type": "image/png" },
+    })));
+    const response = await exports.default.fetch(`http://example.com/v1/terrain/${tile}`, { headers: origin });
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-topostack-terrain-status")).toBe("no-data");
+    expect(response.headers.get("access-control-expose-headers")).toContain("x-topostack-terrain-status");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({ code: "no-data" });
+    expect(await workerEnv.MAP_CACHE.head(key)).toBeNull();
+  });
+
+  it("retains a previously validated stale tile if the refreshed origin tile has no data", async () => {
+    const tile = "14/8873/6334.png";
+    await workerEnv.MAP_CACHE.put(`terrain/${workerEnv.DATASET_VERSION}/terrarium/${tile}`, terrainPng.slice(), {
+      customMetadata: { terrainValidation: "png-v1", provenance: "v1", imagerySources: "previous-source" },
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(elevationPng(() => -32768), {
+      headers: { "content-type": "image/png" },
+    })));
+    const response = await exports.default.fetch(`http://example.com/v1/terrain/${tile}`, { headers: origin });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-topostack-cache")).toBe("STALE");
+    expect(response.headers.get("x-topostack-imagery-sources")).toBe("previous-source");
+    expect(response.headers.has("x-topostack-terrain-status")).toBe(false);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(terrainPng);
   });
 });
 
@@ -479,6 +515,38 @@ describe.each(["noaa-great-lakes-v1", "usgs-crater-lake-v1", "usgs-lake-tahoe-v1
   });
 });
 
+describe("development-only data", () => {
+  afterEach(() => configureArchiveEnvironment(workerEnv.ENVIRONMENT));
+  const pending = { key: "terrain-sources/pending-v1.pmtiles", label: "High-resolution terrain", source: { availability: "development" as const } };
+  it("serves a source awaiting approval only from the development deployment", () => {
+    expect(archiveServed(pending, "development")).toBe(true);
+    expect(archiveServed(pending, "production")).toBe(false);
+    expect(archiveServed({ ...pending, source: { availability: "all" } }, "production")).toBe(true);
+    expect(archiveServed({ key: "osm/current.pmtiles", label: "OSM" }, "production")).toBe(true);
+  });
+  it("exposes the three Ontario pilot archives only in development", () => {
+    const pilots = [
+      "nrcan-hrdem-alexander-v1",
+      "nrcan-hrdem-mosaic-1m-1898742dd0f3-v1",
+      "nrcan-hrdem-mosaic-1m-cd6412cfd2b8-v1",
+    ];
+    for (const environment of ["development", "production"]) {
+      const advertised = servedTerrainArchives(environment).map(({ source }) => source.id);
+      for (const id of pilots) {
+        expect(advertised.includes(id)).toBe(environment === "development");
+        expect(archiveServed(ARCHIVE_ROUTES.get(`/v1/terrain-sources/${id}.pmtiles`)!, environment)).toBe(environment === "development");
+      }
+    }
+  });
+  it("keeps every source available to all on production routes and manifests", () => {
+    const routed = [...ARCHIVE_ROUTES.values()].filter((route) => route.source);
+    expect(routed.length).toBe(terrainArchives.length + servedBathymetryArchives("development").length);
+    configureArchiveEnvironment("production");
+    expect(servedTerrainArchives().map(({ source }) => source.id)).toEqual(terrainArchives.filter(({ source }) => source.availability === "all").map(({ source }) => source.id));
+    expect(servedBathymetryArchives().every(({ source }) => source.availability === "all")).toBe(true);
+  });
+});
+
 describe("optional HRDEM terrain archive", () => {
   const key = "terrain-sources/nrcan-hrdem-alexander-v1.pmtiles";
   const url = `http://example.com/v1/${key}`;
@@ -501,9 +569,10 @@ describe("optional HRDEM terrain archive", () => {
     const manifest = await response.json() as { sources: unknown[] };
     expect(manifest.sources).toContainEqual(expect.objectContaining({ id: "nrcan-hrdem-alexander-v1", optional: true, verticalDatum: "CGVD2013" }));
   });
-  it("advertises the pinned FAA aviation cycle as optional", async () => {
+  it("separates the registered FAA dataset from active coverage when its archive is missing", async () => {
     const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };
-    expect(manifest.sources).toContainEqual(expect.objectContaining({ id: expect.stringMatching(/^faa-aviation-\d{4}-\d{2}-\d{2}-v\d+$/), archive: "/v1/aviation.pmtiles", optional: true }));
+    expect(manifest).toMatchObject({ registrations: { aviation: { dataset: expect.stringMatching(/^faa-aviation-/) } } });
+    expect(manifest.sources).not.toContainEqual(expect.objectContaining({ archive: "/v1/aviation.pmtiles" }));
   });
   it("advertises the pinned PAD-US public lands build as optional", async () => {
     const manifest = await (await exports.default.fetch("http://example.com/v1/manifest")).json() as { sources: unknown[] };

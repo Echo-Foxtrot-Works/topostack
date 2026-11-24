@@ -178,6 +178,12 @@ describe("FAA aviation loading", () => {
     expect(navaids.map((marking) => marking.aviationSymbol).sort()).toEqual(["ndb", "vor-dme"]);
   });
 
+  it("refuses a valid FAA release from a previous registration", async () => {
+    archive.metadata.topostack_dataset = "faa-aviation-2026-09-03-v1";
+    archive.metadata.faa_nasr_cycle = "2026-09-03";
+    await expect(loadAviationMarkings(denver, 11, project({ airspace: true }))).rejects.toThrow(/registered dataset/);
+  });
+
   it("refuses an archive whose metadata does not name its cycle", async () => {
     archive.metadata = { topostack_dataset: "faa-aviation-v1" };
     await expect(loadAviationMarkings(denver, 11, project({ airspace: true }))).rejects.toThrow(/dataset identity/);

@@ -1,4 +1,4 @@
-import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, distanceToSegment, polylineLength, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
+import { CONTOUR_SIMPLIFICATION_TOLERANCE_MM, distanceToSegment, polylineLength, ringBounds, signedArea, type MarkingFeature, type Point2D, type Polygon2D } from "@topostack/core";
 import polygonClipping, { type MultiPolygon, type Pair } from "polygon-clipping";
 
 /** Pure vector-tile geometry cleanup shared by the data provider and preview refreshes. */
@@ -88,20 +88,12 @@ function simplifyPath(points: Point2D[], tolerance: number): Point2D[] {
 
 function ringIsLargeEnough(points: Point2D[], minimumFeatureMm: number): boolean {
   if (points.length < 4) return false;
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  return Math.max(...xs) - Math.min(...xs) >= minimumFeatureMm && Math.max(...ys) - Math.min(...ys) >= minimumFeatureMm;
+  const { minX, minY, maxX, maxY } = ringBounds(points);
+  return maxX - minX >= minimumFeatureMm && maxY - minY >= minimumFeatureMm;
 }
 
-/**
- * Dissolve vector-tile polygon fragments into whole water bodies.
- *
- * Tiles cut every lake into per-tile pieces, so the union has to happen before
- * anything measures a shoreline or a distance to one. The result keeps its
- * outer/hole structure - islands included - because a carve needs the filled
- * shape, not a bag of rings.
- */
-export function dissolveWaterAreas(polygons: Polygon2D[], minimumFeatureMm: number): Polygon2D[] {
+/** Rejoin buffered tile fragments before measuring outlines, preserving printable holes. */
+export function dissolveTilePolygons(polygons: Polygon2D[], minimumFeatureMm: number): Polygon2D[] {
   if (!polygons.length) return [];
   const inputs: MultiPolygon[] = polygons.map((polygon) => [[
     polygon.outer.map((point) => [point.x, point.y] as Pair),
@@ -138,7 +130,7 @@ function closedSimplified(ring: readonly Pair[], tolerance: number): Point2D[] {
 
 /** Dissolve vector-tile polygon fragments before extracting their shorelines. */
 export function dissolveWaterPolygons(polygons: Polygon2D[], minimumFeatureMm: number): MarkingFeature[] {
-  return shorelineMarkings(dissolveWaterAreas(polygons, minimumFeatureMm));
+  return shorelineMarkings(dissolveTilePolygons(polygons, minimumFeatureMm));
 }
 
 export function shorelineMarkings(areas: Polygon2D[]): MarkingFeature[] {
@@ -184,25 +176,28 @@ export function joinPaths(features: MarkingFeature[], groupKey: (feature: Markin
     unique.forEach((feature, featureIndex) => {
       if (used.has(featureIndex)) return;
       used.add(featureIndex);
-      const points = [...feature.points];
-      let extended = true;
-      while (extended) {
-        extended = false;
-        for (const atStart of [false, true]) {
-          const shared = atStart ? points[0]! : points.at(-1)!;
+      // Collect chains in each direction before flattening. Prepending each
+      // neighbor copies the full chain, and spreading a long tile path can
+      // exceed the JS argument limit even inside the source point budget.
+      const extend = (start: Point2D): Point2D[][] => {
+        let shared = start;
+        const parts: Point2D[][] = [];
+        while (true) {
           const owners = endpoints.get(pointKey(shared));
-          if (owners?.size !== 2) continue;
-          const nextIndex = [...owners].find((index) => !used.has(index));
-          if (nextIndex === undefined) continue;
-          const next = unique[nextIndex]!;
-          const oriented = pointKey(next.points[0]!) === pointKey(shared) ? [...next.points] : [...next.points].reverse();
-          if (atStart) points.unshift(...oriented.reverse().slice(0, -1));
-          else points.push(...oriented.slice(1));
+          if (owners?.size !== 2) break;
+          const nextIndex = [...owners].find(index => !used.has(index));
+          if (nextIndex === undefined) break;
+          const next = unique[nextIndex]!.points;
+          const outward = pointKey(next[0]!) === pointKey(shared) ? next.slice(1) : next.slice(0, -1).reverse();
+          parts.push(outward);
           used.add(nextIndex);
-          extended = true;
-          break;
+          shared = outward.at(-1) ?? shared;
         }
-      }
+        return parts;
+      };
+      const after = extend(feature.points.at(-1)!);
+      const before = extend(feature.points[0]!);
+      const points = before.flat().reverse().concat(feature.points, after.flat());
       joined.push({ feature, points });
     });
   }
@@ -229,7 +224,7 @@ export function cleanBoundaryMarkings(markings: MarkingFeature[], minimumFeature
 export function stitchTransportationMarkings(markings: MarkingFeature[]): MarkingFeature[] {
   const transportation = markings.filter((marking) => marking.transportationClass && marking.points.length > 1);
   const other = markings.filter((marking) => !marking.transportationClass || marking.points.length < 2);
-  const stitched = joinPaths(transportation, (marking) => [marking.kind, marking.transportationClass, marking.label ?? ""].join("\u0000"))
+  const stitched = joinPaths(transportation, (marking) => [marking.kind, marking.transportationClass, marking.transportLevel ?? 0, marking.isBridge ?? false, marking.label ?? ""].join("\u0000"))
     .map(({ feature, points }) => ({ ...feature, points }));
   return [...stitched, ...other];
 }

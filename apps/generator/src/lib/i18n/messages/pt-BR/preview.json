@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Pré-visualização da gravação plana",
   "engravingZoomControls": "Controles de zoom da gravação",
   "resetEngravingView": "Redefinir visualização da gravação",
-  "legendMinorContour": "Curva intermediária",
-  "legendIndexEvery": "Mestra a cada {interval}",
   "legendContourCount": "{count, plural, one {# curva} other {# curvas}}",
   "legendNoContours": "Sem curvas",
   "legendWaterPattern": "{pattern, select, lines {água em linhas} ripples {água em ondas} dots {água em pontos} other {água em {pattern}}}",

@@ -1,7 +1,7 @@
-import { aviationStroke, landStroke, type LineStyleV1, type OperationPath } from "@topostack/core";
+import { isRailClass, aviationStroke, landStroke, type LineStyleV1, type OperationPath } from "@topostack/core";
 
 /** The visual class a marking is drawn with, shared by the 2D, engraving, and 3D previews. */
-export type MarkingStyleKey = "score" | "major-road" | "local-road" | "trail" | "boundary" | "grid" | "aviation" | "aviation-dashed" | "special-use" | "land" | "engrave";
+export type MarkingStyleKey = "score" | "major-road" | "local-road" | "trail" | "rail" | "covered-rail" | "boundary" | "grid" | "aviation" | "aviation-dashed" | "special-use" | "land" | "building" | "engrave";
 
 type StyledMarking = Pick<OperationPath, "operation" | "kind" | "transportationClass" | "aviationClass" | "landClass">;
 
@@ -11,7 +11,9 @@ export function markingStyleKey(marking: StyledMarking): MarkingStyleKey {
   if (marking.transportationClass === "major-road") return "major-road";
   if (marking.transportationClass === "local-road") return "local-road";
   if (marking.transportationClass === "trail") return "trail";
+  if (isRailClass(marking.transportationClass)) return marking.transportationClass;
   if (marking.kind === "boundary") return "boundary";
+  if (marking.kind === "building") return "building";
   if (marking.kind === "land") return "land";
   if (marking.kind === "grid") return "grid";
   return "engrave";
@@ -19,9 +21,12 @@ export function markingStyleKey(marking: StyledMarking): MarkingStyleKey {
 
 export const MARKING_COLORS: Record<MarkingStyleKey, string> = {
   score: "#365c79",
-  "major-road": "#24180f",
-  "local-road": "#62442f",
-  trail: "#8a5e35",
+  "major-road": "#39291d",
+  "local-road": "#39291d",
+  trail: "#39291d",
+  rail: "#39291d",
+  "covered-rail": "#39291d",
+  building: "#796653",
   boundary: "#6f4057",
   grid: "#34404b",
   // Muted stand-ins for the sectional's blue and magenta, dark enough to read as engraving.
@@ -36,17 +41,9 @@ export function markingColor(marking: StyledMarking): string {
   return MARKING_COLORS[markingStyleKey(marking)];
 }
 
-/** Stroke width in millimetres. Road classes take precedence over the feature kind. */
-export function markingWidth(marking: Pick<OperationPath, "kind" | "transportationClass" | "aviationClass" | "landClass">, style: LineStyleV1): number {
-  if (marking.kind === "aviation" && marking.aviationClass) return aviationStroke(marking.aviationClass, style).widthMm;
-  if (marking.kind === "land" && marking.landClass) return landStroke(marking.landClass, style).widthMm;
-  if (marking.transportationClass === "major-road") return style.majorRoadMm;
-  if (marking.transportationClass === "local-road") return style.localRoadMm;
-  if (marking.transportationClass === "trail") return style.trailMm;
-  if (marking.kind === "water") return style.waterMm;
-  if (marking.kind === "boundary") return style.boundaryMm;
-  if (marking.kind === "grid") return style.coordinateGridMm;
-  return style.annotationMm;
+export function markingCap(marking: Pick<OperationPath, "kind" | "transportationClass">, style: LineStyleV1) {
+  if (isRailClass(marking.transportationClass) || marking.kind === "grid") return "round";
+  return marking.kind === "road" ? style.roadCap : undefined;
 }
 
 function trailDash(style: LineStyleV1): string | undefined {

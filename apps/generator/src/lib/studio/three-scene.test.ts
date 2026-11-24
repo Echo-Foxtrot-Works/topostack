@@ -137,7 +137,7 @@ describe("disposeContent", () => {
 });
 
 describe("disposeLayerCache", () => {
-  const cached = (key: string): CachedLayer => ({ key, meshes: [], seams: [], face: new THREE.MeshStandardMaterial(), resources: [{ dispose: vi.fn() }] });
+  const cached = (key: string): CachedLayer => ({ key, meshes: [], seams: [], resources: [{ dispose: vi.fn() }] });
 
   it("frees and forgets only the layers a rebuild did not reuse", () => {
     const kept = cached("a");

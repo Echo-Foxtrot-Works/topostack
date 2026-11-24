@@ -1,8 +1,15 @@
 import { aviationRequested, aviationSymbolsFillIn } from "./aviation.js";
-import { sourceRequirements } from "./source-requirements.js";
+import { buildingOutlinesEnabled, sourceRequirements } from "./source-requirements.js";
 import type { GenerationContext } from "./generation-context.js";
 
 export function addSourceWarnings({ config, source, usesWaterDepth, warnings, aviation }: GenerationContext): void {
+  const mapzenZoom = source.terrainSelection?.mapzenZoom;
+  if (mapzenZoom && mapzenZoom.used < mapzenZoom.requested && source.terrainSelection?.sources.some(({ id }) => id === "mapzen")) warnings.push({
+    code: "TERRAIN_COARSER_ZOOM",
+    message: `Higher-detail elevation tiles were empty. This map uses original elevation tiles at zoom ${mapzenZoom.used}.`,
+    messageKey: "terrainCoarserZoom",
+    params: { zoom: mapzenZoom.used },
+  });
   if (source.terrainSourceUnavailable) warnings.push({
     code: "TERRAIN_SOURCE_FALLBACK",
     message: "Higher-resolution terrain is unavailable for this area. The map uses the standard elevation source instead.",
@@ -12,6 +19,11 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     code: "ELEVATION_REPAIRED",
     message: "Isolated depth spikes in the elevation data were replaced with estimates from nearby terrain. Review the terrain before cutting.",
     messageKey: "elevationRepaired",
+  });
+  if (buildingOutlinesEnabled(config) && source.buildingDetail && source.buildingDetail.zoom < 14) warnings.push({
+    code: "BUILDING_DETAIL_FALLBACK",
+    message: "This map uses generalized building outlines. Some smaller buildings may be missing.",
+    messageKey: "buildingDetailFallback",
   });
   const wantsVectorData = sourceRequirements(config).vectors;
   if (source.vectorStatus === "partial" && wantsVectorData) warnings.push({
@@ -23,6 +35,11 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     code: "VECTOR_DATA_UNAVAILABLE",
     message: "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
     messageKey: "vectorDataUnavailable",
+  });
+  if (config.showRail && source.railContextIncomplete) warnings.push({
+    code: "RAIL_CONTEXT_INCOMPLETE",
+    message: "Covered railway data is incomplete. Regenerate, narrow the map area, or turn off Railways.",
+    messageKey: "railContextIncomplete",
   });
   if (aviationRequested(config)) {
     if (source.aviationStatus === "partial") warnings.push({
@@ -59,12 +76,12 @@ export function addSourceWarnings({ config, source, usesWaterDepth, warnings, av
     });
     if (source.landsStatus === "not-covered") warnings.push({
       code: "LANDS_NOT_COVERED",
-      message: "Neither PAD-US nor OpenStreetMap has public land of the asked-for kinds here, so this area has no public land paint or boundaries.",
+      message: "No public land of the selected kinds was found in this area.",
       messageKey: "landsNotCovered",
     });
     if (source.landsSources?.includes("openstreetmap")) warnings.push({
       code: "LANDS_FROM_OPENSTREETMAP",
-      message: "Outside the United States and Canada, public land comes from OpenStreetMap: national parks, nature reserves (as preserves) and military land only, unnamed, and only as completely as they are mapped.",
+      message: "This area uses OpenStreetMap for public land. It supplies unnamed national parks, nature reserves (shown as preserves) and military land where mapped.",
       messageKey: "landsFromOpenStreetMap",
     });
   }

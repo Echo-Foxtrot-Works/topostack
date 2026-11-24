@@ -3,6 +3,7 @@ import { DEFAULT_PROJECT, signedArea, type MarkingFeature, type Point2D, type Po
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 import { MAX_VECTOR_MARKINGS } from "$lib/domain/vector-cleanup";
 import { applyLakeShorelines, assembleWater, combineWaterAreas } from "./water-assembly";
+import { resolveLakeOutlines } from "./lake-outlines";
 
 const p = (x: number, y: number): Point2D => ({ x, y });
 const square = (x0: number, y0: number, x1: number, y1: number): Point2D[] => [p(x0, y0), p(x1, y0), p(x1, y1), p(x0, y1), p(x0, y0)];
@@ -83,7 +84,8 @@ describe("applyLakeShorelines", () => {
 
   it("adds an OSM lake from inland map water that no depth lake covers", () => {
     const inland = polygon(200, 200, 240, 240);
-    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", polygon(0, 0, 20, 20))], inlandWaterAreas: [inland] }), DEFAULT_PROJECT);
+    const lakes = resolveLakeOutlines([], [lake("hydro-1", polygon(0, 0, 20, 20))], [inland]);
+    const result = assembleWater(source({ inlandWaterAreas: [inland] }), lakes, [], DEFAULT_PROJECT);
     expect(result.waterPatternAreas).toEqual([polygon(0, 0, 20, 20), inland]);
     expect(result.markings.filter((marking) => marking.id.startsWith("water-area-"))).toHaveLength(2);
   });
@@ -91,14 +93,17 @@ describe("applyLakeShorelines", () => {
   it("traces a depth lake once, along the map's more detailed shore of the same water, and carves that shore", () => {
     // The map traces the same lake with a vertex midway along each side.
     const shore: Polygon2D = { outer: [p(0.5, 0.5), p(10, 0.5), p(20, 0.5), p(20, 10), p(20, 20), p(10, 20), p(0.5, 20), p(0.5, 10), p(0.5, 0.5)], holes: [] };
-    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", polygon(0, 0, 20, 20))], inlandWaterAreas: [shore] }), DEFAULT_PROJECT);
+    const lakes = resolveLakeOutlines([], [lake("hydro-1", polygon(0, 0, 20, 20))], [shore]);
+    const result = assembleWater(source({ inlandWaterAreas: [shore] }), lakes, [], DEFAULT_PROJECT);
     expect(result.waterPatternAreas).toEqual([shore]);
     expect(result.waterAreas).toEqual([lake("hydro-1", shore)]);
   });
 
   it("does not trace map water that only contains a depth lake", () => {
     const outline = polygon(0, 0, 20, 20);
-    const result = applyLakeShorelines(source({ waterAreas: [lake("hydro-1", outline)], inlandWaterAreas: [polygon(0, 0, 40, 20)] }), DEFAULT_PROJECT);
+    const inland = [polygon(0, 0, 40, 20)];
+    const lakes = resolveLakeOutlines([], [lake("hydro-1", outline)], inland);
+    const result = assembleWater(source({ inlandWaterAreas: inland }), lakes, [], DEFAULT_PROJECT);
     expect(result.waterPatternAreas).toEqual([outline]);
     expect(result.waterAreas?.[0]?.polygon).toBe(outline);
   });

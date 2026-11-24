@@ -38,6 +38,7 @@ export function cropElevationRange(config: ProjectConfigV1, grid: ElevationGrid,
   let landMin = Number.POSITIVE_INFINITY;
   let landMax = Number.NEGATIVE_INFINITY;
   let waterCells = 0;
+  let waterMin = Infinity;
   let visibleMin = Number.POSITIVE_INFINITY;
   let visibleMax = Number.NEGATIVE_INFINITY;
   const radius = cropRadiusMm(config);
@@ -48,7 +49,7 @@ export function cropElevationRange(config: ProjectConfigV1, grid: ElevationGrid,
     const value = grid.values[index]!;
     visibleMin = Math.min(visibleMin, value);
     visibleMax = Math.max(visibleMax, value);
-    if (waterMask[index]) { waterCells += 1; continue; }
+    if (waterMask[index]) { waterCells += 1; waterMin = Math.min(waterMin, value); continue; }
     if (value < landMin) landMin = value;
     if (value > landMax) landMax = value;
   }
@@ -72,7 +73,7 @@ export function cropElevationRange(config: ProjectConfigV1, grid: ElevationGrid,
         const lower = values[bottom * grid.width + left]! * (1 - x + left) + values[bottom * grid.width + right]! * (x - left);
         const value = upper * (1 - y + top) + lower * (y - top);
         visibleMin = Math.min(visibleMin, value); visibleMax = Math.max(visibleMax, value);
-        if (waterMask[Math.round(y) * grid.width + Math.round(x)]) continue;
+        if (waterMask[Math.round(y) * grid.width + Math.round(x)]) { waterMin = Math.min(waterMin, value); continue; }
         landMin = Math.min(landMin, value); landMax = Math.max(landMax, value);
       }
     }
@@ -85,5 +86,5 @@ export function cropElevationRange(config: ProjectConfigV1, grid: ElevationGrid,
     landMin = Number.isFinite(visibleMin) ? visibleMin : grid.min;
     landMax = Number.isFinite(visibleMax) ? visibleMax : grid.max;
   }
-  return { landMin, landMax, min: visibleMin, max: visibleMax };
+  return { landMin, landMax, waterMin, min: visibleMin, max: visibleMax };
 }

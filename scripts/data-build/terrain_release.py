@@ -3,6 +3,8 @@
 Legacy pin/receipt files are migration inputs only; registration never edits them.
 The runtime still consumes the catalog's unchanged sources array.
 """
+import argparse
+from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
@@ -14,6 +16,9 @@ import tempfile
 from urllib.parse import urlsplit
 
 
+# Mirrors packages/data-contracts/src/source-catalog.ts.
+VERTICAL_DATUMS = ('CGVD2013', 'JP-TP', 'MSL')
+SOURCE_KINDS = ('lidar-dtm', 'national-dtm', 'bathymetry-grid')
 TOKENS = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9]\d*$')
 HASH = re.compile(r'^[a-f0-9]{64}$')
 
@@ -41,9 +46,18 @@ def validate_candidate(source, pin):
     bounds = source.get('bounds')
     if not same_bounds(bounds, bounds or []) or not (-180 <= bounds[0] < bounds[2] <= 180 and -85.0511 <= bounds[1] < bounds[3] <= 85.0511):
         raise ValueError('Invalid terrain bounds')
-    if (source.get('encoding') != 'elevation-terrarium-v1' or source.get('verticalDatum') != 'CGVD2013'
-            or pin.get('verticalDatum') != source['verticalDatum'] or source.get('kind') not in ('lidar-dtm', 'national-dtm')):
+    if (source.get('encoding') != 'elevation-terrarium-v1' or source.get('verticalDatum') not in VERTICAL_DATUMS
+            or pin.get('verticalDatum') != source['verticalDatum'] or source.get('kind') not in SOURCE_KINDS):
         raise ValueError('Unsupported terrain encoding, semantics or datum')
+    availability = source.get('availability', 'all')
+    approval = source.get('approval')
+    if availability not in ('all', 'development'):
+        raise ValueError('Invalid terrain availability')
+    if approval is not None and (not isinstance(approval, dict) or approval.get('required') is not True
+                                 or ('reference' in approval and (not isinstance(approval['reference'], str) or not approval['reference'].strip()))):
+        raise ValueError('Invalid terrain approval')
+    if approval is not None and availability == 'all' and 'reference' not in approval:
+        raise ValueError('Terrain needs an approval reference before it is available to all')
     if (type(source.get('minZoom')) is not int or type(source.get('maxZoom')) is not int
             or not 0 <= source['minZoom'] <= source['maxZoom'] <= 15):
         raise ValueError('Invalid terrain zoom range')
@@ -130,29 +144,15 @@ def atomic_write(path, content):
         Path(partial).unlink(missing_ok=True)
 
 
-def register(built, catalog_path, pins_path):
+@contextmanager
+def _edit_registry(catalog_path, pins_path):
     # A persistent flock file avoids races between operators. An interrupted
     # process releases its OS lock; an orphaned manifest is harmless.
     with catalog_path.with_suffix('.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         sources, records = load_registry(catalog_path, pins_path)
         existing = {s['id']: s for s in sources}
-        for entry in built:
-            source, pin, receipt = entry['source'], entry['pin'], entry['receipt']
-            validate_receipt(source, pin, receipt)
-            source_id = source['id']
-            if source_id in existing:
-                old = records[source_id]
-                # Old receipts may contain snapshot hashes absent from old pins.
-                merged_old_pin = {**old['pin'], **old['receipt']['sources'][0]}
-                merged_new_pin = {**pin, **receipt['sources'][0]}
-                if existing[source_id] != source or merged_old_pin != merged_new_pin or old['receipt'] != receipt:
-                    raise ValueError('Refusing to change an existing source identity, pin or receipt')
-            else:
-                if receipt.get('schemaVersion') != 1:
-                    raise ValueError('New terrain registrations require measured coverage receipts')
-                existing[source_id] = source
-                records[source_id] = {'pin': pin, 'receipt': receipt}
+        yield existing, records
         payload = {'registryVersion': 1, 'sources': list(existing.values()), 'records': records}
         content = canonical(payload)
         relative = 'terrain-releases/' + hashlib.sha256(content).hexdigest() + '.json'
@@ -164,3 +164,48 @@ def register(built, catalog_path, pins_path):
         else:
             atomic_write(manifest, content)
         atomic_write(catalog_path, canonical({**payload, 'releaseManifest': relative}))
+
+
+def register(built, catalog_path, pins_path):
+    with _edit_registry(catalog_path, pins_path) as (existing, records):
+        for entry in built:
+            source, pin, receipt = entry['source'], entry['pin'], entry['receipt']
+            validate_receipt(source, pin, receipt)
+            source_id = source['id']
+            if source_id in existing:
+                old = records[source_id]
+                # Old receipts may contain snapshot hashes absent from old pins.
+                merged_old_pin = {**old['pin'], **old['receipt']['sources'][0]}
+                merged_new_pin = {**pin, **receipt['sources'][0]}
+                # An unchanged build can be replayed after a release-only availability change.
+                registered = existing[source_id].copy()
+                if 'availability' not in source:
+                    registered.pop('availability', None)
+                if registered != source or merged_old_pin != merged_new_pin or old['receipt'] != receipt:
+                    raise ValueError('Refusing to change an existing source identity, pin or receipt')
+            else:
+                if receipt.get('schemaVersion') != 1:
+                    raise ValueError('New terrain registrations require measured coverage receipts')
+                existing[source_id] = source
+                records[source_id] = {'pin': pin, 'receipt': receipt}
+
+
+def set_availability(source_ids, availability, catalog_path, pins_path):
+    """Change only the release environment of existing archives; validate approval gates."""
+    with _edit_registry(catalog_path, pins_path) as (existing, records):
+        for source_id in source_ids:
+            if source_id not in existing:
+                raise ValueError(f'Unknown registered terrain source: {source_id}')
+            source = {**existing[source_id], 'availability': availability}
+            record = records[source_id]
+            validate_receipt(source, record['pin'], record['receipt'])
+            existing[source_id] = source
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Set the deployment availability of registered terrain archives locally.')
+    parser.add_argument('--availability', required=True, choices=('development', 'all'))
+    parser.add_argument('source_ids', nargs='+', metavar='source-id')
+    args = parser.parse_args()
+    data = Path(__file__).resolve().parent.parent / 'data'
+    set_availability(args.source_ids, args.availability, data / 'terrain-sources.json', data / 'hrdem-sources.json')

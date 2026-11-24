@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
-import type { GeoBounds, WaterAreaV1 } from "@topostack/core";
+import { describe, expect, it, vi } from "vitest";
+import { buildProjectPackage, carveWaterDepth, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, type GeoBounds, type Polygon2D, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { CHART_BATHYMETRY_SCHEMA, encodeChartDepths, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
-import type { SurveyResult } from "$lib/domain/bathymetry";
+import { applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
+import { resolveLakeOutlines } from "$lib/domain/lake-outlines";
+import { assembleWater } from "$lib/domain/water-assembly";
+import { SourcePreparationCache, type SourceRefreshDependencies } from "$lib/studio/source-refresh";
 import { artworkToLonLat } from "$lib/domain/tile-math";
 import { applyUserCharts, chartsForAreas, chartSpacingM, sampleChartDepths, type LoadedUserChart } from "$lib/domain/user-bathymetry";
 
@@ -71,6 +74,21 @@ describe("sampleChartDepths", () => {
 
 describe("applyUserCharts", () => {
   const dimensions = { widthMm: 10, heightMm: 10 };
+
+  it("keeps another lake's survey outage retryable after applying a chart", async () => {
+    const second = lake({ id: "other-lake", hylakId: 43 });
+    const charts = new Map([["42", loaded(rampChart())]]);
+    const initial = await applyUserCharts({ ...surveyed([lake(), second]), status: "unavailable" }, charts, bounds, grid, undefined, dimensions);
+    expect(initial.status).toBe("partial");
+    expect(initial.areas[0]?.bathymetryOrigin).toBe("chart");
+    expect(initial.areas[1]?.bathymetry).toBeUndefined();
+    const complete = await applyUserCharts({ ...surveyed([lake()]), status: "unavailable" }, charts, bounds, grid, undefined, dimensions);
+    expect(complete.status).toBe("available");
+    const recovered = { ...second, bathymetry: { width: 9, height: 9, depthsM: new Float32Array(81).fill(12), sampleSpacingM: 50 } };
+    const retry = await applyUserCharts(surveyed([lake(), recovered]), charts, bounds, grid, undefined, dimensions);
+    expect(retry.status).toBe("available");
+    expect(retry.areas[1]?.bathymetry).toBe(recovered.bathymetry);
+  });
 
   it("replaces a lake's provider depths and records the chart", async () => {
     const provider = new Float32Array(81).fill(99);
@@ -191,4 +209,74 @@ it("preserves chart islands as terrain polygon holes even when the provider omit
   const result = await applyUserCharts(surveyed([lake()]), new Map([["42",loaded(chart)]]), bounds, grid, undefined, {widthMm:10,heightMm:10});
   expect(result.areas[0]!.polygon.holes).toHaveLength(1);
   expect(result.areas[0]!.polygon.holes[0]!.length).toBeGreaterThanOrEqual(4);
+});
+
+it("keeps reviewed land through shoreline assembly and restores the original basin and credits after chart removal", async () => {
+  const project = { ...DEFAULT_PROJECT, widthMm: 100, heightMm: 100, showWaterDepth: true, showWater: true, waterDepthExaggeration: 1 };
+  const chart = rampChart();
+  chart.provenance.sourceUrl = "https://example.test/chart";
+  const toLonLat = artworkToLonLat(bounds, project.widthMm, project.heightMm);
+  const island = [{ x: -7, y: -7 }, { x: 7, y: -7 }, { x: 7, y: 7 }, { x: -7, y: 7 }];
+  chart.lake.islands = [island.map(toLonLat)];
+  chart.grid.depthsDm = encodeChartDepths(new Float32Array(64).fill(25));
+  const chartedProject = { ...project, userDepthCharts: { "42": { id: chart.id, contentHash: HASH } } };
+  const circle = (count: number): Polygon2D => ({
+    outer: Array.from({ length: count }, (_, index) => {
+      const angle = 2 * Math.PI * index / count;
+      return { x: 36 * Math.cos(angle), y: 36 * Math.sin(angle) };
+    }), holes: [],
+  });
+  const hydro = lake({ polygon: circle(24), maxDepthM: 30 });
+  const osm = circle(80);
+  const vector = { markings: [], inland: [osm], ocean: [{ outer: island, holes: [] }], truncated: false };
+  const elevation = { width: 41, height: 41, min: 100, max: 100, values: new Float32Array(41 ** 2).fill(100) };
+  const empty: SourceBundleV1 = { ...createSyntheticSource(project, 41), bounds, elevation, sourceKind: "real", lakeDataStatus: "not-requested", vectorStatus: "not-requested", markings: [], waterAreas: [] };
+  const deps: SourceRefreshDependencies = {
+    loadVectorMarkings: async () => vector,
+    loadLakeAreas: vi.fn(async () => [hydro]),
+    loadSurveyedLakeDepths: async (bounds, elevation, _zoom, areas, signal, config) =>
+      applyUserCharts({ areas, status: "not-covered", datasetVersions: [], attribution: [] },
+        config?.userDepthCharts ? new Map([["42", loaded(chart, HASH)]]) : new Map(), bounds, elevation, signal, config),
+    resolveLakeOutlines, assembleWater, applySurveyProvenance,
+    loadAirspace: async () => ({}), loadLands: async () => ({}),
+    loadAviation: async () => ({ aviationStatus: "not-requested" }), dataZoom: Math.round,
+  };
+  const cache = new SourcePreparationCache(deps);
+  const signal = new AbortController().signal;
+  const carve = (source: SourceBundleV1) => carveWaterDepth(elevation, project, source.waterAreas!, 1000);
+  const center = 20 * 41 + 20;
+  const charted = await cache.prepare(empty, project, chartedProject, chartedProject, signal);
+  expect(charted.preChartLakeAreas?.[0]?.polygon).toBe(osm);
+  const shore = charted.waterAreas![0]!.polygon;
+  expect(shore.holes).toHaveLength(1);
+  expect(charted.waterPatternAreas).toEqual([shore]);
+  expect(charted.markings).toContainEqual(expect.objectContaining({ points: shore.holes[0] }));
+  expect(carve(charted).grid.values[center]).toBe(100);
+  expect(carve(charted).grid.values[center + 6]).toBe(75);
+  expect(charted.datasetVersion).toContain("userchart-aaaaaaaa");
+  expect(charted.attribution).toContainEqual(expect.objectContaining({ url: chart.provenance.sourceUrl }));
+
+  // A fresh cache on reopening must retain the reviewed result even when it
+  // resolves the stored source's original shores again.
+  const reopened = await new SourcePreparationCache(deps).prepare(charted, chartedProject, chartedProject, chartedProject, signal);
+  expect(reopened.waterAreas).toEqual(charted.waterAreas);
+  const retried = await cache.prepare({ ...charted, bathymetryStatus: "partial" }, chartedProject, chartedProject, chartedProject, signal);
+  expect(retried.waterAreas).toEqual(charted.waterAreas);
+  expect(retried.datasetVersion).toBe(charted.datasetVersion);
+  expect(retried.attribution).toEqual(charted.attribution);
+  const refreshed = await cache.prepare(charted, chartedProject, project, project, signal);
+  expect(deps.loadLakeAreas).toHaveBeenCalledTimes(1);
+  const fresh = await cache.prepare(empty, project, project, project, signal);
+  expect(refreshed.waterAreas).toEqual(fresh.waterAreas);
+  expect(carve(refreshed).grid.values).toEqual(carve(fresh).grid.values);
+  expect(carve(refreshed).grid.values[center]).toBe(70);
+  expect(refreshed.waterAreas?.[0]?.bathymetryOrigin).toBeUndefined();
+  expect(refreshed.datasetVersion).toBe(fresh.datasetVersion);
+  expect(refreshed.attribution).toEqual(fresh.attribution);
+  const file = buildProjectPackage(generateGeometry(project, refreshed), project).files.find(file => file.filename.endsWith("-project.json"))!;
+  expect(await file.blob.text()).not.toMatch(/userchart-aaaaaaaa|Ramp Lake chart/);
+
+  // Sources saved before pre-chart outlines were retained can recover on refresh.
+  const legacy = await cache.prepare({ ...charted, preChartLakeAreas: undefined }, chartedProject, project, project, signal);
+  expect(legacy.waterAreas).toEqual(fresh.waterAreas);
 });

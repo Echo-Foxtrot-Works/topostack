@@ -58,8 +58,10 @@
       { id: "airspace", label: "Airspace", format: "ZIP", icon: Plane, unavailable: !airspaceCount, hint: airspaceCount ? "Airspace pieces to cut from acrylic, and the backing sheet the rods stand on." : project.airspaceStack ? "No airspace was built for this area." : "Turn on Airspace in 3D in the Aviation panel to add these." },
       { id: "assembly", label: "Assembly guide", format: "HTML", icon: ListOrdered, hint: "Step-by-step booklet to print or follow on screen." },
     ] : []),
+    { id: "xtool", label: "xTool Studio project", format: "XS", icon: Layers3, hint: layered ? "Open one named canvas per panel or nested sheet. Choose your device and material in Studio." : "Open the engraving on its own Studio canvas." },
+    ...(layered ? [{ id: "lightburn-pages", label: "LightBurn project with pages", format: "LBRN2", icon: Zap, hint: "One page per panel or nested sheet in LightBurn 2.2 or later. Cut settings are shared across pages." }] : []),
     layered
-      ? { id: "lightburn", label: "LightBurn projects", format: "ZIP", icon: Zap, hint: "One .lbrn2 per sheet plus the master, with Cut, Score and Engrave layers set up." }
+      ? { id: "lightburn", label: "Separate LightBurn files", format: "ZIP", icon: Zap, hint: "One .lbrn2 per sheet plus the master, with Cut, Score and Engrave layers set up." }
       : { id: "lightburn", label: "LightBurn project", format: "LBRN2", icon: Zap, hint: "The engraving with its layers set up. Opens straight in LightBurn." },
   ] as { id: DownloadOption; label: string; format: string; icon: typeof Archive; hint: string; unavailable?: boolean }[]);
   const artworkDisabled = $derived(preparing || Boolean(blockedReason));

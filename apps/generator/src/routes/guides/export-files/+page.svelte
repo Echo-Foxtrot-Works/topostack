@@ -16,7 +16,7 @@
     <div><dt>Paint templates <span>ZIP · layered</span></dt><dd>With <strong>Water paint templates</strong> on: a paper stencil for each panel that has visible water, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Acrylic inserts <span>ZIP · layered</span></dt><dd>With <strong>Acrylic water inserts</strong> on: the acrylic panels or sheets, their engraving-only companions and the acrylic master, plus README.txt and ATTRIBUTION.txt.</dd></div>
     <div><dt>Airspace <span>ZIP · layered</span></dt><dd>With <strong>Airspace in 3D</strong> on: the airspace panels, their engraving-only companions, a master for each acrylic colour, and the backing sheet when rods go through the bottom layer, plus README.txt and ATTRIBUTION.txt.</dd></div>
-    <div><dt>Assembly guide <span>SVG · layered</span></dt><dd>The stacking reference on its own.</dd></div>
+    <div><dt>Assembly guide <span>HTML · layered</span></dt><dd>The printable assembly booklet on its own.</dd></div>
     <div><dt>Project settings <span>JSON</span></dt><dd>Your settings, for backup or to continue on another device. Always available, even when artwork export is blocked.</dd></div>
   </dl>
   <p>ZIP and file names start with your project name, lower-cased with spaces replaced by hyphens. The examples below use <code>my-map</code>. The combined download is limited to 100 MB; if a project exceeds it, reduce the map details or the size of the map area.</p>
@@ -71,20 +71,20 @@
       <tr><td><code>ENGRAVE</code></td><td><span class="swatch line" aria-hidden="true"></span>Blue <code>#2366FF</code></td><td>Roads, trails, labels, boundaries, the coordinate grid, north arrow, markers, alignment marks, and in flat output the contours and border.</td></tr>
     </tbody>
   </table>
-  <p>Choose Score for blue linework in both SCORE and ENGRAVE groups, Cut for red outlines, and Engrave only for intentionally filled blue artwork. Group names organize the SVG; verify the processing type in Studio. Inside ENGRAVE, detail groups are named by feature so you can give them separate line weights or turn them off:</p>
+  <p>Choose Score for blue linework in both SCORE and ENGRAVE groups, Cut for red outlines, and Engrave only for filled artwork. Downloaded SVGs use black (<code>#000000</code>) for artwork fills. Atomm uses blue fills for its Engrave category. Group names organize the SVG; verify the processing type in Studio. Inside ENGRAVE, detail groups are named by feature so you can give them separate line weights or turn them off:</p>
   <ul>
     <li><strong>Layered:</strong> each piece is a group such as <code>layer-03-part-2</code>, with <code>data-layer</code> and <code>data-piece</code> attributes (and <code>data-cell</code> on a split sheet). Its <code>layer-03-part-2-ENGRAVE</code> group holds detail groups such as <code>layer-03-ENGRAVE-trails</code>, <code>-major-roads</code>, <code>-local-roads</code>, <code>-transport-labels</code>, <code>-water</code>, <code>-boundaries</code>, <code>-coordinate-grid</code>, <code>-annotations</code> and <code>-general</code>.</li>
     <li><strong>Flat:</strong> <code>ENGRAVE-contours-minor</code>, <code>ENGRAVE-contours-index</code>, <code>ENGRAVE-water-fill</code>, <code>ENGRAVE-map-details</code> (with the same feature subgroups) and <code>ENGRAVE-border</code>.</li>
   </ul>
-  <p>Marker clearances are gaps in the exported line geometry, not white fabrication objects. Solid marker symbols retain their blue fill with no duplicate outline stroke; use Engrave for those filled shapes.</p>
+  <p>Marker clearances are gaps in the exported line geometry, not white fabrication objects. Solid marker symbols carry a fill only. Dashed features contain a separate subpath for each visible dash.</p>
 
   <h2 id="kerf-panel-size-and-alignment-marks">Kerf, panel size and alignment marks</h2>
   <p>In layered output, <strong>Laser kerf</strong> in the <strong>Fabricate</strong> panel is the full width your beam removes. Outer cuts move outward and holes move inward by half that width, so the finished pieces match the artwork. Each panel's canvas is enlarged by the kerf to make room. Set Laser kerf to 0 if your laser software applies its own compensation.</p>
   <p>When <strong>Assembly guides</strong> is on, each lower layer has an engraved outline of the layer above it, inset by half the line width plus the kerf, labeled with that layer’s number (for example <code>L04</code> on layer 03). They are hidden once the next layer is glued in place.</p>
-  <p>When <strong>Work area width</strong> or <strong>Work area height</strong> splits a layer, each piece also engraves its id, such as <code>L03-B2</code> (layer 03, column B, row 2), in a separate green (<code>#00A651</code>) <code>ASSEMBLY</code> group where the next layer will cover it. Assign that color to Score or turn off <strong>Assembly labels</strong>, under <strong>Panels and seams</strong> in the export dialog, if you don't want it. Seam edges get the same kerf compensation as every other cut, so pieces butt together at their intended size.</p>
+  <p>When <strong>Work area width</strong> or <strong>Work area height</strong> splits a layer, each piece also engraves its id, such as <code>L03-B2</code> (layer 03, column B, row 2), in a separate green (<code>#00A651</code>) <code>ASSEMBLY</code> group where the next layer will cover it. Use Score for stroked ids or Engrave for filled ids. Turn off <strong>Assembly labels</strong>, under <strong>Panels and seams</strong> in the export dialog, if you don't want it. Seam edges get the same kerf compensation as every other cut, so pieces butt together at their intended size.</p>
 
   <h2>Project file</h2>
-  <p><code>my-map-project.json</code> holds your full settings, so you can import it in the studio to continue. It also records the generation date, elevation range, map bounds, terrain resolution and sources, data versions, warnings, and for layered output each layer's elevation and file, panel and nesting details, and each lake's depth source and applied depth scaling. Imported projects need fresh terrain generation before export.</p>
+  <p><code>my-map-project.json</code> holds your full settings and the traced depth charts your project uses. Import this file to continue on another device. It also records the generation date, elevation range, map bounds, terrain resolution and sources, data versions, warnings, and for layered output each layer's elevation and file, panel and nesting details, and each lake's depth source and applied depth scaling. Large bundles can put the generation details in a separate <code>my-map-generation.json</code> to keep the project file within its 24 MB import limit. Generate terrain again after importing.</p>
   <p>The <strong>Project settings</strong> download contains the settings only, and imports the same way.</p>
 
   <h2>Credits</h2>
@@ -92,7 +92,7 @@
   <p>Every SVG also carries a short “Made with TopoStack” credit in its <code>&lt;desc&gt;</code> description, and README.txt ends with the same line. The description is file metadata: it is not a path, so it never draws, cuts or engraves.</p>
 
   <h2>Next steps</h2>
-  <p>Using LightBurn? <strong>LightBurn projects</strong> under Individual files open with each operation on its own layer; the <a href={`${base}/guides/lightburn`}>LightBurn guide</a> covers them and the SVG import. Using xTool Studio? Follow the <a href={`${base}/guides/xtool-studio`}>xTool Studio guide</a> to check dimensions, set processing by color and apply kerf once.</p>
+  <p>Under Individual files, choose <strong>LightBurn project with pages</strong> or <strong>xTool Studio project</strong> to open each panel or nested sheet on its own page or canvas. The <a href={`${base}/guides/lightburn`}>LightBurn guide</a> and <a href={`${base}/guides/xtool-studio`}>xTool Studio guide</a> cover material settings and SVG import.</p>
   <p>Follow the <a href={`${base}/guides/laser-cut-topographic-map`}>layered map guide</a> or the <a href={`${base}/guides/topographic-map-engraving`}>engraving guide</a>, or see <a href={`${base}/guides/troubleshooting`}>troubleshooting</a> if export is blocked.</p>
 </Article>
 

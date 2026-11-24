@@ -1,9 +1,12 @@
+import { transportScorePaths } from "./transport-scores.js";
+import { isRailClass } from "../types.js";
+import { buildingOutlinesEnabled } from "./source-requirements.js";
 import { layerForElevation, sampleElevation } from "./contours.js";
 import { coordinateGridMarkings } from "./coordinate-grid.js";
-import { fabricationLabel, junctionRing, longestPath, styledTransportationPaths, transportationJunctions, transportationOutlines } from "./transportation.js";
+import { fabricationLabel, longestPath, styledTransportationPaths } from "./transportation.js";
 import { clipPolyline, polylineLength, pointInPreparedPolygons, type PreparedPolygons, preparePolygons } from "../primitives/geometry2d.js";
 import { placeLinearLabel } from "../annotate/label-placement.js";
-import { geoPointToMapPoint } from "../annotate/markers.js";
+import { projectGeoPath } from "../annotate/markers.js";
 import { offsetPolygons } from "../primitives/offset.js";
 import { WATER_INSERT_SHORE_BAND_MM } from "./water-inserts.js";
 import type { ElevationGrid, LayerIR, MarkingFeature, Point2D, Polygon2D, ProjectConfigV1, TransportationClass, WaterInsertIR } from "../types.js";
@@ -62,7 +65,9 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
   const transportationClass = transportationClassOf(feature);
   return feature.id.startsWith("custom-data-line-") ||
     (transportationClass === "trail" && config.showTrails) ||
-    (transportationClass !== undefined && transportationClass !== "trail" && config.showRoads) ||
+    (isRailClass(transportationClass) && config.showRail) ||
+    ((transportationClass === "major-road" || transportationClass === "local-road") && config.showRoads) ||
+    (feature.kind === "building" && buildingOutlinesEnabled(config)) ||
     (feature.kind === "water" && config.showWater) ||
     (feature.kind === "boundary" && config.showBoundaries) ||
     (feature.kind === "grid" && config.showCoordinateGrid) ||
@@ -76,13 +81,13 @@ export function markingEnabled(feature: MarkingFeature, config: ProjectConfigV1)
 /** Source, custom, and graticule features with their ids made unique among repeated source ids. */
 function mapFeatures(context: GenerationContext, modelGrid: ElevationGrid): Array<{ feature: MarkingFeature; featureId: string }> {
   const { config, source } = context;
-  const customLineMarkings: MarkingFeature[] = config.customLines.map((line, index) => ({
+  const customLineMarkings: MarkingFeature[] = config.customLines.flatMap((line, index) => projectGeoPath(line.points, source.bounds, config.widthMm, config.heightMm).map((points) => ({
     id: `custom-data-line-${index}`,
     kind: line.kind,
     operation: "engrave",
-    points: line.points.map((point) => geoPointToMapPoint(point.lat, point.lon, source.bounds, config.widthMm, config.heightMm)),
+    points,
     ...(line.kind === "trail" ? { transportationClass: "trail" as const } : {}),
-  }));
+  })));
   const mapMarkings = [
     ...source.markings,
     ...context.aviation.lines,
@@ -107,12 +112,12 @@ function addTransportationLabelCandidate(labels: TransportationLabelCandidates, 
 }
 
 /** A flat engraving has one physical face, so every feature is clipped to the crop once. */
-function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, base: LayerClip, labels: TransportationLabelCandidates): void {
+function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, base: LayerClip, labels: TransportationLabelCandidates, strokes?: Point2D[][]): void {
   const { layer: baseLayer, material: baseMaterial } = base;
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
     const clipped = clipPolyline(feature.points, baseMaterial);
-    styledTransportationPaths(transportationOutlines(feature.points, transportationClass, config), clipped, baseMaterial).forEach((points, styleIndex) => baseLayer.markings.push({
+    styledTransportationPaths(strokes, clipped, baseMaterial).forEach((points, styleIndex) => baseLayer.markings.push({
       id: `${featureId}-flat-transport-${styleIndex}`,
       operation: "engrave",
       kind: transportationClass === "trail" ? "trail" : "road",
@@ -131,14 +136,13 @@ function routeFlatMarking(config: ProjectConfigV1, feature: MarkingFeature, feat
     .forEach((points, clipIndex) => baseLayer.markings.push({ id: `${featureId}-flat-${clipIndex}`, operation: feature.operation, kind: feature.kind, ...(feature.aviationClass ? { aviationClass: feature.aviationClass } : {}), ...(feature.landClass ? { landClass: feature.landClass } : {}), points }));
 }
 
-function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], layers: LayerIR[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons): void {
+function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, featureId: string, clips: LayerClip[], layers: LayerIR[], ladder: ElevationLadder, labels: TransportationLabelCandidates, excluded?: PreparedPolygons, strokes?: Point2D[][]): void {
   const transportationClass = transportationClassOf(feature);
   if (transportationClass) {
-    const outlines = transportationOutlines(feature.points, transportationClass, config);
     const label = feature.label && config.showTransportationLabels ? fabricationLabel(feature.label, config.textStyle.font) : undefined;
     clips.forEach(({ layer, material, covering }) => {
       const clipped = clipPolyline(feature.points, material, covering);
-      styledTransportationPaths(outlines, clipped, material, covering).forEach((points, styleIndex) => layer.markings.push({
+      styledTransportationPaths(strokes, clipped, material, covering).forEach((points, styleIndex) => layer.markings.push({
         id: `${featureId}-${layer.index}-transport-${styleIndex}`,
         operation: "engrave",
         kind: transportationClass === "trail" ? "trail" : "road",
@@ -156,7 +160,7 @@ function routeStackMarking(config: ProjectConfigV1, feature: MarkingFeature, fea
   // path against each exposed layer footprint makes adjacent pieces meet at
   // the exact contour intersection, independent of source vertex spacing.
   // Aviation detail and public land lie on the ground wherever they are, so they take the same path.
-  if ((feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || feature.kind === "land" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
+  if ((feature.kind === "building" || feature.kind === "boundary" || feature.kind === "grid" || feature.kind === "aviation" || feature.kind === "land" || (feature.kind === "water" && !isClosedWater(feature))) && feature.elevationM === undefined) {
     clips.forEach(({ layer, material, covering }) => {
       clipPolyline(feature.points, material, covering).forEach((points, clipIndex) => layer.markings.push({
         id: `${featureId}-${layer.index}-terrain-${clipIndex}`,
@@ -224,31 +228,18 @@ export function insertedShorelines({ source }: GenerationContext, inserts: Water
 
 /** Route every enabled map feature onto the layers it is visible on; returns transportation label candidates. */
 export function routeMarkings(context: GenerationContext, clips: LayerClip[], ladder: ElevationLadder, excludedFor: (feature: MarkingFeature) => PreparedPolygons | undefined = () => undefined): TransportationLabelCandidates {
-  const { config, source, flatEngraving } = context;
+  const { config, flatEngraving } = context;
   const labels: TransportationLabelCandidates = new Map();
   const layers = clips.map(({ layer }) => layer);
-  for (const { feature, featureId } of mapFeatures(context, ladder.modelGrid)) {
-    if (!markingEnabled(feature, config)) continue;
+  const enabled = mapFeatures(context, ladder.modelGrid).filter(({ feature }) => markingEnabled(feature, config));
+  const scores = transportScorePaths(enabled.map(({ feature }) => feature), config);
+  for (const { feature, featureId } of enabled) {
     // Routing every feature through every elevation band of a flat engraving
     // only explodes one road into dozens of DOM/SVG paths before reassembling it.
-    if (flatEngraving) routeFlatMarking(config, feature, featureId, clips[0]!, labels);
-    else routeStackMarking(config, feature, featureId, clips, layers, ladder, labels, excludedFor(feature));
+    if (flatEngraving) routeFlatMarking(config, feature, featureId, clips[0]!, labels, scores.get(feature));
+    else routeStackMarking(config, feature, featureId, clips, layers, ladder, labels, excludedFor(feature), scores.get(feature));
   }
 
-  const enabledRoadFeatures = source.markings.filter((feature) => feature.kind === "road" && config.showRoads);
-  const roadJunctions = config.lineStyle.roadStyle === "outlined" ? transportationJunctions(enabledRoadFeatures) : [];
-  roadJunctions.forEach((junction, junctionIndex) => {
-    const ring = junctionRing(junction.point, config.lineStyle.majorRoadSpacingMm / 2);
-    (flatEngraving ? clips.slice(0, 1) : clips).forEach(({ layer, material, covering }) => {
-      clipPolyline(ring, material, flatEngraving ? undefined : covering).forEach((points, clipIndex) => layer.markings.push({
-        id: `road-junction-${junctionIndex}-${layer.index}-${clipIndex}`,
-        operation: "engrave",
-        kind: "road",
-        transportationClass: "major-road",
-        points,
-      }));
-    });
-  });
   return labels;
 }
 

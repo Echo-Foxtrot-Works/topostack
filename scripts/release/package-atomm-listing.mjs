@@ -1,3 +1,4 @@
+import { verifyListingProvenance } from "../lib/listing-provenance.mjs";
 import { readVersions } from "./versions.mjs";
 import { atommReleaseFiles } from "../lib/atomm-release-files.mjs";
 import assert from "node:assert/strict";
@@ -8,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const root = new URL("../../atomm/", import.meta.url);
 const provenance = JSON.parse(await readFile(new URL("media-provenance.json", root), "utf8"));
+verifyListingProvenance(provenance);
 const files = ["listing.md", "listing-copy.txt", "media-provenance.json", "review-readiness.md"];
 for (const reference of [provenance.coverPresentation?.prompt, provenance.projectFile, provenance.annotationsFile, provenance.exportFile, provenance.video?.recipe, provenance.video?.projectFile, provenance.projectsFile, provenance.storyboardFile, provenance.coverVideo?.recipe, provenance.legacyVideo?.recipe, provenance.legacyVideo?.projectFile]) {
   if (!reference) continue;

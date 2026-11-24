@@ -1,3 +1,5 @@
+import { renderIdentity } from "../lib/listing-provenance.mjs";
+import { writeJsonAtomic } from "../lib/files.mjs";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
@@ -10,19 +12,26 @@ import { featureProjects, listingPlaces } from "./atomm-listing-places.mjs";
 import { engravingSvg, matte, openStudio } from "./atomm-listing-render.mjs";
 import { backdrop, card, contourLines, cutout, engravingArtwork, escapeHtml, model, renderCard, screenshot } from "./atomm-listing-compose.mjs";
 
-// Atomm listing media, v10: a cover built for the 272 × 204 grid card and nine
+// Atomm listing media, v11: a cover built for the 272 × 204 grid card and nine
 // gallery cards. Every model is the studio's own render of live terrain; every
 // interface image is a screenshot of the embedded studio. Backdrops are the
 // place's flat-engraving artwork. Run against `npm run dev` (or
 // TOPOSTACK_CAPTURE_URL) with @topostack/core built.
-const VERSION = "v10";
+const VERSION = "v11";
 const { atommVersion } = await readVersions();
 const origin = appUrl("TOPOSTACK_CAPTURE_URL");
 const root = new URL("../../atomm/", import.meta.url);
 const assets = new URL("assets/", root);
 await mkdir(assets, { recursive: true });
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-const sourceDiffSha256 = sha256Hex(execFileSync("git", ["diff", "HEAD", "--", "apps/generator/src", "scripts/dev"]));
+const renderPaths = ["apps/generator/src", "packages/core/src", "packages/data-contracts/src", "scripts/dev", "scripts/lib"];
+const trackedChanges = execFileSync("git", ["diff", "--binary", "HEAD", "--", ...renderPaths], { maxBuffer: 64 * 1024 * 1024 });
+const added = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z", "--", ...renderPaths], { encoding: "utf8" }).split("\0").filter(Boolean);
+const newFiles = await Promise.all(added.map(async (name) => [name, sha256Hex(await readFile(name))]));
+const sourceDiffSha256 = sha256Hex(JSON.stringify([sha256Hex(trackedChanges), newFiles]));
+const developmentBase = execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim();
+const composition = { sourceCommit, sourceDiffSha256, developmentBase, origin, version: atommVersion, capturedAt: new Date().toISOString() };
+let captureIdentity = composition;
 const media = [], projects = {}, attribution = new Map(), surveyResponses = new Set();
 const errors = [];
 // TOPOSTACK_LISTING_REUSE=1 recomposes from the last capture's renders (layout work only; never for a release set).
@@ -68,6 +77,7 @@ try {
   let renders = {};
   if (reuse) {
     const cached = JSON.parse(await readFile(cacheFile, "utf8"));
+    captureIdentity = renderIdentity(cached.captureIdentity);
     const revive = value => value && typeof value === "object" ? (value.$buffer ? Buffer.from(value.$buffer, "base64") : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, revive(v)]))) : value;
     renders = revive(cached.renders); Object.assign(projects, cached.projects); cached.attribution.forEach(source => attribution.set(source.name, source)); cached.surveyResponses.forEach(url => surveyResponses.add(url));
   } else {
@@ -78,7 +88,11 @@ try {
         const exploded = await matte(session.frame, { explode: 0.45, azimuth: -76, elevation: 32, fill: 1.12 });
         const svg = await engravingSvg(session);
         await session.studio.getByRole("button", { name: /Choose location/ }).click();
-        await session.studio.getByRole("textbox", { name: "Search places", exact: true }).waitFor();
+        // Show a search for the card's place: the unfiltered lake list opens on survey ids.
+        await session.studio.getByRole("textbox", { name: "Search places", exact: true }).fill("Crater Lake");
+        await session.studio.locator(".lake-search-results .location-option").first().waitFor();
+        await session.studio.locator(".search-results:not(.lake-search-results) .location-option").first().waitFor({ timeout: 30_000 });
+        await session.page.waitForTimeout(400);
         const location = await session.studio.getByRole("dialog").screenshot();
         await session.page.keyboard.press("Escape");
         await session.settled();
@@ -105,7 +119,8 @@ try {
       renders[id] = await capture(id, project, async session => ({ hero: await matte(session.frame, { fill: 1.0, elevation: id === "airspace" ? 38 : 50 }) }));
     }
     const pack = value => Buffer.isBuffer(value) ? { $buffer: value.toString("base64") } : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, pack(v)])) : value;
-    await writeFile(cacheFile, JSON.stringify({ renders: pack(renders), projects, attribution: [...attribution.values()], surveyResponses: [...surveyResponses] }));
+    if (errors.length) throw new Error(`Capture failed: ${errors.join("; ")}`);
+    await writeJsonAtomic(cacheFile, { captureIdentity, renders: pack(renders), projects, attribution: [...attribution.values()], surveyResponses: [...surveyResponses] });
   }
   const crater = renders["crater-lake"];
   if (!surveyResponses.size) throw new Error("No successful Crater Lake survey request; refusing to label modeled-only media as surveyed.");
@@ -120,7 +135,7 @@ try {
   async function save(id, html, meta) {
     const name = `topostack-${id}-${VERSION}.png`;
     const buffer = await renderCard(composer, html, new URL(name, assets).pathname);
-    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: sha256Hex(buffer), width: 3200, height: 2400, sourceCommit, ...meta });
+    media.push({ file: `assets/${name}`, bytes: buffer.length, sha256: sha256Hex(buffer), width: 3200, height: 2400, sourceCommit: captureIdentity.sourceCommit, ...meta });
     console.log("Saved", name);
   }
   const caption = place => `Software render · ${place} · Live terrain data`;
@@ -158,11 +173,10 @@ try {
 
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
   await writeFile(new URL(`media-projects-${VERSION}.json`, root), JSON.stringify(projects, null, 2) + "\n");
-  const archive = new URL("media-provenance-v9.json", root);
+  const archive = new URL(`media-provenance-v${Number(VERSION.slice(1)) - 1}.json`, root);
   try { await access(archive); } catch { await copyFile(new URL("media-provenance.json", root), archive); }
   await writeFile(new URL("media-provenance.json", root), JSON.stringify({
-    schemaVersion: 8, capturedAt: new Date().toISOString(), reusedRenders: reuse, sourceCommit, sourceDiffSha256,
-    developmentBase: execFileSync("git", ["rev-parse", "origin/dev"], { encoding: "utf8" }).trim(), version: atommVersion, origin,
+    schemaVersion: 8, ...captureIdentity, reusedRenders: reuse, ...(reuse ? { composition } : {}),
     projectFile: `media-projects-${VERSION}.json`,
     method: "Embedded studio with live terrain and survey data, through an SDK stand-in. Models are the studio's own Three.js meshes and materials, rendered twice (over white and over black) so their alpha can be recovered; only the camera and the key light's angle and colour are set for capture. Backdrops are each card's flat-engraving SVG from the same studio, restyled as faint lines. Interface images are unedited screenshots of the embedded studio at 2x. Cards are composed in HTML; no AI imagery, photo compositing or fabricated interface. Historical media remains on disk and is excluded from this upload set.",
     surveyResponses: [...surveyResponses], attribution: [...attribution.values()], media,

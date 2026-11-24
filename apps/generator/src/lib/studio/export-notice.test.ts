@@ -75,7 +75,7 @@ describe("downloading fabrication files", () => {
     const track = vi.fn();
     await downloadProject({ option: "panels", geometry, project, sheetPlan, notice, track, nextFrame });
     expect(loadGuideFonts).not.toHaveBeenCalled();
-    expect(buildProjectPackage).toHaveBeenCalledWith(geometry, project, { guideFonts: [], sheetPlan, acrylicSheetPlan: undefined });
+    expect(buildProjectPackage).toHaveBeenCalledWith(geometry, project, { guideFonts: [], sheetPlan, acrylicSheetPlan: undefined, charts: [], includeProjectFile: false });
     expect(prepareSelectedDownload).toHaveBeenCalledWith({ schemaVersion: 1, files: [] }, "panels");
     expect(startBrowserDownload).toHaveBeenCalledWith({ fileCount: 3 });
     expect(track).toHaveBeenCalledWith("export_prepared");
@@ -144,6 +144,26 @@ describe("downloading fabrication files", () => {
     await downloadProject({ option: "project", geometry, project: { ...charted, userDepthCharts: {} }, notice, track: vi.fn(), nextFrame });
     expect(chartsForProject).toHaveBeenCalledTimes(1);
     expect(vi.mocked(prepareProjectSettings).mock.calls[1]![1]).toEqual([]);
+    notice.dispose();
+  });
+
+  it("supplies the pinned charts on a complete download and reports an incomplete backup before saving it", async () => {
+    const notice = new ExportNotice(() => undefined);
+    const charted = { ...project, userDepthCharts: { "17": { id: "round-lake-chart", contentHash: "a".repeat(64) } } };
+    const geometry = generateGeometry(charted, { ...createSyntheticSource(charted, 16), sourceKind: "real" });
+    const track = vi.fn();
+    const request = { option: "all" as const, geometry, project: charted, notice, track, nextFrame };
+    await downloadProject(request);
+    expect(chartsForProject).toHaveBeenCalledWith(charted);
+    expect(buildProjectPackage).toHaveBeenCalledWith(geometry, charted, expect.objectContaining({ charts: [{ id: "round-lake-chart" }], includeProjectFile: true }));
+    expect(prepareSelectedDownload).toHaveBeenCalledWith(expect.anything(), "all");
+    expect(startBrowserDownload).toHaveBeenCalledOnce();
+    expect(notice.phase).toBe("ready");
+    vi.mocked(chartsForProject).mockRejectedValueOnce(new Error("The depth chart round-lake-chart is unavailable."));
+    await downloadProject(request);
+    expect(startBrowserDownload).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenLastCalledWith("export_failed");
+    expect(notice).toMatchObject({ phase: "error", detail: expect.stringContaining("round-lake-chart") });
     notice.dispose();
   });
 });

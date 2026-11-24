@@ -1,4 +1,4 @@
-import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, MERCATOR_MAX_LATITUDE, parseProject, parseProjectRequest, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
+import { areaBounds, boundsForProject, expandProjectRequest, isMercatorBounds, MERCATOR_MAX_LATITUDE, parseProject, parseProjectRequest, parseProjectRequestPatch, planFromRelief, type GeoBounds, type ModelPlan, type ProjectConfigV1, type ProjectRequestV1, type RequestIssue } from "@topostack/core/project";
 import { MAX_SHARE_URL_LENGTH, ShareLinkTooLongError } from "@topostack/data-contracts/share-link";
 import { BodyTooLargeError, readBounded } from "../body";
 import { json } from "../http";
@@ -108,14 +108,14 @@ function planNotes(project: ProjectConfigV1, plan: ModelPlan, relief: ReliefEsti
   const notes = [`Estimated from terrain sampled at zoom ${relief.zoom}; peaks can be smoothed, so expect the studio's count to differ by a sheet or two. The studio's count is the one that is cut.`];
   if (plan.reliefM < 20) notes.push(plan.output === "flat" ? "This area is nearly flat, so contour lines may be sparse." : "This area is nearly flat, so the layers may look alike. Try a smaller area or more exaggeration.");
   if (plan.output === "layered" && plan.sheetCount > MANY_SHEETS) notes.push(`${plan.sheetCount} sheets is a large stack. Thicker material or less exaggeration makes fewer sheets.`);
-  if (relief.coastal) notes.push("The area reaches the sea; the sea is cut flat and the stack is sized from the land.");
+  if (relief.coastal) notes.push("The estimate uses land above sea level. The studio includes available depth data.");
   if (coverage.lakeSurveys.length && project.showWaterDepth && plan.output === "layered") notes.push("Lake depth adds sheets below the shoreline; the studio counts them.");
   if (projectDrawsAviation(project)) notes.push(coverage.aviation
-    ? `Aviation detail comes from FAA NASR cycle ${coverage.aviation.nasrCycle}. It is decorative and never for navigation: the FAA replaces it every 28 days.`
+    ? `FAA NASR cycle ${coverage.aviation.nasrCycle} may cover this crop. Aviation detail is decorative, never for navigation.`
     : "FAA aviation data covers only the United States and its territories, so this area will have no aviation detail.");
   if (projectUsesLands(project)) notes.push(coverage.publicLands.length
-    ? `Public land outlines come from ${coverage.publicLands.map(({ name }) => name).join(" and ")}. Boundaries are as published and can lag changes on the ground.`
-    : "Outside the United States and Canada, public land comes from OpenStreetMap where it is mapped: national parks, nature reserves (as preserves) and military land only, without names. Other kinds will be empty here.");
+    ? `The studio checks ${coverage.publicLands.map(({ name }) => name).join(" and ")} for public land. Boundaries can lag changes on the ground.`
+    : "Here public land comes from OpenStreetMap where mapped. It supplies unnamed national parks, nature reserves (as preserves) and military land.");
   if (plan.output === "flat" && project.paintTemplates.length) notes.push("Paint templates are made for layered models only, so flat output leaves them out.");
   notes.push(...airspaceNotes(project, plan));
   const bedWidth = project.workAreaWidthMm || Infinity, bedHeight = project.workAreaHeightMm || Infinity;
@@ -168,10 +168,9 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
   if (bbox !== null) {
     const parts = bbox.split(",").map((part) => part.trim() === "" ? Number.NaN : Number(part));
     const [west, south, east, north] = parts as [number, number, number, number];
-    // West greater than east crosses the antimeridian, as in GeoJSON.
-    const bounds = { west, south, east: west > east ? east + 360 : east, north };
-    if (parts.length !== 4 || Math.abs(west) > 180 || Math.abs(east) > 180 || !isMercatorBounds(bounds)) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with south < north; west greater than east crosses the antimeridian.`);
-    return bounds;
+    const ground = areaGround({ bounds: { west, south, east, north } });
+    if (parts.length !== 4 || "errors" in ground) throw new AgentError(400, `bbox must be west,south,east,north in degrees inside ±180° and ±${MERCATOR_MAX_LATITUDE}°, with south < north; west greater than east crosses the antimeridian.`);
+    return ground.bounds;
   }
   const [lat, lon, widthKm] = ["lat", "lon", "widthKm"].map((key) => { const value = url.searchParams.get(key); return value === null || value.trim() === "" ? Number.NaN : Number(value); }) as [number, number, number];
   const ground = areaGround({ center: { lat, lon }, widthKm });
@@ -180,12 +179,22 @@ function coverageBoundsFromQuery(url: URL): GeoBounds {
 }
 
 /**
- * The ground a request `area` covers, or the parser's issues. The model size
- * is a placeholder: coverage depends only on the area.
+ * Use an exact geographic bounding box for coverage. A center and ground
+ * width without an explicit box describe a square in the Mercator plane.
  */
 export function areaGround(area: unknown): { bounds: GeoBounds } | { errors: RequestIssue[] } {
-  const parsed = parseProjectRequest({ requestVersion: 1, area, widthMm: 100, heightMm: 100 });
-  return parsed.ok ? { bounds: areaBounds(parsed.value.area, 100, 100) } : { errors: parsed.errors };
+  const parsed = parseProjectRequestPatch({ area });
+  if (!parsed.ok) return { errors: parsed.errors };
+  const value = parsed.value.area;
+  if (!value) return { errors: [{ path: "area", message: "Required: the area to check." }] };
+  let bounds: GeoBounds;
+  if ("bounds" in value) {
+    const { west, south, east, north } = value.bounds;
+    bounds = { west, south, east: west > east ? east + 360 : east, north };
+  } else {
+    bounds = areaBounds(value, 100, 100);
+  }
+  return isMercatorBounds(bounds) ? { bounds } : { errors: [{ path: "area", message: "The area extends outside the mapped world." }] };
 }
 
 /** The credits a project's sources require, as the resolve route and the link tool return them. */

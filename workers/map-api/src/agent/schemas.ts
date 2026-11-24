@@ -28,13 +28,14 @@ export const SUMMARY_SCHEMA: Schema = {
 };
 const COVERAGE_SCHEMA: Schema = {
   type: "object",
+  description: "Source candidates by bounding box. Actual detail depends on the samples and features in the crop.",
   required: ["terrain", "lakeSurveys", "roadsAndWater", "notes"],
   properties: {
-    terrain: { type: "object", required: ["base", "highResolution"], properties: { base: { type: "string" }, highResolution: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, resolutionM: { type: "number" }, license: { type: "string" } } } } } },
+    terrain: { type: "object", required: ["base", "highResolution", "ocean"], properties: { base: { type: "string" }, highResolution: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, resolutionM: { type: "number" }, license: { type: "string" } } } }, ocean: { type: "array", description: "Sea floor grids.", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, resolutionM: { type: "number" }, license: { type: "string" } } } } } },
     lakeSurveys: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, license: { type: "string" } } } },
     roadsAndWater: { type: "string" },
-    aviation: { type: ["object", "null"], description: "FAA aeronautical data (US only; not for navigation), or null outside FAA coverage.", properties: { name: { type: "string" }, nasrCycle: { type: "string" }, license: { type: "string" } } },
-    publicLands: { type: "array", description: "Public land outline databases reaching the area, for paint templates and engraved boundaries: USGS PAD-US (United States) and CPCAD (Canada). Empty elsewhere, where OpenStreetMap's protected areas stand in.", items: { type: "object", properties: { name: { type: "string" }, version: { type: "string" }, license: { type: "string" } } } },
+    aviation: { type: ["object", "null"], description: "FAA cycle for decorative aviation features.", properties: { name: { type: "string" }, nasrCycle: { type: "string" }, license: { type: "string" } } },
+    publicLands: { type: "array", description: "PAD-US and CPCAD search regions.", items: { type: "object", properties: { name: { type: "string" }, version: { type: "string" }, license: { type: "string" } } } },
     notes: { type: "array", items: { type: "string" } },
   },
 };

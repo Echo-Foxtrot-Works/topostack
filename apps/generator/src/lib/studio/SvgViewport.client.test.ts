@@ -126,15 +126,15 @@ describe("SvgViewport", () => {
     const { viewport, canvas } = render();
     layout(220, 120); // two pixels per millimetre at the fitted zoom
     key(viewport, "ArrowRight");
-    expect(canvas.style.transform).toBe("translate3d(-22px, 0px, 0) scale(1)");
+    expect(canvas.style.transform).toBe("translate3d(-22px, 0px, 0px) scale(1)");
     key(viewport, "ArrowDown");
-    expect(canvas.style.transform).toBe("translate3d(-22px, -12px, 0) scale(1)");
+    expect(canvas.style.transform).toBe("translate3d(-22px, -12px, 0px) scale(1)");
     expect(button("Reset test view").disabled).toBe(false);
     for (let step = 0; step < 20; step += 1) key(viewport, "ArrowLeft");
     // At 100% the camera may travel the view's width less a tenth: (110 + 110) / 2 - 11 = 99 mm.
-    expect(canvas.style.transform).toBe("translate3d(198px, -12px, 0) scale(1)");
+    expect(canvas.style.transform).toBe("translate3d(198px, -12px, 0px) scale(1)");
     key(viewport, "Home");
-    expect(canvas.style.transform).toBe("translate3d(0px, 0px, 0) scale(1)");
+    expect(canvas.style.transform).toBe("translate3d(0px, 0px, 0px) scale(1)");
     expect(button("Reset test view").disabled).toBe(true);
   });
 
@@ -233,7 +233,7 @@ describe("SvgViewport", () => {
       expect(viewport.classList.contains("dragging")).toBe(true);
       pointer(viewport, "pointerup", 70, 60);
       expect(viewport.classList.contains("dragging")).toBe(false);
-      expect(canvas.style.transform).toBe("translate3d(20px, 10px, 0) scale(1)");
+      expect(canvas.style.transform).toBe("translate3d(20px, 10px, 0px) scale(1)");
       click(viewport);
       expect(onactivate).not.toHaveBeenCalled();
       // Keyboard activation (detail 0) is never a drag's trailing click.

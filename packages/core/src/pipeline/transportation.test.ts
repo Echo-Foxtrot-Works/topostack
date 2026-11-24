@@ -36,7 +36,7 @@ describe("transportation and waterway routing", () => {
     const trail = markings.filter((marking) => marking.id.startsWith("trail-") && marking.points.length > 1);
     expect(trail.length).toBeGreaterThan(0);
     expect(trail.some((marking) => Math.hypot(marking.points.at(-1)!.x - marking.points[0]!.x, marking.points.at(-1)!.y - marking.points[0]!.y) > 10)).toBe(true);
-    expect(masterToSvg(result)).toMatch(/ENGRAVE-trails[^>]+stroke-dasharray=/);
+    expect(masterToSvg(result)).toMatch(/ENGRAVE-trails"[^>]*><path[^>]* d="M[^"]+ M/);
   });
 
   it("keeps roads continuous at exact terrain-layer transitions", () => {
@@ -72,9 +72,13 @@ describe("transportation and waterway routing", () => {
       { id: "fork-main", kind: "road", transportationClass: "major-road", operation: "engrave", points: [{ x: -80, y: 0 }, { x: 0, y: 0 }, { x: 80, y: 0 }] },
       { id: "fork-branch", kind: "road", transportationClass: "major-road", operation: "engrave", points: [{ x: 0, y: 0 }, { x: 0, y: 80 }] },
     ];
-    const joins = generateGeometry(project, source).layers.flatMap((layer) => layer.markings).filter((marking) => marking.id.startsWith("road-junction-"));
-    expect(joins.length).toBeGreaterThan(0);
-    expect(joins.flatMap((marking) => marking.points).every((point) => Math.abs(Math.hypot(point.x, point.y) - 0.6) < 1e-6)).toBe(true);
+    const flat = generateGeometry({ ...project, outputMode: "engraving" }, source);
+    const edges = flat.layers.flatMap(layer => layer.markings).filter(m => m.id.startsWith("fork-"));
+    const endpoints = edges.flatMap(m => [m.points[0]!, m.points.at(-1)!]);
+    for (const x of [-0.6, 0.6]) {
+      expect(endpoints.filter(p => Math.hypot(p.x - x, p.y - 0.6) < 1e-6)).toHaveLength(2);
+    }
+    expect(Math.min(...edges.flatMap(edge => edge.points.slice(1).map((p, i) => distanceToSegment({ x: 0, y: 0.6 }, edge.points[i]!, p))))).toBeCloseTo(0.6);
   });
 
   it("does not mistake a repeated road vertex for a junction", () => {
@@ -113,8 +117,11 @@ describe("transportation and waterway routing", () => {
       // two offset ends a notch apart and off the loop's own radius.
       expect(Math.hypot(outline.points[0]!.x - outline.points.at(-1)!.x, outline.points[0]!.y - outline.points.at(-1)!.y)).toBeLessThan(1e-6);
       const radii = outline.points.map((point) => Math.hypot(point.x, point.y + 20));
-      expect(Math.min(...radii)).toBeGreaterThan(40 - 0.65);
+      // Rounding can move an offset inward by up to 0.30 mm. The seam must
+      // still follow the same radius band as the rest of that outline.
+      expect(Math.min(...radii)).toBeGreaterThan(40 - 0.65 - 0.30);
       expect(Math.max(...radii)).toBeLessThan(40 + 0.65);
+      expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(0.25);
     }
   });
 

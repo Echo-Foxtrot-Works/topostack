@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "실선",
   "trailPatternOption.dashed": "파선",
   "trailPatternOption.dotted": "점선",
+  "buildings": "건물 윤곽선",
+  "buildingWidth": "건물 윤곽선 너비",
+  "buildingsHint": "지도 확대 수준 {zoom} 이상에서 건물 윤곽선을 새깁니다.",
+  "rail": "철도",
+  "railHint": "노출된 선로에는 공간이 충분한 곳에 일정한 간격으로 침목을 표시합니다. 덮인 구간은 파선으로 표시합니다.",
   "transportationLabels": "교통 라벨",
   "stateProvinceBoundariesName": "주/도 경계",
   "stateProvinceBoundaries": "주/도 경계",
@@ -78,8 +83,8 @@
   "names": "이름",
   "hatchInsideName": "공유지 경계 안쪽 빗금",
   "hatchInsideEdge": "안쪽 가장자리에 빗금",
-  "landNotCovered": "이곳에는 이 유형의 공유지가 없습니다. 미국과 캐나다 밖에서는 OpenStreetMap에 지도화된 공유지(국립공원, 자연보호구역(보호구역으로 표시), 군사 지역)를 이름 없이 사용합니다.",
-  "landFromOpenStreetMap": "미국과 캐나다 밖에서는 OpenStreetMap에 지도화된 공유지(국립공원, 자연보호구역(보호구역으로 표시), 군사 지역)를 이름 없이 사용합니다.",
+  "landNotCovered": "이곳에는 이 유형의 공유지가 없습니다.",
+  "landFromOpenStreetMap": "이 지역에서는 OpenStreetMap에 지도화된 공유지(국립공원, 자연보호구역(보호구역으로 표시), 군사 지역)를 이름 없이 사용합니다.",
   "landBoundariesNote": "유형마다 고유한 파선을 씁니다. 굵기는 주/도 경계와 같습니다. 이름은 공간이 있는 가장 큰 구역 안에 들어갑니다.",
   "publicLandInArea": "이 영역의 공유지",
   "includeUnit": "{name} 포함",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "공원 주변 숲처럼 스텐실과 경계에서 빼려는 구역은 끄세요. 가장 큰 {count}개가 표시됩니다.",
   "publicLandPaint": "공유지 채색",
   "landPaintNote": "켠 유형마다 패널별 종이 스텐실이 만들어지며, 조립 후 보이는 땅에 맞게 잘립니다. 유형이 겹치는 곳은 더 구체적인 유형으로 칠합니다. 예를 들어 주변 야생 보호구역과 숲보다 공원이 우선합니다. 미국 공유지는 USGS PAD-US 데이터베이스를 사용합니다.",
-  "strokeWidthNote": "선 굵기는 실제 SVG 값입니다. 최종 각인 굵기는 초점, 출력, 속도, 소재, 그리고 레이저 소프트웨어가 선을 중심선으로 처리하는지 채워진 도형으로 처리하는지에 따라서도 달라집니다."
+  "strokeWidthNote": "미리보기는 레이저 자국 폭을 0.20 mm로 가정합니다. 선 너비 설정은 SVG 모양에 적용됩니다. 실제 자국 폭은 초점, 출력, 속도 및 재료에 따라 달라집니다."
 }

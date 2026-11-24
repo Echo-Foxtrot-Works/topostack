@@ -1,6 +1,5 @@
 import { PROJECT_REQUEST_LIMITS, PROJECT_REQUEST_SCHEMA } from "@topostack/core/project";
 import { buildManifest } from "../manifest";
-import { aviationSources, bathymetryArchives, landsSources, terrainArchives } from "../routes/archive";
 import { PREVIEW_URI, previewListing, readPreview } from "./app-resource";
 import { RPC_ERRORS, RpcError } from "./protocol";
 
@@ -14,7 +13,7 @@ interface ResourceDefinition {
   title: string;
   description: string;
   mimeType: string;
-  read: (context: { siteOrigin: string; datasetVersion: string }) => string;
+  read: (context: ResourceContext) => string | Promise<string>;
 }
 
 /** The material and sizing guide, also the body of the published agent skill (routes/discovery.ts). */
@@ -54,7 +53,7 @@ Water, water depth, roads, trails, elevation labels, a north arrow and a scale b
 
 \`airspaceStack\` builds the Class B, C and special use airspace (and optionally Class D lids) over a layered US model in acrylic, at true height on the model's own vertical scale, held on rods the maker cuts to length; like the aviation detail, it is decorative and never for navigation. Choose \`form\`: \`plates\` (each level cut to all the airspace at that height; sturdy), \`tiers\` (only the shelves, the wedding cake; least acrylic) or \`volumes\` (solid, and acrylic-hungry); plates and tiers differ most where special use areas span several levels. \`tint\` is \`clear\` or \`chart\` (blue and magenta acrylic); by default plates are clear and the others chart. A whole Class B needs a 100–160 km area and about 10× \`verticalExaggeration\` before its shelves separate; plan_model estimates the height, and \`ceilingCapFt\` keeps it practical. \`false\` turns it off.
 
-Public land comes from USGS PAD-US in the United States and from CPCAD in Canada (which has no national forests, BLM or military land). \`paintTemplates\` lists the kinds that get a paper paint stencil per panel on a layered model: \`water\`, or \`national-park\`, \`national-monument\`, \`national-forest\`, \`wilderness\`, \`blm\`, \`wildlife-refuge\`, \`state-park\`, \`preserve\`, \`tribal\` and \`military\`. Where kinds overlap, the more specific one paints, so a park inside a forest gets the park's stencil. \`publicLands\` engraves boundaries on either output: \`boundaries\` lists the kinds (each in its own dash), \`names\` prints the largest units' names, and \`hatched\` adds ticks inside each boundary on flat output; \`false\` turns it off. check_coverage lists the databases reaching an area; elsewhere OpenStreetMap's national parks, nature reserves (as \`preserve\`) and military land are used where mapped, without names.
+Public land comes from USGS PAD-US in the United States and from CPCAD in Canada (which has no national forests, BLM or military land). \`paintTemplates\` lists the kinds that get a paper paint stencil per panel on a layered model: \`water\`, or \`national-park\`, \`national-monument\`, \`national-forest\`, \`wilderness\`, \`blm\`, \`wildlife-refuge\`, \`state-park\`, \`preserve\`, \`tribal\` and \`military\`. Where kinds overlap, the more specific one paints, so a park inside a forest gets the park's stencil. \`publicLands\` engraves boundaries on either output: \`boundaries\` lists the kinds (each in its own dash), \`names\` prints the largest units' names, and \`hatched\` adds ticks inside each boundary on flat output; \`false\` turns it off. check_coverage lists candidate databases. The studio uses units in the crop. OpenStreetMap supplies unnamed national parks, nature reserves (as \`preserve\`) and military land.
 
 ## Handing over
 
@@ -80,7 +79,7 @@ export const RESOURCES: ResourceDefinition[] = [
     title: "TopoStack data sources and licenses",
     description: "Every terrain, lake and map source TopoStack draws from, with its license and coverage.",
     mimeType: "application/json",
-    read: ({ datasetVersion }) => JSON.stringify(buildManifest(datasetVersion, terrainArchives, bathymetryArchives, aviationSources, landsSources), null, 2),
+    read: async ({ env }) => JSON.stringify(await buildManifest(env), null, 2),
   },
   {
     uri: "topostack://schema/project-request-v1",
@@ -92,15 +91,15 @@ export const RESOURCES: ResourceDefinition[] = [
   },
 ];
 
-export interface ResourceContext { siteOrigin: string; apiOrigin: string; datasetVersion: string; assets?: Fetcher }
+export interface ResourceContext { siteOrigin: string; apiOrigin: string; env: Env }
 
 export function resourceListings(context: Pick<ResourceContext, "apiOrigin">) {
   return [...RESOURCES.map(({ read: _read, ...resource }) => resource), previewListing(context.apiOrigin)];
 }
 
 export async function readResource(uri: string, context: ResourceContext) {
-  if (uri === PREVIEW_URI) return readPreview(context.assets, context.apiOrigin);
+  if (uri === PREVIEW_URI) return readPreview(context.env.ASSETS, context.apiOrigin);
   const resource = RESOURCES.find((entry) => entry.uri === uri);
   if (!resource) throw new RpcError(RPC_ERRORS.resourceNotFound, "Resource not found.", { uri });
-  return { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text: resource.read(context) }] };
+  return { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text: await resource.read(context) }] };
 }

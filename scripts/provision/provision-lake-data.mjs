@@ -1,5 +1,5 @@
 import { cloudflareClient } from "../lib/cloudflare-client.mjs";
-import { assertDigestPinPolicy, parseArchiveFlags, provisionWithReceipt, statArchive, verifyArchiveDigest, verifyPmtilesHeader } from "../lib/archive-provisioning.mjs";
+import { assertDigestPinPolicy, parseArchiveFlags, provisionWithReceipt, statArchive, verifyArchiveDigest, verifyPmtilesHeader, verifyVectorSchema } from "../lib/archive-provisioning.mjs";
 /**
  * Upload registered lake bathymetry or additional terrain archives.
  *
@@ -33,6 +33,11 @@ const EXPECTED_MAX_ZOOM = raster?.maxZoom ?? 12;
 const OBJECT_KEY = terrain ? `terrain-sources/${terrain.id}.pmtiles` : raster ? `bathymetry/${raster.id}.pmtiles` : "lakes/current.pmtiles";
 
 const options = parseArchiveFlags(process.argv.slice(2));
+// A source still waiting on its publisher's approval may reach the development
+// bucket only; the catalog flips it to "all" once the approval reference exists.
+if (raster?.availability === "development" && options.flags.includes("--prod")) {
+  throw new Error(`${raster.id} is registered for development only${raster.approval?.required ? " until its publisher's approval is recorded" : ""}; refusing --prod.`);
+}
 const { flags, archivePath, buckets } = options;
 const verifyOnly = flags.includes("--verify-only");
 if (verifyOnly && (flags.includes("--provision") || flags.includes("--promote") || flags.includes("--prod"))) throw new Error("--verify-only cannot be combined with publication flags.");
@@ -59,8 +64,9 @@ if ((!raster && header.minzoom !== 0) || !Number.isInteger(header.minzoom) || he
   throw new Error(`Expected a zoom 0-${EXPECTED_MAX_ZOOM} archive; received zoom ${header.minzoom}-${header.maxzoom}.`);
 }
 
-if (raster) {
-  const metadata = JSON.parse(await capture(pmtilesBin, ["show", archivePath, "--metadata"]));
+const metadata = JSON.parse(await capture(pmtilesBin, ["show", archivePath, "--metadata"]));
+if (!raster) verifyVectorSchema(header, metadata, "globathy");
+else {
   if (header.tile_type !== "png" || metadata.topostack_dataset !== DATASET_SNAPSHOT || metadata.topostack_encoding !== raster.encoding || (terrain && metadata.topostack_vertical_datum !== terrain.verticalDatum)) {
     throw new Error("Expected the registered numeric PNG archive. Refusing to upload a different dataset.");
   }

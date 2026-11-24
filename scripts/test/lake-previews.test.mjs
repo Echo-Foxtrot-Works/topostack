@@ -11,12 +11,14 @@ test("the pin names each preview by content hash and keeps what the page shows",
     const image = Buffer.from("RIFF-webp-bytes");
     await writeFile(join(directory, "crater-lake-oregon.webp"), image);
     await writeFile(join(directory, "manifest.json"), JSON.stringify({ rendererVersion: 5, lakes: { "crater-lake-oregon": {
-      width: 960, height: 854, maxDepthM: 592.1, contourIntervalM: 100, surveyedShare: 0.99, surveys: ["usgs-crater-lake-v1"], renderedAt: "2026-09-25T00:00:00.000Z", inputHash: "x", timingMs: {} } } }));
+      sha256: digest(image), width: 960, height: 854, maxDepthM: 592.1, contourIntervalM: 100, surveyedShare: 0.99, surveys: ["usgs-crater-lake-v1"], renderedAt: "2026-09-25T00:00:00.000Z", inputHash: "x", timingMs: {} } } }));
     const { pin, objects } = await inspectPreviews(directory);
     const sha256 = digest(image);
     assert.deepEqual(pin, { schemaVersion: 1, rendererVersion: 5, lakes: { "crater-lake-oregon": { file: `${sha256.slice(0, 24)}.webp`, sha256, bytes: image.length,
       width: 960, height: 854, maxDepthM: 592.1, contourIntervalM: 100, surveyedShare: 0.99, surveys: ["usgs-crater-lake-v1"], renderedAt: "2026-09-25T00:00:00.000Z" } } });
     assert.deepEqual(objects.map((object) => object.file), [pin.lakes["crater-lake-oregon"].file]);
+    await writeFile(join(directory, "crater-lake-oregon.webp"), Buffer.from("newer image"));
+    await assert.rejects(inspectPreviews(directory), /does not match its checkpoint/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

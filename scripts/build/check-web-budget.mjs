@@ -15,14 +15,17 @@ const budgets = {
   // the airspace feature section and guide registration (2026-10-10). The
   // illustration is a static SVG mask; this restores roughly 10% headroom
   // for actual content growth without adding a rendering dependency.
-  landingJavaScriptGzip: 71_000,
+  // With Svelte 5.59 the shared UI runtime grew by 4.4 kB gzip. The homepage,
+  // studio entry and default preview measured 71,316, 166,276 and 594,750 bytes.
+  landingJavaScriptGzip: 79_000,
   // Prerendered homepage HTML. 9,579 when set; 11,142 after adding the
   // accessible water-finish comparison with responsive images (2026-10-08).
   landingHtmlGzip: 12_300,
   // JavaScript studio.html preloads before the studio can render. 130,547 when set.
   // 145,307 when raised 2026-09-29 (from 143,137): the VFR sectional legend
   // symbols are geometry in core, whose chunk studio.html preloads.
-  initialJavaScriptGzip: 160_000,
+  // The score-only street and rail paths add bend, junction and bridge geometry to the shared core.
+  initialJavaScriptGzip: 183_000,
   // Studio route plus App, the default 3D preview and the geometry worker:
   // everything needed for the first preview. Other routes are not counted.
   // 440,324 when set (the old measure counted every route and read 505,789).
@@ -30,7 +33,7 @@ const budgets = {
   // live in core, which ships in both the studio and the geometry worker.
   // 538,176 when raised 2026-10-28 (from 533,470): SvelteKit 3's client
   // runtime adds about 4.5 kB gzip to every entry.
-  startupJavaScriptGzip: 592_000,
+  startupJavaScriptGzip: 655_000,
   // Any single chunk; catches an accidental vendor merge. 275,299 when set.
   largestJavaScriptGzip: 300_000,
   studioHtmlBytes: 10_000,
@@ -43,7 +46,8 @@ const budgets = {
   // The in-chat preview (MCP App): one self-contained page a chat host loads
   // when an assistant previews a model. It never loads on the site. 117,290 when set;
   // 130,596 once generation gained acrylic water inserts (dev was 128,227).
-  mcpAppHtmlGzip: 143_000,
+  // 143,011 once it carried the GEBCO ocean registration (dev was 142,797).
+  mcpAppHtmlGzip: 157_000,
 };
 
 // Reported, never enforced: totals across every route, lazy tool and worker

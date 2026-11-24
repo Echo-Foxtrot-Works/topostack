@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Vorschau der Flachgravur",
   "engravingZoomControls": "Zoomsteuerung der Gravur",
   "resetEngravingView": "Gravuransicht zurücksetzen",
-  "legendMinorContour": "Höhenlinie",
-  "legendIndexEvery": "Zähllinie alle {interval}",
   "legendContourCount": "{count, plural, one {# Höhenlinie} other {# Höhenlinien}}",
   "legendNoContours": "Keine Höhenlinien",
   "legendWaterPattern": "{pattern, select, lines {Wasser: Linien} ripples {Wasser: Wellen} dots {Wasser: Punkte} other {Wasser: {pattern}}}",

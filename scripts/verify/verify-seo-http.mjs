@@ -125,6 +125,8 @@ export async function verifyHttpSeo(origin, environment, { propagationTimeoutMs 
     assert.match(markdown.headers.get("vary") ?? "", /accept/i, path + " Markdown varies on Accept");
     assert.match(await markdown.text(), /^---\ntitle: /, path + " Markdown front matter");
   }
+  const studioForAgent = await get("/studio", 200, { accept: "text/markdown" });
+  assert.match(studioForAgent.headers.get("content-type"), /^text\/html/, "Studio opens as HTML");
   const recorded = [...pages].map(([path, page]) => [path, page.updated]);
   const expectedUrls = production ? recorded.map(([path]) => SITE_ORIGIN + path).sort() : [];
   const recordedDates = Object.fromEntries(recorded.map(([path, updated]) => [SITE_ORIGIN + path, updated]));

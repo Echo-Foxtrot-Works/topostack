@@ -403,7 +403,7 @@ jobs:
           workingDirectory: workers/map-api
           wranglerVersion: ${{ steps.wrangler.outputs.version }}
           environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
-          command: deploy --env ${{ github.ref_name == 'main' && 'production' || 'development' }}
+          command: deploy --env ${{ github.ref_name == 'main' && 'production' || 'development' }} --var DEPLOYMENT_COMMIT:${{ github.sha }}
           secrets: |
             GEOCODER_API_KEY
             FEEDBACK_EMAIL_TO
@@ -432,6 +432,7 @@ jobs:
         env:
           # Allow the previous Worker version's routes/origin policy to settle.
           DEPLOYMENT_ROLLOUT: "1"
+          EXPECTED_COMMIT: ${{ github.sha }}
           WORKER_URL: ${{ steps.deploy.outputs.deployment-url }}
           PUBLIC_APP_URL: ${{ github.ref_name == 'main' && env.PRODUCTION_URL || env.DEVELOPMENT_URL }}
           EXPECTED_WORKER_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'development' }}
@@ -474,17 +475,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
-            echo "v$VERSION is already tagged."
-            exit 0
-          fi
-          npm run --silent changelog:notes -- "$VERSION" > "$RUNNER_TEMP/notes.md"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" "$GITHUB_SHA" -m "TopoStack $VERSION"
-          git push origin "v$VERSION"
-          gh release create "v$VERSION" --verify-tag --title "TopoStack $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --latest=false
+          node scripts/release/publish-web-release.mjs
 
   package-atomm:
     name: Package Atomm release

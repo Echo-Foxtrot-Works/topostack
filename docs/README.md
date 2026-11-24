@@ -12,6 +12,7 @@
 - [Placement mode](placement.md) — the top-down draft layer for positioning annotations and custom graphics, and how to add a placeable.
 - [Studio settings panels](studio-panels.md) — the seven rail panels, which subject each one owns, and where a new control goes.
 - [Sheet nesting](nesting.md): the sparrow engine, how its WebAssembly wrapper handles coordinates and spacing, credits and citations. The original plan (shipped in 0.6.0) is [plans/sheet-nesting.md](plans/sheet-nesting.md).
+- [Japan data fidelity spike](reports/japan-fidelity-spike-2026-11.md) — GSI 5 m against Mapzen at Fuji, Hakone and Kamikochi, GEBCO_2026 against Mapzen offshore, GSI's 57 lake surveys, OSM rail names, the licences, and the draft Survey Act application.
 - [3D airspace implementation review](reports/airspace-review-2026-10-09.md) — corrected source, altitude, support and export defects, performance measurements, validation and release prerequisites.
 - [Acrylic water inserts](water-inserts.md) — cutting each lake out of its waterline sheet, the fitted acrylic piece and its ledge, map detail on the acrylic, and its own files, nesting and guide steps.
 - [Engraving fonts](fonts.md) — the font kinds, the glyph build, adding a typeface, and why glyph data is immutable.
@@ -44,6 +45,8 @@
 - [NOAA lake depth integration plan](noaa-lake-integration-plan.md) — phased local runbook for adding NBS grids and ENC contours for every NOAA-covered lake.
 - [Depth charts traced into bathymetry](depth-chart-tracing.md) — chart record contract, how traced charts carve, and the staged rollout. The first-release plan (shipped in 0.5.0) is [plans/depth-chart-first-release.md](plans/depth-chart-first-release.md).
 - [NRCan HRDEM terrain](hrdem-terrain.md)
+- [Ocean bathymetry (GEBCO)](ocean-bathymetry.md) — the global GEBCO_2026 ocean-depth archive: how the studio overlays it, how it is built, pinned and provisioned.
+- [GSI terrain for Japan](gsi-terrain.md) — 5 m shards and the 10 m national archive from GSI elevation tiles, the Survey Act approval they wait on, and the resumable fetch.
 - [FAA aviation data](faa-aviation.md) — airspace, airports, runways, navaids, special use airspace and obstacles: sources, archive, and the per-cycle refresh. The phased plan is [plans/aviation-layer.md](plans/aviation-layer.md).
 - [Public lands data](public-lands.md) — PAD-US classes, the refuge and tribal rules, the archive, and how to build and provision it.
 - [Public and protected lands](plans/public-lands.md) — plan: paint stencils and boundary lines for national parks and forests, wilderness, BLM, state parks, refuges, preserves, tribal and military land, built from PAD-US 4.1 into our own archive. The feasibility spike is [reports/public-lands-spike-2026-10-13.md](reports/public-lands-spike-2026-10-13.md).
@@ -64,6 +67,7 @@ Python data builders under `scripts/` use one pinned environment: `scripts/data-
 
 Dated snapshots kept for history. Do not update them; write a new one.
 
+- [Country-by-country map data depth, 2026-11-22](reports/non-lake-country-sweep-2026-11-22.md) — production terrain, map features and coastal coverage across 250 countries and territories, with downloadable evidence and fabrication checks.
 - [Launch-readiness review, 2026-09-12](reports/launch-readiness-review-2026-09-12.md)
 - [Launch-readiness remediation, 2026-09-12](reports/launch-readiness-remediation-2026-09-12.md)
 - [SEO discoverability audit, 2026-09-15](reports/seo-discoverability-audit-2026-09-15.md)
@@ -85,5 +89,6 @@ Dated snapshots kept for history. Do not update them; write a new one.
 - [Atomm alignment investigation, 2026-09-29](reports/atomm-alignment-20260929/README.md) — reproduced 0.7.0 sidebar offsets and candidate correction.
 - [Atomm 0.7.1 validation, 2026-09-29](reports/atomm-071-validation/README.md) — release checks and alignment measurements from the exact patch ZIP.
 - [Atomm 0.12.0 review preparation, 2026-11-18](reports/atomm-0.12.0-review/README.md) — what standalone changes since 0.7.1 could reach the embed, the Open in Studio acrylic fix, and the frame audit.
+- [Export fidelity review, 2026-11-22](reports/export-fidelity-review-2026-11-22.md) — measured terrain and chart errors, sheet nesting, project round-trips, and preview differences in fabrication files.
 
 Airspace data acceptance and physical assembly fixtures: [airspace-validation.md](airspace-validation.md).

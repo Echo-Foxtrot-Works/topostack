@@ -38,6 +38,15 @@ describe("overlay data", () => {
     expect(data.features[0]!.properties).toEqual({ id: "l1", kind: "trail" });
   });
 
+  it("keeps saved and draft dateline strokes short when the map is centered at Greenwich", () => {
+    const points = [{ lat: 1, lon: 179.9 }, { lat: 1, lon: -179.9 }];
+    const expected = [[179.9, 1], [180.1, 1]];
+    const line = { id: "trail", kind: "trail" as const, points };
+    expect(customLineData([line], world).features[0]?.geometry.coordinates).toEqual(expected);
+    expect(draftData(points, undefined, world).features[0]?.geometry.coordinates).toEqual(expected);
+    expect(draftData(points.slice(0, 1), points[1], world).features[0]?.geometry.coordinates).toEqual(expected);
+  });
+
   it("outlines the map area as a closed box or a 73-point ellipse, and nothing when hidden", () => {
     expect(mapAreaData(DEFAULT_PROJECT, false).features).toHaveLength(0);
     const box = mapAreaData({ ...DEFAULT_PROJECT, cropShape: "rectangle" }, true).features[0]!.geometry.coordinates;

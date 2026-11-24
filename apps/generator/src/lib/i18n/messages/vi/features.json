@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Liền",
   "trailPatternOption.dashed": "Gạch",
   "trailPatternOption.dotted": "Chấm",
+  "buildings": "Đường viền tòa nhà",
+  "buildingWidth": "Độ rộng đường viền tòa nhà",
+  "buildingsHint": "Khắc đường viền tòa nhà từ mức thu phóng bản đồ {zoom} trở lên.",
+  "rail": "Đường sắt",
+  "railHint": "Đường ray ngoài trời có các thanh tà vẹt cách đều ở nơi đủ chỗ. Đoạn có mái che dùng nét đứt.",
   "transportationLabels": "Nhãn giao thông",
   "stateProvinceBoundariesName": "Ranh giới bang và tỉnh",
   "stateProvinceBoundaries": "Ranh giới bang/tỉnh",
@@ -78,8 +83,8 @@
   "names": "Tên",
   "hatchInsideName": "Gạch chéo phía trong ranh giới đất công",
   "hatchInsideEdge": "Gạch chéo mép trong",
-  "landNotCovered": "Không có đất công thuộc các loại này ở đây. Ngoài Hoa Kỳ và Canada, đất công lấy từ OpenStreetMap ở nơi đã được lập bản đồ: vườn quốc gia, khu bảo tồn thiên nhiên (tính là khu bảo tồn) và đất quân sự, không kèm tên.",
-  "landFromOpenStreetMap": "Ngoài Hoa Kỳ và Canada, đất công lấy từ OpenStreetMap ở nơi đã được lập bản đồ: vườn quốc gia, khu bảo tồn thiên nhiên (tính là khu bảo tồn) và đất quân sự, không kèm tên.",
+  "landNotCovered": "Không có đất công thuộc các loại này ở đây.",
+  "landFromOpenStreetMap": "Ở đây, đất công lấy từ OpenStreetMap ở nơi đã được lập bản đồ: vườn quốc gia, khu bảo tồn thiên nhiên (tính là khu bảo tồn) và đất quân sự, không kèm tên.",
   "landBoundariesNote": "Mỗi loại có kiểu nét đứt riêng. Độ rộng dùng chung với ranh giới bang và tỉnh. Tên được đặt trong các khu lớn nhất còn đủ chỗ.",
   "publicLandInArea": "Đất công trong vùng này",
   "includeUnit": "Bao gồm {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Tắt một khu để loại khỏi khuôn sơn và ranh giới, ví dụ rừng bao quanh một công viên. Hiển thị {count} khu lớn nhất.",
   "publicLandPaint": "Sơn đất công",
   "landPaintNote": "Mỗi loại được bật có một khuôn sơn giấy cho từng bảng, cắt theo phần đất vẫn nhìn thấy sau khi lắp ráp. Ở nơi các loại chồng lên nhau, loại cụ thể hơn được sơn: công viên đè lên khu hoang dã và rừng xung quanh. Đất công Hoa Kỳ lấy từ cơ sở dữ liệu USGS PAD-US.",
-  "strokeWidthNote": "Độ rộng nét là giá trị SVG thực. Độ rộng khắc thực tế còn phụ thuộc vào tiêu cự, công suất, tốc độ, vật liệu và việc phần mềm laser xử lý nét như đường tim hay hình tô đầy."
+  "strokeWidthNote": "Bản xem trước mô phỏng vệt laser rộng 0,20 mm. Thiết lập độ rộng điều chỉnh hình vẽ SVG. Độ rộng vệt thực tế phụ thuộc vào tiêu điểm, công suất, tốc độ và vật liệu."
 }

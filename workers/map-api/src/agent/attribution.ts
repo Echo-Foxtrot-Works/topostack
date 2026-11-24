@@ -39,6 +39,7 @@ export function attributionFor(origin: string, coverage?: AreaCoverage, options:
   const lands = options.lands ? coverage?.publicLands ?? [] : [];
   const regional: AttributionEntry[] = [
     ...(coverage?.terrain.highResolution ?? []).map(({ name, license }) => ({ name, license })),
+    ...(coverage?.terrain.ocean ?? []).map(({ name, license }) => ({ name, license })),
     ...(coverage?.lakeSurveys ?? []).map(({ name, license }) => ({ name, license })),
     ...(aviation ? [{ name: `${aviation.name}, NASR cycle ${aviation.nasrCycle}`, license: aviation.license }] : []),
     ...lands.map(({ name, license }) => ({ name, license })),

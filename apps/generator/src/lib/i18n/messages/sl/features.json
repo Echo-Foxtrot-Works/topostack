@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Polna",
   "trailPatternOption.dashed": "Črtkana",
   "trailPatternOption.dotted": "Pikčasta",
+  "buildings": "Obrisi stavb",
+  "buildingWidth": "Širina obrisa stavb",
+  "buildingsHint": "Obrisi stavb se gravirajo od stopnje povečave zemljevida {zoom} naprej.",
+  "rail": "Železnice",
+  "railHint": "Na odprtih progah so prikazani razmaknjeni pragovi, kjer je dovolj prostora. Pokriti odseki so črtkani.",
   "transportationLabels": "Napisi prometnic",
   "stateProvinceBoundariesName": "Meje držav in provinc",
   "stateProvinceBoundaries": "Meje držav/provinc",
@@ -78,8 +83,8 @@
   "names": "Imena",
   "hatchInsideName": "Šrafiraj notranjost mej javnih zemljišč",
   "hatchInsideEdge": "Šrafiraj notranji rob",
-  "landNotCovered": "Tu ni javnih zemljišč teh vrst. Zunaj Združenih držav in Kanade javna zemljišča prihajajo iz OpenStreetMap, kjer so kartirana: narodni parki, naravni rezervati (kot rezervati) in vojaška območja, brez imen.",
-  "landFromOpenStreetMap": "Zunaj Združenih držav in Kanade javna zemljišča prihajajo iz OpenStreetMap, kjer so kartirana: narodni parki, naravni rezervati (kot rezervati) in vojaška območja, brez imen.",
+  "landNotCovered": "Tu ni javnih zemljišč teh vrst.",
+  "landFromOpenStreetMap": "Tu javna zemljišča prihajajo iz OpenStreetMap, kjer so kartirana: narodni parki, naravni rezervati (kot rezervati) in vojaška območja, brez imen.",
   "landBoundariesNote": "Vsaka vrsta ima svojo črtkanost. Širina je skupna z mejami držav in provinc. Imena se zapišejo v največje enote, ki imajo dovolj prostora.",
   "publicLandInArea": "Javna zemljišča na tem območju",
   "includeUnit": "Vključi {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Izklopite enoto, da jo izpustite iz šablon za barvanje in mej, na primer gozd okoli parka. Prikazanih je {count} največjih.",
   "publicLandPaint": "Barvanje javnih zemljišč",
   "landPaintNote": "Vsaka vklopljena vrsta dobi papirnato šablono za vsak segment, izrezano po zemljišču, ki ostane vidno po sestavljanju. Kjer se vrste prekrivajo, se barva bolj specifična: park pred divjino in gozdom okoli njega. Javna zemljišča ZDA iz baze USGS PAD-US.",
-  "strokeWidthNote": "Širine potez so fizične vrednosti SVG. Končna širina graviranja je odvisna tudi od goriščne razdalje, moči, hitrosti, materiala in tega, ali vaša programska oprema za laser obravnava poteze kot sredinske črte ali zapolnjene oblike."
+  "strokeWidthNote": "Predogled prikazuje značilno 0,20 mm široko sled laserja. Nastavljene širine določajo videz SVG. Dejanska širina sledi je odvisna od izostritve, moči, hitrosti in materiala."
 }

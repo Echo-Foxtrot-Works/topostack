@@ -1,7 +1,7 @@
 import { anchoredCenter, placementAt } from "./anchor.js";
 import { iconShapePolygons } from "./marker-icons.js";
 import { offsetClosedRing } from "../primitives/offset.js";
-import { MAP_MARKER_CLEARANCE_MM, MARKER_ICON_UNITS, type CustomGraphicV1, type MarkerIconShapeV1, type NorthArrowPlacementV1, type OperationPath, type PlacedGraphicV1, type Point2D, type Polygon2D, type ProjectConfigV1 } from "../types.js";
+import { graphicOperationFor, MAP_MARKER_CLEARANCE_MM, MARKER_ICON_UNITS, type CustomGraphicV1, type MarkerIconShapeV1, type NorthArrowPlacementV1, type OperationPath, type PlacedGraphicV1, type Point2D, type Polygon2D, type ProjectConfigV1 } from "../types.js";
 
 type GraphicConfig = Pick<ProjectConfigV1, "widthMm" | "heightMm" | "cropShape" | "customGraphics">;
 
@@ -91,10 +91,11 @@ export function placedGraphicFootprint(config: GraphicConfig, placed: PlacedGrap
  * halo, a score is its outlines, and a cut is shown as its outlines in guide
  * style, because the sheet itself changes only when generation runs.
  */
-export function placedGraphicMarkings(config: GraphicConfig, placed: PlacedGraphicV1): OperationPath[] {
+export function placedGraphicMarkings(config: GraphicConfig & { outputMode?: ProjectConfigV1["outputMode"] }, placed: PlacedGraphicV1): OperationPath[] {
   const prefix = placedGraphicMarkingPrefix(placed.id);
   const polygons = placedGraphicPolygons(config, placed);
-  if (placed.operation === "engrave") {
+  const operation = graphicOperationFor(config.outputMode ?? "stack", placed.operation);
+  if (operation === "engrave") {
     return [
       ...polygons.flatMap(({ outer }, index) => offsetClosedRing(outer, GRAPHIC_CLEARANCE_MM, "round").map((halo, haloIndex): OperationPath => ({
         id: `${prefix}halo-${index}-${haloIndex}`, operation: "engrave", kind: "marker", points: halo, filled: true, knockout: true,
@@ -105,9 +106,9 @@ export function placedGraphicMarkings(config: GraphicConfig, placed: PlacedGraph
     ];
   }
   return polygons.flatMap(({ outer, holes }, index) => [outer, ...holes].map((ring, ringIndex): OperationPath => ({
-    id: `${prefix}${placed.operation}-${index}-${ringIndex}`,
+    id: `${prefix}${operation}-${index}-${ringIndex}`,
     operation: "score",
-    kind: placed.operation === "cut" ? "guide" : "marker",
+    kind: operation === "cut" ? "guide" : "marker",
     points: ring,
   })));
 }

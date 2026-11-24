@@ -6,8 +6,9 @@ import { latToWorldY, lonToWorldX } from "$lib/domain/tile-math";
 import rawSurveyCatalog from "../../../../../scripts/data/lake-bathymetry.json";
 import { validateSurveyCatalog, type SurveySource } from "@topostack/data-contracts/source-catalog";
 import catalog from "../../../../../scripts/data/noaa-great-lakes.json";
+import { servedSources } from "$lib/domain/data-environment";
 
-const registry = validateSurveyCatalog(rawSurveyCatalog);
+const registry = { sources: servedSources(validateSurveyCatalog(rawSurveyCatalog).sources) };
 
 const NOAA_DATASET_VERSION = catalog.dataset;
 const NOAA_ATTRIBUTION = {
@@ -220,6 +221,7 @@ export function pixelBox(ring: WaterAreaV1["polygon"]["outer"], grid: Pick<Eleva
 
 export interface SurveyResult {
   areas: WaterAreaV1[];
+  preChartLakeAreas?: WaterAreaV1[];
   status: "available" | "partial" | "unavailable" | "not-covered";
   datasetVersions: string[];
   attribution: SourceAttribution[];
@@ -292,7 +294,7 @@ export function applySurveyProvenance(source: SourceBundleV1, result: SurveyResu
   const names = new Set(registry.sources.flatMap((item) => [item.name, `${item.name} — water outlines`]));
   const outlineSources = new Set(result.areas.map((area) => area.outlineSourceId));
   const outlineAttribution = registry.sources.filter((item) => outlineSources.has(item.id)).map((item) => ({ name: `${item.name} — water outlines`, url: item.url, license: item.license }));
-  return { ...source, bathymetryStatus: result.status,
-    datasetVersion: [...source.datasetVersion.split("+").filter((id) => !ids.has(id)), ...result.datasetVersions].join("+"),
-    attribution: [...source.attribution.filter((item) => !names.has(item.name)), ...outlineAttribution, ...result.attribution] };
+  return { ...source, bathymetryStatus: result.status, preChartLakeAreas: result.preChartLakeAreas,
+    datasetVersion: [...source.datasetVersion.split("+").filter((id) => !ids.has(id) && !id.startsWith("userchart-")), ...result.datasetVersions].join("+"),
+    attribution: [...source.attribution.filter((item) => !names.has(item.name) && !item.name.startsWith("Depth chart: ")), ...outlineAttribution, ...result.attribution] };
 }

@@ -18,7 +18,7 @@
  *     --globathy="GLOBathy_basic_parameters/GLOBathy_basic_parameters(ALL_LAKES).csv" \
  *     --out=lakes.pmtiles
  *
- * Requires `tippecanoe` on PATH (brew install tippecanoe). The shapefile is read
+ * Requires `tippecanoe` and `pmtiles` on PATH (brew install tippecanoe pmtiles). The shapefile is read
  * in-process, so GDAL is not needed.
  *
  * Sources:
@@ -98,8 +98,8 @@ async function readMaximumDepths(path) {
   return depths;
 }
 
-// The CSV pass takes minutes; refuse now rather than after it when the one
-// required binary is missing.
+// The CSV pass takes minutes. Check both build tools before reading it.
+assertExecutable(process.env.PMTILES_BIN ?? "pmtiles", { install: "brew install pmtiles" });
 assertExecutable("tippecanoe", { install: "brew install tippecanoe" });
 
 console.log("Reading GLOBathy maximum depths…");

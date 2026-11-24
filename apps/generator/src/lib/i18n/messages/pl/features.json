@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Ciągła",
   "trailPatternOption.dashed": "Przerywana",
   "trailPatternOption.dotted": "Kropkowana",
+  "buildings": "Obrysy budynków",
+  "buildingWidth": "Szerokość obrysu budynków",
+  "buildingsHint": "Obrysy budynków są grawerowane od poziomu powiększenia mapy {zoom}.",
+  "rail": "Koleje",
+  "railHint": "Na odkrytych torach widać podkłady tam, gdzie jest na nie miejsce. Odcinki zakryte są oznaczone linią przerywaną.",
   "transportationLabels": "Etykiety dróg",
   "stateProvinceBoundariesName": "Granice stanów i prowincji",
   "stateProvinceBoundaries": "Granice stanów/prowincji",
@@ -78,8 +83,8 @@
   "names": "Nazwy",
   "hatchInsideName": "Kreskowanie wewnątrz granic gruntów publicznych",
   "hatchInsideEdge": "Kreskuj wewnętrzną krawędź",
-  "landNotCovered": "Brak tu gruntów publicznych tych rodzajów. Poza Stanami Zjednoczonymi i Kanadą grunty publiczne pochodzą z OpenStreetMap, o ile są tam zmapowane: parki narodowe, rezerwaty przyrody (jako rezerwaty) i tereny wojskowe, bez nazw.",
-  "landFromOpenStreetMap": "Poza Stanami Zjednoczonymi i Kanadą grunty publiczne pochodzą z OpenStreetMap, o ile są tam zmapowane: parki narodowe, rezerwaty przyrody (jako rezerwaty) i tereny wojskowe, bez nazw.",
+  "landNotCovered": "Brak tu gruntów publicznych tych rodzajów.",
+  "landFromOpenStreetMap": "Tutaj grunty publiczne pochodzą z OpenStreetMap, o ile są tam zmapowane: parki narodowe, rezerwaty przyrody (jako rezerwaty) i tereny wojskowe, bez nazw.",
   "landBoundariesNote": "Każdy rodzaj ma własną linię przerywaną. Szerokość jest wspólna z granicami stanów i prowincji. Nazwy trafiają do największych jednostek, w których jest miejsce.",
   "publicLandInArea": "Grunty publiczne na tym obszarze",
   "includeUnit": "Uwzględnij: {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Wyłącz jednostkę, aby pominąć ją w szablonach malarskich i granicach, np. las wokół parku. Wyświetlono największe jednostki ({count}).",
   "publicLandPaint": "Malowanie gruntów publicznych",
   "landPaintNote": "Każdy włączony rodzaj otrzymuje papierowy szablon na każdy panel, wycięty na kształt gruntu widocznego po złożeniu. Tam, gdzie rodzaje się nakładają, maluje się ten bardziej szczegółowy: park zamiast otaczających go obszarów dzikiej przyrody i lasu. Grunty publiczne USA z bazy USGS PAD-US.",
-  "strokeWidthNote": "Szerokości obrysu to fizyczne wartości SVG. Ostateczna szerokość graweru zależy też od ogniskowania, mocy, prędkości, materiału oraz tego, czy oprogramowanie lasera traktuje obrysy jako linie środkowe, czy wypełnione kształty."
+  "strokeWidthNote": "Podgląd pokazuje przykładowy ślad lasera o szerokości 0,20 mm. Ustawienia szerokości określają wygląd SVG. Rzeczywista szerokość śladu zależy od ostrości, mocy, prędkości i materiału."
 }

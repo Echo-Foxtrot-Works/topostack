@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Contínua",
   "trailPatternOption.dashed": "Tracejada",
   "trailPatternOption.dotted": "Pontilhada",
+  "buildings": "Contornos de edifícios",
+  "buildingWidth": "Espessura do contorno dos edifícios",
+  "buildingsHint": "Os contornos são gravados a partir do nível de zoom {zoom} do mapa.",
+  "rail": "Ferrovias",
+  "railHint": "As vias a céu aberto mostram dormentes espaçados onde há espaço. Os trechos cobertos aparecem tracejados.",
   "transportationLabels": "Rótulos de vias",
   "stateProvinceBoundariesName": "Divisas de estados e províncias",
   "stateProvinceBoundaries": "Divisas de estados/províncias",
@@ -78,8 +83,8 @@
   "names": "Nomes",
   "hatchInsideName": "Hachurar dentro dos limites de terras públicas",
   "hatchInsideEdge": "Hachurar a borda interna",
-  "landNotCovered": "Não há terras públicas desses tipos aqui. Fora dos Estados Unidos e do Canadá, as terras públicas vêm do OpenStreetMap onde estão mapeadas: parques nacionais, reservas naturais (como reservas) e áreas militares, sem nomes.",
-  "landFromOpenStreetMap": "Fora dos Estados Unidos e do Canadá, as terras públicas vêm do OpenStreetMap onde estão mapeadas: parques nacionais, reservas naturais (como reservas) e áreas militares, sem nomes.",
+  "landNotCovered": "Não há terras públicas desses tipos aqui.",
+  "landFromOpenStreetMap": "Aqui, as terras públicas vêm do OpenStreetMap onde estão mapeadas: parques nacionais, reservas naturais (como reservas) e áreas militares, sem nomes.",
   "landBoundariesNote": "Cada tipo tem seu próprio tracejado. A espessura é compartilhada com as divisas de estados e províncias. Os nomes ficam dentro das maiores unidades que têm espaço.",
   "publicLandInArea": "Terras públicas nesta área",
   "includeUnit": "Incluir {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Desative uma unidade para deixá-la fora dos estênceis e limites, como a floresta ao redor de um parque. As {count} maiores estão listadas.",
   "publicLandPaint": "Pintura de terras públicas",
   "landPaintNote": "Cada tipo ativado ganha um estêncil de papel por painel, recortado na terra que fica visível após a montagem. Onde os tipos se sobrepõem, pinta o mais específico: um parque sobre a área selvagem e a floresta ao redor. Terras públicas dos EUA do banco de dados PAD-US do USGS.",
-  "strokeWidthNote": "As espessuras de traço são valores físicos do SVG. A largura gravada final também depende do foco, potência, velocidade, material e de o seu software de laser tratar traços como linhas centrais ou formas preenchidas."
+  "strokeWidthNote": "A prévia simula um traço de laser de 0,20 mm. As larguras configuradas definem a aparência do SVG. A largura real depende do foco, da potência, da velocidade e do material."
 }

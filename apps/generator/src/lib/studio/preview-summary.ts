@@ -1,4 +1,4 @@
-import { acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lakeDisplayNames, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
+import { isRailClass, buildingOutlinesEnabled, acrylicPanelGroups, airspacePanelGroups, AVIATION_DATA_DETAILS, displayLength, lakeDisplayNames, lengthUnit, planSeamGrid, signedArea, waterInsertLakeKey, type GeometryIRV1, type LayerIR, type ProjectConfigV1, type WaterSurfaceIR } from "@topostack/core";
 import { formatNumber, t } from "$lib/i18n/i18n.svelte";
 import { LINE_PRESETS } from "$lib/studio/options";
 
@@ -26,7 +26,7 @@ type Warning = GeometryIRV1["warnings"][number];
 export function featuredLayerIndex(result: GeometryIRV1): number {
   let best = { index: 0, score: -1 };
   result.layers.forEach((layer) => {
-    const score = layer.markings.reduce((total, marking) => total + (marking.kind === "road" || marking.kind === "trail" || marking.kind === "water" || marking.kind === "boundary" || marking.kind === "grid" ? 3 : marking.id.startsWith("north-") || marking.id.startsWith("scale-") ? 0 : 1), 0);
+    const score = layer.markings.reduce((total, marking) => total + (marking.kind === "building" || marking.kind === "road" || marking.kind === "trail" || marking.kind === "water" || marking.kind === "boundary" || marking.kind === "grid" ? 3 : marking.id.startsWith("north-") || marking.id.startsWith("scale-") ? 0 : 1), 0);
     if (score > best.score) best = { index: layer.index, score };
   });
   return best.index;
@@ -35,8 +35,10 @@ export function featuredLayerIndex(result: GeometryIRV1): number {
 /** The first layer showing a detail that `patch` just enabled, so the cut preview can jump to it. */
 export function layerForEnabledDetail(result: GeometryIRV1, patch: Partial<ProjectConfigV1>): number | undefined {
   if (patch.showWaterDepth) return result.waterSurfaces[0]?.layerIndex;
-  const matcher = patch.showRoads ? (id: string, kind: string) => kind === "road" :
+  const matcher = patch.showRoads ? (id: string, kind: string, transportationClass?: string) => kind === "road" && !isRailClass(transportationClass) :
     patch.showTrails ? (id: string, kind: string) => kind === "trail" :
+    patch.showBuildings ? (_id: string, kind: string) => kind === "building" :
+    patch.showRail ? (id: string, kind: string, transportationClass?: string) => isRailClass(transportationClass) :
     patch.showTransportationLabels ? (id: string) => id.startsWith("transport-label-") :
     patch.showWater ? (id: string, kind: string) => kind === "water" :
     patch.showBoundaries ? (id: string, kind: string) => kind === "boundary" :
@@ -49,21 +51,23 @@ export function layerForEnabledDetail(result: GeometryIRV1, patch: Partial<Proje
     patch.lands?.boundaries.length ? (id: string, kind: string) => kind === "land" :
     patch.plaque?.enabled ? (id: string) => id.startsWith("plaque-") : undefined;
   if (!matcher) return undefined;
-  return result.layers.find((layer) => layer.markings.some((marking) => matcher(marking.id, marking.kind)))?.index;
+  return result.layers.find((layer) => layer.markings.some((marking) => matcher(marking.id, marking.kind, marking.transportationClass)))?.index;
 }
 
 export interface DetailCounts {
-  road: number; trail: number; transportationLabel: number; water: number; contour: number; alignment: number;
+  building: number; road: number; trail: number; rail: number; transportationLabel: number; water: number; contour: number; alignment: number;
   elevation: number; north: number; scale: number; plaque: number; marker: number; customLine: number; piece: number;
   aviation: number; aviationLabel: number; land: number; landLabel: number;
 }
 
 /** Marking counts per detail, exposed on the preview stage for tests and diagnostics. */
 export function countDetailMarkings(layers: readonly LayerIR[], outputMode: ProjectConfigV1["outputMode"]): DetailCounts {
-  const counts: DetailCounts = { road: 0, trail: 0, transportationLabel: 0, water: 0, contour: outputMode === "engraving" ? Math.max(0, layers.length - 1) : 0, alignment: 0, elevation: 0, north: 0, scale: 0, plaque: 0, marker: 0, customLine: 0, piece: 0, aviation: 0, aviationLabel: 0, land: 0, landLabel: 0 };
+  const counts: DetailCounts = { building: 0, road: 0, trail: 0, rail: 0, transportationLabel: 0, water: 0, contour: outputMode === "engraving" ? Math.max(0, layers.length - 1) : 0, alignment: 0, elevation: 0, north: 0, scale: 0, plaque: 0, marker: 0, customLine: 0, piece: 0, aviation: 0, aviationLabel: 0, land: 0, landLabel: 0 };
   for (const layer of layers) {
     for (const marking of layer.markings) {
-      if (marking.kind === "road") counts.road += 1;
+      if (isRailClass(marking.transportationClass)) counts.rail += 1;
+      else if (marking.kind === "building") counts.building += 1;
+      else if (marking.kind === "road") counts.road += 1;
       else if (marking.kind === "trail") counts.trail += 1;
       else if (marking.kind === "water") counts.water += 1;
       else if (marking.kind === "contour") counts.contour += 1;
@@ -167,6 +171,8 @@ export function activeDetailCount(project: ProjectConfigV1): number {
   return [
     project.showRoads,
     project.showTrails,
+    project.showRail,
+    buildingOutlinesEnabled(project),
     project.showTransportationLabels,
     project.showWater,
     project.showBoundaries,
@@ -203,7 +209,7 @@ export function panelSummary(panel: DisclosureId, project: ProjectConfigV1, stac
     case "place": return t("app.summaryPlace", { shape: project.cropShape === "circle" ? "circle" : "rectangle", width: shownLength(project.widthMm, project.units), height: shownLength(project.heightMm, project.units), unit });
     case "terrain": return stack ? t("app.summaryTerrainStack", { count: stackLayerCount, thickness: shownLength(project.materialThicknessMm, project.units), unit }) : project.showEngravingContours ? t("app.summaryTerrainContours", { count: project.engravingContourCount, interval: project.engravingIndexInterval }) : t("app.summaryTerrainContoursOff");
     case "features": {
-      const count = [project.showRoads, project.showTrails, project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder, Boolean(project.lands?.boundaries.length), stack && project.paintTemplates.some((kind) => kind !== "water")].filter(Boolean).length;
+      const count = [project.showRoads, project.showTrails, project.showRail, buildingOutlinesEnabled(project), project.showTransportationLabels, project.showBoundaries, project.showCoordinateGrid, !stack && project.showEngravingBorder, Boolean(project.lands?.boundaries.length), stack && project.paintTemplates.some((kind) => kind !== "water")].filter(Boolean).length;
       const preset = activeLinePreset(project.lineStyle);
       return t("app.summaryFeatures", { count, preset: preset && LINE_PRESETS.some((option) => option.value === preset) ? preset : "custom" });
     }

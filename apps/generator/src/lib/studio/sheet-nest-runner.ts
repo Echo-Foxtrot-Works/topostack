@@ -15,7 +15,7 @@ export type NestMaterial = "wood" | "acrylic";
 export function prepareNestJob(geometry: GeometryIRV1, project: ProjectConfigV1, material: NestMaterial = "wood"): NestJob {
   const resolved = material === "acrylic" ? resolveAcrylicNestSettings(project) : resolveSheetNestSettings(project);
   if (!resolved.ok) return resolved;
-  const parts = material === "acrylic" ? acrylicNestableParts(geometry) : nestableParts(geometry);
+  const parts = material === "acrylic" ? acrylicNestableParts(geometry, resolved.settings) : nestableParts(geometry, resolved.settings);
   if (!parts.length) return { ok: false, error: material === "acrylic" ? "No lake became an acrylic insert, so there is nothing to nest." : "Generate the terrain before nesting its parts." };
   return { ok: true, parts, settings: resolved.settings };
 }
@@ -42,9 +42,8 @@ export function sheetPreviews(plan: SheetNestPlanV1, parts: NestPartV1[]): Sheet
       if (!part) return [];
       const radians = (placement.rotationDeg * Math.PI) / 180;
       const [cos, sin] = [Math.cos(radians), Math.sin(radians)];
-      // Thumbnails are a few hundred pixels wide; about 120 vertices per outline is plenty.
-      const step = Math.max(1, Math.floor(part.outline.length / 120));
-      const points = part.outline.filter((_, index) => index % step === 0).map(({ x, y }) => `${round(cos * x - sin * y + placement.xMm)} ${round(sin * x + cos * y + placement.yMm)}`);
+      // The packer already simplifies the outline. Keep its vertices so sharp corners survive.
+      const points = part.outline.map(({ x, y }) => `${round(cos * x - sin * y + placement.xMm)} ${round(sin * x + cos * y + placement.yMm)}`);
       return [{ label: part.label, path: `M${points.join("L")}Z` }];
     }),
   }));

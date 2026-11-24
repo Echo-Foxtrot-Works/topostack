@@ -5,6 +5,7 @@
   import type { NestingProgress } from "$lib/atomm/automatic-nesting";
   import { buildProjectPackage, type GeometryIRV1, type ProjectConfigV1 } from "@topostack/core";
   import { acrylicOutsideStudio, buildAtommPackage, loadGuideFonts } from "$lib/studio/export-policy";
+  import { projectFileCharts } from "$lib/studio/project-file";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
   import { ChevronDown } from "@lucide/svelte";
 
@@ -78,7 +79,7 @@
           if (cancelled) return;
           const output = isEmbedded()
             ? await buildAtommPackage(current.geometry, layout?.project ?? current.project, guideFonts, layout?.sheetPlan)
-            : buildProjectPackage(current.geometry, current.project, { guideFonts });
+            : buildProjectPackage(current.geometry, current.project, { guideFonts, charts: await projectFileCharts(current.project) });
           const svg = await output.master.blob.text();
           if (cancelled) return;
           // The image fills the file's own viewBox size, so the sheet keeps its proportions.
@@ -87,7 +88,7 @@
           // so the on-screen copy draws every line as a hairline. The file itself is unchanged.
           const display = svg.replace(/<svg\b[^>]*>/, (open) => `${open}<style>*{vector-effect:non-scaling-stroke;stroke-width:1px}</style>`);
           show({ layoutNote: layout?.layoutNote ?? "", sheetCount: layout?.sheetPlan?.sheets.length ?? 0, url: URL.createObjectURL(new Blob([display], { type: "image/svg+xml" })), filename: output.master.filename, bytes: output.master.blob.size, width, height,
-            cut: /stroke="#FE0002"/i.test(svg), score: /stroke="#2366FF"/i.test(svg), fill: /fill="#2366FF"/i.test(svg), files: output.files.map((file) => ({ filename: file.filename, bytes: file.blob.size })) });
+            cut: /stroke="#FE0002"/i.test(svg), score: /stroke="#2366FF"/i.test(svg), fill: /fill="#(?:2366FF|000000)"/i.test(svg), files: output.files.map((file) => ({ filename: file.filename, bytes: file.blob.size })) });
           failure = "";
         } catch (error) {
           if (!cancelled) { show(undefined); failure = error instanceof Error ? error.message : t("preview.exportPreviewFailed"); }
@@ -128,7 +129,7 @@
         <summary><span>{t("preview.download")}</span><strong>{t("preview.completeBundle")}</strong><small>{t("preview.bundleSize", { count: built.files.length, size: formatBytes(totalBytes) })}</small><span class="export-files-toggle">{t("preview.viewIncludedFiles")} <span aria-hidden="true">⌄</span></span></summary>
         <ul>{#each built.files as file (file.filename)}{@const [stem, end] = splitFilename(file.filename, built.filename)}<li><span class="export-file-name" title={file.filename}><span class="export-file-stem">{stem}</span><span class="export-file-end">{end}</span></span><small>{formatBytes(file.bytes)}</small></li>{/each}</ul>
       </details>
-      <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>{t("preview.keyCut")}</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>{t("preview.keyScore")}</span>{/if}{#if built.fill}<span><i class="export-key-fill" aria-hidden="true"></i>{t("preview.keyEngrave")}</span>{/if}</div>
+      <div class="export-key">{#if built.cut}<span><i class="export-key-cut" aria-hidden="true"></i>{t("preview.keyCut")}</span>{/if}{#if built.score}<span><i class="export-key-score" aria-hidden="true"></i>{t("preview.keyScore")}</span>{/if}{#if built.fill}<span><i class="export-key-fill" style:background={isEmbedded() ? undefined : "#000"} aria-hidden="true"></i>{t(isEmbedded() ? "preview.keyEngrave" : "preview.graphicOperation.engrave")}</span>{/if}</div>
     </div>
     </section>
   {:else if !failure && !blocked && !busy && isEmbedded()}

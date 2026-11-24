@@ -209,8 +209,10 @@ export function landsCovers(sources: Pick<LandsSources, "coverage">, bounds: { w
 
 /** The sources whose coverage a crop touches, PAD-US first. */
 export function landSourcesCovering(sources: Pick<LandsSources, "coverage">, bounds: { west: number; south: number; east: number; north: number }): LandSource[] {
+  // Studio crops keep longitudes unwrapped when they cross the date line.
   const touched = new Set(sources.coverage
-    .filter(({ bounds: [west, south, east, north] }) => bounds.west < east && bounds.east > west && bounds.south < north && bounds.north > south)
+    .filter(({ bounds: [west, south, east, north] }) => bounds.south < north && bounds.north > south
+      && [0, -360, 360].some((shift) => bounds.west < east + shift && bounds.east > west + shift))
     .map((region) => region.source ?? "padus"));
   return LAND_SOURCES.filter((source) => touched.has(source));
 }

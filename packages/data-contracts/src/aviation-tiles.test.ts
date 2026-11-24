@@ -149,6 +149,10 @@ describe("aviation source registration", () => {
 
   it("reports coverage by region intersection", () => {
     const sources = validateAviationSources(registration);
+    for (const west of [-181, 179, 539]) {
+      expect(aviationCovers(sources, { west, south: 28, east: west + 5, north: 29 })).toBe(true);
+      expect(aviationCovers(sources, { west, south: 29, east: west + 5, north: 30 })).toBe(false);
+    }
     expect(aviationCovers(sources, { west: -105.2, south: 39.6, east: -104.5, north: 40.0 })).toBe(true);
     expect(aviationCovers(sources, { west: -158.1, south: 21.2, east: -157.6, north: 21.5 })).toBe(true);
     expect(aviationCovers(sources, { west: -123.4, south: 50.0, east: -123.0, north: 50.3 })).toBe(false);
@@ -156,6 +160,14 @@ describe("aviation source registration", () => {
     // Algonquin Park, Ontario: north of the Great Lakes, between the US boxes.
     expect(aviationCovers(sources, { west: -78.96, south: 46.45, east: -78.92, north: 46.48 })).toBe(false);
     expect(aviationCovers(sources, { west: -71.1, south: 42.3, east: -70.9, north: 42.4 })).toBe(true);
+  });
+
+  it("routes the archived HFS airport and Tern Island while excluding the surrounding shoals", () => {
+    const sources = validateAviationSources(registration);
+    // The published HFS point lies just south of the mapped island coastline.
+    expect(aviationCovers(sources, { west: -166.28465, south: 23.86405, east: -166.28463, north: 23.86407 })).toBe(true);
+    expect(aviationCovers(sources, { west: -166.287, south: 23.870, east: -166.285, north: 23.871 })).toBe(true);
+    expect(aviationCovers(sources, { west: -166.26, south: 23.83, east: -166.25, north: 23.84 })).toBe(false);
   });
 
   // Places where the boxes meet: each lies inside one box, not merely touching two.

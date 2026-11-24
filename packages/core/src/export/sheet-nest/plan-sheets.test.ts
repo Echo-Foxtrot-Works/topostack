@@ -32,7 +32,7 @@ describe("sheet planning", () => {
     const result = await planSheets(parts, settings, { engine: boxesAsSparrow, budgetMs: 10_000, onPlan: (plan) => plans.push(plan) });
     expect(verifySheetPlan(parts, result)).toEqual([]);
     expect(result.final).toBe(true);
-    expect(result.jobKey).toMatch(/^nest1-/);
+    expect(result.jobKey).toMatch(/^nest2-/);
     expect(plans[0]!.engine).toEqual({ name: "sparrow", sparrowRev: "test" });
     expect(plans[0]!.sheets.every((sheet) => sheet.method === "rectangles")).toBe(true);
     expect(result.sheets.length).toBeLessThanOrEqual(plans[0]!.sheets.length);
@@ -56,6 +56,22 @@ describe("sheet planning", () => {
     const planning = planSheets(parts, settings, { engine: rectangleEngine });
     await expect(planning).rejects.toBeInstanceOf(SheetNestError);
     await expect(planning).rejects.toMatchObject({ code: "oversize", labels: ["huge", "long"] });
+  });
+
+  it("reports the near-fit envelope without emitting empty sheets", async () => {
+    const partTooWide = part("near", [[0, 0], [100.01, 0], [100.01, 50], [0, 50]]);
+    const stock = { ...settings, sheetWidthMm: 100, sheetHeightMm: 100, marginMm: 0 };
+    await expect(planSheets([partTooWide], stock, { engine: rectangleEngine })).rejects.toMatchObject({ code: "oversize", labels: ["near"] });
+  });
+
+  it.each([[100, 100], [112.5, 56]])("finds a diagonal fit on a %s × %s sheet only with free rotation", async (width, height) => {
+    const strip = part("strip", [[0, 0], [120, 0], [120, 5], [0, 5]]);
+    const stock = { ...settings, sheetWidthMm: width, sheetHeightMm: height, marginMm: 0 };
+    const plan = await planSheets([strip], { ...stock, rotation: "free" }, { engine: rectangleEngine });
+    expect(plan.sheets).toHaveLength(1);
+    expect(plan.sheets[0]!.placements[0]!.rotationDeg % 90).toBeGreaterThan(0);
+    expect(verifySheetPlan([strip], plan)).toEqual([]);
+    await expect(planSheets([strip], stock, { engine: rectangleEngine })).rejects.toMatchObject({ code: "oversize" });
   });
 
   it("allows a part exactly the size of the usable sheet", async () => {

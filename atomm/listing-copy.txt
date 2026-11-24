@@ -2,10 +2,10 @@ Card title
 TopoStack
 
 Short description
-Turn real terrain into layered laser-cut reliefs and flat topographic engravings.
+Turn real places into layered laser-cut terrain reliefs and flat topographic engravings.
 
 Detailed description
-Turn a place you love into something you can make. TopoStack transforms real elevation and map data into layered terrain reliefs and flat topographic engravings.
+Turn a place you love into something you can make. TopoStack transforms real elevation and map data into layered terrain reliefs and flat topographic engravings. The whole studio is available in all 18 Atomm languages.
 
 Choose a location, frame your map, and set its physical size. Create a layered relief with adjustable material thickness and vertical exaggeration, or a flat engraving with customizable contour lines or none at all. Add roads, trails, water details, labels, a compass, a scale bar, or your own markers and paths.
 
@@ -13,9 +13,9 @@ Paint templates and engraved boundaries show national parks, forests and other p
 
 Include lake-floor relief using surveyed bathymetry where available, with terrain or modeled depths filling gaps. Explore your design in 2D or as an assembled or separated 3D stack.
 
-For layered projects, set your material width and height and let automatic nesting arrange the pieces. Watch the layout improve, or keep the current layout to finish early. Export previews show the actual artwork and explain the processing colors.
+For layered projects, set your material width and height and let automatic nesting arrange the pieces. Watch the layout improve, or keep the current layout to finish early. The Export view shows every nested sheet beside the list of files it will produce and explains the processing colors.
 
-Open in Studio sends one editable SVG containing the entire layout. Download provides the complete project bundle, including artwork, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
+Open in Studio sends one editable SVG, with each piece in its own named group, so its outline, engraving and score lines move together. For layered reliefs, that SVG contains the wood layout. Download provides the complete project bundle, including separate acrylic files when applicable, project settings and source credits, plus an assembly guide for layered reliefs. Flat designs export as SVG artwork at your chosen physical size.
 
 Generate fresh terrain before exporting, then review the artwork, material and machine settings before fabrication. The opening design is a bundled preview. Current media shows freshly generated terrain for Crater Lake and five other places, including real survey data where available. Images are software renders and screenshots, not photographs of physical builds or machine runs.
 

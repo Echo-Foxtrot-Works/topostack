@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Предпросмотр плоской гравировки",
   "engravingZoomControls": "Масштаб гравировки",
   "resetEngravingView": "Сбросить вид гравировки",
-  "legendMinorContour": "Основная горизонталь",
-  "legendIndexEvery": "Утолщённая — каждая {interval}-я",
   "legendContourCount": "{count, plural, one {# горизонталь} few {# горизонтали} many {# горизонталей} other {# горизонтали}}",
   "legendNoContours": "Нет горизонталей",
   "legendWaterPattern": "{pattern, select, lines {Вода: линии} ripples {Вода: рябь} dots {Вода: точки} other {Вода: {pattern}}}",

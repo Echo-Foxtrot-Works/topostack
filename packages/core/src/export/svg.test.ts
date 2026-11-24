@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, type ProjectConfigV1 } from "../index.js";
+import { buildFabricationPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, layerToSvg, parseProject, projectFingerprint, sourceRequirements, type ProjectConfigV1 } from "../index.js";
 import { engravingToSvg } from "./engraving-svg.js";
 import { buildEngravingPackage } from "./packages.js";
 import { masterToSvg } from "./svg.js";
@@ -8,6 +8,18 @@ import { EXPORT_CREDIT } from "./svg-primitives.js";
 import { hasOperation, operationBody, rootGroups } from "../test-support/svg.js";
 
 describe("SVG export", () => {
+  it("writes millimetre dash lengths and gaps into the same trail path in layered and flat files", () => {
+    const project = { ...DEFAULT_PROJECT, lineStyle: { ...DEFAULT_PROJECT.lineStyle, trailMm: 0.1, trailPattern: "dashed" as const } };
+    const ir = generateGeometry(project, realSource(project));
+    const layer = ir.layers[0]!;
+    layer.markings = [{ id: "trail", kind: "trail", transportationClass: "trail", operation: "engrave", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }] }];
+    ir.layers = [layer];
+    for (const svg of [layerToSvg(ir, layer), engravingToSvg(ir, project)]) {
+      expect(svg).toContain('id="trail" d="M0 0 L1.2 0 M2 0 L3.2 0 M4 0 L5 0" fill="none" stroke="#2366FF"');
+      expect(svg).not.toContain("stroke-dasharray");
+    }
+  });
+
   it("exports 1:1 millimeter SVGs with machine operation groups", async () => {
     const result = generateGeometry(DEFAULT_PROJECT, realSource());
     const svg = layerToSvg(result, result.layers[0]!);
@@ -27,6 +39,64 @@ describe("SVG export", () => {
     const fabrication = buildFabricationPackage(result, DEFAULT_PROJECT);
     expect(fabrication.files).toHaveLength((result.layers.length - result.fabricationNests.length) * 2 + 5);
     expect(await fabrication.master.blob.text()).toContain("master layout");
+  });
+
+  it("engraves rail in its own group only when railways are on", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving", showRoads: true, lineStyle: { ...DEFAULT_PROJECT.lineStyle, localRoadMm: 0.3 } };
+    const source = {
+      ...realSource(project),
+      markings: [{ id: "rail-flat", kind: "road" as const, operation: "engrave" as const, transportationClass: "rail" as const, points: [{ x: -120, y: 20 }, { x: 120, y: -20 }] }],
+    };
+    expect(engravingToSvg(generateGeometry(project, source), project)).not.toContain("rail-flat");
+    const withRail = { ...project, showRail: true };
+    const svg = engravingToSvg(generateGeometry(withRail, source), withRail);
+    expect(svg).toContain('id="ENGRAVE-rail" stroke-width="0.3" stroke-linecap="round"');
+    expect(svg).toContain("rail-flat");
+    expect(svg).not.toContain('id="ENGRAVE-local-roads"');
+  });
+
+  it("engraves covered rail as physical dash paths in both output modes, controlled only by Railways", () => {
+    const project: ProjectConfigV1 = { ...DEFAULT_PROJECT, outputMode: "engraving", showRail: true, showRoads: false, showEngravingContours: false,
+      lineStyle: { ...DEFAULT_PROJECT.lineStyle, localRoadMm: 0.2 } };
+    const source = { ...realSource(project), markings: [{ id: "platform", kind: "road" as const, transportationClass: "covered-rail" as const, operation: "engrave" as const,
+      points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 7 }] }] };
+    const generated = generateGeometry(project, source);
+    const dashes = generated.layers.flatMap(layer => layer.markings.filter(mark => mark.transportationClass === "covered-rail"));
+    expect(dashes.length).toBeGreaterThan(4);
+    expect(dashes[0]!.points).toEqual([{ x: 0, y: 0 }, { x: 1.2, y: 0 }]);
+    expect(dashes[1]!.points[0]!.x).toBeCloseTo(1.9);
+    const flat = engravingToSvg(generated, project);
+    expect(flat).toContain('id="ENGRAVE-covered-rail" stroke-width="0.12"');
+    expect(flat.match(/id="platform-flat-transport-/g)).toHaveLength(dashes.length);
+    const stack = generateGeometry({ ...project, outputMode: "stack" }, source);
+    const sheets = stack.layers.map(layer => layerToSvg(stack, layer));
+    expect(sheets.some(svg => operationBody(svg, "ENGRAVE").includes("-ENGRAVE-covered-rail"))).toBe(true);
+    expect(sheets.every(svg => !operationBody(svg, "CUT").includes("platform"))).toBe(true);
+    expect(generateGeometry({ ...project, showRail: false, showRoads: true }, source).layers.flatMap(l => l.markings).some(m => m.transportationClass === "covered-rail")).toBe(false);
+  });
+
+  it("saves optional footprints, clips them to the artwork and exports a separate engraving group", () => {
+    const { showBuildings: _oldSetting, ...legacy } = DEFAULT_PROJECT;
+    expect(parseProject(legacy).showBuildings).toBe(false);
+    expect(projectFingerprint(parseProject(legacy))).toBe(projectFingerprint(DEFAULT_PROJECT));
+    const project = parseProject({ ...legacy, outputMode: "engraving", showRoads: false, showTrails: false, showWater: false,
+      location: { ...legacy.location, zoom: 13 }, showBuildings: true, lineStyle: { ...legacy.lineStyle, buildingMm: 0.12 } });
+    const points = [{ x: 130, y: 10 }, { x: 180, y: 10 }, { x: 180, y: 50 }, { x: 130, y: 50 }, { x: 130, y: 10 }];
+    const source = { ...realSource(project), markings: [{ id: "terminal", kind: "building" as const, operation: "engrave" as const, points }] };
+    expect(sourceRequirements(project).vectors).toBe(true);
+    for (const hidden of [{ ...project, showBuildings: false }, { ...project, location: { ...project.location, zoom: 12.99 } }]) {
+      expect(sourceRequirements(hidden).vectors).toBe(false);
+      expect(engravingToSvg(generateGeometry(hidden, source), hidden)).not.toContain("terminal");
+    }
+    const result = generateGeometry(project, source);
+    const paths = result.layers.flatMap(layer => layer.markings.filter(mark => mark.kind === "building"));
+    expect(paths.length).toBeGreaterThan(0);
+    expect(paths.flatMap(path => path.points).every(point => point.x <= 150)).toBe(true);
+    expect(engravingToSvg(result, project)).toContain('id="ENGRAVE-buildings" stroke-width="0.12"');
+    const stack = generateGeometry({ ...project, outputMode: "stack" }, source);
+    const sheets = stack.layers.map(layer => layerToSvg(stack, layer));
+    expect(sheets.some(svg => operationBody(svg, "ENGRAVE").includes("terminal"))).toBe(true);
+    expect(sheets.every(svg => !operationBody(svg, "CUT").includes("terminal"))).toBe(true);
   });
 
   it("builds one physical-size engrave-only graphic with contours and optional map details", async () => {
@@ -60,7 +130,7 @@ describe("SVG export", () => {
     expect(svg).toContain('id="ENGRAVE-contours-minor" stroke-width="0.12"');
     expect(svg).toContain('id="ENGRAVE-contours-index" stroke-width="0.4"');
     expect(svg).toContain('id="ENGRAVE-major-roads" stroke-width="0.52"');
-    expect(svg).toMatch(/id="ENGRAVE-trails" stroke-width="0\.18" stroke-dasharray="0\.01 [^"]+"/);
+    expect(svg).toMatch(/id="ENGRAVE-trails" stroke-width="0\.18"[^>]*><path[^>]* d="M[^"]+ M/);
     expect(svg).toContain('id="ENGRAVE-water" stroke-width="0.36"');
     expect(svg).toContain('id="ENGRAVE-border" stroke-width="0.46"');
     expect(svg).toContain("road-flat");
@@ -166,6 +236,17 @@ describe("SVG export", () => {
     const cutPaths = [...cutGroup.matchAll(/<path[^>]* d="([^"]+)"/g)].map((path) => path[1] ?? "");
     expect(cutPaths.length).toBeGreaterThanOrEqual(result.layers.length);
     expect(cutPaths.every((data) => (data.match(/M/g) ?? []).length === 1)).toBe(true);
+  });
+
+  it("gives every element in a master composed from split panels a unique id", async () => {
+    const config = { ...DEFAULT_PROJECT, workAreaWidthMm: 160, workAreaHeightMm: 120 };
+    const ir = generateGeometry(config, realSource(config));
+    expect(ir.splitPlan).toBeDefined();
+    ir.layers[0]!.markings.push({ id: "cross-seam", kind: "guide", operation: "engrave", points: [{ x: -140, y: 80 }, { x: 140, y: 80 }] });
+    const svg = await buildFabricationPackage(ir, config).master.blob.text();
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
+    expect(ids.filter((id) => id?.startsWith("cross-seam")).length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("writes one root-level group per cut piece, holding its own cuts and engraving (Atomm SVG grouping spec)", () => {

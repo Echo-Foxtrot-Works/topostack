@@ -68,7 +68,7 @@ async function dispatch(message: JsonRpcMessage & { method: string }, context: S
       return { resourceTemplates: [] };
     case "resources/read": {
       if (typeof params.uri !== "string") throw new RpcError(RPC_ERRORS.invalidParams, "resources/read needs a uri.");
-      return readResource(params.uri, { siteOrigin: context.siteOrigin, apiOrigin: context.apiOrigin, datasetVersion: context.env.DATASET_VERSION, assets: context.env.ASSETS });
+      return readResource(params.uri, { siteOrigin: context.siteOrigin, apiOrigin: context.apiOrigin, env: context.env });
     }
     case "prompts/list":
       return { prompts: PROMPTS.map(promptListing) };

@@ -1,3 +1,4 @@
+import { convexHull } from "../../primitives/convex-hull.js";
 import type { Bounds2D } from "../../primitives/geometry2d.js";
 import type { Point2D } from "../../types.js";
 
@@ -35,24 +36,6 @@ export function rotatedBounds(points: Point2D[], rotationDeg: number): Bounds2D 
   return { minX, minY, maxX, maxY };
 }
 
-/** Convex hull, counter-clockwise and closed (Andrew's monotone chain). */
-export function convexHull(points: Point2D[]): Point2D[] {
-  const sorted = [...points].sort((left, right) => left.x - right.x || left.y - right.y);
-  const cross = (o: Point2D, a: Point2D, b: Point2D) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: Point2D[] = [];
-  for (const point of sorted) {
-    while (lower.length >= 2 && cross(lower.at(-2)!, lower.at(-1)!, point) <= 0) lower.pop();
-    lower.push(point);
-  }
-  const upper: Point2D[] = [];
-  for (const point of [...sorted].reverse()) {
-    while (upper.length >= 2 && cross(upper.at(-2)!, upper.at(-1)!, point) <= 0) upper.pop();
-    upper.push(point);
-  }
-  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
-  return hull.length ? [...hull, hull[0]!] : [];
-}
-
 const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360;
 
 /**
@@ -78,4 +61,44 @@ export function candidateOrientations(outline: Point2D[], allowed: number[] | un
     for (const quarter of [0, 90, 180, 270]) angles.add(Number(normalizeDegrees(angle + quarter).toFixed(6)));
   });
   return [...angles];
+}
+
+/**
+ * Extra orientations for a part whose minimum-area box misses the sheet.
+ * Between hull-edge alignments the vertices defining the width and height
+ * stay fixed. Each extent is a positive sinusoid, hence concave there. Split
+ * each interval again where the width equals the sheet width. On its
+ * width-feasible pieces, the minimum height is attained at an endpoint.
+ */
+export function* sheetFitOrientations(points: Point2D[], sheetWidth: number): Generator<number> {
+  const hull = convexHull(points);
+  const breaks = new Set([0, Math.PI]);
+  for (let i = 1; i < hull.length; i++) {
+    const a = hull[i - 1]!, b = hull[i]!;
+    const alignment = -Math.atan2(b.y - a.y, b.x - a.x);
+    for (const offset of [0, Math.PI / 2]) breaks.add((alignment + offset + 2 * Math.PI) % Math.PI);
+  }
+  const angles = [...breaks].sort((a, b) => a - b);
+  for (let i = 1; i < angles.length; i++) {
+    const lo = angles[i - 1]!, hi = angles[i]!;
+    yield lo * 180 / Math.PI;
+    if (!Number.isFinite(sheetWidth)) continue;
+    const mid = (lo + hi) / 2;
+    const cos = Math.cos(mid), sin = Math.sin(mid);
+    const projectedX = (p: Point2D) => p.x * cos - p.y * sin;
+    let left = hull[0]!, right = left;
+    for (const p of hull) {
+      if (projectedX(p) < projectedX(left)) left = p;
+      if (projectedX(p) > projectedX(right)) right = p;
+    }
+    const dx = right.x - left.x, dy = right.y - left.y;
+    const span = Math.hypot(dx, dy);
+    if (span < sheetWidth || !span) continue;
+    const phase = Math.atan2(-dy, dx);
+    const delta = Math.acos(sheetWidth / span);
+    for (const root of [phase - delta, phase + delta]) {
+      const angle = (root + 2 * Math.PI) % (2 * Math.PI);
+      if (angle >= lo && angle <= hi) yield angle * 180 / Math.PI;
+    }
+  }
 }

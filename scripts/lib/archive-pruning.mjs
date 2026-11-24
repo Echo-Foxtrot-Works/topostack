@@ -32,6 +32,7 @@ export async function readReleasePointers(request, pointerKeys) {
  * Decides which superseded archives can be deleted. Kept, in priority order:
  * - `active`: the object a release pointer serves;
  * - `rollback`: the predecessor a pointer recorded (one rollback generation);
+ * - `deployment`: a pinned candidate for a registered deployment;
  * - `recent`: uploaded within the grace period (staged, in flight, or just replaced);
  * - `unknown-predecessor`: a pointer written before predecessors were recorded
  *   was promoted within the grace period, so this may be its rollback target;
@@ -39,13 +40,14 @@ export async function readReleasePointers(request, pointerKeys) {
  * Legacy logical-key objects shadowed by a pointer are only removable when
  * `includeLegacy` is set and the pointer has served for the whole grace period.
  */
-export function planArchivePrune({ archives, legacy = [], pointers, now = Date.now(), graceDays = DEFAULT_GRACE_DAYS, includeLegacy = false }) {
+export function planArchivePrune({ archives, legacy = [], pointers, protectedKeys = [], now = Date.now(), graceDays = DEFAULT_GRACE_DAYS, includeLegacy = false }) {
   if (!Number.isFinite(graceDays) || graceDays < MINIMUM_GRACE_DAYS) throw new Error(`The grace period must be at least ${MINIMUM_GRACE_DAYS} days.`);
   // Without pointers every archive looks unreferenced; that is a misconfigured
   // bucket or a failed listing, never a reason to delete everything.
   if (pointers.length === 0) throw new Error("No release pointers found; refusing to prune.");
   const cutoff = now - graceDays * DAY_MS;
   const active = new Set(pointers.map(({ release }) => release.objectKey));
+  const reserved = new Set(protectedKeys);
   const rollback = new Set(pointers.map(({ release }) => release.previousObjectKey).filter(Boolean));
   const unknownHistory = pointers.some(({ release }) => release.previousObjectKey === undefined && Date.parse(release.verifiedAt) >= cutoff);
   const keep = [], remove = [];
@@ -53,9 +55,10 @@ export function planArchivePrune({ archives, legacy = [], pointers, now = Date.n
     const reason = !ARCHIVE_OBJECT_KEY.test(object.key) ? "unrecognized"
       : active.has(object.key) ? "active"
         : rollback.has(object.key) ? "rollback"
-          : object.uploaded.getTime() >= cutoff ? "recent"
-            : unknownHistory ? "unknown-predecessor"
-              : null;
+          : reserved.has(object.key) ? "deployment"
+            : object.uploaded.getTime() >= cutoff ? "recent"
+              : unknownHistory ? "unknown-predecessor"
+                : null;
     (reason ? keep : remove).push({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString(), reason: reason ?? "superseded" });
   }
   for (const object of legacy) {

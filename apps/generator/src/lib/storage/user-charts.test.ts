@@ -1,8 +1,12 @@
 import { buildChartFromImage } from "$lib/domain/chart-build";
 import { reviewFixture } from "$lib/domain/testing/chart-review-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEPTH_CHART_ID_PATTERN } from "@topostack/core";
+import { buildProjectPackage, carveWaterDepth, createSyntheticSource, DEFAULT_PROJECT, DEPTH_CHART_ID_PATTERN, generateGeometry, type ProjectConfigV1, type WaterAreaV1 } from "@topostack/core";
 import { CHART_BATHYMETRY_SCHEMA, CHART_ID_PATTERN, encodeChartDepths, type UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
+import { strFromU8, unzipSync } from "fflate";
+import { applyUserCharts } from "$lib/domain/user-bathymetry";
+import { prepareSelectedDownload } from "$lib/studio/native-export";
+import { readProjectFile } from "$lib/studio/project-file";
 
 const store = vi.hoisted(() => new Map<string, unknown>());
 const failReads = vi.hoisted(() => ({ enabled: false }));
@@ -128,6 +132,60 @@ describe("charts travelling with a project file", () => {
     await saveUserChart(chart("other-lake-chart", "Other Lake"));
     expect((await chartsForProject({ userDepthCharts: { "1": one, "2": one } })).map((item) => item.id)).toEqual(["round-lake-chart"]);
     expect(await chartsForProject({})).toEqual([]);
+  });
+
+  it("rejects a backup when a referenced chart is absent or differs from the pinned record", async () => {
+    const reference = await saveUserChart(chart());
+    const project = { userDepthCharts: { "1": reference } };
+    await saveUserChart({ ...chart(), intervalM: 2 });
+    await expect(chartsForProject(project)).rejects.toThrow(/round-lake-chart/);
+    // The record's canonical contents must still match even if the cached hash is stale.
+    const key = "topostack:chart:v1:round-lake-chart";
+    store.set(key, { chart: { ...chart(), intervalM: 2 }, contentHash: reference.contentHash });
+    await expect(chartsForProject(project)).rejects.toThrow(/round-lake-chart/);
+    store.delete(key);
+    await expect(chartsForProject(project)).rejects.toThrow(/round-lake-chart/);
+  });
+
+  it.each(["stack", "engraving"] as const)("restores 17 reviewed charts and the same carved bed from the complete %s ZIP", async (outputMode) => {
+    const { request } = reviewFixture();
+    const ready = buildChartFromImage(request).record;
+    ready.review = { version: 1, profile: "closed-contours-v1", reviewedAt: "2026-11-22T12:00:00Z", contours: true, alignment: true, layers: true };
+    const refs: NonNullable<ProjectConfigV1["userDepthCharts"]> = {};
+    for (let lake = 1; lake <= 17; lake++) {
+      refs[String(lake)] = await saveUserChart({ ...ready, id: `reviewed-lake-${lake}`, lake: { ...ready.lake, hylakId: lake } });
+    }
+    const project = { ...DEFAULT_PROJECT, name: "Chart backup", outputMode, widthMm: 100, heightMm: 100, userDepthCharts: refs };
+    const bounds = ready.grid.bounds;
+    const elevation = { width: 21, height: 21, min: 100, max: 100, values: new Float32Array(21 ** 2).fill(100) };
+    const lake: WaterAreaV1 = { id: "lake-17", hylakId: 17, kind: "lake", polygon: {
+      outer: [{ x: -40, y: -40 }, { x: 40, y: -40 }, { x: 40, y: 40 }, { x: -40, y: 40 }], holes: [],
+    } };
+    const prepareLake = async (config: ProjectConfigV1) => {
+      const result = await applyUserCharts({ areas: [lake], status: "not-covered", datasetVersions: [], attribution: [] },
+        await loadUserCharts(config.userDepthCharts), bounds, elevation, undefined, config);
+      return { areas: result.areas, carved: carveWaterDepth(elevation, config, result.areas, 1000) };
+    };
+    const before = await prepareLake(project);
+    expect(before.carved.surfaces[0]).toMatchObject({ depthSource: "user", bathymetryOrigin: "chart" });
+    expect(before.carved.grid.min).toBeLessThan(100);
+    const geometry = generateGeometry(project, { ...createSyntheticSource(project, 21), sourceKind: "real", lakeDataStatus: "available", vectorStatus: "available", bounds, elevation, waterAreas: before.areas });
+    const output = buildProjectPackage(geometry, project, { charts: await chartsForProject(project) });
+    const download = await prepareSelectedDownload(output, "all");
+    const entries = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
+    expect(entries[outputMode === "stack" ? "chart-backup-master.svg" : "chart-backup-engraving.svg"]).toBeDefined();
+    const filename = "chart-backup-project.json";
+    const json = strFromU8(entries[filename]!);
+
+    store.clear();
+    const restored = await readProjectFile(new File([json], filename));
+    expect(restored.savedCharts).toBe(17);
+    expect(restored.project.userDepthCharts).toEqual(refs);
+    const restoredCharts = await loadUserCharts(restored.project.userDepthCharts);
+    expect([...restoredCharts.values()].map(item => item.contentHash).sort()).toEqual(Object.values(refs).map(ref => ref.contentHash).sort());
+    const after = await prepareLake(restored.project);
+    expect(after.carved.surfaces).toEqual(before.carved.surfaces);
+    expect(after.carved.grid.values).toEqual(before.carved.grid.values);
   });
 
   it("saves only referenced charts on import and skips the rest", async () => {

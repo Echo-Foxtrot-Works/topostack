@@ -64,9 +64,9 @@ export async function feedbackResponse(request: Request, env: FeedbackEnv): Prom
     });
     console.log(JSON.stringify({ message: "feedback_sent", kind: submission.kind, withReply: Boolean(submission.replyTo), withContext: Boolean(submission.context), messageId }));
     return respond(204);
-  } catch (error) {
-    const code = error && typeof error === "object" && "code" in error ? String(error.code) : undefined;
-    console.error(JSON.stringify({ message: "feedback_send_failed", code, error: error instanceof Error ? error.message : String(error) }));
+  } catch {
+    // Email provider errors can include addresses or submitted report text.
+    console.error(JSON.stringify({ message: "feedback_send_failed" }));
     return respond(502, "Feedback could not be sent.");
   }
 }

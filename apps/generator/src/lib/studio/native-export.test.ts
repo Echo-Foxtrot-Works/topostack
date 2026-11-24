@@ -27,7 +27,7 @@ describe("native export", () => {
     const master = { filename: "crater-lake-engraving.svg", blob: new Blob(["<svg />"], { type: "image/svg+xml" }) };
     expect(await prepareProjectDownload({ schemaVersion: 1, master, files: [master] })).toEqual({ ...master, fileCount: 1 });
     // A selection that leaves one panel and no supporting files keeps that panel's own name.
-    const panel = { filename: "ridge-layer-01.svg", blob: new Blob(["<svg />"], { type: "image/svg+xml" }) };
+    const panel = { filename: "crater-lake-layer-01.svg", blob: new Blob(["<svg />"], { type: "image/svg+xml" }) };
     expect(await prepareSelectedDownload({ schemaVersion: 1, master, files: [master, panel] }, "panels")).toEqual({ ...panel, fileCount: 1 });
   });
 
@@ -83,6 +83,7 @@ describe("export choices", () => {
   });
 
   it.each(["panels", "engravings"] as const)("includes every work-area cell sheet in %s", async (option) => {
+    const master = file("ridge-master.svg");
     const sheets = ["ridge-layer-01-a1", "ridge-layer-01-b2", "ridge-layer-01-a1-2", "ridge-panel-03-layers-03-04-c1"];
     const split: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
       ...sheets.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`)]),
@@ -94,6 +95,7 @@ describe("export choices", () => {
   });
 
   it("keeps paint templates out of the panel bundles and offers them on their own", async () => {
+    const master = file("ridge-master.svg");
     const sheets = ["ridge-layer-01", "ridge-layer-03-a1", "ridge-panel-03-layers-03-04-c1-2"];
     const painted: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
       ...sheets.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`), file(`${sheet}-paint-water.svg`)]),
@@ -106,11 +108,12 @@ describe("export choices", () => {
     const download = await prepareSelectedDownload(painted, "paint");
     const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
     expect(Object.keys(files)).toEqual([...sheets.map((sheet) => `${sheet}-paint-water.svg`), "README.txt", "ATTRIBUTION.txt"]);
-    expect(download.filename).toBe("ridge-layer-01-paint-templates.zip");
+    expect(download.filename).toBe("ridge-paint-templates.zip");
     await expect(prepareSelectedDownload(output, "paint")).rejects.toThrow(/no paint templates/i);
   });
 
   it("offers every nested stock sheet in panels, engravings and paint templates", async () => {
+    const master = file("ridge-master.svg");
     const sheets = ["ridge-sheet-01", "ridge-sheet-02", "ridge-sheet-12"];
     const nested: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
       ...sheets.flatMap((sheet) => [file(`${sheet}.svg`), file(`${sheet}-engrave.svg`), file(`${sheet}-paint-water.svg`)]),
@@ -125,6 +128,7 @@ describe("export choices", () => {
   });
 
   it("offers the acrylic inserts as their own bundle and keeps them out of the wood panels", async () => {
+    const master = file("ridge-master.svg");
     const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
     const acrylic = ["ridge-acrylic-03", "ridge-acrylic-04-w2", "ridge-acrylic-04-w3-2", "ridge-acrylic-sheet-01"];
     const withInserts: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
@@ -139,11 +143,12 @@ describe("export choices", () => {
     const download = await prepareSelectedDownload(withInserts, "acrylic");
     const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
     expect(Object.keys(files)).toEqual([...acrylic.flatMap((sheet) => [`${sheet}.svg`, `${sheet}-engrave.svg`]), "ridge-acrylic-master.svg", "README.txt", "ATTRIBUTION.txt"]);
-    expect(download.filename).toBe("ridge-layer-01-acrylic-inserts.zip");
+    expect(download.filename).toBe("ridge-acrylic-inserts.zip");
     await expect(prepareSelectedDownload(output, "acrylic")).rejects.toThrow(/no lake became an acrylic insert/i);
   });
 
   it("offers the airspace as its own bundle and keeps it out of the wood and acrylic ones", async () => {
+    const master = file("ridge-master.svg");
     const wood = ["ridge-layer-01", "ridge-layer-03-a1"];
     const airspace = ["ridge-airspace-blue-01", "ridge-airspace-magenta-02", "ridge-airspace-clear-03-a3-1"];
     const withAirspace: FabricationPackageV1 = { schemaVersion: 1, master, files: [master,
@@ -159,8 +164,19 @@ describe("export choices", () => {
     const download = await prepareSelectedDownload(withAirspace, "airspace");
     const files = unzipSync(new Uint8Array(await download.blob.arrayBuffer()));
     expect(Object.keys(files)).toEqual([...airspace.flatMap((sheet) => [`${sheet}.svg`, `${sheet}-engrave.svg`]), "ridge-airspace-blue-master.svg", "ridge-airspace-backing.svg", "ridge-airspace-backing-b2.svg", "README.txt", "ATTRIBUTION.txt"]);
-    expect(download.filename).toBe("ridge-layer-01-airspace.zip");
+    expect(download.filename).toBe("ridge-airspace.zip");
     await expect(prepareSelectedDownload(output, "airspace")).rejects.toThrow(/no airspace was built/i);
+  });
+
+  it("selects wood and acrylic independently of a project name ending in Acrylic", async () => {
+    const master = file("lake-acrylic-master.svg");
+    const wood = ["lake-acrylic-layer-01.svg", "lake-acrylic-sheet-01.svg"];
+    const acrylic = ["lake-acrylic-acrylic-master.svg", "lake-acrylic-acrylic-sheet-01.svg"];
+    const output: FabricationPackageV1 = { schemaVersion: 1, master, files: [master, ...[...wood, ...acrylic].map(file)] };
+    for (const [option, names] of [["panels", wood], ["acrylic", acrylic]] as const) {
+      const download = await prepareSelectedDownload(output, option);
+      expect(Object.keys(unzipSync(new Uint8Array(await download.blob.arrayBuffer())))).toEqual(names);
+    }
   });
 
   it("bundles the LightBurn projects with the README and credits, or hands one over as itself", async () => {

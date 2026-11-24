@@ -23,12 +23,14 @@
       "/", "/guides", "/guides/*", "/examples", "/examples/*", "/lakes", "/lakes/*", "/lake/*", "/attribution", "/changelog", "/privacy"
     ]
   },
+  "version_metadata": { "binding": "WORKER_VERSION" },
   "vars": {
     "ENVIRONMENT": "development",
     "ALLOWED_ORIGINS": "http://localhost:5273,http://127.0.0.1:5273,https://dev.topostack.app,https://dev-topostack.echofoxtrot.works,https://www.atomm.com",
     "ALLOWED_ORIGIN_SUFFIXES": ".atomm.com",
     "TERRAIN_ORIGIN": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium",
     "GEOCODER_ORIGIN": "https://api.geoapify.com",
+    "DEPLOYMENT_COMMIT": "local",
     "DATASET_VERSION": "mapzen-terrarium+protomaps-20260905-z12-v1",
     "FEEDBACK_EMAIL_FROM": "feedback@topostack.app",
     // Where the studio lives: agent links open it. `npm run dev` overrides it
@@ -88,12 +90,14 @@
         { "pattern": "dev.topostack.app", "custom_domain": true },
         { "pattern": "dev-topostack.echofoxtrot.works", "custom_domain": true }
       ],
+      "version_metadata": { "binding": "WORKER_VERSION" },
       "vars": {
         "ENVIRONMENT": "development",
         "ALLOWED_ORIGINS": "http://localhost:5273,http://127.0.0.1:5273,https://dev.topostack.app,https://dev-topostack.echofoxtrot.works,https://www.atomm.com",
         "ALLOWED_ORIGIN_SUFFIXES": ".atomm.com",
         "TERRAIN_ORIGIN": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium",
         "GEOCODER_ORIGIN": "https://api.geoapify.com",
+        "DEPLOYMENT_COMMIT": "local",
         "DATASET_VERSION": "mapzen-terrarium+protomaps-20260905-z12-v1",
         "FEEDBACK_EMAIL_FROM": "feedback@topostack.app",
         "PUBLIC_ORIGIN": "https://dev.topostack.app"
@@ -125,12 +129,14 @@
         { "pattern": "topostack.app", "custom_domain": true },
         { "pattern": "topostack.echofoxtrot.works", "custom_domain": true }
       ],
+      "version_metadata": { "binding": "WORKER_VERSION" },
       "vars": {
         "ENVIRONMENT": "production",
         "ALLOWED_ORIGINS": "https://topostack.app,https://topostack.echofoxtrot.works,https://www.atomm.com",
         "ALLOWED_ORIGIN_SUFFIXES": ".atomm.com",
         "TERRAIN_ORIGIN": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium",
         "GEOCODER_ORIGIN": "https://api.geoapify.com",
+        "DEPLOYMENT_COMMIT": "local",
         "DATASET_VERSION": "mapzen-terrarium+protomaps-20260905-z12-v1",
         "FEEDBACK_EMAIL_FROM": "feedback@topostack.app",
         "PUBLIC_ORIGIN": "https://topostack.app"

@@ -1,0 +1,34 @@
+{
+  "source": {
+    "id": "gebco-2026-ocean-v1",
+    "name": "GEBCO_2026 Grid (ocean depths)",
+    "url": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+    "license": "GEBCO Compilation Group (2026) GEBCO 2026 Grid. Public domain; free to use with this attribution. Not for navigation. TopoStack keeps depths below sea level away from land (TID 0), resamples them to Web Mercator and rounds them to whole metres.",
+    "bounds": [
+      -180,
+      -85.0511,
+      180,
+      85.0511
+    ],
+    "encoding": "elevation-terrarium-v1",
+    "maxZoom": 9,
+    "minZoom": 0,
+    "verticalDatum": "MSL",
+    "kind": "bathymetry-grid",
+    "priority": 100,
+    "nativeResolutionM": 463
+  },
+  "pin": {
+    "url": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/geotiff/gebco_2026_geotiff.zip",
+    "item": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid",
+    "tidUrl": "https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/geotiff/gebco_2026_tid_geotiff.zip",
+    "etag": "\"69e8d88d-fcd22055\"",
+    "bytes": 4241629269,
+    "tidBytes": 96150976,
+    "lastModified": "Wed, 22 Apr 2026 14:17:49 GMT",
+    "sourceResolutionM": 463,
+    "verticalDatum": "MSL",
+    "snapshotSha256": "39bb6eb45a785101da606749a00cf0ec3217f32160d25859b48fd5db9c6d9368",
+    "samplesSha256": "90720c74c0702fd8763d8eb8a23b1c0c6c024c38fef93742bbccafddba2f307d"
+  }
+}

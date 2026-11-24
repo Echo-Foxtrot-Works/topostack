@@ -3,6 +3,8 @@ import { generateGeometry } from "../pipeline/generate.js";
 import { ringBounds } from "../primitives/geometry2d.js";
 import { bowlLake, lakeArea, parsePathPoints, scaledForLayers } from "../test-support/sources.js";
 import { DEFAULT_PROJECT, type FabricationPackageV1, type MarkingFeature, type ProjectConfigV1 } from "../types.js";
+import { layerToSvg } from "./svg.js";
+import { takeInsertMarkings } from "../pipeline/water-inserts.js";
 import { buildFabricationPackage } from "./packages.js";
 import { planSheets } from "./sheet-nest/plan-sheets.js";
 import { rectangleEngine } from "./sheet-nest/rectangles.js";
@@ -44,6 +46,33 @@ describe("acrylic water insert export", { timeout: 30_000 }, () => {
     const engrave = await text(pkg, `-acrylic-${layerId}-engrave.svg`);
     expect(engrave).toMatch(/causeway/);
     expect(engrave).not.toContain('data-operation="CUT"');
+  });
+
+  it("engraves the marker and interrupts the causeway at its halo on the eight-layer lake", () => {
+    const centered = { ...road, points: [{ x: -90, y: 0 }, { x: 90, y: 0 }] };
+    const project = { ...config, markers: [{ id: "lake-marker", symbol: "circle" as const, lat: config.location.lat, lon: config.location.lon }] };
+    const model = generateGeometry(project, { ...source, markings: [centered] });
+    const acrylic = acrylicGeometry(model)!;
+    const svg = layerToSvg(acrylic, acrylic.layers[0]!);
+    const path = svg.match(/id="causeway[^"]*" d="([^"]+)"/)![1]!;
+    const [left, right] = path.split("M").filter(Boolean).map((run) => parsePathPoints("M" + run));
+    expect(left!.at(-1)!.x).toBeCloseTo(-4.317, 3);
+    expect(right![0]!.x).toBeCloseTo(4.317, 3);
+    expect(svg).toMatch(/id="map-marker-[^"]+" d="[^"]+" fill="#000000" stroke="none"/);
+  });
+
+  it("partitions a filled symbol around an enclosed opening in the two material SVGs", () => {
+    const square = (r: number) => [{ x: -r, y: -r }, { x: r, y: -r }, { x: r, y: r }, { x: -r, y: r }, { x: -r, y: -r }];
+    const wood = { ...ir.layers[0]!, pieces: [], polygons: [{ outer: square(20), holes: [square(2)] }], markings: [
+      { id: "square-marker", kind: "marker" as const, operation: "engrave" as const, filled: true, points: square(8) },
+    ] };
+    const insert = { ...ir.waterInserts![0]!, layerIndex: 0, polygons: [{ outer: square(2), holes: [] }], markings: [] };
+    takeInsertMarkings([wood], [insert]);
+    const model = { ...ir, layers: [wood], waterInserts: [insert], waterInsertMaterial: { ...ir.waterInsertMaterial!, fitClearanceMm: 0 } };
+    const acrylic = acrylicGeometry(model)!;
+    const bounds = (svg: string) => svg.match(/id="square-marker" d="([^"]+)"/)![1]!.split("M").filter(Boolean).map((ring) => ringBounds(parsePathPoints("M" + ring)));
+    expect(bounds(layerToSvg(model, wood))).toEqual([ringBounds(square(8)), ringBounds(square(2))]);
+    expect(bounds(layerToSvg(acrylic, acrylic.layers[0]!))).toEqual([ringBounds(square(2))]);
   });
 
   it("cuts the insert smaller than its opening by the fit clearance, each with its own kerf", async () => {

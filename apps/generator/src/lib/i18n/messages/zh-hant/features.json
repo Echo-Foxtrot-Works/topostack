@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "實線",
   "trailPatternOption.dashed": "虛線",
   "trailPatternOption.dotted": "點線",
+  "buildings": "建築輪廓",
+  "buildingWidth": "建築輪廓線寬",
+  "buildingsHint": "地圖縮放層級達到 {zoom} 以上時雕刻建築輪廓。",
+  "rail": "鐵路",
+  "railHint": "露天軌道在空間充足處繪製間隔排列的枕木。有頂蓋的路段以虛線表示。",
   "transportationLabels": "交通標註",
   "stateProvinceBoundariesName": "州界和省界",
   "stateProvinceBoundaries": "州/省界",
@@ -78,8 +83,8 @@
   "names": "名稱",
   "hatchInsideName": "在公有土地邊界內側加斜線",
   "hatchInsideEdge": "內側邊緣加斜線",
-  "landNotCovered": "此處沒有這些類型的公有土地。美國和加拿大以外地區的公有土地來自 OpenStreetMap 中已繪製的資料：國家公園、自然保護區（歸為保護區）和軍事用地，不含名稱。",
-  "landFromOpenStreetMap": "美國和加拿大以外地區的公有土地來自 OpenStreetMap 中已繪製的資料：國家公園、自然保護區（歸為保護區）和軍事用地，不含名稱。",
+  "landNotCovered": "此處沒有這些類型的公有土地。",
+  "landFromOpenStreetMap": "此區域的公有土地來自 OpenStreetMap 中已繪製的資料：國家公園、自然保護區（歸為保護區）和軍事用地，不含名稱。",
   "landBoundariesNote": "每種類型有各自的虛線樣式。線寬與州界和省界共用。名稱放在空間足夠的最大單元內。",
   "publicLandInArea": "此區域的公有土地",
   "includeUnit": "包含 {name}",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "關閉某個單元即可將其排除在噴漆模板和邊界之外，例如公園周圍的森林。列出了最大的 {count} 個。",
   "publicLandPaint": "公有土地噴漆",
   "landPaintNote": "每種已開啟的類型在每塊面板上各有一張紙模板，依組裝後仍可見的土地切割。類型重疊時，由更具體的類型上色：例如公園蓋過周圍的荒野保護區和森林。美國公有土地來自 USGS PAD-US 資料庫。",
-  "strokeWidthNote": "筆畫寬度為 SVG 中的實際物理值。最終雕刻寬度還取決於焦距、功率、速度、材料，以及雷射軟體將筆畫視為中心線還是填滿形狀。"
+  "strokeWidthNote": "預覽以 0.20 毫米作為示意刻線寬度。線寬設定控制 SVG 的外觀。實際刻線寬度取決於焦點、功率、速度和材料。"
 }

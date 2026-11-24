@@ -60,6 +60,7 @@ test("annotation placement preserves live edits and previews title knockouts", a
   // plain data; an in-memory reopen alone does not detect proxy leakage.
   await page.locator(".plaque-settings .placement-start").click();
   const committedTitle = await title.getAttribute("d");
+  await expect(title).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(title).toHaveCount(0);
   await expect.poll(() => page.evaluate(async () => {
@@ -77,6 +78,7 @@ test("annotation placement preserves live edits and previews title knockouts", a
   await page.reload();
   await page.locator(".plaque-settings .placement-start").click();
   await expect(title).toHaveAttribute("d", committedTitle!);
+  await expect(title).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(title).toHaveCount(0);
 

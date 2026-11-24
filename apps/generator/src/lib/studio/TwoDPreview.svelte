@@ -2,21 +2,25 @@
   import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import AirspaceCutPreview from "$lib/studio/AirspaceCutPreview.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
-  import { displayElevation, elevationUnit, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
+  import { SCORE_BURN_WIDTH_MM, fittedWaterInsert, visibleMarkings, displayElevation, elevationUnit, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
-  import { markingColor, markingDash, markingWidth } from "$lib/studio/marking-style";
+  import { markingCap, markingColor, markingDash } from "$lib/studio/marking-style";
   import { PAINT_COLORS } from "$lib/studio/paint-colors";
   import { labelPaths, markingPath, pointsToPath } from "$lib/studio/svg-path";
   let { geometry, selectedLayer, selectedAirspaceLevel }: { geometry: GeometryIRV1; selectedLayer: number; selectedAirspaceLevel?: number } = $props();
   const airspaceLevel = $derived(selectedAirspaceLevel === undefined ? undefined : geometry.airspaceStack?.levels[selectedAirspaceLevel]);
   const layer = $derived(geometry.layers[selectedLayer] ?? geometry.layers[0]);
+  const markings = $derived(visibleMarkings(layer?.markings ?? []));
   // Every sheet at or below the waterline sits under water, so the tint marks
   // which part of this sheet the basin covers.
   const submerged = $derived((geometry.waterSurfaces ?? []).filter((surface) => (layer?.index ?? 0) <= surface.layerIndex));
   // The stencil windows for this sheet: exposed water plus the bleed under the layer above.
   const paint = $derived((geometry.paintRegions ?? []).filter((region) => region.layerIndex === (layer?.index ?? 0)));
   // Acrylic set into this sheet's openings: drawn where it will sit, with the detail engraved on it.
-  const inserts = $derived((geometry.waterInserts ?? []).filter((insert) => insert.layerIndex === (layer?.index ?? 0)));
+  const inserts = $derived((geometry.waterInserts ?? []).filter((insert) => insert.layerIndex === (layer?.index ?? 0)).map((insert) => {
+    const fitted = fittedWaterInsert(insert, geometry.waterInsertMaterial?.fitClearanceMm ?? 0);
+    return { ...fitted, markings: visibleMarkings(fitted.markings) };
+  }));
   // Lays the paper stencil over the sheet as it is cut: the piece less its
   // windows as one outline, so the paint shows only where the paper is gone.
   let showTemplate = $state(false);
@@ -65,16 +69,16 @@
           <path data-paint-kind={region.kind} d={`${pointsToPath(polygon.outer)} Z ${polygon.holes.map((hole) => `${pointsToPath(hole)} Z`).join(" ")}`} fill={PAINT_COLORS[region.kind]} fill-opacity="0.55" stroke={PAINT_COLORS[region.kind]} stroke-width="0.3" stroke-dasharray="1 0.8" fill-rule="evenodd" />
         {/each}
       {/each}
-      {#each layer.markings as marking (marking.id)}
-        <g data-marking-id={marking.id} data-marking-kind={marking.kind} data-transportation-class={marking.transportationClass}><path d={markingPath(marking)} fill-rule="evenodd" fill={marking.knockout ? "#e7c391" : marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={marking.kind === "road" ? geometry.lineStyle.roadCap : marking.kind === "grid" ? "round" : undefined} stroke-linejoin={marking.kind === "road" ? "round" : undefined} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} stroke-linecap={text.round ? "round" : "butt"} stroke-linejoin={text.round ? "round" : "miter"} />{/if}{/if}</g>
+      {#each markings as marking (marking.id)}
+        <g data-marking-id={marking.id} data-marking-kind={marking.kind} data-transportation-class={marking.transportationClass}><path d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={markingCap(marking, geometry.lineStyle)} stroke-linejoin={marking.kind === "road" ? "round" : undefined} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} stroke-linecap={text.round ? "round" : "butt"} stroke-linejoin={text.round ? "round" : "miter"} />{/if}{/if}</g>
       {/each}
       {#each inserts as insert (insert.id)}
         <g data-water-insert={insert.id}>
           {#each insert.polygons as polygon}
             <path d={`${pointsToPath(polygon.outer)} Z ${polygon.holes.map((hole) => `${pointsToPath(hole)} Z`).join(" ")}`} fill="#7fb2cc" fill-opacity="0.45" stroke="#1f5f7d" stroke-width="0.35" stroke-dasharray="1.2 0.8" fill-rule="evenodd" />
           {/each}
-          {#each insert.markings.filter((marking) => !marking.knockout) as marking (marking.id)}
-            <path d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={markingWidth(marking, geometry.lineStyle)} stroke-dasharray={markingDash(marking, geometry.lineStyle)} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={geometry.lineStyle.annotationMm} />{/if}{/if}
+          {#each insert.markings as marking (marking.id)}
+            <path data-marking-id={marking.id} d={markingPath(marking)} fill-rule="evenodd" fill={marking.filled ? markingColor(marking) : "none"} stroke={marking.filled ? "none" : markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} stroke-dasharray={markingDash(marking, geometry.lineStyle)} stroke-linecap={markingCap(marking, geometry.lineStyle)} />{#if marking.label && marking.points[0]}{@const text = labelPaths(marking)}{#if text.fill}<path d={text.fill} fill-rule="evenodd" fill={markingColor(marking)} stroke="none" />{:else}<path d={text.stroke} fill="none" stroke={markingColor(marking)} stroke-width={SCORE_BURN_WIDTH_MM} />{/if}{/if}
           {/each}
         </g>
       {/each}

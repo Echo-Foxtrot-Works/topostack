@@ -1,12 +1,10 @@
-import { offsetPolygons } from "../primitives/offset.js";
 import { ringBounds } from "../primitives/geometry2d.js";
-import { markingsWithin } from "../pipeline/marking-clip.js";
-import { normalizedPolygons } from "../pipeline/water-inserts.js";
+import { fittedWaterInsert } from "../pipeline/water-inserts.js";
 import { acrylicPanelGroups } from "../pipeline/water-insert-panels.js";
 import { panelBounds, type FabricationPanel } from "./panel-layout.js";
 import { nestableParts } from "./sheet-nest/parts.js";
 import { resolveSheetNestSettings, type SheetNestSettingsResult } from "./sheet-nest/resolve.js";
-import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1 } from "../types.js";
+import type { GeometryIRV1, LayerIR, LayerPieceV1, NestPartV1, ProjectConfigV1, ResolvedSheetNestSettings } from "../types.js";
 
 /**
  * The inserts as a geometry of their own, so the panel, SVG, master and
@@ -30,13 +28,13 @@ export function acrylicGeometry(ir: GeometryIRV1, { markings: withMarkings = tru
     const pieces: LayerPieceV1[] = [];
     const markings: LayerIR["markings"] = [];
     for (const insert of inserts.filter((entry) => entry.layerIndex === woodLayerIndex)) {
-      const fitted = normalizedPolygons(offsetPolygons(insert.polygons, -material.fitClearanceMm, "miter"), 0);
-      fitted.forEach((polygon, part) => {
+      const fitted = fittedWaterInsert(insert, material.fitClearanceMm, withMarkings);
+      fitted.polygons.forEach((polygon, part) => {
         const bounds = ringBounds(polygon.outer);
-        pieces.push({ polygonIndex: polygons.length, id: fitted.length > 1 ? `${insert.id}-${part + 1}` : insert.id, column: 0, row: 0, exempt: false, widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY });
+        pieces.push({ polygonIndex: polygons.length, id: fitted.polygons.length > 1 ? `${insert.id}-${part + 1}` : insert.id, column: 0, row: 0, exempt: false, widthMm: bounds.maxX - bounds.minX, heightMm: bounds.maxY - bounds.minY });
         polygons.push(polygon);
       });
-      if (withMarkings) markings.push(...markingsWithin(insert.markings, fitted, "inside", { keepKnockouts: true }));
+      markings.push(...fitted.markings);
     }
     return {
       id: `acrylic-${String(woodLayerIndex + 1).padStart(2, "0")}`,
@@ -95,7 +93,7 @@ export function resolveAcrylicNestSettings(config: ProjectConfigV1): SheetNestSe
 }
 
 /** Acrylic parts to nest: one per insert, named by its `W` id. Empty without inserts. */
-export function acrylicNestableParts(ir: GeometryIRV1): NestPartV1[] {
+export function acrylicNestableParts(ir: GeometryIRV1, settings?: number | ResolvedSheetNestSettings): NestPartV1[] {
   const acrylic = acrylicGeometry(ir, { markings: false });
-  return acrylic ? nestableParts(acrylic) : [];
+  return acrylic ? nestableParts(acrylic, settings) : [];
 }

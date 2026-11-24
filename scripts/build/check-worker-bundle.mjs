@@ -13,7 +13,10 @@ const bundle = new URL("../../workers/map-api/dist/index.js", import.meta.url);
 // route, its registration and coverage, and the aviation request contract);
 // 77,263 when raised 2026-10-09 (the airspace-in-acrylic request field, its
 // schema, plan estimate and notes, and the guide paragraph).
-const BUDGET_GZIP = 85_000;
+// The neighborhood building gateway uses a bounded protobuf reader to send
+// only the footprint layer from each upstream tile (about 87.8 kB gzip).
+// Revision evidence and the active FAA release check bring the script to 89.3 kB gzip.
+const BUDGET_GZIP = 90_000;
 
 // Identifiers that only exist in the geometry engine and its dependencies.
 const FORBIDDEN = ["ClipperLib", "contourDensity", "polygon-clipping", "generateGeometry", "buildFabricationPackage", "planSheets"];

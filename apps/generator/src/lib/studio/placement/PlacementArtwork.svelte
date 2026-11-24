@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { plaqueFootprint, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
+  import { SCORE_BURN_WIDTH_MM, fittedWaterInsert, plaqueFootprint, type GeometryIRV1, type OperationPath, type ProjectConfigV1 } from "@topostack/core";
   import { markingPath, pointsToPath } from "$lib/studio/svg-path";
   import { availablePlaceables, hiddenByPrefix, type PlacementContext } from "./placeables";
   import PlacementMarking from "./PlacementMarking.svelte";
@@ -12,7 +12,9 @@
   } = $props();
   const id = $props.id();
   const layers = $derived(geometry.layers);
-  const markings = $derived(layers.flatMap(layer => layer.markings).filter(marking => !hiddenByPrefix(marking.id, hiddenPrefixes) && !marking.id.startsWith("alignment-")));
+  const acrylicMarkings = $derived((geometry.waterInserts ?? []).flatMap(insert =>
+    fittedWaterInsert(insert, geometry.waterInsertMaterial?.fitClearanceMm ?? 0).markings));
+  const markings = $derived([...layers.flatMap(layer => layer.markings), ...acrylicMarkings].filter(marking => !hiddenByPrefix(marking.id, hiddenPrefixes) && !marking.id.startsWith("alignment-")));
   const background = $derived(markings.filter(marking => !marking.id.startsWith("map-marker-") && !marking.knockout));
   // Generation draws markers last, in project order. Their knockouts erase
   // earlier artwork without painting over the material texture underneath.
@@ -66,7 +68,7 @@
 <g data-placement-artwork>
   <g mask={`url(#${id}-before-title)`}>
     {#if project.outputMode === "engraving"}
-      <g fill="none" stroke="#6b4a2d" stroke-width={geometry.lineStyle.contourMm}>
+      <g fill="none" stroke="#6b4a2d" stroke-width={SCORE_BURN_WIDTH_MM}>
         {#each layers.slice(1) as layer (layer.id)}
           {#each layer.polygons as polygon}<path d={[polygon.outer, ...polygon.holes].map(ring => `${pointsToPath(ring)} Z`).join(" ")} />{/each}
         {/each}
@@ -74,12 +76,12 @@
     {/if}
     {#each background as marking (marking.id)}<PlacementMarking {marking} lineStyle={geometry.lineStyle} />{/each}
     {#each drafts.filter(item => item.id !== "plaque") as item (item.id)}
-      {#each item.markings as marking (marking.id)}<PlacementMarking {marking} lineStyle={project.lineStyle} />{/each}
+      <g data-placement-draft={item.id}>{#each item.markings as marking (marking.id)}<PlacementMarking {marking} lineStyle={project.lineStyle} />{/each}</g>
     {/each}
   </g>
   <g mask={`url(#${id}-before-markers)`}>
     {#each drafts.filter(item => item.id === "plaque") as item (item.id)}
-      {#each item.markings as marking (marking.id)}<PlacementMarking {marking} lineStyle={project.lineStyle} />{/each}
+      <g data-placement-draft={item.id}>{#each item.markings as marking (marking.id)}<PlacementMarking {marking} lineStyle={project.lineStyle} />{/each}</g>
     {/each}
   </g>
   {#each graphics as graphic (graphic.id)}

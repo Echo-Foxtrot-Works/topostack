@@ -409,6 +409,46 @@ cd ../.. && /tmp/topostack-surveys-venv/bin/python scripts/data-build/build-surv
   --cache /tmp/topostack-lake-surveys --out-dir /tmp/topostack-survey-archives --dataset noaa-enc-florida-v1
 ```
 
+## GSI lake surveys (Japan)
+
+GSI's 湖沼データ publishes about 57 Japanese lakes with modern surveys, most from
+2016 to 2025. Among them are the Fuji Five Lakes, Ashinoko, Mashū, Tazawa,
+Inawashiro, Kussharo, Akan, Chūzenji, Suwa, Shinji and Kasumigaura. The list page is
+https://www.gsi.go.jp/kankyochiri/lakedatalist.html.
+
+What each ZIP holds:
+- A 10 m depth grid (`水深グリッド/*_ras.tif`) in its JGD2011 plane rectangular zone, for example EPSG:6677 for Ashinoko.
+- Positive depths in metres below the surveyed water level, with −9999 off the water.
+- Member names in Shift_JIS.
+
+The archive keeps these depths as `depth-terrarium-v1` at z14, so no surface
+elevation is needed.
+
+Lakes without digital data are absent, including Towada, Shikotsu and Biwa (see
+GSI's survey list). GSI is resurveying Biwa's south basin with multibeam sonar in
+2026; add it when it is published.
+
+This data is a basic survey result: copying it needs the same Survey Act approval
+as GSI's terrain ([gsi-terrain.md](gsi-terrain.md)). Until that approval exists:
+- `survey_gsi.py pin` writes `scripts/data/gsi-lake-sources.json`, an unregistered candidate with `availability: "development"` and `approval.required`, plus one SHA-256 pin per lake.
+- `build-survey-bathymetry.py --dataset gsi-lakes-japan-v1` builds from it.
+- `lake-bathymetry.json`, the lake directory and any bucket stay untouched.
+
+At promotion:
+1. Move the source into `lake-bathymetry.json` with the approval reference.
+2. Add the lakes to the lake directory with a `japan` region in `apps/generator/src/lib/site/lake-pages.ts`.
+3. Provision the archive.
+
+```bash
+REQ="uv run --no-project --python 3.13 --with-requirements scripts/data-build/requirements.txt python"
+$REQ scripts/data-build/survey_gsi.py pin --cache .topostack/gsi-lakes       # one ZIP a second, cached
+$REQ scripts/data-build/build-survey-bathymetry.py --cache .topostack/gsi-lakes --out-dir .topostack/gsi-lakes/build-1 --dataset gsi-lakes-japan-v1
+```
+
+GSI's servers still need TLS legacy renegotiation, which OpenSSL 3 refuses by
+default. `survey_gsi.fetch` allows it for GSI requests only and still verifies
+certificates.
+
 ## Searching all integrated lakes
 
 The studio’s **Choose anywhere** search includes every lake and basin in the

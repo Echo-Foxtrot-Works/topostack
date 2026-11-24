@@ -1,15 +1,17 @@
 import { formatNumber as format } from "../primitives/format.js";
+import { dashPolyline } from "../primitives/dash.js";
 import { clipPolyline, preparePolygons, type PreparedPolygons } from "../primitives/geometry2d.js";
 import { labelSvgPaths, roundText } from "../annotate/labels.js";
 import { offsetClosedRing } from "../primitives/offset.js";
 import { aviationStroke } from "../pipeline/aviation.js";
 import { landStroke } from "../pipeline/lands.js";
-import { LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type LineStyleV1, type Point2D } from "../types.js";
+import { coveredRailWidthMm, DEFAULT_BUILDING_WIDTH_MM, LAND_CLASSES, type AviationClass, type LandClass, type LayerIR, type OperationPath, type LineStyleV1, type Point2D } from "../types.js";
 
 
 export const CUT = "#FE0002";
 export const SCORE = "#2366FF";
 export const ENGRAVE = "#2366FF";
+const ENGRAVE_FILL = "#000000";
 // Keep processing intent on each leaf shape: importers may flatten SVG groups.
 export const CUT_LINE = `fill="none" stroke="${CUT}"`;
 export const ENGRAVE_LINE = `fill="none" stroke="${ENGRAVE}"`;
@@ -22,7 +24,7 @@ export const ASSEMBLY = "#00A651";
 export const MAX_EXPORT_PACKAGE_BYTES = 100_000_000;
 /** Engraving groups in output order; `engravingCategory` maps each marking to one. */
 const LAND_CATEGORIES = LAND_CLASSES.map((landClass) => `land-${landClass}` as const);
-const ENGRAVING_CATEGORIES = ["major-roads", "local-roads", "trails", "transport-labels", "water", "boundaries", ...LAND_CATEGORIES, "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
+const ENGRAVING_CATEGORIES = ["buildings", "major-roads", "local-roads", "trails", "rail", "covered-rail", "transport-labels", "water", "boundaries", ...LAND_CATEGORIES, "airspace-b", "airspace-c", "airspace-d", "special-use-airspace", "runways", "aviation-symbols", "aviation-labels", "coordinate-grid", "annotations", "assembly-labels", "general"] as const;
 type EngravingCategory = (typeof ENGRAVING_CATEGORIES)[number];
 /** Assembly ids ride in their own top-level group, so the artwork categories exclude them. */
 export const ARTWORK_CATEGORIES = ENGRAVING_CATEGORIES.filter((category) => category !== "assembly-labels");
@@ -62,7 +64,7 @@ const CATEGORY_AVIATION_CLASS: Partial<Record<EngravingCategory, AviationClass>>
   "airspace-b": "class-b", "airspace-c": "class-c", "airspace-d": "class-d", "special-use-airspace": "special-use", runways: "runway", "aviation-symbols": "airport",
 };
 
-export function engravingCategory(mark: LayerIR["markings"][number]): EngravingCategory {
+function engravingCategory(mark: LayerIR["markings"][number]): EngravingCategory {
   if (mark.id.startsWith("piece-")) return "assembly-labels";
   if (mark.id.startsWith("transport-label-")) return "transport-labels";
   if (mark.id.startsWith("aviation-label-")) return "aviation-labels";
@@ -71,6 +73,8 @@ export function engravingCategory(mark: LayerIR["markings"][number]): EngravingC
   if (mark.transportationClass === "major-road") return "major-roads";
   if (mark.transportationClass === "local-road") return "local-roads";
   if (mark.transportationClass === "trail") return "trails";
+  if (mark.transportationClass === "rail" || mark.transportationClass === "covered-rail") return mark.transportationClass;
+  if (mark.kind === "building") return "buildings";
   if (mark.kind === "water") return "water";
   if (mark.kind === "boundary") return "boundaries";
   if (mark.kind === "grid") return "coordinate-grid";
@@ -78,31 +82,34 @@ export function engravingCategory(mark: LayerIR["markings"][number]): EngravingC
   return "general";
 }
 
-export function categoryStrokeAttributes(category: EngravingCategory, style: LineStyleV1): string {
+interface CategoryStroke {
+  widthMm: number;
+  dash?: number[];
+  cap?: "round" | "butt" | "square";
+  roundJoin?: boolean;
+}
+
+function categoryStroke(category: EngravingCategory, style: LineStyleV1): CategoryStroke {
   const width = category === "major-roads" ? style.majorRoadMm :
-    category === "local-roads" ? style.localRoadMm :
+    category === "covered-rail" ? coveredRailWidthMm(style) :
+    category === "buildings" ? (style.buildingMm ?? DEFAULT_BUILDING_WIDTH_MM) :
+    category === "local-roads" || category === "rail" ? style.localRoadMm :
     category === "trails" ? style.trailMm :
     category === "water" ? style.waterMm :
     category === "boundaries" ? style.boundaryMm :
     category === "coordinate-grid" ? style.coordinateGridMm : style.annotationMm;
-  if (category === "assembly-labels") return ` stroke-width="${format(width)}"`;
-  if (category.startsWith("land-")) {
-    const stroke = landStroke(category.slice("land-".length) as LandClass, style);
-    return ` stroke-width="${format(stroke.widthMm)}"${stroke.dash ? ` stroke-dasharray="${stroke.dash.map(format).join(" ")}" stroke-linecap="round"` : ""} stroke-linejoin="round"`;
-  }
   const aviationClass = CATEGORY_AVIATION_CLASS[category];
-  if (aviationClass) {
-    const stroke = aviationStroke(aviationClass, style);
-    return ` stroke-width="${format(stroke.widthMm)}"${stroke.dash ? ` stroke-dasharray="${stroke.dash.map(format).join(" ")}" stroke-linecap="round"` : ""} stroke-linejoin="round"`;
+  if (aviationClass || category.startsWith("land-")) {
+    const stroke = aviationClass ? aviationStroke(aviationClass, style) : landStroke(category.slice("land-".length) as LandClass, style);
+    return { ...stroke, cap: stroke.dash ? "round" : undefined, roundJoin: true };
   }
-  if (category === "boundaries") return ` stroke-width="${format(width)}" stroke-dasharray="${format(Math.max(width * 8, 1.6))} ${format(Math.max(width * 5, 1))}" stroke-linecap="round"`;
-  if (category === "coordinate-grid") return ` stroke-width="${format(width)}" stroke-dasharray="0.01 ${format(Math.max(width * 5, 0.9))}" stroke-linecap="round"`;
-  if (category === "major-roads" || category === "local-roads") return ` stroke-width="${format(width)}" stroke-linecap="${style.roadCap}" stroke-linejoin="round"`;
-  if (category !== "trails" || style.trailPattern === "solid") return ` stroke-width="${format(width)}"`;
-  const dash = style.trailPattern === "dotted"
-    ? `0.01 ${format(Math.max(width * 4, 0.7))}`
-    : `${format(Math.max(width * 6, 1.2))} ${format(Math.max(width * 4, 0.8))}`;
-  return ` stroke-width="${format(width)}" stroke-dasharray="${dash}" stroke-linecap="round"`;
+  if (category === "boundaries") return { widthMm: width, dash: [Math.max(width * 8, 1.6), Math.max(width * 5, 1)], cap: "round" };
+  if (category === "coordinate-grid") return { widthMm: width, dash: [0.01, Math.max(width * 5, 0.9)], cap: "round" };
+  if (category === "rail" || category === "covered-rail") return { widthMm: width, cap: "round", roundJoin: true };
+  if (category === "major-roads" || category === "local-roads") return { widthMm: width, cap: style.roadCap, roundJoin: true };
+  if (category !== "trails" || style.trailPattern === "solid") return { widthMm: width };
+  const dash = style.trailPattern === "dotted" ? [0.01, Math.max(width * 4, 0.7)] : [Math.max(width * 6, 1.2), Math.max(width * 4, 0.8)];
+  return { widthMm: width, dash, cap: "round" };
 }
 
 /** White preview halos are empty material, never a laser operation. Resolve
@@ -126,28 +133,38 @@ export function clearLineData(data: string, clearance?: MarkerClearance): string
   }).join(" ");
 }
 
-export function markingPath(mark: LayerIR["markings"][number], sharedClearance?: MarkerClearance, stroke?: string): string {
+function markingPath(mark: OperationPath, cleared: ReadonlyMap<OperationPath, OperationPath[]>, dash?: number[], assembly = false): string {
   if (mark.knockout) return "";
-  // The title's own backing is a knockout; it must clear what lies beneath, not the title.
-  const clearance = mark.id.startsWith("plaque-") ? undefined : sharedClearance;
-  const color = stroke ?? (mark.operation === "score" ? SCORE : ENGRAVE);
-  if (mark.label && mark.points[0]) {
-    const { stroke: strokeData, fill } = labelSvgPaths(mark.label, mark.points[0], 0, 0, mark.labelRotationRad, mark.textStyle);
-    // Typeface letters are areas to fill; like marker artwork they are not cut back by clearance.
-    if (fill) return `<path id="${escapeXml(mark.id)}" d="${fill}" fill="${color}" stroke="none" fill-rule="evenodd"/>`;
-    return `<path id="${escapeXml(mark.id)}" d="${clearLineData(strokeData, clearance)}" fill="none" stroke="${color}"${roundText(mark.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : ""}/>`;
+  const color = assembly ? ASSEMBLY : mark.operation === "score" ? SCORE : ENGRAVE;
+  const fillColor = assembly ? ASSEMBLY : ENGRAVE_FILL;
+  const fragments = cleared.get(mark) ?? [mark];
+  if (!fragments.length) return "";
+  const first = fragments[0]!;
+  if (first.label && first.points[0]) {
+    const { stroke: strokeData, fill } = labelSvgPaths(first.label, first.points[0], 0, 0, first.labelRotationRad, first.textStyle);
+    if (fill) return `<path id="${escapeXml(mark.id)}" d="${fill}" fill="${fillColor}" stroke="none" fill-rule="evenodd"/>`;
+    return `<path id="${escapeXml(mark.id)}" d="${strokeData}" fill="none" stroke="${color}"${roundText(first.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : ""}/>`;
   }
-  const paint = mark.filled ? `fill="${color}" stroke="none"` : `fill="none" stroke="${color}"`;
-  const data = [pathData(mark.points, 0, 0, mark.filled), ...(mark.holes ?? []).map(hole => pathData(hole, 0, 0, true))].join(" ");
-  return mark.points.length > 1 ? `<path id="${escapeXml(mark.id)}" d="${mark.filled ? data : clearLineData(data, clearance)}" ${paint}${mark.holes?.length ? ' fill-rule="evenodd"' : ""}/>` : "";
+  const paint = first.filled ? `fill="${fillColor}" stroke="none"` : `fill="none" stroke="${color}"`;
+  // One editable feature, with an SVG move across each physical gap.
+  const lineData = (points: Point2D[], closed = false) => dash && !first.filled
+    ? dashPolyline({ points, closed }, dash).map(line => pathData(line.points)).join(" ")
+    : pathData(points, 0, 0, closed);
+  const data = fragments.filter(part => part.points.length > 1).flatMap(part => [
+    lineData(part.points, part.filled), ...(part.holes ?? []).map(hole => lineData(hole, true)),
+  ]).filter(Boolean).join(" ");
+  const attributes = fragments.some(part => part.holes?.length) ? ' fill-rule="evenodd"' :
+    mark.label && !first.filled && roundText(mark.textStyle) ? ' stroke-linecap="round" stroke-linejoin="round"' : "";
+  return data ? `<path id="${escapeXml(mark.id)}" d="${data}" ${paint}${attributes}/>` : "";
 }
 
-export function layerMarkingPaths(layer: LayerIR, operation: "score" | "engrave", style: LineStyleV1, categories: readonly EngravingCategory[] = ARTWORK_CATEGORIES, source: LayerIR["markings"] = layer.markings): string {
-  const markings = source.filter((mark) => mark.operation === operation);
-  const clearance = markerClearance([layer]);
+export function markingGroups(prefix: string, style: LineStyleV1, categories: readonly EngravingCategory[], markings: OperationPath[], clearance: ReadonlyMap<OperationPath, OperationPath[]>): string {
   return categories.map((category) => {
-    const paths = markings.filter((mark) => engravingCategory(mark) === category).map((mark) => markingPath(mark, clearance, category === "assembly-labels" ? ASSEMBLY : undefined)).join("");
-    return paths ? `<g id="${layer.id}-${operation.toUpperCase()}-${category}"${categoryStrokeAttributes(category, style)}>${paths}</g>` : "";
+    const members = markings.filter(mark => engravingCategory(mark) === category);
+    if (!members.length) return "";
+    const { widthMm, dash, cap, roundJoin } = categoryStroke(category, style);
+    const paths = members.map(mark => markingPath(mark, clearance, dash, category === "assembly-labels")).join("");
+    return paths ? `<g id="${prefix}-${category}" stroke-width="${format(widthMm)}"${cap ? ` stroke-linecap="${cap}"` : ""}${roundJoin ? ' stroke-linejoin="round"' : ""}>${paths}</g>` : "";
   }).join("");
 }
 

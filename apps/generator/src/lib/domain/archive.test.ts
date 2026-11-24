@@ -96,6 +96,49 @@ describe("archive request lifecycle", () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
+  it.each(["old-first", "refresh-first"])("keeps sibling tiles on one release when the %s read completes", async (order) => {
+    const directory = [2, 1, 3, 1, 1, 1, 1, 1, 0]; // z1 tiles (0,0) and (1,0), one byte each
+    const header = new Uint8Array(127 + directory.length);
+    header.set(archiveBytes().subarray(0, 127));
+    const view = new DataView(header.buffer);
+    view.setUint32(16, directory.length, true);
+    view.setUint32(56, header.length, true);
+    header[100] = 1; header[101] = 1;
+    header.set(directory, 127);
+    const bytes = (body: Uint8Array<ArrayBuffer>, etag: string) => new Response(body, { status: 206, headers: { etag } });
+    let headers = 0, tiles = 0;
+    let finishOld: (() => void) | undefined;
+    let finishRefresh: (() => void) | undefined;
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      if (new Headers(init.headers).get("range")!.startsWith("bytes=0-")) {
+        if (++headers === 1) return bytes(header, '"old"');
+        await new Promise<void>((resolve) => { finishRefresh = resolve; });
+        return bytes(header, '"new"');
+      }
+      if (++tiles === 1) {
+        await new Promise<void>((resolve) => { finishOld = resolve; });
+        return bytes(Uint8Array.of(1), '"old"');
+      }
+      return bytes(Uint8Array.of(2), '"new"');
+    });
+    const url = "https://example.test/roads.pmtiles";
+    await createArchive(url).getHeader();
+    const archive = createArchive(url);
+    const left = archive.getZxy(1, 0, 0);
+    await vi.waitFor(() => expect(finishOld).toBeDefined());
+    if (order === "old-first") {
+      finishOld!();
+      expect(new Uint8Array((await left)!.data)).toEqual(Uint8Array.of(1));
+      await expect(archive.getZxy(1, 1, 0)).rejects.toThrow("Archive changed");
+    } else {
+      const right = archive.getZxy(1, 1, 0);
+      await vi.waitFor(() => expect(finishRefresh).toBeDefined());
+      finishOld!();
+      finishRefresh!();
+      for (const tile of await Promise.all([left, right])) expect(new Uint8Array(tile!.data)).toEqual(Uint8Array.of(2));
+    }
+  });
+
   it("does not retry a generation change after the operation returned tile data", async () => {
     let etag = '"fixture"';
     vi.stubGlobal("fetch", vi.fn(async () => new Response(archiveBytes(), { status: 206, headers: { etag } })));

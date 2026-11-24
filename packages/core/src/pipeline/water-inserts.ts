@@ -5,6 +5,13 @@ import { markingsWithin } from "./marking-clip.js";
 import { acrylicCutBounds, fitsWorkArea } from "./water-insert-panels.js";
 import { waterInsertLakeKey, type GeometryWarning, type LayerIR, type Polygon2D, type ProjectConfigV1, type WaterInsertIR, type WaterInsertMaterialIR, type WaterSurfaceIR } from "../types.js";
 
+/** Physical outline and engraving after the acrylic fit clearance has been applied. */
+export function fittedWaterInsert(insert: WaterInsertIR, fitClearanceMm: number, withMarkings = true): WaterInsertIR {
+  const polygons = normalizedPolygons(offsetPolygons(insert.polygons, -fitClearanceMm, "miter"), 0);
+  const markings = withMarkings ? markingsWithin(insert.markings, polygons, "inside", { keepKnockouts: true }) : [];
+  return { ...insert, polygons, markings };
+}
+
 /** Default gap left between an acrylic insert and its wood opening, per side. */
 export const DEFAULT_WATER_INSERT_CLEARANCE_MM = 0.1;
 

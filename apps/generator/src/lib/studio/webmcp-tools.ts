@@ -1,4 +1,4 @@
-import { AREA_SCHEMA, PROJECT_REQUEST_PATCH_SCHEMA, cleanRequestText, describeProject, parseProjectRequestPatch, projectFingerprint, requestPatch, type GeometryIRV1, type ProjectConfigV1, type ProjectRequestArea } from "@topostack/core";
+import { AREA_SCHEMA, PROJECT_REQUEST_PATCH_SCHEMA, cleanRequestText, describeProject, isMercatorBounds, parseProjectRequestPatch, projectFingerprint, requestPatch, type GeometryIRV1, type ProjectConfigV1, type ProjectRequestArea } from "@topostack/core";
 import type { PlaceResult } from "$lib/domain/geocode";
 
 /**
@@ -129,9 +129,11 @@ export function webMcpTools(host: WebMcpHost): WebMcpTool[] {
         if (blocked) return failure(blocked);
         const parsed = parseProjectRequestPatch({ area: input.area, ...(input.placeLabel === undefined ? {} : { placeLabel: input.placeLabel }) });
         if (!parsed.ok) return failure(parsed.errors.map(({ path, message }) => `${path}: ${message}`).join("\n"));
-        const patch = requestPatch(host.project(), parsed.value);
+        if (!parsed.value.area) return failure("area: Required. Give a center and width, or a bounding box.");
+        const { location } = requestPatch(host.project(), parsed.value);
+        if (!location?.bounds || !isMercatorBounds(location.bounds)) return failure("area: The area fitted to this design extends outside the mapped world. Choose a smaller area or move it away from the poles.");
         const name = parsed.value.placeLabel ? cleanRequestText(parsed.value.placeLabel.split(",")[0] ?? "", 120) : undefined;
-        host.setLocation(patch.location!, name || undefined);
+        host.setLocation(location, name || undefined);
         return reply(`Area set${parsed.value.placeLabel ? ` to ${parsed.value.placeLabel}` : ""}. Call topostack_generate_preview to build it.`);
       },
     },

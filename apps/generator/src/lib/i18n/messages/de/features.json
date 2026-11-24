@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "Durchgehend",
   "trailPatternOption.dashed": "Gestrichelt",
   "trailPatternOption.dotted": "Gepunktet",
+  "buildings": "Gebäudeumrisse",
+  "buildingWidth": "Linienbreite der Gebäudeumrisse",
+  "buildingsHint": "Gebäudeumrisse werden ab Kartenzoom {zoom} graviert.",
+  "rail": "Bahnstrecken",
+  "railHint": "Offene Gleise erhalten bei genügend Platz Querschwellen. Überdeckte Gleise sind gestrichelt.",
   "transportationLabels": "Verkehrsbeschriftung",
   "stateProvinceBoundariesName": "Staats- und Provinzgrenzen",
   "stateProvinceBoundaries": "Staats-/Provinzgrenzen",
@@ -78,8 +83,8 @@
   "names": "Namen",
   "hatchInsideName": "Innenseite der Grenzen öffentlicher Flächen schraffieren",
   "hatchInsideEdge": "Innenkante schraffieren",
-  "landNotCovered": "Hier gibt es keine öffentlichen Flächen dieser Arten. Außerhalb der USA und Kanadas stammen öffentliche Flächen aus OpenStreetMap, soweit sie dort erfasst sind: Nationalparks, Naturschutzgebiete (als Schutzgebiete) und Militärgelände, ohne Namen.",
-  "landFromOpenStreetMap": "Außerhalb der USA und Kanadas stammen öffentliche Flächen aus OpenStreetMap, soweit sie dort erfasst sind: Nationalparks, Naturschutzgebiete (als Schutzgebiete) und Militärgelände, ohne Namen.",
+  "landNotCovered": "Hier gibt es keine öffentlichen Flächen dieser Arten.",
+  "landFromOpenStreetMap": "Hier stammen öffentliche Flächen aus OpenStreetMap, soweit sie dort erfasst sind: Nationalparks, Naturschutzgebiete (als Schutzgebiete) und Militärgelände, ohne Namen.",
   "landBoundariesNote": "Jede Art hat ihre eigene Strichelung. Die Breite teilen sie mit den Staats- und Provinzgrenzen. Namen stehen in den größten Gebieten, die genug Platz haben.",
   "publicLandInArea": "Öffentliche Flächen in diesem Bereich",
   "includeUnit": "{name} einbeziehen",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "Schalte ein Gebiet aus, um es aus Malschablonen und Grenzen herauszulassen, etwa den Wald um einen Park. Die {count} größten sind aufgeführt.",
   "publicLandPaint": "Bemalung öffentlicher Flächen",
   "landPaintNote": "Jede eingeschaltete Art erhält pro Teil eine Papierschablone, zugeschnitten auf die Fläche, die nach der Montage sichtbar bleibt. Wo sich Arten überlappen, malt die spezifischere: ein Park über dem Wildnisgebiet und Wald um ihn herum. Öffentliche Flächen der USA aus der USGS-Datenbank PAD-US.",
-  "strokeWidthNote": "Strichbreiten sind physische SVG-Werte. Die tatsächliche Gravurbreite hängt auch von Fokus, Leistung, Geschwindigkeit, Material und davon ab, ob deine Lasersoftware Striche als Mittellinien oder gefüllte Formen behandelt."
+  "strokeWidthNote": "Die Vorschau zeigt eine typische Brennspur von 0,20 mm. Die Breiten gelten für die SVG-Darstellung. Die tatsächliche Spurbreite hängt von Fokus, Leistung, Geschwindigkeit und Material ab."
 }

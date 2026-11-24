@@ -12,6 +12,7 @@ describe("surveyed lake directory", () => {
   it("lists each integrated survey grid, excludes skipped basins, and includes all six NOAA lakes", () => {
     expect(directory.sources.map((source) => source.id)).toEqual(surveyCatalog.sources.map((source) => source.id));
     for (const archive of builds.archives) {
+      expect(directory.sources.find(source => source.id === archive.dataset)?.archiveSha256).toBe(archive.sha256);
       expect(lakes.filter((lake) => lake.sourceId === archive.dataset)).toHaveLength(archive.processedGrids);
     }
     expect(lakes.filter((lake) => lake.sourceId === "noaa-great-lakes-v1")).toHaveLength(6);

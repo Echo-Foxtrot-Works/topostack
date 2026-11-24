@@ -1,6 +1,24 @@
 // Scene pieces of the 3D preview that need no renderer, camera or component state.
 import * as THREE from "three";
-import { labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+import { SCORE_BURN_WIDTH_MM, labelLineSegments, type AirspacePieceIR, type AirspaceStackIR, type GeometryIRV1, type PaintRegionIR, type PaintRegionKind, type Point2D, type Polygon2D, type TextStyleV1, type WaterSurfaceIR } from "@topostack/core";
+
+import { LineMaterial, type LineMaterialParameters } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+
+export function burnMaterial(parameters: LineMaterialParameters): LineMaterial {
+  // The stack mirrors map Y. LineMaterial builds its stroke faces in camera
+  // space, so their winding does not follow the mirrored object's front face.
+  const material = new LineMaterial({ ...parameters, side: THREE.DoubleSide, linewidth: SCORE_BURN_WIDTH_MM, alphaToCoverage: true });
+  // Project the physical burn at each segment end. A one-CSS-pixel minimum
+  // keeps the street continuous when the fitted model is small on screen.
+  material.vertexShader = material.vertexShader.replace("offset *= linewidth;", `
+    float clipW = position.y < 0.5 ? clipStart.w : clipEnd.w;
+    float pixelsPerMm = 0.5 * resolution.y * projectionMatrix[1][1] / clipW;
+    offset *= max(1.0, linewidth * pixelsPerMm);
+  `);
+  return material;
+}
 
 export interface CachedLayer {
   /** Signature of everything the extrusion depends on; a mismatch rebuilds it. */
@@ -8,8 +26,6 @@ export interface CachedLayer {
   meshes: THREE.Mesh[];
   /** Cut lines between the pieces of a split layer, as segment pairs. */
   seams: number[];
-  /** The top-face material, which knockout markings also draw with. */
-  face: THREE.MeshStandardMaterial;
   /** Materials and textures only this layer's meshes reference. */
   resources: Array<{ dispose: () => void }>;
 }
@@ -269,7 +285,16 @@ export function appendPolyline(batch: LineBatch, points: Point2D[]): void {
   }
 }
 
-export function batchSegments(batch: LineBatch, material: THREE.LineBasicMaterial | THREE.LineDashedMaterial): THREE.LineSegments {
+export function batchSegments(batch: LineBatch, material: LineMaterial | THREE.LineBasicMaterial): LineSegments2 | THREE.LineSegments {
+  if (material instanceof LineMaterial) {
+    const geometry = new LineSegmentsGeometry().setPositions(batch.positions);
+    if (batch.distances) {
+      const distances = new THREE.InstancedInterleavedBuffer(new Float32Array(batch.distances), 2, 1);
+      geometry.setAttribute("instanceDistanceStart", new THREE.InterleavedBufferAttribute(distances, 1, 0));
+      geometry.setAttribute("instanceDistanceEnd", new THREE.InterleavedBufferAttribute(distances, 1, 1));
+    }
+    return new LineSegments2(geometry, material);
+  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
   if (batch.distances) geometry.setAttribute("lineDistance", new THREE.Float32BufferAttribute(batch.distances, 1));

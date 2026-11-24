@@ -17,7 +17,7 @@
   "lakesBodySources": "Zmierzone dna pochodzą z pomiarów podwodnych lub danych terenu. Gdy jezioro ich nie ma, dno jest modelowane na podstawie linii brzegowej, okolicznych zboczy i opublikowanych szacunków głębokości. Żadne z nich nie odzwierciedla dzisiejszego poziomu wody.",
   "lakesBodyControls": "Przewyższenie głębokości pogłębia dna jezior względem wzgórz. Limit warstw głębokości określa, ile arkuszy schodzi poniżej najniższego lądu, a Dopasuj głębokość jezior ściska każde jezioro w tym limicie, zachowując linię brzegową.",
   "exportTitle": "Sprawdź eksport",
-  "exportBody": "W reliefach warstwowych ustaw szerokość i wysokość materiału w Eksporcie. Elementy rozmieszczają się automatycznie z marginesami 3 mm i odstępami 2 mm; wybierz Użyj bieżącego układu, aby zakończyć wcześniej. Otwórz w Studio wysyła jeden edytowalny SVG całego układu. Pobierz zawiera grafikę, ustawienia i źródła danych, a dla reliefów warstwowych także instrukcję montażu.",
+  "exportBody": "W reliefach warstwowych ustaw szerokość i wysokość materiału w Eksporcie. Elementy rozmieszczają się automatycznie z marginesami 3 mm i odstępami 2 mm; wybierz Użyj bieżącego układu, aby zakończyć wcześniej. W reliefach warstwowych Otwórz w Studio wysyła układ drewnianych elementów jako jeden edytowalny plik SVG. Pliki dla akrylu są dostępne po wybraniu opcji Pobierz. Pobierz zawiera grafikę, ustawienia i źródła danych, a dla reliefów warstwowych także instrukcję montażu.",
   "assemblyTitle": "Montaż",
   "assemblyBody": "Trzymaj rozmieszczone elementy razem z ich arkuszami i klej od najniższej warstwy w górę, zgodnie z instrukcją montażu. Przed wycięciem całego projektu sprawdź dopasowanie na małym elemencie."
 }

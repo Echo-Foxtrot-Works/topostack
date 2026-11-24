@@ -327,7 +327,7 @@ const DATASET = /^faa-aviation-\d{4}-\d{2}-\d{2}-v[1-9]\d*$/;
  * PMTiles JSON metadata written by the builder. Keys are prefixed like the
  * other TopoStack archives (`topostack_dataset`).
  */
-export function parseAviationArchiveMetadata(value: unknown): AviationArchiveMetadata {
+export function parseAviationArchiveMetadata(value: unknown, expected?: AviationArchiveMetadata): AviationArchiveMetadata {
   if (!value || typeof value !== "object") throw new Error("Aviation archive metadata is missing.");
   const raw = value as Raw;
   const date = (key: string): string => {
@@ -339,7 +339,11 @@ export function parseAviationArchiveMetadata(value: unknown): AviationArchiveMet
   if (typeof dataset !== "string" || !DATASET.test(dataset)) throw new Error("Aviation archive has an invalid dataset identity.");
   const nasrCycle = date("faa_nasr_cycle");
   if (!dataset.startsWith(`faa-aviation-${nasrCycle}-`)) throw new Error("Aviation archive dataset does not match its NASR cycle.");
-  return { dataset, nasrCycle, obstacleDate: date("faa_obstacle_date"), suaDate: date("faa_sua_date") };
+  const obstacleDate = date("faa_obstacle_date"), suaDate = date("faa_sua_date");
+  if (expected && (dataset !== expected.dataset || nasrCycle !== expected.nasrCycle || obstacleDate !== expected.obstacleDate || suaDate !== expected.suaDate)) {
+    throw new Error(`Aviation archive ${dataset} does not match the registered dataset ${expected.dataset} and source dates.`);
+  }
+  return { dataset, nasrCycle, obstacleDate, suaDate };
 }
 
 export function aviationArchiveMetadata(value: AviationArchiveMetadata): Record<string, string> {
@@ -389,5 +393,8 @@ export function validateAviationSources(value: unknown): AviationSources {
 
 /** True when a crop (west, south, east, north) touches published FAA coverage. */
 export function aviationCovers(sources: Pick<AviationSources, "coverage">, bounds: { west: number; south: number; east: number; north: number }): boolean {
-  return sources.coverage.some(({ bounds: [west, south, east, north] }) => bounds.west < east && bounds.east > west && bounds.south < north && bounds.north > south);
+  return sources.coverage.some(({ bounds: [west, south, east, north] }) => {
+    const world = Math.floor((bounds.west - east) / 360) + 1;
+    return bounds.east > west + world * 360 && bounds.south < north && bounds.north > south;
+  });
 }

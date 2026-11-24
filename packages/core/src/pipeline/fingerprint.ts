@@ -1,3 +1,4 @@
+import { buildingOutlinesEnabled } from "./source-requirements.js";
 import type { ProjectConfigV1 } from "../types.js";
 import { fnv1aHex, stableStringify } from "../primitives/hash.js";
 
@@ -7,6 +8,9 @@ function stableProjectValue(config: ProjectConfigV1): unknown {
   const { explodedPreview: _previewOnly, name: _packageMetadata, sheetNesting: _exportOnly, waterInsertSheetNesting: _acrylicExportOnly, ...fabricationConfig } = config;
   return {
     ...fabricationConfig,
+    // With buildings off, older designs retain their fabrication fingerprint.
+    showBuildings: config.showBuildings || undefined,
+    buildingFootprintVersion: buildingOutlinesEnabled(config) ? 2 : undefined,
     // A marker's or path's name is what the maker calls it, never anything the
     // geometry reads, so renaming one must not restate the design. Projects
     // without names hash exactly as they did before names existed.
@@ -22,5 +26,5 @@ function stableProjectValue(config: ProjectConfigV1): unknown {
 }
 
 export function projectFingerprint(config: ProjectConfigV1): string {
-  return `v10-${fnv1aHex(stableStringify(stableProjectValue(config)))}`;
+  return `v14-${fnv1aHex(stableStringify(stableProjectValue(config)))}`;
 }

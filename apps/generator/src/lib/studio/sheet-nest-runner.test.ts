@@ -49,17 +49,12 @@ describe("sheetPreviews", () => {
     expect(sheet!.parts[0]!.path).toBe("M1.3 6.9L2 3.3Z");
   });
 
-  it("thins long outlines to about 120 vertices and keeps short ones whole", () => {
-    const ring = (count: number) => Array.from({ length: count }, (_, index) => ({ x: Math.cos(index / count * 2 * Math.PI) * 50, y: Math.sin(index / count * 2 * Math.PI) * 50 }));
-    const count = (outlineLength: number) => vertices(sheetPreviews(plan([{ placements: [{ partId: "a", rotationDeg: 0, xMm: 0, yMm: 0 }], usedWidthMm: 0, method: "sparrow" }]), [part("a", ring(outlineLength))])[0]!.parts[0]!.path).length;
-    expect(count(100)).toBe(100);
-    expect(count(239)).toBe(239);
-    expect(count(240)).toBe(120);
-    expect(count(360)).toBe(120);
-    expect(count(1000)).toBe(125);
-    // The first vertex always survives thinning.
-    const first = vertices(sheetPreviews(plan([{ placements: [{ partId: "a", rotationDeg: 0, xMm: 0, yMm: 0 }], usedWidthMm: 0, method: "sparrow" }]), [part("a", ring(1000))])[0]!.parts[0]!.path)[0];
-    expect(first).toEqual({ x: 50, y: 0 });
+  it("keeps the corners where a dense contour meets long straight edges", () => {
+    const contour = Array.from({ length: 241 }, (_, x) => ({ x, y: x % 2 }));
+    const corners = [{ x: 240, y: 80 }, { x: 0, y: 80 }];
+    const outline = [...contour, ...corners, contour[0]!];
+    const [sheet] = sheetPreviews(plan([{ placements: [{ partId: "a", rotationDeg: 0, xMm: 0, yMm: 0 }], usedWidthMm: 240, method: "sparrow" }]), [part("a", outline)]);
+    expect(vertices(sheet!.parts[0]!.path)).toEqual(expect.arrayContaining(corners));
   });
 
   it("skips placements for unknown parts and keeps every sheet, flagged provisional where it is", () => {

@@ -8,6 +8,7 @@ import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
 const KNOWN: Array<{ pattern: RegExp; key: MessageKey; params?: string[] }> = [
   { pattern: /^Terrain service returned (\d+)\.$/, key: "domain.terrainServiceStatus", params: ["status"] },
   { pattern: /^Terrain tile is missing its dataset version\.$/, key: "domain.terrainTileVersionMissing" },
+  { pattern: /^Terrain tile contains no elevation samples\.$/, key: "domain.terrainTileNoData" },
   { pattern: /^Terrain tiles came from inconsistent dataset versions\. Try again shortly\.$/, key: "domain.terrainTileVersionsMixed" },
   { pattern: /^The terrain service could not be reached\.$/, key: "domain.terrainUnreachable" },
   { pattern: /^Water outlines could not be assembled\.$/, key: "domain.waterOutlinesUnassembled" },

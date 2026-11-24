@@ -1,6 +1,6 @@
 import { flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, generateGeometry, type GeometryIRV1 } from "@topostack/core";
+import { DEFAULT_AIRSPACE_STACK, DEFAULT_PROJECT, acrylicGeometry, buildProjectPackage, createSyntheticSource, generateGeometry, layerToSvg, type GeometryIRV1 } from "@topostack/core";
 import { createSamplePreviewSource } from "$lib/domain/sample-preview";
 
 const three = vi.hoisted(() => ({ renderers: [] as Array<{ dispose: ReturnType<typeof vi.fn>; forceContextLoss: ReturnType<typeof vi.fn>; render: ReturnType<typeof vi.fn>; setSize: ReturnType<typeof vi.fn> }> }));
@@ -54,6 +54,7 @@ import EngravingPreview from "$lib/studio/EngravingPreview.svelte";
 import ThreePreview from "$lib/studio/ThreePreview.svelte";
 import ThreePreviewHost from "$lib/studio/testing/ThreePreviewHost.svelte";
 import * as THREE from "three";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const resizeCallbacks: ResizeObserverCallback[] = [];
@@ -80,16 +81,18 @@ describe("preview resource cleanup", () => {
     // The scene rebuild is deferred briefly so rapid edits do not re-extrude.
     await vi.waitFor(() => expect(renderer.render.mock.calls.some(([scene]) => {
       let lines = 0;
-      (scene as THREE.Scene).traverse((object) => { if (object instanceof THREE.Line) lines += 1; });
+      (scene as THREE.Scene).traverse((object) => { if (object instanceof LineSegments2) lines += 1; });
       return lines > 0;
     })).toBe(true));
     const scene = renderer.render.mock.lastCall![0] as THREE.Scene;
     let lineObjects = 0;
     let segments = 0;
     scene.traverse((object) => {
-      if (!(object instanceof THREE.Line)) return;
+      if (!(object instanceof LineSegments2)) return;
       lineObjects += 1;
-      if ((object.material as THREE.LineBasicMaterial).color.getHex() !== 0x21170f) segments += object.geometry.getAttribute("position").count / 2;
+      expect(object.material.side).toBe(THREE.DoubleSide);
+      expect(object.material.linewidth).toBe(0.2);
+      if (object.material.color.getHex() !== 0x21170f) segments += object.geometry.getAttribute("instanceStart").count;
     });
     const polylines = geometry.layers.flatMap((layer) => layer.markings.filter((marking) => !marking.filled && marking.points.length > 1));
     // Every segment survives batching, in far fewer objects than one per marking.
@@ -118,6 +121,93 @@ describe("preview resource cleanup", () => {
     expect(path.getAttribute("d")?.match(/M/g)).toHaveLength(2);
     expect(path.getAttribute("fill-rule")).toBe("evenodd");
     expect(path.getAttribute("stroke")).toBe("none");
+  });
+
+  it.each(["cut", "flat"])("uses one burn width for every transport class in the %s preview", mode => {
+    const project = { ...DEFAULT_PROJECT, lineStyle: { ...DEFAULT_PROJECT.lineStyle, majorRoadMm: 1, localRoadMm: 0.5 } };
+    const geometry = generateGeometry(project, createSamplePreviewSource());
+    const classes = ["major-road", "local-road", "rail", "covered-rail"] as const;
+    geometry.layers = [{ ...geometry.layers[0]!, markings: classes.map((transportationClass, y) => ({
+      id: transportationClass, kind: "road", operation: "engrave", transportationClass, points: [{ x: 0, y }, { x: 10, y }],
+    })) }];
+    const target = document.createElement("div");
+    component = mode === "cut" ? mount(TwoDPreview, { target, props: { geometry, selectedLayer: 0 } })
+      : mount(EngravingPreview, { target, props: { geometry, project, cropShape: "rectangle" } });
+    flushSync();
+    const paths = [...target.querySelectorAll("[data-transportation-class] path")];
+    expect(paths.map(path => path.getAttribute("stroke-width"))).toEqual(classes.map(() => "0.2"));
+  });
+
+  it("draws the same circular contour paths as the engraving SVG", async () => {
+    const project = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, cropShape: "circle" as const, widthMm: 200, heightMm: 200, engravingContourCount: 12, showEngravingContours: true, showElevationLabels: false };
+    const elevation = { width: 11, height: 11, min: 0, max: 100, values: Float32Array.from({ length: 121 }, (_, index) => (index % 11) * 10) };
+    const geometry = generateGeometry(project, { ...createSyntheticSource(project, 11), sourceKind: "real", elevation });
+    const master = buildProjectPackage(geometry, project).master.blob;
+    const svg = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(master);
+    });
+    const output = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const target = document.createElement("div");
+    component = mount(EngravingPreview, { target, props: { geometry, project, cropShape: "circle" } });
+    flushSync();
+    const drawn = [...target.querySelectorAll(".engraving-contours path")].map((path) => path.getAttribute("d")).filter(Boolean);
+    const engraved = [...output.querySelectorAll('[id^="contour-"]')].map((path) => path.getAttribute("d"));
+    expect(drawn.join("").match(/L/g)).toHaveLength(22);
+    expect(drawn).toContain(output.getElementById("contour-9-0-0")!.getAttribute("d"));
+    expect(drawn.sort()).toEqual(engraved.sort());
+  });
+
+  it("renders the acrylic's fitted causeway, marker and clearance in both cut and 3D views", async () => {
+    const geometry = generateGeometry(DEFAULT_PROJECT, createSamplePreviewSource());
+    const square = (r: number) => [{ x: -r, y: -r }, { x: r, y: -r }, { x: r, y: r }, { x: -r, y: r }, { x: -r, y: -r }];
+    geometry.layers = [{ ...geometry.layers[0]!, polygons: [{ outer: square(20), holes: [square(10)] }], pieces: [], markings: [] }];
+    geometry.waterSurfaces = [];
+    geometry.paintRegions = [];
+    geometry.waterInsertMaterial = { thicknessMm: 3, kerfMm: 0.15, fitClearanceMm: 0.1, ledgeMm: 2 };
+    geometry.waterInserts = [{ id: "W1", lakeKey: "lake", surfaceId: "surface", layerIndex: 0, polygons: [{ outer: square(10), holes: [] }], markings: [
+      { id: "causeway", kind: "road", operation: "engrave", points: [{ x: -10, y: 0 }, { x: 10, y: 0 }], transportationClass: "local-road" },
+      { id: "halo", kind: "marker", operation: "engrave", filled: true, knockout: true, points: square(4) },
+      { id: "marker", kind: "marker", operation: "engrave", filled: true, points: square(2) },
+    ] }];
+    const acrylic = acrylicGeometry(geometry)!;
+    const output = new DOMParser().parseFromString(layerToSvg(acrylic, acrylic.layers[0]!), "image/svg+xml");
+    const coordinates = (data: string) => [...data.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [Number(Number(x).toFixed(3)), Number(Number(y).toFixed(3))]);
+    const causeway = coordinates(output.getElementById("causeway")!.getAttribute("d")!);
+    expect(causeway).toEqual([[-9.9, 0], [-4, 0], [4, 0], [9.9, 0]]);
+    const target = document.createElement("div");
+    component = mount(TwoDPreview, { target, props: { geometry, selectedLayer: 0 } });
+    flushSync();
+    const insert = target.querySelector('[data-water-insert="W1"]')!;
+    const segments = [...insert.querySelectorAll('[data-marking-id^="causeway"]')].flatMap((path) => coordinates(path.getAttribute("d")!));
+    expect(segments).toEqual(causeway);
+    const symbol = insert.querySelector('[data-marking-id="marker"]')!;
+    expect(symbol.getAttribute("fill")).not.toBe("none");
+    expect(coordinates(symbol.getAttribute("d")!)).toEqual(coordinates(output.getElementById("marker")!.getAttribute("d")!));
+    await unmount(component);
+    component = mount(ThreePreview, { target, props: { geometry, exploded: 0 } });
+    flushSync();
+    await vi.waitFor(() => {
+      const scene = three.renderers[0]?.render.mock.lastCall?.[0] as THREE.Scene | undefined;
+      const vertices: number[][] = [];
+      let symbolWidth = 0;
+      scene?.traverse((object) => {
+        if (object instanceof LineSegments2 && object.material.color.getHexString() === "39291d") {
+          const starts = object.geometry.getAttribute("instanceStart"), ends = object.geometry.getAttribute("instanceEnd");
+          for (let index = 0; index < starts.count; index++) {
+            for (const positions of [starts, ends]) vertices.push([Number(positions.getX(index).toFixed(3)), positions.getY(index)]);
+          }
+        }
+        if (object instanceof THREE.Mesh && object.geometry instanceof THREE.ShapeGeometry && object.material.color.getHexString() === "2b2119") {
+          object.geometry.computeBoundingBox();
+          symbolWidth = object.geometry.boundingBox!.getSize(new THREE.Vector3()).x;
+        }
+      });
+      expect(vertices).toEqual(causeway);
+      expect(symbolWidth).toBe(4);
+    });
   });
 
   it("shows acrylic cuts, through holes, rod locators and engraved chart labels", () => {
@@ -220,14 +310,14 @@ describe("preview resource cleanup", () => {
     component = mount(ThreePreview, { target, props: { geometry, exploded: 0 } });
     flushSync();
     const renderer = three.renderers[0]!;
-    const labelLines: THREE.Line[] = [];
-    const gridLines: THREE.Line[] = [];
+    const labelLines: LineSegments2[] = [];
+    const gridLines: LineSegments2[] = [];
     await vi.waitFor(() => {
       labelLines.length = 0; gridLines.length = 0;
       expect(renderer.render).toHaveBeenCalled();
       (renderer.render.mock.lastCall![0] as THREE.Scene).traverse(object => {
-        if (!(object instanceof THREE.Line)) return;
-        const material = object.material as THREE.LineBasicMaterial;
+        if (!(object instanceof LineSegments2)) return;
+        const material = object.material;
         if (material.color.getHex() === 0x21170f) labelLines.push(object);
         if (material.color.getHex() === 0x34404b) gridLines.push(object);
       });
@@ -236,7 +326,7 @@ describe("preview resource cleanup", () => {
     });
     expect(labelLines.every(line => line.geometry.getAttribute("position").count > 2)).toBe(true);
     for (const line of gridLines) {
-      const material = line.material as THREE.LineDashedMaterial;
+      const material = line.material;
       // At fitted zoom, marks need a useful duty cycle rather than tiny
       // capless segments that disappear between screen pixels.
       expect(material.dashSize / (material.dashSize + material.gapSize)).toBeGreaterThanOrEqual(0.4);

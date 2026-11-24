@@ -41,7 +41,7 @@ Crater Lake with USGS surveyed lake-floor data where available; existing terrain
 3. Set the physical dimensions and details, then **Generate terrain** and inspect the result.
 4. Open **Export** to download the complete project, individual artwork, or project settings.
 
-The initial preview uses a bundled snapshot of real terrain and map data. Generate fresh terrain before fabrication export. SVGs use physical millimeter coordinates; layered artwork separates red cuts (`#FE0002`) and blue score/engraving paths (`#2366FF`), and each cut piece is one group holding its own cuts and engraving. Exports include project metadata and source attribution. Review the artwork and machine settings in your laser software before making a piece.
+The initial preview uses a bundled snapshot of real terrain and map data. Generate fresh terrain before fabrication export. SVGs use physical millimeter coordinates; layered artwork separates red cuts (`#FE0002`) and blue score/engraving lines (`#2366FF`) and black artwork fills (`#000000` in desktop downloads), and each cut piece is one group holding its own cuts and engraving. Exports include project metadata and source attribution. Review the artwork and machine settings in your laser software before making a piece.
 
 Project settings are saved in your browser's IndexedDB. Export a project-settings JSON backup to keep a copy or move to another device; import it using the studio's import control. Restored or imported projects need fresh terrain generation before fabrication export. Settings backups are available even when fabrication export is blocked.
 
@@ -65,7 +65,7 @@ Explore the code, ask questions, suggest improvements, or contribute through [Gi
 
 ## Feedback
 
-Use **Feedback** in the studio or page footer to report bugs, request features, or flag low-quality terrain and lake data. Optionally include reviewable location and source diagnostics. Reports open as prefilled GitHub issues; a GitHub account and submission on GitHub are required. See the [feedback workflow and triage guide](docs/feedback.md).
+Use **Feedback** in the studio or page footer to report bugs, request features, or flag low-quality terrain and lake data. Optionally include reviewable location and source diagnostics. You can send feedback anonymously through the form or choose to open a public GitHub issue. See the [feedback workflow and triage guide](docs/feedback.md).
 
 ## Contributing
 

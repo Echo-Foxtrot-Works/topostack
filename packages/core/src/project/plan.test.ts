@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PROJECT } from "../types.js";
 import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
 import { planTerrainStack } from "../pipeline/stack-plan.js";
+import { generateGeometry } from "../pipeline/generate.js";
+import { createSyntheticSource } from "../pipeline/synthetic-source.js";
 import { boundsForProject } from "./bounds.js";
 import { planFromRelief } from "./plan.js";
 
@@ -37,7 +39,17 @@ describe("planning from a relief sample", () => {
   });
 
   it("plans flat output as one sheet with a contour interval", () => {
-    const plan = planFromRelief({ ...DEFAULT_PROJECT, outputMode: "engraving", engravingContourCount: 10 }, { minM: 100, maxM: 600 });
-    expect(plan).toMatchObject({ output: "flat", sheetCount: 1, metersPerStep: 50, heightOfModelMm: DEFAULT_PROJECT.materialThicknessMm });
+    const config = { ...DEFAULT_PROJECT, outputMode: "engraving" as const, engravingContourCount: 4, showWater: false, showWaterDepth: false };
+    const width = 16;
+    const values = Float32Array.from({ length: width * width }, (_, index) => 100 + index % width * (100 / (width - 1)));
+    const relief = { minM: 100, maxM: 200 };
+    const source = { ...createSyntheticSource(config, width), elevation: { width, height: width, values, min: relief.minM, max: relief.maxM } };
+    const plan = planFromRelief(config, relief);
+    expect(plan).toMatchObject({ output: "flat", sheetCount: 1, metersPerStep: 20, heightOfModelMm: DEFAULT_PROJECT.materialThicknessMm });
+    const geometry = generateGeometry(config, source);
+    expect(geometry.layers.map((layer) => layer.elevationM)).toEqual([100, 120, 140, 160, 180]);
+    const noContours = { ...config, showEngravingContours: false };
+    expect(planFromRelief(noContours, relief).metersPerStep).toBe(0);
+    expect(generateGeometry(noContours, source).layers).toHaveLength(1);
   });
 });

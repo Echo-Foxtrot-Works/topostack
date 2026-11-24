@@ -157,6 +157,9 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
   const viewBox = `${format(-ir.widthMm / 2 - pad)} ${format(-ir.heightMm / 2 - pad)} ${format(ir.widthMm + pad * 2)} ${format(ir.heightMm + pad * 2)}`;
   const pieceTotal = layers.reduce((total, layer) => total + (layer.pieces.length || layer.polygons.length), 0);
   const split = ir.splitPlan;
+  const workArea = config.workAreaWidthMm > 0 && config.workAreaHeightMm > 0
+    ? `${length(config.workAreaWidthMm)} × ${length(config.workAreaHeightMm)} work area`
+    : config.workAreaWidthMm > 0 ? `${length(config.workAreaWidthMm)} work area width` : `${length(config.workAreaHeightMm)} work area height`;
   const nests = ir.fabricationNests;
   const labelsOn = Boolean(split) && config.showAssemblyLabels;
   // Painting is driven by the templates actually written, not the setting:
@@ -342,7 +345,7 @@ ${assemblyGuideStyles({ fonts, sheetMaps: Boolean(sheetMaps), acrylic: inserts.l
 <div>
 <p class="label">You will need</p>
 <ul>
-<li>${plural(sheets.length, "sheet")} of ${length(thickness)} material${nestedSheet ? `, each ${length(nestedSheet.widthMm)} × ${length(nestedSheet.heightMm)}` : split ? ` that fit your ${length(config.workAreaWidthMm)} × ${length(config.workAreaHeightMm)} work area` : `, each at least ${width} × ${height}`}</li>
+<li>${plural(sheets.length, "sheet")} of ${length(thickness)} material${nestedSheet ? `, each ${length(nestedSheet.widthMm)} × ${length(nestedSheet.heightMm)}` : split ? ` that fit your ${workArea}` : `, each at least ${width} × ${height}`}</li>
 <li>Glue suited to the material (wood glue for plywood or MDF)</li>
 <li>A flat board to build on and some weights or clamps</li>
 <li>A small bag or tray per layer, and a pencil</li>

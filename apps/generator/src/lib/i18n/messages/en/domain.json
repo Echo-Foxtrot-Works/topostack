@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "SVG graphics must be {sizeMb} MB or smaller.",
   "terrainServiceStatus": "Terrain service returned {status}.",
   "terrainTileVersionMissing": "Terrain tile is missing its dataset version.",
+  "terrainTileNoData": "Terrain tile contains no elevation samples.",
   "terrainTileVersionsMixed": "Terrain tiles came from inconsistent dataset versions. Try again shortly.",
   "terrainUnreachable": "The terrain service could not be reached.",
   "waterOutlinesUnassembled": "Water outlines could not be assembled.",

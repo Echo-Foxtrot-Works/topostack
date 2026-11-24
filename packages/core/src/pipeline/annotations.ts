@@ -1,3 +1,4 @@
+import { graphicOperationFor } from "../types.js";
 import { removeTinyRing } from "./contours.js";
 import { groundWidthMFor } from "./stack-plan.js";
 import polygonClipping, { type MultiPolygon } from "polygon-clipping";
@@ -227,14 +228,14 @@ function graphicFits({ config, clip, warnings }: GenerationContext, polygons: Po
  */
 export function cutPlacedGraphics(context: GenerationContext, layers: LayerIR[]): void {
   const { config, flatEngraving, warnings } = context;
-  const cutLayers = flatEngraving ? layers.slice(0, 1) : layers;
+  if (flatEngraving) return;
   let loosePieces = false;
   (config.placedGraphics ?? []).forEach((placed, placedIndex) => {
     if (placed.operation !== "cut") return;
     const polygons = placedGraphicPolygons(config, placed);
     if (!graphicFits(context, polygons, placedIndex)) return;
     // Recomputed per graphic: an earlier cut may already have opened this area.
-    const materials = cutLayers.map((layer) => preparePolygons(layer.polygons));
+    const materials = layers.map((layer) => preparePolygons(layer.polygons));
     const cutsByLayer = new Map<number, Polygon2D[]>();
     for (const { outer, holes } of polygons) {
       for (const { layerIndex, polygon } of markerLayerPolygons(outer, materials, holes)) {
@@ -246,7 +247,7 @@ export function cutPlacedGraphics(context: GenerationContext, layers: LayerIR[])
       }
     }
     for (const [layerIndex, cuts] of cutsByLayer) {
-      const layer = cutLayers[layerIndex]!;
+      const layer = layers[layerIndex]!;
       layer.polygons = normalizeMultiPolygon(
         polygonClipping.difference(toMultiPolygon(layer.polygons), toMultiPolygon(cuts)) as MultiPolygon,
         (ring) => (removeTinyRing(ring, config.minimumFeatureMm) ? undefined : ring),
@@ -270,11 +271,12 @@ export function placeGraphics(context: GenerationContext, clips: LayerClip[]): v
   const surface = flatEngraving ? clips.slice(0, 1) : clips;
   const materials = surface.map((clip) => clip.material);
   (config.placedGraphics ?? []).forEach((placed, placedIndex) => {
-    if (placed.operation === "cut") return;
+    const operation = graphicOperationFor(config.outputMode, placed.operation);
+    if (operation === "cut") return;
     const polygons = placedGraphicPolygons(config, placed);
     if (!graphicFits(context, polygons, placedIndex)) return;
     const prefix = placedGraphicMarkingPrefix(placed.id);
-    if (placed.operation === "score") {
+    if (operation === "score") {
       polygons.forEach(({ outer, holes }, index) => [outer, ...holes].forEach((ring, ringIndex) => {
         for (const { layer, material, covering } of surface) {
           clipPolyline(ring, material, flatEngraving ? undefined : covering).forEach((points, clipIndex) => layer.markings.push({

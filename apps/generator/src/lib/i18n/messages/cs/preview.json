@@ -21,8 +21,6 @@
   "flatEngravingPreview": "Náhled plochého rytí",
   "engravingZoomControls": "Ovládání přiblížení rytí",
   "resetEngravingView": "Obnovit pohled na rytí",
-  "legendMinorContour": "Základní vrstevnice",
-  "legendIndexEvery": "Zdůrazněná každá {interval}.",
   "legendContourCount": "{count, plural, one {# vrstevnice} few {# vrstevnice} many {# vrstevnice} other {# vrstevnic}}",
   "legendNoContours": "Žádné vrstevnice",
   "legendWaterPattern": "{pattern, select, lines {voda s čarami} ripples {voda s vlnkami} dots {voda s tečkami} other {voda: {pattern}}}",

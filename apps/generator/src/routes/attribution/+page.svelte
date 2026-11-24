@@ -5,6 +5,8 @@
   import { REPOSITORY_URL } from "$lib/site/seo";
   import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
   import { sources as terrainCatalogSources } from "../../../../../scripts/data/terrain-sources.json";
+  import { validateTerrainCatalog } from "@topostack/data-contracts/source-catalog";
+  import { servedSources } from "$lib/domain/data-environment";
   import aviationSources from "../../../../../scripts/data/faa-aviation-sources.json";
   import landsSources from "../../../../../scripts/data/public-lands-sources.json";
   import type { PageData } from "./$types";
@@ -21,7 +23,7 @@
   };
   const terrainContributors = MAP_DATA_ATTRIBUTION.filter((source) => !uses[source.name]);
   // Several catalog entries can come from one published dataset; credit each once.
-  const terrainSources = terrainCatalogSources.filter((source, index, all) => all.findIndex((other) => other.name === source.name && other.license === source.license) === index);
+  const terrainSources = servedSources(validateTerrainCatalog({ sources: terrainCatalogSources }).sources).filter((source, index, all) => all.findIndex((other) => other.name === source.name && other.license === source.license) === index);
   const sections = [
     { id: "terrain", title: "Terrain and elevation" },
     { id: "features", title: "Roads, trails, water, and boundaries" },
@@ -125,7 +127,7 @@
     <div class="source">
       <h3><a href={landsSources.canada.url}>Canadian Protected and Conserved Areas Database (CPCAD)</a></h3>
       <p>In Canada, the outlines of national parks, provincial and territorial parks, wilderness areas, national wildlife areas and migratory bird sanctuaries, and ecological, private and Indigenous conservation areas come from Environment and Climate Change Canada's CPCAD ({landsSources.canada.date}).</p>
-      <p>Elsewhere, national parks, nature reserves and military land come from OpenStreetMap where they are mapped, credited with the rest of the map data.</p>
+      <p>Where the official archives supply no matching units, OpenStreetMap can supply national parks, nature reserves and military land. These features carry the same OpenStreetMap credit as the rest of the map data.</p>
       <p class="credit"><strong>Credit / license:</strong> {landsSources.canada.license}</p>
     </div>
   </section>
@@ -152,7 +154,7 @@
     <h2 id="services-title">Location map and place search</h2>
     <div class="source">
       <h3><a href="https://openfreemap.org/">OpenFreeMap</a> and <a href="https://openmaptiles.org/">OpenMapTiles</a></h3>
-      <p>The studio’s location map uses OpenFreeMap’s Liberty style and hosted tiles to help you frame an area. Generated artwork uses the terrain and feature datasets described above.</p>
+      <p>The studio’s location map uses OpenFreeMap’s Liberty style and hosted tiles to help you frame an area. For neighborhood projects with Building outlines enabled, TopoStack also reads footprint polygons from OpenFreeMap’s neighborhood tiles and includes the tile release and OpenMapTiles credits in the export.</p>
       <p class="credit">OpenFreeMap · © OpenMapTiles · Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>. <a href="https://openfreemap.org/quick_start/">Provider credits</a> remain available on the interactive map.</p>
     </div>
     <div class="source">

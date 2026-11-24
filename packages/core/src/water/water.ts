@@ -421,7 +421,7 @@ interface LakeLevels {
  * false when no survey cell lands inside the lake, so the lake falls through
  * to the other carves.
  */
-function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM, interiorSpreadM }: LakeLevels): boolean {
+function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Array, { surfaceLevelM: surfaceElevationM, interiorSpreadM }: LakeLevels): boolean {
   const { grid, values, cells, warnings, normalized } = run;
   const survey = area.bathymetry!;
   const chart = area.bathymetryOrigin === "chart";
@@ -444,12 +444,6 @@ function carveSurveyedLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32A
     surveyedCount += 1;
   }
   if (surveyedCount === 0) return false;
-  // Depths are relative to their dataset waterline, not absolute elevations. Anchor
-  // them to the flat terrain waterline. If the DEM already has a basin,
-  // use the lake's published surface elevation instead of its bed median.
-  const surfaceElevationM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
-    ? area.surfaceElevationM!
-    : surfaceLevelM;
   const missing = surveyedCount < cells.length;
   const shore = missing ? measureShore(run, area) : undefined;
   const radiusM = shore && interiorSpreadM <= BATHYMETRIC_RELIEF_M ? normalizeBasin(run, area, shore, surfaceElevationM) : 0;
@@ -596,6 +590,77 @@ function carveModeledLake(run: CarveRun, area: WaterAreaV1, areaIndexes: Int32Ar
   }, areaIndexes);
 }
 
+/** How far either side of sea level a coastline fit moves disagreeing cells, in metres. */
+export const COASTLINE_MARGIN_M = 0.5;
+
+export interface CoastlineFit {
+  grid: ElevationGrid;
+  /** Cells inside the vector sea that the DEM had above sea level. */
+  loweredCells: number;
+  /** Low land cells, connected to the sea, that the DEM had at or below sea level. */
+  raisedCells: number;
+}
+
+/**
+ * Make the DEM agree with the vector coastline before layers are sliced.
+ *
+ * A layered model cuts its coast at the DEM's sea-level contour, but a coarse or
+ * dated DEM puts that contour somewhere else: Mapzen's coast at Hiroshima Bay
+ * marks a fifth of the mapped sea as land and leaves reclaimed port land as
+ * sea. Lakes never had this problem because their shores come from their
+ * outlines; this gives the ocean the same treatment.
+ *
+ * Sea cells above `-margin` drop to `-margin`. Land cells at or below
+ * `+margin` rise to `+margin`, but only where they reach the sea through other
+ * such cells: a polder behind a dike the DEM resolves keeps its depth. The
+ * contour at sea level then falls between the two margins, on the vector shore.
+ */
+export function fitTerrainToCoastline(grid: ElevationGrid, config: ProjectConfigV1, areas: readonly WaterAreaV1[], margin = COASTLINE_MARGIN_M): CoastlineFit {
+  const oceans = areas.filter((area) => area.kind === "ocean");
+  if (!oceans.length) return { grid, loweredCells: 0, raisedCells: 0 };
+  const cellCount = grid.width * grid.height;
+  const sea = new Uint8Array(cellCount);
+  const water = new Uint8Array(cellCount);
+  for (const area of areas) {
+    const cells = polygonCells(area.polygon, grid, config);
+    for (const index of cells) {
+      water[index] = 1;
+      if (area.kind === "ocean") sea[index] = 1;
+    }
+  }
+  const values = Float32Array.from(grid.values);
+  let loweredCells = 0;
+  for (let index = 0; index < cellCount; index += 1) {
+    if (sea[index] && values[index]! > -margin) { values[index] = -margin; loweredCells += 1; }
+  }
+  // Breadth-first from the shore through low land only.
+  const queued = new Uint8Array(cellCount);
+  const queue = new Int32Array(cellCount);
+  let head = 0, tail = 0;
+  const lowLand = (index: number) => !water[index] && values[index]! <= margin;
+  for (let index = 0; index < cellCount; index += 1) {
+    if (!sea[index]) continue;
+    const column = index % grid.width;
+    for (const neighbor of [column > 0 ? index - 1 : -1, column < grid.width - 1 ? index + 1 : -1, index - grid.width, index + grid.width]) {
+      if (neighbor >= 0 && neighbor < cellCount && !queued[neighbor] && lowLand(neighbor)) { queued[neighbor] = 1; queue[tail++] = neighbor; }
+    }
+  }
+  let raisedCells = 0;
+  while (head < tail) {
+    const index = queue[head++]!;
+    values[index] = margin;
+    raisedCells += 1;
+    const column = index % grid.width;
+    for (const neighbor of [column > 0 ? index - 1 : -1, column < grid.width - 1 ? index + 1 : -1, index - grid.width, index + grid.width]) {
+      if (neighbor >= 0 && neighbor < cellCount && !queued[neighbor] && lowLand(neighbor)) { queued[neighbor] = 1; queue[tail++] = neighbor; }
+    }
+  }
+  if (!loweredCells && !raisedCells) return { grid, loweredCells, raisedCells };
+  let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
+  for (const value of values) { if (value < min) min = value; if (value > max) max = value; }
+  return { grid: { ...grid, values, min, max }, loweredCells, raisedCells };
+}
+
 /**
  * Write surveyed or modeled lake beds into a copy of the elevation grid.
  *
@@ -664,16 +729,14 @@ export function carveWaterDepth(
     if (count === 0) continue;
 
     const sorted = interior.slice(0, count).sort();
-    const levels: LakeLevels = {
-      sorted,
-      surfaceLevelM: quantile(sorted, count, 0.5),
-      // Judge "does the DEM already know this basin?" on the middle of the
-      // distribution, not its extremes. A lake outline traced by HydroLAKES never
-      // lands exactly on Terrarium's rendering of the same shoreline, and a
-      // handful of steep rim cells caught inside the polygon would otherwise
-      // condemn the whole lake to being read as surveyed and left flat.
-      interiorSpreadM: quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1),
-    };
+    // Ignore stray rim cells when deciding whether the DEM already contains a basin.
+    const interiorSpreadM = quantile(sorted, count, 0.9) - quantile(sorted, count, 0.1);
+    // A flat lake's median is its local waterline. A varying bed needs the
+    // published waterline, whether its depths come from the DEM or a survey.
+    const surfaceLevelM = interiorSpreadM > BATHYMETRIC_RELIEF_M && Number.isFinite(area.surfaceElevationM)
+      ? area.surfaceElevationM!
+      : quantile(sorted, count, 0.5);
+    const levels = { sorted, surfaceLevelM, interiorSpreadM };
 
     if (area.bathymetry && area.kind === "lake" && carveSurveyedLake(run, area, areaIndexes, levels)) continue;
     // A fallback shoreline is not evidence that DEM relief is a surveyed bed.

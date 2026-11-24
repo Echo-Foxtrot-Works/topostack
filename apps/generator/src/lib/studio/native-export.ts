@@ -1,8 +1,9 @@
-import { zip, type AsyncZippable } from "fflate";
-import type { FabricationPackageV1, ProjectConfigV1 } from "@topostack/core";
+import type { AsyncZippable } from "fflate";
+import { zipBlob } from "./zip-blob";
+import { projectSettingsBlob, type FabricationPackageV1, type ProjectConfigV1 } from "@topostack/core";
 import type { UserChartBathymetryV1 } from "@topostack/data-contracts/chart-bathymetry";
 
-export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "lightburn" | "project";
+export type DownloadOption = "all" | "master" | "panels" | "engravings" | "paint" | "acrylic" | "airspace" | "assembly" | "lightburn" | "lightburn-pages" | "xtool" | "project";
 
 export interface PreparedDownload {
   blob: Blob;
@@ -29,14 +30,9 @@ export async function prepareProjectDownload(output: FabricationPackageV1): Prom
     entries[file.filename] = new Uint8Array(await file.blob.arrayBuffer());
   }));
 
-  const bytes = await new Promise<Uint8Array>((resolve, reject) => {
-    zip(entries, { level: 6 }, (error, data) => error ? reject(error) : resolve(data));
-  });
-  const archive = new Uint8Array(bytes.byteLength);
-  archive.set(bytes);
   return {
     filename: archiveFilename(output.master.filename),
-    blob: new Blob([archive.buffer], { type: "application/zip" }),
+    blob: await zipBlob(entries),
     fileCount: output.files.length,
   };
 }
@@ -58,53 +54,48 @@ export function startBrowserDownload(download: PreparedDownload): void {
  * Traced depth charts travel with the file: they live only in the browser that
  * made them, so a project without them would open with plain survey depths.
  */
-/**
- * The project stays indented for anyone reading the file. Charts are written
- * one per line: indented, a large chart's coordinates run to millions of lines
- * and several times the size, enough to fail the import limit.
- */
-function projectFileText(project: ProjectConfigV1, charts: readonly UserChartBathymetryV1[]): string {
-  if (!charts.length) return JSON.stringify({ schemaVersion: 1, project }, null, 2);
-  const indentedProject = JSON.stringify(project, null, 2).replace(/\n/g, "\n  ");
-  return `{\n  "schemaVersion": 1,\n  "project": ${indentedProject},\n  "charts": [\n${charts.map((chart) => `    ${JSON.stringify(chart)}`).join(",\n")}\n  ]\n}`;
-}
-
 export function prepareProjectSettings(project: ProjectConfigV1, charts: readonly UserChartBathymetryV1[] = []): PreparedDownload {
   const base = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "topostack";
   return {
     filename: `${base}-project.json`,
-    blob: new Blob([projectFileText(project, charts)], { type: "application/json" }),
+    blob: projectSettingsBlob(project, charts),
     fileCount: 1,
   };
 }
 
-// The generated part of a wood panel filename. Match only this suffix so
+// The generated part of a wood panel filename, after removing the project prefix so
 // project names cannot affect selection. Panels are one layer, several layers,
 // or a nested stock sheet; a work-area split appends the seam cell ("-a1", or
 // "-a1-2" for a piece shipped on its own sheet). Clear acrylic pieces are cut
 // from different stock and never belong in a wood bundle.
-const PANEL_NAME = String.raw`(?<!-acrylic)-(?:layer-\d+|panel-\d+-layers-[\d-]+|sheet-\d+)(?:-[a-z]\d+(?:-\d+)?)?`;
+const PANEL_NAME = String.raw`^-(?:layer-\d+|panel-\d+-layers-[\d-]+|sheet-\d+)(?:-[a-z]\d+(?:-\d+)?)?`;
 const PANEL_FILE = new RegExp(`${PANEL_NAME}\\.svg$`);
 const ENGRAVING_FILE = new RegExp(`${PANEL_NAME}-engrave\\.svg$`);
 // A paint stencil is the panel filename plus its region kind.
 const PAINT_FILE = new RegExp(`${PANEL_NAME}-paint-[a-z-]+\\.svg$`);
 
 export async function prepareSelectedDownload(output: FabricationPackageV1, option: Exclude<DownloadOption, "project">): Promise<PreparedDownload> {
+  if (option === "lightburn-pages" || option === "xtool") {
+    const { preparePanelProject } = await import("./panel-project");
+    return preparePanelProject(output, option);
+  }
   if (option === "all") return prepareProjectDownload(output);
   if (option === "master") return { ...output.master, fileCount: 1 };
+  const base = output.master.filename.replace(/-(?:master|engraving)\.svg$/i, "");
   const files = output.files.filter((file) => {
+    const suffix = file.filename.startsWith(base) ? file.filename.slice(base.length) : "";
     // LightBurn projects are added to the package by `withLightBurnProjects` before selection.
     if (option === "lightburn") return file.filename.endsWith(".lbrn2");
     if (option === "assembly") return file.filename.endsWith("-assembly-guide.html");
-    if (option === "engravings") return ENGRAVING_FILE.test(file.filename);
-    if (option === "paint") return PAINT_FILE.test(file.filename);
+    if (option === "engravings") return ENGRAVING_FILE.test(suffix);
+    if (option === "paint") return PAINT_FILE.test(suffix);
     // Acrylic panels are named after the wood layer they fill ("-acrylic-03",
     // "-acrylic-03-w1" for an insert on its own panel) or numbered as stock sheets.
-    if (option === "acrylic") return /-acrylic-(?:\d+(?:-w\d+(?:-\d+)?)?|sheet-\d+|master)(?:-engrave)?\.svg$/.test(file.filename);
+    if (option === "acrylic") return /^-acrylic-(?:\d+(?:-w\d+(?:-\d+)?)?|sheet-\d+|master)(?:-engrave)?\.svg$/.test(suffix);
     // Airspace panels are named by tint and level ("-airspace-blue-02", "-airspace-blue-02-a3-1" for a
     // piece on its own panel), with a master per tint and the backing sheet the rods stand on.
-    if (option === "airspace") return /-airspace-(?:(?:clear|blue|magenta)-(?:\d+(?:-a\d+-\d+)?|master)(?:-engrave)?|backing(?:-[a-z]?\d+(?:-\d+)?)?)\.svg$/.test(file.filename);
-    return PANEL_FILE.test(file.filename);
+    if (option === "airspace") return /^-airspace-(?:(?:clear|blue|magenta)-(?:\d+(?:-a\d+-\d+)?|master)(?:-engrave)?|backing(?:-[a-z]?\d+(?:-\d+)?)?)\.svg$/.test(suffix);
+    return PANEL_FILE.test(suffix);
   });
   const [first] = files;
   if (!first) throw new Error(option === "paint" ? "No panel has visible water to paint, so there are no paint templates."

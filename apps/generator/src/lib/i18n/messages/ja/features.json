@@ -32,6 +32,11 @@
   "trailPatternOption.solid": "実線",
   "trailPatternOption.dashed": "破線",
   "trailPatternOption.dotted": "点線",
+  "buildings": "建物の輪郭",
+  "buildingWidth": "建物の輪郭線の幅",
+  "buildingsHint": "地図のズームレベルが {zoom} 以上のとき、建物の輪郭を彫刻します。",
+  "rail": "鉄道",
+  "railHint": "屋外の線路には、間隔に余裕がある場所に枕木を描きます。覆われた区間は破線で表示します。",
   "transportationLabels": "交通ラベル",
   "stateProvinceBoundariesName": "州・省の境界",
   "stateProvinceBoundaries": "州・省の境界",
@@ -78,8 +83,8 @@
   "names": "名称",
   "hatchInsideName": "公有地の境界の内側にハッチング",
   "hatchInsideEdge": "内側の縁にハッチング",
-  "landNotCovered": "ここにはこれらの種類の公有地がありません。米国とカナダ以外では、OpenStreetMap に登録されている公有地（国立公園、自然保護区（保護区として）、軍用地）を名称なしで使用します。",
-  "landFromOpenStreetMap": "米国とカナダ以外では、OpenStreetMap に登録されている公有地（国立公園、自然保護区（保護区として）、軍用地）を名称なしで使用します。",
+  "landNotCovered": "ここにはこれらの種類の公有地がありません。",
+  "landFromOpenStreetMap": "この地域では、OpenStreetMap に登録されている公有地（国立公園、自然保護区（保護区として）、軍用地）を名称なしで使用します。",
   "landBoundariesNote": "種類ごとに破線が異なります。線幅は州・省の境界と共通です。名称は、余裕のある最大の区域の内側に配置されます。",
   "publicLandInArea": "このエリアの公有地",
   "includeUnit": "{name} を含める",
@@ -87,5 +92,5 @@
   "landUnitsNoteListed": "区域をオフにすると、ステンシルと境界から除外されます（公園を囲む森林など）。大きい順に {count} 件を表示しています。",
   "publicLandPaint": "公有地の塗装",
   "landPaintNote": "オンにした種類ごとに、パネルごとの紙のステンシルを作成し、組立後に見える部分の形にカットします。種類が重なる場所では、より限定的な種類が塗られます（周囲の原生地域や森林より公園を優先）。米国の公有地は USGS PAD-US データベースによります。",
-  "strokeWidthNote": "線幅は SVG 上の実寸値です。実際の彫刻幅は、焦点、出力、速度、素材、およびレーザーソフトウェアが線を中心線と塗りつぶし形状のどちらとして扱うかによっても変わります。"
+  "strokeWidthNote": "プレビューではレーザーの刻線幅を 0.20 mm として表示します。線幅の設定は SVG の見た目に適用されます。実際の刻線幅は焦点、出力、速度、素材によって変わります。"
 }

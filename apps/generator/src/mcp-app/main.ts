@@ -73,7 +73,7 @@ async function generate(input: PreviewInput, signal: AbortSignal): Promise<void>
   const ir = generateGeometry(config, terrain.source);
   if (signal.aborted) return;
   // The markup holds numbers and fixed colors only.
-  figure.innerHTML = config.outputMode === "engraving" ? renderContours(ir, { indexInterval: config.engravingIndexInterval }) : renderStack(ir);
+  figure.innerHTML = config.outputMode === "engraving" ? renderContours(ir, config) : renderStack(ir);
   if (config.outputMode !== "engraving") stat("Generated", `${ir.layers.length} sheets, ${Math.round(ir.layers.length * config.materialThicknessMm)} mm tall`);
   setStatus("Roads, labels and other details are added in TopoStack, where the files are exported.");
   reportSize();

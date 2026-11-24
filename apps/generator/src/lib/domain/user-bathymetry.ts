@@ -22,6 +22,30 @@ export interface LoadedUserChart {
   contentHash: string;
 }
 
+/** Older reviewed records could average an entire depth line away. Check for
+ * its stored decimetre value on the line, allowing one cell for rasterization.
+ * Other producers need not use the Studio's contour-burning method.
+ */
+function verifyReviewedDepths(chart: UserChartBathymetryV1, depths: Float32Array): void {
+  if (!chart.review || chart.provenance.tool !== "chart-reviewed-v1" || chart.grid.method !== "harmonic") return;
+  const { bounds, width, height } = chart.grid;
+  for (const contour of chart.contours) {
+    // The producer quantizes its Float32 solution, including half-decimetre ties.
+    const depthDm = Math.round(Math.fround(contour.depthM) * 10);
+    const represented = contour.line.some(([lon, lat]) => {
+      const column = Math.floor((lon - bounds.west) / (bounds.east - bounds.west) * width);
+      const row = Math.floor((bounds.north - lat) / (bounds.north - bounds.south) * height);
+      for (let y = Math.max(0, row - 1); y <= Math.min(height - 1, row + 1); y++) {
+        for (let x = Math.max(0, column - 1); x <= Math.min(width - 1, column + 1); x++) {
+          if (Math.round(depths[y * width + x]! * 10) === depthDm) return true;
+        }
+      }
+      return false;
+    });
+    if (!represented) throw new Error(`The stored grid for “${chart.provenance.title}” no longer represents its reviewed ${contour.depthM} m contour. Regenerate the reviewed depths from the source chart before using it.`);
+  }
+}
+
 /**
  * Terrain grid columns are evenly spaced in longitude and rows evenly spaced in
  * Web Mercator, matching the survey raster sampler. A chart grid is even in
@@ -30,6 +54,7 @@ export interface LoadedUserChart {
 export function sampleChartDepths(chart: UserChartBathymetryV1, bounds: GeoBounds, grid: Pick<ElevationGrid, "width" | "height">): Float32Array {
   const { width, height } = grid;
   const depths = decodeChartDepths(chart.grid);
+  verifyReviewedDepths(chart, depths);
   const chartGrid = chart.grid;
   // The outer half-cell at each edge takes the edge cell's value: a chart's
   // first row covers the water up to its own boundary, not just its centre.
@@ -164,6 +189,7 @@ export async function applyUserCharts(
   const masks = new Map<string, PixelMask>();
   let areas = result.areas;
   let charted = false;
+  const fullyCharted = new Set<string>();
   const chosen = chartsForAreas(result.areas, charts, bounds, dimensions);
   for (const area of result.areas) {
     const loaded = chosen.get(area.id);
@@ -176,13 +202,15 @@ export async function applyUserCharts(
     const maskWidth = box.colEnd - box.colStart + 1;
     let samples: Float32Array | undefined;
     let count = 0;
+    let lakePixels = 0;
     for (let row = box.rowStart; row <= box.rowEnd; row += 1) {
       for (let column = box.colStart; column <= box.colEnd; column += 1) {
         const index = row * grid.width + column;
         const depth = values[index]!;
-        if (!Number.isFinite(depth) || depth < 0 || depth > 1500) continue;
         // Samples outside this lake, including islands and neighbouring lakes.
         if (mask && !mask.inside[(row - box.rowStart) * maskWidth + column - box.colStart]) continue;
+        lakePixels += 1;
+        if (!Number.isFinite(depth) || depth < 0 || depth > 1500) continue;
         // Start from the provider's grid so an uncharted arm keeps its survey.
         samples ??= area.bathymetry ? Float32Array.from(area.bathymetry.depthsM) : new Float32Array(grid.width * grid.height).fill(Number.NaN);
         samples[index] = depth;
@@ -191,6 +219,7 @@ export async function applyUserCharts(
     }
     if (!count || !samples) continue;
     charted = true;
+    if (count === lakePixels) fullyCharted.add(area.id);
     const spacingM = chartSpacingM(loaded.chart);
     const islands = loaded.chart.lake.islands ?? [];
     if (islands.length && !dimensions) throw new Error("Chart islands require artwork dimensions to preserve land boundaries.");
@@ -217,5 +246,17 @@ export async function applyUserCharts(
     }
   }
   if (!charted) return result;
-  return { areas, status: result.status === "not-covered" || result.status === "unavailable" ? "available" : result.status, datasetVersions, attribution };
+  // A chart can split a lake or cut an island. Keep the original polygons and
+  // identities together so changing charts never starts from an edited shape.
+  const preChartLakeAreas = result.areas.map((area) => {
+    const outline = { ...area };
+    delete outline.bathymetry;
+    return outline;
+  });
+  let status = result.status;
+  if (status === "not-covered") status = "available";
+  if (status === "unavailable" || status === "partial") {
+    status = result.areas.every(area => area.kind !== "lake" || fullyCharted.has(area.id)) ? "available" : "partial";
+  }
+  return { areas, preChartLakeAreas, status, datasetVersions, attribution };
 }

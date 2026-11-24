@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { unzipSync } from "fflate";
 
 test("keeps supported acrylic stock while changing thin and thick terrain material", async ({ page }) => {
@@ -73,8 +74,90 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   expect(guide).toContain("Build the airspace");
   const manifest = JSON.parse(Buffer.from(Object.entries(files).find(([name]) => name.endsWith("-project.json"))![1]).toString("utf8"));
   expect(manifest.project.airspaceStack).toMatchObject({ form: "tiers", tint: "chart" });
-  expect(manifest.result.fabrication.airspaceStack.sectors.length).toBeGreaterThan(0);
-  expect(manifest.result.fabrication.airspaceStack.levels.length).toBeGreaterThan(0);
+  const stack = manifest.result.fabrication.airspaceStack;
+  expect(stack.sectors.length).toBeGreaterThan(0);
+  expect(stack.levels.length).toBeGreaterThan(0);
+  // Match each rod seat to its physical kerf-compensated hole on the downloaded wood panel.
+  const holes = new Map<string, { x: number; y: number; width: number; height: number }[]>();
+  for (const { filename } of manifest.result.fabrication.panels) {
+    const svg = Buffer.from(files[filename]!).toString("utf8");
+    for (const path of svg.matchAll(/id="(layer-\d+)-cut-\d+-hole-\d+-offset-\d+" d="([^"]+)"/g)) {
+      const points = [...path[2]!.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)];
+      const xs = points.map(p => Number(p[1])), ys = points.map(p => Number(p[2]));
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const layer = path[1]!;
+      const rings = holes.get(layer) ?? [];
+      rings.push({ x: (maxX + minX) / 2, y: (maxY + minY) / 2, width: maxX - minX, height: maxY - minY });
+      holes.set(layer, rings);
+    }
+  }
+  const diameter = stack.rod.sizeMm + 2 * stack.rod.fitClearanceMm - manifest.result.fabrication.laserKerfMm;
+  let sockets = 0;
+  for (const column of stack.columns) for (const segment of column.segments) {
+    if (segment.seat.kind !== "terrain") continue;
+    for (const index of segment.seat.socketLayerIndices) {
+      const layer = manifest.result.layers[index].id;
+      const seat = holes.get(layer)?.find(hole => Math.hypot(hole.x - column.point.x, hole.y - column.point.y) < 0.01);
+      expect(seat, column.id + " on " + layer).toBeDefined();
+      expect(seat!.width).toBeCloseTo(diameter, 2);
+      expect(seat!.height).toBeCloseTo(diameter, 2);
+      sockets++;
+    }
+  }
+  expect(sockets).toBeGreaterThan(0);
+});
+
+test("adds blue acrylic plates to the downloaded share PNG", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
+  await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  await page.goto("/studio");
+  await page.getByRole("tab", { name: "Aviation", exact: true }).click();
+
+  async function downloadPreview(filename: string) {
+    await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
+    await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Save preview image" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/-preview\.png$/);
+    const path = testInfo.outputPath(filename);
+    await download.saveAs(path);
+    await page.keyboard.press("Escape");
+    return (await readFile(path)).toString("base64");
+  }
+
+  const terrain = await downloadPreview("terrain-preview.png");
+  await page.getByRole("switch", { name: "Airspace in 3D", exact: true }).click();
+  await page.getByRole("radiogroup", { name: "Airspace levels" }).getByRole("radio", { name: /^Whole slice/ }).click();
+  await page.getByRole("radiogroup", { name: "Airspace acrylic" }).getByRole("radio", { name: /^Chart colors/ }).click();
+  const plates = await downloadPreview("airspace-preview.png");
+  await expect(page.locator(".airspace-settings")).toContainText(/\d+ pieces? on \d+ levels?/);
+
+  // Decode the files the maker downloaded. Only count the model artwork, away from the card text.
+  const blueShiftPixels = await page.evaluate(async ([withoutPlates, withPlates]) => {
+    async function artwork(base64: string) {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      return context.getImageData(48, 168, 1104, 560).data;
+    }
+    const [before, after] = await Promise.all([artwork(withoutPlates), artwork(withPlates)]);
+    let count = 0;
+    for (let i = 0; i < after.length; i += 4) {
+      const original = before[i + 2]! - before[i]!;
+      const tinted = after[i + 2]! - after[i]!;
+      if (tinted - original > 35 && after[i + 2]! > before[i + 2]! + 12) count++;
+    }
+    return count;
+  }, [terrain, plates] as const);
+  expect(blueShiftPixels).toBeGreaterThan(2_000);
 });
 
 test("builds the airspace a browser agent asks for, on through rods", async ({ page, browserName }) => {

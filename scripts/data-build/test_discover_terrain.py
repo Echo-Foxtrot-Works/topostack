@@ -128,6 +128,21 @@ class RegisterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             terrain_release.validate_candidate(entry['source'], entry['pin'])
 
+    def test_accepts_new_datums_and_gates_unapproved_sources(self):
+        import terrain_release
+        entry = self.entry()
+        for datum, kind in (('JP-TP', 'national-dtm'), ('MSL', 'bathymetry-grid')):
+            source = {**entry['source'], 'verticalDatum': datum, 'kind': kind}
+            terrain_release.validate_candidate(source, {**entry['pin'], 'verticalDatum': datum})
+        pending = {**entry['source'], 'availability': 'development', 'approval': {'required': True}}
+        terrain_release.validate_candidate(pending, entry['pin'])
+        granted = {**pending, 'availability': 'all', 'approval': {'required': True, 'reference': 'GSI-123'}}
+        terrain_release.validate_candidate(granted, entry['pin'])
+        for change in ({'availability': 'all'}, {'availability': 'staging'}, {'approval': {'required': False}},
+                       {'approval': {'required': True, 'reference': ' '}}):
+            with self.assertRaises(ValueError):
+                terrain_release.validate_candidate({**pending, **change}, entry['pin'])
+
     def test_rejects_tampered_immutable_manifest(self):
         import terrain_release
         mod.register([self.entry()], self.catalog, self.pins)
@@ -135,6 +150,44 @@ class RegisterTests(unittest.TestCase):
         (self.catalog.parent / catalog['releaseManifest']).write_text('{}')
         with self.assertRaisesRegex(ValueError, 'manifest mismatch'):
             terrain_release.load_registry(self.catalog, self.pins)
+
+    def test_availability_changes_only_the_release_and_build_replays_preserve_it(self):
+        import terrain_release
+        entry = self.entry()
+        entry['source'].pop('availability', None)
+        mod.register([entry], self.catalog, self.pins)
+        before = json.loads(self.catalog.read_text())
+        previous_manifest = self.catalog.parent / before['releaseManifest']
+        previous_bytes = previous_manifest.read_bytes()
+        source_id = entry['source']['id']
+
+        terrain_release.set_availability([source_id], 'development', self.catalog, self.pins)
+        restricted = self.catalog.read_bytes()
+        after = json.loads(restricted)
+        self.assertEqual(after['records'], before['records'])
+        expected = [{**source, 'availability': 'development'} if source['id'] == source_id else source
+                    for source in before['sources']]
+        self.assertEqual(after['sources'], expected)
+        self.assertNotEqual(after['releaseManifest'], before['releaseManifest'])
+        self.assertEqual(previous_manifest.read_bytes(), previous_bytes)
+        mod.register([entry], self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), restricted)
+        with self.assertRaisesRegex(ValueError, 'Unknown registered'):
+            terrain_release.set_availability([source_id, 'unknown-v1'], 'all', self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), restricted)
+        terrain_release.set_availability([source_id], 'all', self.catalog, self.pins)
+        restored, _ = terrain_release.load_registry(self.catalog, self.pins)
+        self.assertEqual(restored[-1]['availability'], 'all')
+
+    def test_availability_change_requires_outstanding_approval(self):
+        import terrain_release
+        entry = self.entry()
+        entry['source'].update(availability='development', approval={'required': True})
+        mod.register([entry], self.catalog, self.pins)
+        before = self.catalog.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'approval reference'):
+            terrain_release.set_availability([entry['source']['id']], 'all', self.catalog, self.pins)
+        self.assertEqual(self.catalog.read_bytes(), before)
 
 
 if __name__ == '__main__':

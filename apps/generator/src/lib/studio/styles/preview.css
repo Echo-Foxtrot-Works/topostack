@@ -195,15 +195,6 @@
   gap: 6px;
 }
 
-.engraving-legend i {
-  width: 24px;
-  border-top: var(--sample-width, 1px) solid currentColor;
-}
-
-.engraving-legend i.index {
-  border-top-width: var(--sample-width, 2px);
-}
-
 .axis {
   position: absolute;
   z-index: 2;

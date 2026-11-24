@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pointInPolygon, ringBounds } from "../primitives/geometry2d.js";
+import { pointInPolygon, pointInRing, ringBounds } from "../primitives/geometry2d.js";
 import { parsePathPoints } from "../test-support/sources.js";
 import { build, cap, core, plain, project, shelf, square, stem, volume, SHELF, CEILING } from "../test-support/airspace.js";
 import { DEFAULT_AIRSPACE_STACK } from "../pipeline/airspace-settings.js";
@@ -66,7 +66,7 @@ describe("airspace export", { timeout: 60_000 }, () => {
 
   it("frosts plate shelves as filled engraving and draws sector edges in their chart style", async () => {
     const engrave = await text(packaged(plates, { form: "plates", kerfMm: 0.1 }), "-airspace-clear-01-engrave.svg");
-    expect(engrave).toMatch(/A1-1-frost-1[^>]*fill="#2366FF"/);
+    expect(engrave).toMatch(/A1-1-frost-1[^>]*fill="#000000"/);
     expect(engrave).toContain("ENGRAVE-airspace-b");
   });
 
@@ -179,4 +179,45 @@ describe("airspace export", { timeout: 60_000 }, () => {
     const empty = build({ form: "plates" }, [volume("far", "class-b", square(400, 400, 420, 420), { ref: "msl", ft: SHELF }, { ref: "msl", ft: CEILING })], named);
     expect(exportBlockReason(empty, config)).toBeUndefined();
   });
+});
+
+it.each(["through", "segments"] as const)("retains every %s rod's specified socket and pass-through in final cut paths", async joint => {
+  const rod = { ...DEFAULT_AIRSPACE_STACK.rod, joint };
+  const settings = { form: "plates" as const, rod };
+  const extra = { ...named, minimumFeatureMm: 5, optimizeMaterialUse: false };
+  const ir = build(settings, [core, shelf], extra);
+  const pkg = packaged(ir, settings, extra);
+  const manifest = await manifestOf(pkg);
+  const acrylic = airspaceGeometry(ir)!;
+  const holes = new Map<string, ReturnType<typeof parsePathPoints>[]>();
+  for (const file of pkg.files.filter(f => f.filename.endsWith(".svg") && !f.filename.includes("engrave") && !f.filename.includes("master"))) {
+    const svg = await file.blob.text();
+    for (const match of svg.matchAll(/id="([^"]+)-cut-\d+-hole-\d+-offset-\d+" d="([^"]+)"/g)) {
+      const list = holes.get(match[1]!) ?? [];
+      list.push(parsePathPoints(match[2]!));
+      holes.set(match[1]!, list);
+    }
+  }
+  let seats = 0, through = 0;
+  for (const column of manifest.result.fabrication.airspaceStack.columns) {
+    for (const segment of column.segments) {
+      const targets: string[] = [];
+      if (segment.seat.kind === "terrain") for (const index of segment.seat.socketLayerIndices) {
+        targets.push(ir.layers[index]!.id); seats++;
+      }
+      for (const id of segment.throughPieceIds ?? []) {
+        targets.push(acrylic.layers.find(layer => layer.pieces.some(piece => piece.id === id))!.id);
+        through++;
+      }
+      for (const id of targets) {
+        const hole = holes.get(id)?.find(ring => pointInRing(column.point, ring));
+        expect(hole, id + " / " + column.id).toBeDefined();
+        const bounds = ringBounds(hole!);
+        const kerf = id.startsWith("airspace") ? ir.airspaceStack!.kerfMm : ir.laserKerfMm;
+        expect(bounds.maxX - bounds.minX).toBeCloseTo(rod.sizeMm + 2 * rod.fitClearanceMm - kerf, 2);
+      }
+    }
+  }
+  expect(seats).toBeGreaterThan(0);
+  if (joint === "through") expect(through).toBeGreaterThan(0);
 });

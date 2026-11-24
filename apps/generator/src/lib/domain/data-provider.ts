@@ -3,7 +3,7 @@ import { apiBase } from "$lib/domain/api-base";
 import { boundsForProject, groundWidthMFor, landClassesNeeded, OUTLINE_CHART_KEY_PREFIX, sourceRequirements, createSyntheticSource, type AirspaceVolumeV1, type LandAreaV1, type AviationStatus, type GeoBounds, type MarkingFeature, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "@topostack/core";
 import { MAP_DATA_ATTRIBUTION } from "$lib/domain/map-attribution";
 import { loadLakeBathymetry, applySurveyProvenance, type SurveyResult } from "$lib/domain/bathymetry";
-import { dataZoom, fittingTileWindow } from "$lib/domain/tile-math";
+import { dataZoom } from "$lib/domain/tile-math";
 import { assembleWater } from "$lib/domain/water-assembly";
 import { loadElevation } from "$lib/domain/elevation-loader";
 import { loadLakeAreas } from "$lib/domain/lake-area-loader";
@@ -109,7 +109,9 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
   // generation/export stays deterministic and cannot accidentally depend on an
   // external map service. The mode guard keeps a leaked VITE_E2E env var from
   // defeating the fabrication export policy in a production build.
-  if (import.meta.env.VITE_E2E === "1" && (import.meta.env.DEV || import.meta.env.MODE !== "production")) {
+  // Reviewed-chart E2E tests supply local terrain and archive responses so a
+  // downloaded cut exercises lake selection, resampling and water assembly.
+  if (import.meta.env.VITE_E2E === "1" && (import.meta.env.DEV || import.meta.env.MODE !== "production") && !config.userDepthCharts) {
     signal?.throwIfAborted();
     onStage?.("preparing");
     const fixture = createSyntheticSource({ ...config, location: { ...config.location, bounds } }, 32);
@@ -132,9 +134,8 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
       // Coarse upstream tiles can contain shoreline spikes absent from finer
       // levels (for example Lake Granby at z10). Start at the service maximum,
       // downshift to the tile budget, then resample to the bounded project grid.
-      const window = fittingTileWindow(bounds, 15);
       loaded = await Promise.all([
-        loadElevation(window, bounds, signal),
+        loadElevation(bounds, 15, signal),
         vectorRequested
           ? loadVectorMarkings(bounds, zoom, config, signal)
             .then((vectorData) => ({ ...vectorData, status: vectorData.truncated ? "partial" as const : "available" as const }))
@@ -170,7 +171,7 @@ export async function loadTerrain(config: ProjectConfigV1, signal?: AbortSignal,
     signal.throwIfAborted();
     onStage?.("preparing");
     const [{ elevation, elevationRepairCount, imagerySources, datasetVersion, terrainAttribution, terrainSourceUnavailable, terrainSelection }, vector, lakes, aviation, airspace, lands] = loaded;
-    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, lakeDataStatus: lakes.status, ...aviation, ...airspace, ...lands, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
+    const base: SourceBundleV1 = { schemaVersion: 1, elevation, elevationRepairCount, terrainSourceUnavailable, terrainSelection, markings: vector.markings, waterPatternAreas: [...vector.ocean, ...vector.inland], inlandWaterAreas: vector.inland, vectorStatus: vector.status, ...("buildingDetail" in vector ? { buildingDetail: vector.buildingDetail } : {}), ...("railContextIncomplete" in vector && vector.railContextIncomplete ? { railContextIncomplete: true } : {}), lakeDataStatus: lakes.status, ...aviation, ...airspace, ...lands, datasetVersion, sourceKind: "real", bounds, imagerySources, resolutionM: groundWidthMFor(bounds) / elevation.width, attribution: [...MAP_DATA_ATTRIBUTION, ...terrainAttribution] };
     try {
       const areas = resolveLakeOutlines([], lakes.areas, usesWaterAreas ? vector.inland : []);
       const bathymetry = usesWaterDepth
