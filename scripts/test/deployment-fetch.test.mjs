@@ -52,3 +52,35 @@ test("rollout mode does not retry other client errors", async (t) => {
   await assert.rejects(fetchWithRetry(base, path, preflight, { allowRolloutStatuses: true }), /HTTP 400/);
   assert.equal(fetch.mock.callCount(), 1);
 });
+
+test("release evidence retries a healthy old build and checks both actual range validators", async (t) => {
+  const { releaseEvidence } = await import("../lib/deployment-fetch.mjs");
+  const commit = "candidate";
+  const deployment = { commit, id: "worker-2" };
+  const archive = { status: "available", bytes: 100, etag: '"active"' };
+  const readiness = { status: "ready", environment: "production", deployment, dependencies: { lakeData: archive, vectorData: archive } };
+  let frontReads = 0, healthReads = 0, badLake = false;
+  t.mock.method(console, "warn", () => {});
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (url.pathname.endsWith(".pmtiles")) return new Response("x", { status: 206, headers: {
+      "content-range": "bytes 0-0/100", "x-topostack-dataset": "dataset", etag: badLake && url.pathname.includes("lakes") ? '"old"' : archive.etag,
+    } });
+    assert.equal(url.searchParams.get("revision"), commit);
+    if (url.pathname === "/version.json") return Response.json({ commit: ++frontReads === 1 ? "old" : commit, version: "1.2.3", environment: "production" });
+    if (url.pathname === "/ready") return Response.json(readiness);
+    if (url.pathname === "/health") return Response.json({ deployment: ++healthReads === 1 ? { ...deployment, id: "previous" } : deployment });
+    return Response.json({ deployment, datasetVersion: "dataset" });
+  });
+  const result = await releaseEvidence(base, commit, "production", { retryDelayMs: 0, deploymentBase: base });
+  assert.equal(result.frontend.commit, commit);
+  assert.equal(frontReads, 3);
+  assert.equal(healthReads, 2);
+  badLake = true;
+  await assert.rejects(releaseEvidence(base, commit, "production", { verificationTimeoutMs: 0 }), /range identity/);
+});
+
+test("a healthy previous revision never supplies release evidence when rollout expires", async (t) => {
+  const { releaseEvidence } = await import("../lib/deployment-fetch.mjs");
+  t.mock.method(globalThis, "fetch", async () => Response.json({ commit: "old", deployment: { id: "old-id", commit: "old" } }));
+  await assert.rejects(releaseEvidence(base, "candidate", "production", { verificationTimeoutMs: 0 }), /served revision old/);
+});

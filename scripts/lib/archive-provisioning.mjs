@@ -151,6 +151,20 @@ export async function verifyArchiveDigest(archivePath, { expectedDigest, skipDig
   return archiveDigest;
 }
 
+/** Validate the fields used by the lake and basemap readers before assigning a release identity. */
+export function verifyVectorSchema(header, metadata, dataset) {
+  const fields = dataset === "globathy"
+    ? { lakes: { hylak_id: "Number", area_km2: "Number", dmax_m: "Number" } }
+    : { roads: { kind: "String" }, water: { kind: "String" }, boundaries: { kind: "String" } };
+  if (header.tile_type !== "mvt" || !Array.isArray(metadata?.vector_layers)) throw new Error(`Expected the ${dataset} MVT archive.`);
+  for (const [id, expected] of Object.entries(fields)) {
+    const layer = metadata.vector_layers.find((item) => item?.id === id);
+    for (const [field, type] of Object.entries(expected)) {
+      if (layer?.fields?.[field] !== type) throw new Error(`Expected ${dataset} layer ${id} with ${type} field ${field}.`);
+    }
+  }
+}
+
 /** Runs `pmtiles verify` and returns the archive header. */
 export async function verifyPmtilesHeader({ run, capture, pmtilesBin, archivePath }) {
   await run(pmtilesBin, ["verify", archivePath]);

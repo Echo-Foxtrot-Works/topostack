@@ -1,3 +1,4 @@
+import aviationRelease from "../data/faa-aviation-production-release.json" with { type: "json" };
 import { atommReleaseFiles } from "../lib/atomm-release-files.mjs";
 import assert from "node:assert/strict";
 import { validateVersion } from "./versions.mjs";
@@ -25,7 +26,13 @@ export function validatePackage(receipt, archive, checksum, commit, tag) {
   validateVersion(receipt.atommVersion);
   assert.equal(receipt.atommVersion, receipt.version, "The Atomm package must carry the main version; they release together");
   assert.equal(tag, `atomm-v${receipt.atommVersion}`, "Release tag must match the packaged Atomm version");
-  assert.equal(receipt.schemaVersion, 1);
+  assert.equal(receipt.schemaVersion, 2, "Use a CI receipt with verified deployment evidence");
+  assert.equal(receipt.frontend?.commit, commit);
+  assert.equal(receipt.frontend?.version, receipt.version);
+  assert.equal(receipt.frontend?.environment, "production");
+  assert.equal(receipt.deployment?.commit, commit);
+  assert.ok(receipt.deployment?.id && receipt.vectorData?.etag && receipt.lakeData?.etag, "Receipt must identify the served Worker and archives");
+  for (const field of ["sha256", "bytes", "etag", "objectKey"]) assert.equal(receipt.aviation?.[field], aviationRelease[field], "FAA archive must match the production release");
   assert.equal(receipt.commit, commit, "Package must match the tested commit");
   assert.equal(receipt.workingTreeDirty, false, "Package must come from a clean checkout");
   assert.equal(receipt.apiOrigin, "https://topostack.app", "Package must use the production API");

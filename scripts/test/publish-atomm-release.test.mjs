@@ -1,3 +1,4 @@
+import aviation from "../data/faa-aviation-production-release.json" with { type: "json" };
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
@@ -8,7 +9,7 @@ const repository = "Echo-Foxtrot-Works/topostack";
 const run = { repository: { full_name: repository }, path: ".github/workflows/ci.yml", head_branch: "main", event: "push", status: "completed", conclusion: "success", head_sha: commit };
 const archive = Buffer.from("test artifact bytes");
 const digest = createHash("sha256").update(archive).digest("hex");
-const receipt = { schemaVersion: 1, version: "0.2.0", atommVersion: "0.2.0", commit, workingTreeDirty: false, apiOrigin: "https://topostack.app", archive: "topostack-atomm-v0.2.0.zip", bytes: archive.length, sha256: digest };
+const receipt = { schemaVersion: 2, aviation, frontend: { commit, version: "0.2.0", environment: "production" }, deployment: { commit, id: "worker-a" }, vectorData: { etag: '"v1"' }, lakeData: { etag: '"l1"' }, version: "0.2.0", atommVersion: "0.2.0", commit, workingTreeDirty: false, apiOrigin: "https://topostack.app", archive: "topostack-atomm-v0.2.0.zip", bytes: archive.length, sha256: digest };
 const checksum = `${digest}  topostack-atomm-v0.2.0.zip\n`;
 
 test("accepts completed production CI and its matching clean artifact", () => {
@@ -23,7 +24,7 @@ test("rejects untrusted, incomplete, failed, PR, and development runs", () => {
 });
 
 test("rejects mismatched, dirty, nonproduction, and tampered artifacts", () => {
-  for (const patch of [{ commit: "b".repeat(40) }, { workingTreeDirty: true }, { apiOrigin: "https://dev.topostack.app" }, { bytes: 1 }, { sha256: "0".repeat(64) }, { archive: "other.zip" }, { archive: "topostack-atomm-v0.1.0.zip" }]) {
+  for (const patch of [{ aviation: { ...aviation, sha256: "different" } }, { frontend: { ...receipt.frontend, commit: "older" } }, { deployment: { ...receipt.deployment, commit: "older" } }, { lakeData: {} }, { commit: "b".repeat(40) }, { workingTreeDirty: true }, { apiOrigin: "https://dev.topostack.app" }, { bytes: 1 }, { sha256: "0".repeat(64) }, { archive: "other.zip" }, { archive: "topostack-atomm-v0.1.0.zip" }]) {
     assert.throws(() => validatePackage({ ...receipt, ...patch }, archive, checksum, commit, "atomm-v0.2.0"));
   }
   assert.throws(() => validatePackage(receipt, Buffer.from("tampered"), checksum, commit, "atomm-v0.2.0"));

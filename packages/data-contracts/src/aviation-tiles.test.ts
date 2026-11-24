@@ -149,6 +149,10 @@ describe("aviation source registration", () => {
 
   it("reports coverage by region intersection", () => {
     const sources = validateAviationSources(registration);
+    for (const west of [-181, 179, 539]) {
+      expect(aviationCovers(sources, { west, south: 28, east: west + 5, north: 29 })).toBe(true);
+      expect(aviationCovers(sources, { west, south: 29, east: west + 5, north: 30 })).toBe(false);
+    }
     expect(aviationCovers(sources, { west: -105.2, south: 39.6, east: -104.5, north: 40.0 })).toBe(true);
     expect(aviationCovers(sources, { west: -158.1, south: 21.2, east: -157.6, north: 21.5 })).toBe(true);
     expect(aviationCovers(sources, { west: -123.4, south: 50.0, east: -123.0, north: 50.3 })).toBe(false);

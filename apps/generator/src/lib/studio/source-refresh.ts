@@ -73,21 +73,21 @@ export function markStaleSourceData(source: SourceBundleV1, patch: Partial<Proje
   if ("aviation" in patch && AVIATION_DATA_DETAILS.some((detail) => nextProject.aviation?.[detail] && (!sourceProject.aviation?.[detail] || source.aviationStatus === "partial"))) next = { ...next, aviationStatus: "not-requested" };
   // Enabled classes are filtered before the loader's feature limit. Enabling
   // one needs a reload; disabling one can make a partial load complete.
-  if ("airspaceStack" in patch && nextProject.airspaceStack) {
+  if ((sizeFilterChanged || "airspaceStack" in patch) && nextProject.airspaceStack) {
     const had = source.airspaceVolumes ? sourceProject.airspaceStack?.classes : undefined;
     const needs = nextProject.airspaceStack.classes;
     const enablesClass = (Object.keys(needs) as Array<keyof typeof needs>).some((key) => needs[key] && !had?.[key]);
     const changesPartial = source.airspaceStatus === "partial" && JSON.stringify(had) !== JSON.stringify(needs);
-    if (enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
+    if (sizeFilterChanged || enablesClass || changesPartial) next = { ...next, airspaceVolumes: undefined, airspaceStatus: undefined, airspaceCycle: undefined };
   }
   // Loaded land holds only the classes painted or engraved then, filtered before
   // the unit limit. Another class reloads; a partial load may fit more now.
-  if (("paintTemplates" in patch || "lands" in patch || "outputMode" in patch) && sourceRequirements(nextProject).lands) {
+  if ((sizeFilterChanged || "paintTemplates" in patch || "lands" in patch || "outputMode" in patch) && sourceRequirements(nextProject).lands) {
     const had = new Set(source.landAreas ? landClassesNeeded(sourceProject) : []);
     const needs = landClassesNeeded(nextProject);
     // Dropping the final matching unit can change the source from official data to OSM.
     const removedLastMatch = source.landAreas?.length && !source.landAreas.some((area) => needs.includes(area.landClass));
-    if (needs.some((landClass) => !had.has(landClass)) || (needs.length !== had.size && (source.landsStatus === "partial" || removedLastMatch))) {
+    if (sizeFilterChanged || needs.some((landClass) => !had.has(landClass)) || (needs.length !== had.size && (source.landsStatus === "partial" || removedLastMatch))) {
       next = { ...next, landAreas: undefined, landsStatus: undefined, landsVersion: undefined, landsSources: undefined, landsAttribution: undefined };
     }
   }

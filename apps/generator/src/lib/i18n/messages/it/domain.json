@@ -26,6 +26,7 @@
   "svgGraphicTooLarge": "Le grafiche SVG devono essere al massimo di {sizeMb} MB.",
   "terrainServiceStatus": "Il servizio del terreno ha restituito {status}.",
   "terrainTileVersionMissing": "Al riquadro del terreno manca la versione del dataset.",
+  "terrainTileNoData": "La tessera del terreno non contiene dati di elevazione.",
   "terrainTileVersionsMixed": "I riquadri del terreno provengono da versioni del dataset incoerenti. Riprova tra poco.",
   "terrainUnreachable": "Impossibile raggiungere il servizio del terreno.",
   "waterOutlinesUnassembled": "Impossibile assemblare i contorni dell’acqua.",

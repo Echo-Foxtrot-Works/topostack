@@ -65,9 +65,12 @@ def build(cache, archives, previous=None):
     pins = json.loads((DATA / 'lake-survey-sources.json').read_text())
     reused = {}
     if previous:
+        previous_sources = {source['id']: source for source in previous['sources']}
         for dataset in expected:
             if not (archives / f'{dataset}.sources.json').exists():
                 records = [lake for lake in previous['lakes'] if lake['sourceId'] == dataset]
+                if previous_sources.get(dataset, {}).get('archiveSha256') != expected[dataset]['sha256']:
+                    raise ValueError(f'Archive identity changed or is unknown; supply the build receipt for {dataset}')
                 if len(records) != expected[dataset]['processedGrids']:
                     raise ValueError(f'The previous directory does not match the recorded build: {dataset}')
                 reused[dataset] = records
@@ -99,6 +102,8 @@ def build(cache, archives, previous=None):
         contours = dataset in ('mn-dnr-lakes-v1', 'syke-finland-lakes-v1', 'ontario-lakes-v1', 'nve-norway-lakes-v1', 'twdb-texas-reservoirs-v1', 'usbr-reservoirs-v1', 'community-charts-v1') or dataset.startswith('noaa-enc-')
         sources.append({'id': dataset, 'name': source['name'], 'url': source['url'], 'license': source['license'],
                         'kind': 'contours' if contours else 'grid', 'region': REGIONS[dataset], 'group': GROUPS[dataset]})
+        if dataset in expected:
+            sources[-1]['archiveSha256'] = expected[dataset]['sha256']
         if dataset in reused:
             lakes.extend(reused[dataset])
             continue

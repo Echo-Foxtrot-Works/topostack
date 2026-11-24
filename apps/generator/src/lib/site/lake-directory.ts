@@ -1,4 +1,5 @@
 export interface LakeDirectorySource {
+  archiveSha256?: string;
   id: string;
   name: string;
   url: string;

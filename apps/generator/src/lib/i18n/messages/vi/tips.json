@@ -17,7 +17,7 @@
   "lakesBodySources": "Đáy hồ đo đạc lấy từ phép đo dưới nước hoặc dữ liệu địa hình. Nếu hồ không có dữ liệu này, đáy được mô phỏng từ đường bờ, sườn dốc xung quanh và các ước tính độ sâu đã công bố. Cả hai đều không phản ánh mực nước hiện tại.",
   "lakesBodyControls": "Phóng đại độ sâu làm đáy hồ sâu hơn so với đồi núi. Giới hạn lớp độ sâu khống chế số tấm nằm dưới vùng đất thấp nhất, và Khớp độ sâu hồ nén mỗi hồ vào giới hạn đó mà vẫn giữ đường bờ.",
   "exportTitle": "Kiểm tra bản xuất",
-  "exportBody": "Với phù điêu nhiều lớp, đặt chiều rộng và chiều cao vật liệu trong Xuất. Chi tiết được tự động bố trí với lề 3 mm và khoảng cách 2 mm; chọn Dùng bố trí hiện tại để kết thúc sớm. Mở trong Studio gửi một SVG chỉnh sửa được của toàn bộ bố trí. Tải xuống gồm tác phẩm, cài đặt và ghi nguồn dữ liệu, kèm hướng dẫn lắp ráp cho phù điêu nhiều lớp.",
+  "exportBody": "Với phù điêu nhiều lớp, đặt chiều rộng và chiều cao vật liệu trong Xuất. Chi tiết được tự động bố trí với lề 3 mm và khoảng cách 2 mm; chọn Dùng bố trí hiện tại để kết thúc sớm. Với phù điêu nhiều lớp, Mở trong Studio gửi bố trí các chi tiết gỗ dưới dạng một tệp SVG có thể chỉnh sửa. Tệp dành cho mica có trong mục Tải xuống. Tải xuống gồm tác phẩm, cài đặt và ghi nguồn dữ liệu, kèm hướng dẫn lắp ráp cho phù điêu nhiều lớp.",
   "assemblyTitle": "Lắp ráp",
   "assemblyBody": "Giữ các chi tiết đã sắp xếp cùng tấm của chúng và dán keo từ lớp thấp nhất trở lên theo hướng dẫn lắp ráp. Hãy thử lắp một chi tiết nhỏ trước khi cắt toàn bộ dự án."
 }

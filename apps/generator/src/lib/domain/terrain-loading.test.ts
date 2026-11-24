@@ -5,6 +5,8 @@ import { loadTerrain } from "$lib/domain/data-provider";
 import { loadElevation } from "$lib/domain/elevation-loader";
 import { decodeTerrainPng, TERRAIN_NO_DATA, TERRAIN_STATUS_HEADER } from "@topostack/data-contracts/terrain-png";
 import { fittingTileWindow, MAX_DATA_TILES, TILE_SIZE, worldXToLon, worldYToLat } from "$lib/domain/tile-math";
+import { setLocale } from "$lib/i18n/i18n.svelte";
+import { warningText } from "$lib/i18n/warnings";
 
 const terrainOnly = { ...DEFAULT_PROJECT, widthMm: 100, heightMm: 200, showRoads: false, showTrails: false, showWater: false, showWaterDepth: false, showBoundaries: false, showElevationLabels: false };
 
@@ -21,7 +23,7 @@ describe("West Point terrain loading", () => {
     vi.stubGlobal("createImageBitmap", blocked);
     const longitude = (tile: number) => tile / 2 ** zoom * 360 - 180;
     const latitude = (tile: number) => Math.atan(Math.sinh(Math.PI * (1 - 2 * tile / 2 ** zoom))) * 180 / Math.PI;
-    const project = { ...terrainOnly, location: { lat: 41.3915, lon: -73.956, label: "West Point, NY", zoom, bounds: { west: longitude(x), east: longitude(x + 1), north: latitude(y), south: latitude(y + 1) } } };
+    const project = { ...terrainOnly, location: { lat: 41.3915, lon: -73.956, label: "West Point, NY", zoom, bounds: { west: longitude(x + 1 / 256), east: longitude(x + 255 / 256), north: latitude(y + 1 / 256), south: latitude(y + 255 / 256) } } };
     const stages: string[] = [];
     const result = await loadTerrain(project, undefined, (stage) => stages.push(stage));
     expect(stages).toEqual(["fetching", "preparing"]);
@@ -70,11 +72,29 @@ describe("terrain source resolution", () => {
   const fine = readFileSync(new URL("./fixtures/granby-z15.png", import.meta.url));
   const coarse = readFileSync(new URL("./fixtures/granby-z10.png", import.meta.url));
   const bounds = {
-    west: worldXToLon(fineTile.x * TILE_SIZE, fineTile.z),
-    east: worldXToLon((fineTile.x + 1) * TILE_SIZE, fineTile.z),
-    north: worldYToLat(fineTile.y * TILE_SIZE, fineTile.z),
-    south: worldYToLat((fineTile.y + 1) * TILE_SIZE, fineTile.z),
+    west: worldXToLon(fineTile.x * TILE_SIZE + 1, fineTile.z),
+    east: worldXToLon((fineTile.x + 1) * TILE_SIZE - 1, fineTile.z),
+    north: worldYToLat(fineTile.y * TILE_SIZE + 1, fineTile.z),
+    south: worldYToLat((fineTile.y + 1) * TILE_SIZE - 1, fineTile.z),
   };
+
+  it("interpolates the same shared edge from either panel", async () => {
+    const { elevationPng } = await import("../../../../../workers/map-api/test/terrain-fixture");
+    const tiles = [elevationPng(() => 200), elevationPng(() => 100)];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const x = Number(String(input).split("/").at(-2));
+      return new Response(tiles[x - 17999], { headers: { "x-topostack-dataset": "two-panels" } });
+    });
+    const seam = 18000 * TILE_SIZE, top = 12000 * TILE_SIZE + 128.5, z = 15;
+    const panel = (west: number, east: number) => loadElevation({
+      west: worldXToLon(west, z), east: worldXToLon(east, z),
+      north: worldYToLat(top, z), south: worldYToLat(top + 63, z),
+    }, z);
+    const left = await panel(seam - 63, seam);
+    const right = await panel(seam, seam + 63);
+    expect(left.elevation.values[left.elevation.width - 1]).toBe(150);
+    expect(right.elevation.values[0]).toBe(150);
+  });
 
   it.each([10, 15])("avoids the Granby shoreline spikes with camera zoom %s", async (zoom) => {
     // These spikes are in the original coarse source, not introduced by carving.
@@ -168,7 +188,7 @@ describe("terrain source resolution", () => {
       return new Promise<Response>((_resolve, reject) => fineSignal?.addEventListener("abort", () => reject(fineSignal?.reason), { once: true }));
     });
     vi.stubGlobal("fetch", fetchMock);
-    const result = await loadElevation(window, twoTileBounds);
+    const result = await loadElevation(twoTileBounds, fineTile.z);
     expect(zooms(fetchMock.mock.calls)).toEqual([15, 14]);
     expect(result.terrainSelection.mapzenZoom?.used).toBe(14);
   });
@@ -180,5 +200,13 @@ describe("terrain source resolution", () => {
     expect(zooms(fetchMock.mock.calls)).toEqual([15, 14, 13]);
     expect(result.fallback).toBe(true);
     expect(result.fallbackReason).toContain("no elevation samples");
+    await setLocale("de");
+    try {
+      const warning = warningText({ message: "", messageKey: "mapServiceFallbackBecause", params: { reason: result.fallbackReason! } });
+      expect(warning).toContain("Die Geländekachel enthält keine Höhendaten.");
+      expect(warning).not.toContain(result.fallbackReason!);
+    } finally {
+      await setLocale("en");
+    }
   });
 });

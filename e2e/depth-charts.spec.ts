@@ -1,8 +1,10 @@
-import { DEFAULT_PROJECT } from "@topostack/core";
+import { boundsAround, DEFAULT_PROJECT, type ProjectConfigV1 } from "@topostack/core";
+import { shareUrl } from "@topostack/data-contracts/share-link";
+import { unzipSync } from "fflate";
 import { expect, test, type Page } from "@playwright/test";
 import { chartPdf, chartRings, lakeArchive, lakeCentre } from "./fixtures/depth-chart";
 
-async function openCharts(page: Page, fromMap = false, withoutSearch = false): Promise<void> {
+async function openCharts(page: Page, fromMap = false, withoutSearch = false, project?: ProjectConfigV1): Promise<void> {
   // Linux WebKit can capture a stale WebGL frame after buffer swaps. Preserve
   // test drawing buffers so screenshot assertions observe the current hover.
   await page.addInitScript(() => {
@@ -13,12 +15,15 @@ async function openCharts(page: Page, fromMap = false, withoutSearch = false): P
       ]);
     } as typeof getContext;
   });
-  const archive = lakeArchive(withoutSearch ? DEFAULT_PROJECT.location : lakeCentre);
+  const centre = withoutSearch ? DEFAULT_PROJECT.location : lakeCentre;
+  const hydro = lakeArchive(centre, project ? "coarse-lake" : undefined);
+  const mapWater = project ? lakeArchive(centre, "map-water") : undefined;
   await page.route("**/v1/**", async route => {
     const url = route.request().url();
     if (url.includes("/geocode")) return route.fulfill({ json: [{ place_id: "round-lake", display_name: "Round Lake, Test Region", ...lakeCentre }] });
     if (url.includes("/lake-outlines/")) return route.fulfill({ json: { schemaVersion: 1, shards: [] } });
-    if (url.endsWith("/lakes.pmtiles")) {
+    const archive = url.endsWith("/lakes.pmtiles") ? hydro : url.endsWith("/osm.pmtiles") ? mapWater : undefined;
+    if (archive) {
       const range = /bytes=(\d+)-(\d+)/.exec(route.request().headers().range ?? "");
       const start = Number(range?.[1] ?? 0), end = Math.min(Number(range?.[2] ?? archive.length - 1), archive.length - 1);
       return route.fulfill({ status: 206, headers: { "content-type": "application/octet-stream", "access-control-expose-headers": "ETag, Content-Range", etag: '"test-lake"', "content-range": `bytes ${start}-${end}/${archive.length}` }, body: archive.subarray(start, end + 1) });
@@ -29,7 +34,7 @@ async function openCharts(page: Page, fromMap = false, withoutSearch = false): P
   await page.route("https://tiles.openfreemap.org/styles/**", route => route.fulfill({ json: {
     version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": "#e9e5da" } }],
   } }));
-  await page.goto("/studio");
+  await page.goto(project ? "/studio" + new URL(shareUrl(project, "https://example.test/studio")).hash : "/studio");
   await page.getByRole("radio", { name: "Custom data", exact: true }).click();
   await expect(page.locator(".generate-dock")).toHaveCount(0);
   if (!withoutSearch) {
@@ -393,7 +398,12 @@ test("chart repair keeps source coordinates accurate through zoom, pan, and pinc
 
 for (const topology of ["island", "rise"] as const) test(`reviews and restores an explicit ${topology} before generation`, async ({ page }) => {
   test.setTimeout(120_000);
-  await openCharts(page);
+  const project: ProjectConfigV1 = {
+    ...DEFAULT_PROJECT, name: "Island control", widthMm: 300, heightMm: 240, materialThicknessMm: 1, verticalExaggeration: 10,
+    location: { ...lakeCentre, zoom: 13, label: "Round Lake", bounds: boundsAround(lakeCentre, 3.2, 300, 240) },
+    optimizeMaterialUse: false, paintTemplates: ["water"], showRoads: false, showTrails: false, showAlignmentGuides: false,
+  };
+  await openCharts(page, false, false, topology === "island" ? project : undefined);
   await page.locator(".chart-upload input").setInputFiles({name:"topology.pdf",mimeType:"application/pdf",buffer:chartPdf()});
   const pageNumber = page.getByRole("spinbutton", {name:"Page, of 2",exact:true});
   await pageNumber.fill("2"); await pageNumber.press("Tab");
@@ -402,6 +412,55 @@ for (const topology of ["island", "rise"] as const) test(`reviews and restores a
   await reviewContours(page, topology);
   await expect(page.locator(".chart-report")).toContainText("100%");
   await page.screenshot({path:test.info().outputPath(`reviewed-${topology}.png`)});
+  if (topology !== "island") return;
+  // Terrarium RGB (128,100,0) is a flat 100 m plateau. The 180-vertex map
+  // shore supersedes the 30-vertex lake outline. Only the chart defines the island.
+  const tile = await page.evaluate(() => {
+    const canvas = document.createElement("canvas"); canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d")!; ctx.fillStyle = "rgb(128, 100, 0)"; ctx.fillRect(0, 0, 256, 256);
+    return canvas.toDataURL("image/png").split(",")[1]!;
+  });
+  await page.route("**/v1/terrain/**/*.png", route => route.fulfill({
+    contentType: "image/png",
+    headers: { "x-topostack-dataset": "round-lake-100m", "access-control-expose-headers": "x-topostack-dataset" },
+    body: Buffer.from(tile, "base64"),
+  }));
+  await page.getByRole("button", { name: "Review and save chart", exact: true }).click();
+  await page.getByRole("checkbox", { name: "I checked the generated basin and layers against the source." }).check();
+  await page.getByRole("button", { name: "Keep this chart", exact: true }).click();
+  await page.getByRole("button", { name: "Use for Round Lake", exact: true }).click();
+  await expect(page.locator(".chart-saved__state")).toContainText("Ready for Round Lake");
+  await page.getByRole("radio", { name: "Map", exact: true }).click();
+  await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
+  await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Complete project/ }).click();
+  const chunks: Buffer[] = [];
+  for await (const chunk of await (await download).createReadStream()) chunks.push(Buffer.from(chunk));
+  const files = unzipSync(Buffer.concat(chunks));
+  const text = (name: string) => Buffer.from(files[name]!).toString("utf8");
+  const manifest = JSON.parse(text(Object.keys(files).find(name => name.endsWith("-project.json"))!));
+  expect(manifest.result.lakeDepths).toContainEqual(expect.objectContaining({ hylakId: 900001, depthSource: "user", surfaceElevationM: 100 }));
+  const bounds = manifest.project.location.bounds;
+  // Source (180,140) lies on dry land. (255,140) is deep water between the island and 5 m ring.
+  const wetX = 0.0075 / (bounds.east - bounds.west) * manifest.project.widthMm;
+  const panels: { filename: string; paintTemplateFilenames: string[] }[] = manifest.result.fabrication.panels;
+  const shapes = await page.evaluate(({ panels, wetX }) => {
+    const ctx = document.createElement("canvas").getContext("2d")!;
+    const sample = (markup: string, x: number) => {
+      const svg = new DOMParser().parseFromString(markup, "image/svg+xml");
+      return [...svg.querySelectorAll('[data-operation="CUT"] path')].filter(path => ctx.isPointInPath(new Path2D(path.getAttribute("d")!), x, 0, "evenodd")).length % 2 === 1;
+    };
+    return panels.map(({ wood, stencil }) => ({
+      island: sample(wood, 0), bed: sample(wood, wetX),
+      maskedIsland: stencil.some(svg => sample(svg, 0)), maskedBed: stencil.some(svg => sample(svg, wetX)),
+    }));
+  }, { panels: panels.map(panel => ({ wood: text(panel.filename), stencil: panel.paintTemplateFilenames.map(text) })), wetX });
+  expect(shapes.every(sheet => sheet.island)).toBe(true);
+  expect(shapes.some(sheet => sheet.bed)).toBe(true);
+  expect(shapes.some(sheet => !sheet.bed)).toBe(true);
+  expect(shapes.some(sheet => sheet.maskedIsland && !sheet.maskedBed)).toBe(true);
 });
 
 test("joins visible path fragments with hover feedback, cancellation, and undo", async ({ page }) => {

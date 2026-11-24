@@ -43,7 +43,7 @@ export interface StartupRestoreHost {
 }
 
 export interface StartupRestoreResult {
-  /** False only when autosave would overwrite an unreadable saved project that could not be backed up. */
+  /** False when a failed read or backup leaves the primary record unprotected. */
   autosave: boolean;
 }
 
@@ -63,10 +63,12 @@ export async function restoreStartupProject(host: StartupRestoreHost): Promise<S
     try {
       saved = await host.loadProject();
     } catch (error) {
+      autosave = false;
       if (!(error instanceof UnreadableSavedProjectError)) throw error;
       if (host.isCancelled()) return { autosave };
       console.error("TopoStack could not restore the saved project.", error);
-      host.setStatus(t("status.savedProjectUnreadable", { reason: localMessage(error.message) }));
+      if (error.recovery) host.restoreSaved(error.recovery);
+      host.setStatus(error.recovery ? localMessage(error.message) : t("status.savedProjectUnreadable", { reason: localMessage(error.message) }));
       autosave = error.backupKey !== undefined;
     }
     if (host.isCancelled()) return { autosave };

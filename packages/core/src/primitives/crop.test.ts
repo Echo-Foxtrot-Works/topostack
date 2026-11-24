@@ -52,7 +52,7 @@ describe("cropElevationRange", () => {
 
   it("reports a dry rectangle at the grid's declared range", () => {
     const grid = { ...tilted, min: -100.25, max: 100.25 };
-    expect(cropElevationRange(rectangle, grid, dry)).toEqual({ landMin: -100.25, landMax: 100.25, min: -100, max: 100 });
+    expect(cropElevationRange(rectangle, grid, dry)).toEqual({ landMin: -100.25, landMax: 100.25, waterMin: Infinity, min: -100, max: 100 });
   });
 
   it("leaves water out of the land range but not out of the visible range", () => {
@@ -66,7 +66,7 @@ describe("cropElevationRange", () => {
 
   it("falls back to the visible range when every sample is water", () => {
     const range = cropElevationRange(rectangle, tilted, new Uint8Array(25).fill(1));
-    expect(range).toEqual({ landMin: -100, landMax: 100, min: -100, max: 100 });
+    expect(range).toEqual({ landMin: -100, landMax: 100, waterMin: -100, min: -100, max: 100 });
   });
 
   it("ignores corners outside a circle and samples the crop edge between nodes", () => {
@@ -85,4 +85,11 @@ describe("cropElevationRange", () => {
     expect(range.max).toBeCloseTo(100, 6);
     expect(Number.isFinite(range.landMin) && Number.isFinite(range.landMax)).toBe(true);
   });
+});
+
+it("excludes water only in the discarded corners from the depth budget", () => {
+  const grid = planarGrid(5, circle, (x, y) => x + y);
+  const mask = new Uint8Array(grid.values.length);
+  mask[0] = 1;
+  expect(cropElevationRange(circle, grid, mask).waterMin).toBe(Infinity);
 });

@@ -19,8 +19,12 @@
     for (const lake of page.lakes) byPlace.set(lake.place ?? "", [...(byPlace.get(lake.place ?? "") ?? []), lake]);
     return [...byPlace].map(([place, lakes]) => ({ place, lakes }));
   });
-  const byCounty = $derived(page.children.some((child) => child.label.endsWith(" County")));
-  const listHeading = $derived(!page.children.length ? "Lakes with surveyed depth data" : byCounty ? "Lakes in other counties" : "Records published without a lake name");
+  const headings = {
+    county: { browse: "Browse by county", lakes: "Lakes in other counties" },
+    state: { browse: "Browse by state", lakes: "Other lake and reservoir records" },
+    alphabet: { browse: "Browse by name", lakes: "Records published without a lake name" },
+  };
+  const groupHeadings = $derived(page.grouping ? headings[page.grouping] : undefined);
   const detailed = $derived(page.lakes.some((lake) => lake.note));
 
   function coordinates([west, south, east, north]: LakeListing["bounds"]): string {
@@ -47,8 +51,8 @@
   <p>{page.about}</p>
   <p>Larger lakes link to a page with their survey facts and sizes; the <strong>studio</strong> link beside them, and every other lake name, opens the studio framed to that lake’s survey area and generates its terrain. You can also <a href={`${base}/guides/lake-depth-data`}>search every surveyed lake</a> or <a href={`${base}${LAKES_HOME}`}>browse other regions</a>.</p>
 
-  {#if page.children.length}
-    <h2>{byCounty ? "Browse by county" : "Browse by name"}</h2>
+  {#if groupHeadings}
+    <h2>{groupHeadings.browse}</h2>
     <ul class="page-links">
       {#each page.children as child (child.path)}
         <li><a href={`${base}${child.path}`}>{child.label}</a> <span class="meta">{child.count.toLocaleString("en-US")} {child.count === 1 ? "lake" : "lakes"}</span></li>
@@ -62,7 +66,7 @@
   {/if}
 
   {#if page.lakes.length}
-    <h2>{listHeading}</h2>
+    <h2>{groupHeadings?.lakes ?? "Lakes with surveyed depth data"}</h2>
     {#each groups as group (group.place)}
       {#if group.place}<h3>{group.place}</h3>{/if}
       <ul class="lake-list" class:detailed>{#each group.lakes as lake, index (lake.name + index)}{@render lakeItem(lake)}{/each}</ul>

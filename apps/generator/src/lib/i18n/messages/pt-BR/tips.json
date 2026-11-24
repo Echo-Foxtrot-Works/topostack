@@ -17,7 +17,7 @@
   "lakesBodySources": "Os fundos medidos vêm de medições subaquáticas ou dos dados de terreno. Quando um lago não tem, o fundo é modelado a partir da margem, das encostas ao redor e de estimativas de profundidade publicadas. Nenhum deles reflete o nível atual da água.",
   "lakesBodyControls": "O exagero de profundidade aprofunda o fundo dos lagos em relação aos morros. Limitar camadas de profundidade define quantas chapas ficam abaixo da terra mais baixa, e Ajustar profundidade do lago comprime cada lago nesse limite mantendo sua margem.",
   "exportTitle": "Confira a exportação",
-  "exportBody": "Para relevos em camadas, defina a largura e a altura do material em Exportar. As peças são organizadas automaticamente com margens de 3 mm e espaçamento de 2 mm; escolha Usar layout atual para terminar antes. Abrir no Studio envia um SVG editável com o layout inteiro. Baixar inclui a arte, as configurações e os créditos dos dados, além de um guia de montagem para relevos em camadas.",
+  "exportBody": "Para relevos em camadas, defina a largura e a altura do material em Exportar. As peças são organizadas automaticamente com margens de 3 mm e espaçamento de 2 mm; escolha Usar layout atual para terminar antes. Para relevos em camadas, Abrir no Studio envia o layout das peças de madeira em um SVG editável. Os arquivos de acrílico estão disponíveis em Baixar. Baixar inclui a arte, as configurações e os créditos dos dados, além de um guia de montagem para relevos em camadas.",
   "assemblyTitle": "Montagem",
   "assemblyBody": "Mantenha as peças encaixadas com suas chapas e cole da camada mais baixa para cima, seguindo o guia de montagem. Teste o encaixe de uma peça pequena antes de cortar o projeto inteiro."
 }

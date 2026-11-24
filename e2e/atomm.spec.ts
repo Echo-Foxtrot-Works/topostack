@@ -246,6 +246,55 @@ test("Atomm SDK failure explains recovery and reconnects after reload", async ({
   await expect(studio.getByText("Connecting to Atomm…", { exact: true })).toHaveCount(0);
 });
 
+test("standalone skips the SDK while an embed retries registration and keeps rail focus", async ({ page, browserName }) => {
+  let requests = 0;
+  await page.route("**/v1/**", route => route.abort());
+  await page.route("https://static-res.makextool.com/**", route => {
+    requests += 1;
+    return route.fulfill({ contentType: "application/javascript", body: `
+      window.testRegistrations = 0;
+      window.atomm = {
+        lifecycle: { on(event, hook) {
+          if (++window.testRegistrations === 1) throw new Error("Host not ready");
+          window.testExport = hook;
+        } },
+        app: { getLocale: async () => 'en' },
+        ui: { toast: async () => 'toast', closeToast: async () => {} }
+      };
+    ` });
+  });
+  await page.route("**/atomm-retry-focus", route => route.fulfill({ contentType: "text/html", body: '<iframe title="Generator" src="/studio" style="width:100%;height:800px"></iframe>' }));
+  await page.goto("/studio");
+  await expect(page.getByRole("button", { name: "Generate terrain", exact: true })).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
+  expect(requests).toBe(0);
+  await expect(page.locator('script[src*="platform-sdk.js"]')).toHaveCount(0);
+
+  await page.goto("/atomm-retry-focus");
+  const studio = page.frameLocator("iframe");
+  await expect(studio.locator(".atomm-workbench")).toBeVisible({ timeout: STARTUP_TIMEOUT_MS });
+  await expect.poll(() => studio.locator("body").evaluate(() => {
+    const host = window as unknown as { testRegistrations: number; testExport?: () => void };
+    return { attempts: host.testRegistrations, registered: typeof host.testExport === "function" };
+  }), { timeout: STARTUP_TIMEOUT_MS }).toEqual({ attempts: 2, registered: true });
+  await expect(studio.getByText("Connecting to Atomm…", { exact: true })).toHaveCount(0);
+  expect(requests).toBe(1);
+
+  const collapse = studio.getByRole("button", { name: "Collapse Terrain project" });
+  const expand = studio.getByRole("button", { name: "Expand Terrain project" });
+  // WebKit's macOS defaults use Option+Tab to visit buttons as well as fields.
+  const tab = browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab";
+  await collapse.focus();
+  await page.keyboard.press("Space");
+  await expect(expand).toBeFocused();
+  await page.keyboard.press(tab);
+  await expect(studio.getByRole("button", { name: "Tips", exact: true })).toBeFocused();
+  await expand.focus();
+  await page.keyboard.press("Space");
+  await expect(collapse).toBeFocused();
+  await page.keyboard.press(tab);
+  await expect(studio.getByRole("textbox", { name: "Project name" })).toBeFocused();
+});
+
 
 test("Atomm map selection tools leave view, Tips, and zoom controls accessible", async ({ page }, testInfo) => {
   await page.route("**/v1/**", route => route.abort());

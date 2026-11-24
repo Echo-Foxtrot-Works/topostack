@@ -44,10 +44,7 @@ if (header.tile_type !== "mvt" || header.minzoom !== EXPECTED_MIN_ZOOM || header
   throw new Error(`Expected a vector archive at zoom ${EXPECTED_MIN_ZOOM}-${sources.maxZoom}; received ${header.tile_type} at zoom ${header.minzoom}-${header.maxzoom}.`);
 }
 const metadata = JSON.parse(await capture(pmtilesBin, ["show", archivePath, "--metadata"]));
-const identity = parseAviationArchiveMetadata(metadata);
-if (identity.dataset !== sources.dataset || identity.obstacleDate !== sources.obstacleDate || identity.suaDate !== sources.suaDate) {
-  throw new Error(`Archive is ${identity.dataset}; scripts/data/faa-aviation-sources.json registers ${sources.dataset}. Refusing to upload a different dataset.`);
-}
+parseAviationArchiveMetadata(metadata, sources);
 const layers = new Set((metadata.vector_layers ?? []).map((layer) => layer.id));
 const missing = AVIATION_LAYERS.filter((layer) => !layers.has(layer));
 if (missing.length) throw new Error(`Archive is missing aviation layers: ${missing.join(", ")}.`);

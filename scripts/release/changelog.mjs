@@ -1,16 +1,21 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { appendFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { appendFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CHANGE_TYPES, CHANGE_TYPE_LABELS, compareVersions, latestRelease, parseFragment, releaseBump, sortEntries, validateChangelog,
 } from "@topostack/data-contracts/changelog";
-import { bumpVersion, nextVersion, readVersions } from "./versions.mjs";
+import { isVersionFile, planVersionBump, readVersions, releasePreparationPath } from "./versions.mjs";
+import { writeFileAtomic } from "../lib/files.mjs";
 import { isMainModule } from "../lib/main-module.mjs";
 
 const root = new URL("../../", import.meta.url);
 const SITE = "https://topostack.app";
 const REPOSITORY = "https://github.com/Echo-Foxtrot-Works/topostack";
+const RELEASES = "changelog/releases.json";
+const LATEST = "changelog/latest.json";
+const MARKDOWN = "CHANGELOG.md";
 export const UNRELEASED = "changelog/unreleased/";
 export const SKIP_LABEL = "no-changelog";
 const USAGE = `Usage: changelog.mjs <command>
@@ -25,16 +30,25 @@ const USAGE = `Usage: changelog.mjs <command>
 const git = (args, base) => execFileSync("git", args, { cwd: fileURLToPath(base), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
 export async function readChangelog(base = root) {
-  return validateChangelog(JSON.parse(await readFile(new URL("changelog/releases.json", base), "utf8")));
+  return validateChangelog(JSON.parse(await readFile(new URL(RELEASES, base), "utf8")));
 }
 
 /** Every pending fragment, in file-name order. Dotfiles (.gitkeep) are ignored. */
-export async function readFragments(base = root) {
-  const names = (await readdir(new URL(UNRELEASED, base)).catch(() => [])).filter((name) => !name.startsWith(".")).sort();
+async function fragmentFiles(base) {
+  const names = (await readdir(new URL(UNRELEASED, base)).catch((error) => {
+    if (error.code !== "ENOENT") throw error;
+    return [];
+  })).filter((name) => !name.startsWith(".")).sort();
   return Promise.all(names.map(async (name) => {
     assert.ok(name.endsWith(".md"), `${UNRELEASED}${name}: fragments are Markdown files`);
-    return { name, entry: parseFragment(await readFile(new URL(UNRELEASED + name, base), "utf8"), `${UNRELEASED}${name}`) };
+    const path = UNRELEASED + name;
+    const before = await readFile(join(fileURLToPath(base), path), "utf8");
+    return { name, path, before, entry: parseFragment(before, path) };
   }));
+}
+
+export async function readFragments(base = root) {
+  return (await fragmentFiles(base)).map(({ name, entry }) => ({ name, entry }));
 }
 
 /** The pull request that brought a fragment in, from a squash "(#N)" subject or the first merge after it. */
@@ -85,42 +99,194 @@ export function notesFor(changelog, version) {
   return `${releaseMarkdown(release).split("\n").slice(2).join("\n")}\nFull changelog: ${SITE}/changelog\n`;
 }
 
-export async function writeReleaseFiles(changelog, base = root) {
+function releaseFiles(changelog) {
   const json = (value) => JSON.stringify(value, null, 2) + "\n";
-  await writeFile(new URL("changelog/releases.json", base), json(changelog));
-  await writeFile(new URL("changelog/latest.json", base), json(latestRelease(changelog)));
-  await writeFile(new URL("CHANGELOG.md", base), changelogMarkdown(changelog));
+  return [
+    [RELEASES, json(changelog)],
+    [LATEST, json(latestRelease(changelog))],
+    [MARKDOWN, changelogMarkdown(changelog)],
+  ];
+}
+
+export async function writeReleaseFiles(changelog, base = root) {
+  if (await readOptional(releasePreparationPath(base)) !== null) throw new Error("Resume the pending changelog:prepare before rendering release files.");
+  for (const [path, contents] of releaseFiles(changelog)) {
+    await writeFileAtomic(fileURLToPath(new URL(path, base)), contents);
+  }
+}
+
+async function readOptional(path) {
+  try { return await readFile(path, "utf8"); }
+  catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return null;
+  }
+}
+
+function processRunning(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (error) {
+    if (error.code === "ESRCH") return false;
+    if (error.code === "EPERM") return true;
+    throw error;
+  }
+}
+
+/** Resume only after the preceding process ended or reported a recoverable failure. */
+async function claimPreparation(directory) {
+  for (let attempt = 0; ; attempt += 1) {
+    const ownerPath = join(directory, `${attempt}.owner`);
+    const owner = await readOptional(ownerPath);
+    if (owner === null) {
+      const staging = await mkdtemp(join(directory, "claim-"));
+      const claim = join(staging, "owner");
+      try {
+        await writeFileAtomic(claim, String(process.pid));
+        await link(claim, ownerPath);
+        return ownerPath;
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+        throw new Error("Another changelog:prepare is resuming this release. Retry after it finishes.", { cause: error });
+      } finally {
+        await rm(staging, { recursive: true, force: true });
+      }
+    }
+    const pid = Number(owner);
+    assert(Number.isSafeInteger(pid) && pid > 0, "Invalid release preparation owner");
+    if (await readOptional(`${ownerPath}.ended`) === null && processRunning(pid)) {
+      throw new Error(`Release preparation is already running in process ${pid}. Retry after it finishes.`);
+    }
+  }
+}
+
+function preparationConflict(path, directory) {
+  return new Error(`${path} changed during release preparation. Review it and the saved files in ${directory} before retrying changelog:prepare.`);
+}
+
+function allowedPreparationPath(path) {
+  if (typeof path !== "string") return false;
+  if (isVersionFile(path) || [RELEASES, LATEST, MARKDOWN].includes(path)) return true;
+  const name = path.slice(UNRELEASED.length);
+  return path.startsWith(UNRELEASED) && /^[^./\\][^/\\]*\.md$/.test(name);
+}
+
+/** Atomically replace files while retaining the bytes used to prepare the release. */
+async function applyPreparation({ base, directory, plan }) {
+  const paths = plan.changes.map(({ path }) => path);
+  assert(paths.every(allowedPreparationPath) && paths.length === new Set(paths).size, "Invalid release preparation paths");
+  const changes = plan.changes.map((change, index) => ({
+    ...change, target: join(fileURLToPath(base), change.path), backup: join(directory, `${index}.before`),
+  }));
+  const state = async ({ path, target, before, after, backup }) => {
+    const actual = await readOptional(target);
+    if (actual === before || (actual === after && (before === null || await readOptional(backup) === before))) return actual;
+    throw preparationConflict(path, directory);
+  };
+  // Refuse existing conflicts before making any additional changes on a retry.
+  for (const change of changes) await state(change);
+  for (const [index, change] of changes.entries()) {
+    const { path, target, before, after, backup } = change;
+    const actual = await state(change);
+    if (actual === after) continue;
+    if (after === null) {
+      if (await readOptional(backup) !== null) throw preparationConflict(path, directory);
+      await rename(target, backup);
+      if (await readOptional(backup) === before) continue;
+      // If an edit raced the rename, restore it only if the name is still free.
+      try { await link(backup, target); await rm(backup); }
+      catch (error) { if (error.code !== "EEXIST") throw error; }
+      throw preparationConflict(path, directory);
+    }
+    if (before !== null && await readOptional(backup) === null) await writeFileAtomic(backup, before);
+    const staged = join(directory, `${index}.after`);
+    const mode = before === null ? undefined : (await stat(target)).mode;
+    await writeFileAtomic(staged, after, { mode });
+    if (await state(change) !== before) throw preparationConflict(path, directory);
+    if (before === null) await link(staged, target);
+    else await rename(staged, target);
+  }
+  for (const change of changes) {
+    if (await state(change) !== change.after) throw preparationConflict(change.path, directory);
+  }
+}
+
+async function finishPreparation(base, directory, plan, ownerPath) {
+  const journal = releasePreparationPath(base);
+  try {
+    const pending = await readOptional(journal);
+    assert.equal(pending && JSON.parse(pending).directory, basename(directory),
+      "The pending release preparation changed. Retry changelog:prepare.");
+    await applyPreparation({ base, directory, plan });
+    await rm(journal);
+  } catch (error) {
+    await writeFile(`${ownerPath}.ended`, "");
+    throw error;
+  }
+  await rm(directory, { recursive: true, force: true });
+  return plan.result;
 }
 
 /**
  * Fold every pending fragment into a new release at the top of
- * releases.json, bump the main version by the largest change, and delete the
- * fragments. Returns undefined when nothing is pending, so reruns are no-ops.
+ * releases.json, bump the main version by the largest change, and consume the
+ * fragments. An interrupted checkout resumes from the saved plan. A completed
+ * checkout returns undefined when nothing else is pending.
  */
 export async function prepareRelease({ base = root, date = new Date().toISOString().slice(0, 10), dryRun = false } = {}) {
-  const fragments = await readFragments(base);
+  const journal = releasePreparationPath(base);
+  const pending = await readOptional(journal);
+  if (pending !== null) {
+    const plan = JSON.parse(pending);
+    assert.match(plan.directory, /^release-preparation-[A-Za-z0-9]+$/, "Invalid release preparation directory");
+    if (dryRun) return plan.result;
+    const directory = join(fileURLToPath(base), ".topostack", plan.directory);
+    return finishPreparation(base, directory, plan, await claimPreparation(directory));
+  }
+  const fragments = await fragmentFiles(base);
   if (!fragments.length) return undefined;
-  const changelog = await readChangelog(base);
+  const releasePath = new URL(RELEASES, base);
+  const releaseBefore = await readFile(releasePath, "utf8");
+  const changelog = validateChangelog(JSON.parse(releaseBefore));
   const entries = sortEntries(fragments.map(({ name, entry }) => {
     const pr = entry.pr ?? inferPullRequest(UNRELEASED + name, base);
     return pr ? { ...entry, pr } : entry;
   }));
   const bump = releaseBump(entries);
-  const version = dryRun ? nextVersion((await readVersions(base)).version, bump) : await bumpVersion("main", bump, base);
+  const { version, changes } = await planVersionBump(bump, base);
   const next = validateChangelog({ ...changelog, releases: [{ version, date, entries }, ...changelog.releases] });
-  if (!dryRun) {
-    await writeReleaseFiles(next, base);
-    await Promise.all(fragments.map(({ name }) => rm(new URL(UNRELEASED + name, base))));
+  const result = { version, bump, release: next.releases[0] };
+  if (dryRun) return result;
+
+  for (const [path, after] of releaseFiles(next)) {
+    const before = path === RELEASES ? releaseBefore : await readOptional(fileURLToPath(new URL(path, base)));
+    changes.push({ path, before, after });
   }
-  return { version, bump, release: next.releases[0] };
+  changes.push(...fragments.map(({ path, before }) => ({ path, before, after: null })));
+  const recoveryRoot = fileURLToPath(new URL(".topostack/", base));
+  await mkdir(recoveryRoot, { recursive: true });
+  const directory = await mkdtemp(join(recoveryRoot, "release-preparation-"));
+  const plan = { directory: basename(directory), result, changes };
+  const planPath = join(directory, "plan.json");
+  const ownerPath = join(directory, "0.owner");
+  try {
+    await writeFileAtomic(planPath, JSON.stringify(plan));
+    await writeFileAtomic(ownerPath, String(process.pid));
+    // Publish the complete plan and owner as one exclusive operation.
+    await link(planPath, journal);
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    if (error.code !== "EEXIST") throw error;
+    throw new Error("Another changelog:prepare already started. Retry after it finishes.", { cause: error });
+  }
+  return finishPreparation(base, directory, plan, ownerPath);
 }
 
 /** The release files, the generated Markdown, and the package version must agree. */
 export async function verifyRelease(base = root) {
   const changelog = await readChangelog(base);
-  const latest = JSON.parse(await readFile(new URL("changelog/latest.json", base), "utf8"));
+  const latest = JSON.parse(await readFile(new URL(LATEST, base), "utf8"));
   assert.deepEqual(latest, latestRelease(changelog), "changelog/latest.json is stale; run npm run changelog:prepare");
-  assert.equal(await readFile(new URL("CHANGELOG.md", base), "utf8"), changelogMarkdown(changelog), "CHANGELOG.md is stale; it is generated from changelog/releases.json");
+  assert.equal(await readFile(new URL(MARKDOWN, base), "utf8"), changelogMarkdown(changelog), "CHANGELOG.md is stale; it is generated from changelog/releases.json");
   const { version } = await readVersions(base);
   assert.equal(latest.version, version, `The newest changelog release (${latest.version}) must match the package version (${version}); bump versions through changelog:prepare`);
   await readFragments(base);

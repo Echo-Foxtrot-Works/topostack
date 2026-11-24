@@ -321,3 +321,10 @@ describe("water depth", () => {
     expect(surface.surfaceElevationM - surface.bedElevationM).toBeLessThan(300);
   });
 });
+
+it("does not report flattened water in a dry circular crop with lower rectangular corners", () => {
+  const base = { ...DEFAULT_PROJECT, widthMm: 100, heightMm: 100, cropShape: "circle" as const, showWater: false, showWaterDepth: false };
+  const [project, source] = scaledForLayers(base, gridSource(base, 101, (x, y) => (x + y) * 100), 3);
+  const ir = generateGeometry(project, { ...source, waterAreas: [], markings: [] });
+  expect(ir.warnings.map(w => w.code)).not.toContain("WATER_DEPTH_CLAMPED");
+});

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { DEFAULT_PROJECT, generateGeometry, type GeometryIRV1, type SourceBundleV1 } from "@topostack/core";
+  import { ATOMM_SDK_URL } from "$lib/atomm/sdk";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
   import type { GeometryWorkerReady, GeometryWorkerRequest, GeometryWorkerResponse, WarmGeometryWorker } from "$lib/workers/geometry-worker-client";
   let App = $state.raw<typeof import("$lib/studio/App.svelte").default>();
@@ -13,6 +14,15 @@
   let warm: WarmGeometryWorker | undefined;
   const takeWarmWorker = () => { const handed = warm; warm = undefined; return handed; };
   onMount(() => {
+    // The dedicated package includes the SDK in its HTML. On the public site
+    // only a framed studio needs the platform script.
+    if (import.meta.env.VITE_SITE_ENV !== "atomm" && window.parent !== window &&
+        !window.atomm && !document.querySelector(`script[src="${ATOMM_SDK_URL}"]`)) {
+      const sdk = document.createElement("script");
+      sdk.src = ATOMM_SDK_URL;
+      sdk.async = true;
+      document.head.append(sdk);
+    }
     let active = true;
     void import("$lib/studio/App.svelte").then((module) => { if (active) App = module.default; }).catch(() => { if (active) error = true; });
     const sample = createSamplePreviewSource();
@@ -53,10 +63,6 @@
     return () => { active = false; stopWorker(); takeWarmWorker()?.worker.terminate(); };
   });
 </script>
-
-<svelte:head>
-  {#if import.meta.env.VITE_SITE_ENV !== "atomm"}<script async src="https://static-res.makextool.com/scripts/js/generator-sdk/platform-sdk.js"></script>{/if}
-</svelte:head>
 
 {#if preview && App}
   <App initialPreview={preview} initialSource={source} {takeWarmWorker} />

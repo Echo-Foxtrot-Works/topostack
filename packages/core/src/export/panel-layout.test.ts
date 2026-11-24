@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { generateGeometry } from "../pipeline/generate.js";
 import { offsetClosedRing } from "../primitives/offset.js";
 import { ringBounds } from "../primitives/geometry2d.js";
-import { realSource } from "../test-support/sources.js";
+import { buildFabricationPackage } from "./packages.js";
+import { gridSource, scaledForLayers, realSource } from "../test-support/sources.js";
 import { DEFAULT_PROJECT, type FabricationNest, type GeometryIRV1, type LayerIR, type LayerPieceV1, type Polygon2D } from "../types.js";
 import { fabricationPanels, nestFamilies, rootPolygonByPolygon } from "./panel-layout.js";
 
@@ -155,4 +156,21 @@ describe("fabrication panels", () => {
       expect(only).toMatchObject({ cellName: "A1", minX: 0, maxX: 150 });
     });
   });
+});
+
+it("indexes split donor panels by the layer cuts actually in each file", async () => {
+  const base = { ...DEFAULT_PROJECT, widthMm: 300, heightMm: 200, workAreaWidthMm: 160, workAreaHeightMm: 250, seamOffsetMm: 0, seamTabs: false, optimizeMaterialUse: true };
+  const [project, source] = scaledForLayers(base, gridSource(base, 81, (x, y) => Math.max(0, 500 - Math.hypot((x - 0.53) * 1.5, y) * 800)), 6);
+  const pkg = buildFabricationPackage(generateGeometry(project, source), project);
+  const read = (suffix: string) => pkg.files.find(file => file.filename.endsWith(suffix))!.blob.text();
+  const result = JSON.parse(await read("-project.json")).result;
+  const panels: Array<{filename: string; layerIds: string[]}> = result.fabrication.panels;
+  expect(panels.some(panel => panel.filename.endsWith("-a1.svg"))).toBe(true);
+  for (const panel of panels) {
+    const svg = await read(panel.filename);
+    const actual = [...new Set([...svg.matchAll(/id="(layer-\d+)-cut-/g)].map(match => match[1]))];
+    expect(panel.layerIds).toEqual(actual);
+    expect(panel.filename).toContain(actual.map(id => id!.slice(6)).join("-"));
+  }
+  for (const layer of result.layers) expect(layer.filenames ?? [layer.filename]).toEqual(panels.filter(panel => panel.layerIds.includes(layer.id)).map(panel => panel.filename));
 });

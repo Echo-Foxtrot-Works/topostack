@@ -159,6 +159,7 @@ export function fabricationPanels(ir: GeometryIRV1): FabricationPanel[] {
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([sheetName, included]) => ({
         ...family,
+        layerIndexes: family.layerIndexes.filter(index => included.has(index)),
         cellName: sheetName,
         included,
         ...panelBounds(ir, family.layerIndexes, included),

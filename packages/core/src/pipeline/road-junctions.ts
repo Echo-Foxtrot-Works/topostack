@@ -39,30 +39,85 @@ function finishJunction({ point, arms }: Node, radius: number): boolean {
   return true;
 }
 
+interface RoadLeg { a: Point2D; b: Point2D; kept?: Point2D[][] }
+
+/** Assign each interval on a common line to the first road that covers it.
+ * Jump over already claimed intervals so overlapping long routes do not
+ * create a separate copy of every intermediate point for every route.
+ */
+function claimCollinearLegs(legs: RoadLeg[]): void {
+  const { a, b } = legs[0]!;
+  const axis = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? "x" : "y";
+  const ends = new Map<string, Point2D>();
+  for (const leg of legs) {
+    ends.set(pointKey(leg.a), leg.a);
+    ends.set(pointKey(leg.b), leg.b);
+  }
+  const points = [...ends.values()].sort((left, right) => left[axis] - right[axis]);
+  const indices = new Map(points.map((point, index) => [pointKey(point), index]));
+  const next = Uint32Array.from({ length: points.length }, (_, i) => i);
+  const available = (index: number) => {
+    while (next[index] !== index) {
+      next[index] = next[next[index]!]!;
+      index = next[index]!;
+    }
+    return index;
+  };
+  for (const leg of legs) {
+    const from = indices.get(pointKey(leg.a))!, to = indices.get(pointKey(leg.b))!;
+    const limit = Math.max(from, to);
+    let index = available(Math.min(from, to));
+    const runs: Point2D[][] = [];
+    while (index < limit) {
+      const run = [points[index]!];
+      do {
+        run.push(points[++index]!);
+        next[index - 1] = index;
+      } while (index < limit && next[index] === index);
+      runs.push(from < to ? run : run.reverse());
+      index = available(index);
+    }
+    if (runs.length !== 1 || runs[0]!.length !== 2
+      || pointKey(runs[0]![0]!) !== pointKey(leg.a) || pointKey(runs[0]![1]!) !== pointKey(leg.b)) {
+      leg.kept = from < to ? runs : runs.reverse();
+    }
+  }
+}
+
 /** Keep a coincident road leg on one toolpath, even when two named routes share it. */
 export function uniqueRoadCenterlines(roads: MarkingFeature[]): Map<MarkingFeature, Point2D[][]> {
-  const used = new Set<string>();
-  const result = new Map<MarkingFeature, Point2D[][]>();
   // A shared arterial and side-road segment belongs to the arterial SVG group.
   const ordered = [...roads].sort((a, b) => Number(b.transportationClass === "major-road") - Number(a.transportationClass === "major-road"));
-  for (const f of ordered) {
-    const points = distinctPoints(f.points);
+  const lines = new Map<string, RoadLeg | RoadLeg[]>();
+  const paths = ordered.map(road => {
+    const points = distinctPoints(road.points);
+    const legs = points.slice(1).map((b, index) => {
+      const a = points[index]!;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const alongX = Math.abs(dx) >= Math.abs(dy);
+      const slope = alongX ? dy / dx : dx / dy;
+      const intercept = alongX ? a.y - slope * a.x : a.x - slope * a.y;
+      const key = [road.transportLevel ?? (road.isBridge ? 1 : 0), alongX, Math.round(slope * 1e8), Math.round(intercept * 1e5)].join("/");
+      const leg: RoadLeg = { a, b };
+      const other = lines.get(key);
+      if (Array.isArray(other)) other.push(leg);
+      else lines.set(key, other ? [other, leg] : leg);
+      return leg;
+    });
+    return { road, points, legs };
+  });
+  for (const line of lines.values()) if (Array.isArray(line)) claimCollinearLegs(line);
+  const result = new Map<MarkingFeature, Point2D[][]>();
+  for (const { road, points, legs } of paths) {
+    if (points.length === road.points.length && !legs.some(leg => leg.kept)) continue;
     const parts: Point2D[][] = [];
-    let start = 0;
-    for (let i = 1; i < points.length; i++) {
-      const a = pointKey(points[i - 1]!), b = pointKey(points[i]!);
-      const edge = `${f.transportLevel ?? (f.isBridge ? 1 : 0)}/${a < b ? a + "/" + b : b + "/" + a}`;
-      if (!used.has(edge)) {
-        used.add(edge);
-        continue;
-      }
-      if (i - start >= 2) parts.push(points.slice(start, i));
-      start = i;
+    for (const leg of legs) for (const run of leg.kept ?? [[leg.a, leg.b]]) {
+      const last = parts.at(-1);
+      if (last && pointKey(last.at(-1)!) === pointKey(run[0]!)) {
+        for (let i = 1; i < run.length; i++) last.push(run[i]!);
+      } else parts.push([...run]);
     }
-    if (start > 0 || points.length !== f.points.length) {
-      if (points.length - start >= 2) parts.push(points.slice(start));
-      result.set(f, parts);
-    }
+    result.set(road, parts);
   }
   return result;
 }

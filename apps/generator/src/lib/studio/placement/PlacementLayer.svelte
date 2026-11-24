@@ -3,7 +3,7 @@
   import { onMount, tick } from "svelte";
   import { Button } from "@loidolt/theme-svelte";
   import { Move, Trash2 } from "@lucide/svelte";
-  import { displayLength, GRAPHIC_OPERATIONS, lengthUnit, type GeometryIRV1, type GraphicOperation, type Point2D, type ProjectConfigV1 } from "@topostack/core";
+  import { displayLength, graphicOperationsFor, lengthUnit, type GeometryIRV1, type GraphicOperation, type Point2D, type ProjectConfigV1 } from "@topostack/core";
   import { pointsToPath } from "$lib/studio/svg-path";
   import { addGraphicToSession, availablePlaceables, draftProject, movePlaceable, placeableFor, removePlaceable, resizePlaceable, rotatePlaceable, setPlaceableOperation, type PlaceableId, type PlacementContext, type PlacementSession } from "./placeables";
   import PlacementArtwork from "./PlacementArtwork.svelte";
@@ -337,7 +337,7 @@
         {#if selected?.operation && selectedOperation}
           {@const id = selected.id}
           <span class="placement-operation" role="radiogroup" aria-label={t("preview.graphicOperation")}>
-            {#each GRAPHIC_OPERATIONS as operation (operation)}
+            {#each graphicOperationsFor(draft.outputMode) as operation (operation)}
               <button type="button" role="radio" aria-checked={selectedOperation === operation} data-state={selectedOperation === operation ? "on" : "off"} onclick={() => setOperation(id, operation)}>{t(`preview.graphicOperation.${operation}` as MessageKey)}</button>
             {/each}
           </span>

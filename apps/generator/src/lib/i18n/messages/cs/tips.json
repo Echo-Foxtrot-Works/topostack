@@ -17,7 +17,7 @@
   "lakesBodySources": "Naměřená dna pocházejí z podvodních měření nebo z dat terénu. Kde jezero žádná nemá, jeho dno se modeluje z břehové čáry, okolních svahů a publikovaných odhadů hloubky. Ani jedno neodráží dnešní hladinu vody.",
   "lakesBodyControls": "Převýšení hloubky prohlubuje dna jezer vůči kopcům. Omezit hloubkové vrstvy určuje, kolik desek jde pod nejnižší pevninu, a Přizpůsobit hloubku jezer stlačí každé jezero do tohoto limitu se zachováním břehové čáry.",
   "exportTitle": "Zkontrolujte export",
-  "exportBody": "U vrstvených reliéfů nastavte šířku a výšku materiálu v Exportu. Díly se rozmístí automaticky s okraji 3 mm a rozestupy 2 mm; pro dřívější dokončení zvolte Použít aktuální rozvržení. Otevřít ve Studiu odešle jedno upravitelné SVG celého rozvržení. Stáhnout obsahuje grafiku, nastavení a zdroje dat a u vrstvených reliéfů i montážní průvodce.",
+  "exportBody": "U vrstvených reliéfů nastavte šířku a výšku materiálu v Exportu. Díly se rozmístí automaticky s okraji 3 mm a rozestupy 2 mm; pro dřívější dokončení zvolte Použít aktuální rozvržení. U vrstveného reliéfu odešle Otevřít ve Studiu jedno upravitelné SVG s rozvržením dílů ze dřeva. Soubory pro akryl jsou součástí volby Stáhnout. Stáhnout obsahuje grafiku, nastavení a zdroje dat a u vrstvených reliéfů i montážní průvodce.",
   "assemblyTitle": "Sestavení",
   "assemblyBody": "Rozmístěné díly ponechte u jejich desek a lepte od nejnižší vrstvy nahoru podle montážního průvodce. Před řezáním celého projektu vyzkoušejte usazení malého dílu."
 }

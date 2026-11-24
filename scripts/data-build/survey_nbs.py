@@ -137,13 +137,14 @@ def fetch(pins, cache, download):
 def hydrolakes(pins, cache, download, ids):
     """Selected HydroLAKES polygons from the pinned archive, extracting only the shapefile."""
     archive = download(pins['hydrolakes'], cache)
-    shapefile = cache / pins['hydrolakes']['shapefile']
+    extraction = cache / 'nbs-hydrolakes' / pins['hydrolakes']['sha256']
+    shapefile = extraction / pins['hydrolakes']['shapefile']
     if not shapefile.exists():
         stem = pins['hydrolakes']['shapefile'].removesuffix('.shp')
         with zipfile.ZipFile(archive) as bundle:
             for suffix in ('.shp', '.shx', '.dbf', '.prj', '.cpg'):
                 if stem + suffix in bundle.namelist():
-                    bundle.extract(stem + suffix, cache)
+                    bundle.extract(stem + suffix, extraction)
     polygons = {}
     with fiona.open(shapefile) as source:
         for feature in source:
@@ -191,8 +192,9 @@ def nbs(source, cache, writer, download, write_grid):
     for i, lake in enumerate(lakes):
         key = str(lake['hylakId'])
         # Tile digests and the recipe name the inputs, so a changed pin never reuses a stale prepared grid.
-        recipe = json.dumps([MIN_RESOLUTION_M, OUTLINE_BUFFER_M, MAX_ABOVE_DATUM_SHARE, pins['hydrolakes']['sha256'],
-                             [pins['tiles'][name]['sha256'] for name in lake['tiles']]])
+        recipe = json.dumps(['nbs-survey-grid-v2', ELEVATION_BAND, CONTRIBUTOR_BAND, MIN_RESOLUTION_M,
+                             OUTLINE_BUFFER_M, MAX_ABOVE_DATUM_SHARE, pins['hydrolakes'],
+                             [(name, pins['tiles'][name]) for name in lake['tiles']]], sort_keys=True)
         prepared = cache / 'nbs-prepared' / f"{key}-{hashlib.sha256(recipe.encode()).hexdigest()[:12]}.tif"
         lake_tiles = [(metres(pins['tiles'][name]['resolution']), tiles[name]) for name in lake['tiles']]
         reason = None if prepared.exists() else prepare(polygons[lake['hylakId']], lake_tiles, prepared, write_grid)
