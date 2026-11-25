@@ -187,11 +187,27 @@ describe("geometry generation", () => {
     expect(outerPoints.every((point) => !pointInRing(point, polygon.outer))).toBe(true);
   });
 
+  it("does not let a spike too small to cut set the layer ladder", () => {
+    const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
+    const terrain = (nx: number) => 30 * (nx + 1);
+    const spike = (nx: number, ny: number) => (nx > 0.49 && nx < 0.52 && ny > 0.49 && ny < 0.52 ? 400 : terrain(nx));
+    const smooth = generateGeometry(base, gridSource(base, 48, terrain));
+    const spiked = generateGeometry(base, gridSource(base, 48, spike));
+    // One 400 m cell on 30 m of relief: the stack is planned as if it were absent.
+    expect(spiked.layers.length).toBe(smooth.layers.length);
+    expect(spiked.landReliefM).toBeCloseTo(smooth.landReliefM, 0);
+    expect(spiked.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(false);
+    // A summit wide enough to cut still sets it.
+    const summit = generateGeometry(base, gridSource(base, 48, (nx, ny) => (nx > 0.3 && nx < 0.7 && ny > 0.3 && ny < 0.7 ? 400 : terrain(nx))));
+    expect(summit.landReliefM).toBeGreaterThan(300);
+  });
+
   it("warns about empty layers and blocks their fabrication export", () => {
     const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
-    // Gradient terrain plus one single-cell spike: the top layer's only region
-    // is smaller than the minimum feature size, so it is culled to empty.
-    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx, ny) => (nx > 0.01 && nx < 0.04 && ny > 0.01 && ny < 0.04 ? 100 : 30 * (nx + 1))), 4);
+    // Gradient terrain plus a ridge one cell wide: the top layer's only region
+    // is long enough to count as terrain but narrower than the minimum
+    // feature size, so it is culled to empty.
+    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx) => (nx > 0.01 && nx < 0.04 ? 100 : 30 * (nx + 1))), 4);
     const result = generateGeometry(project, source);
     expect(result.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(true);
     expect(result.layers.some((layer) => layer.polygons.length === 0)).toBe(true);

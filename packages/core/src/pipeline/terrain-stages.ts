@@ -68,7 +68,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // Size the stack from land alone. A coastal map's grid minimum is the abyssal
   // plain, and dividing the whole of that across the sheet budget is what used
   // to squeeze the land into a layer or two.
-  const { landMin, landMax, waterMin, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
+  const { landMin, landMax, cuttableWaterMin, min: visibleMin, max: visibleMax, cuttableMin } = cropElevationRange(config, carved.grid, carved.waterMask);
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
   const engravedContours = flatEngraving && config.showEngravingContours;
@@ -84,6 +84,14 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   let ladderBase = flatEngraving ? landMin : landMin - stack.depthLayerCount * stack.metersPerLayer;
   if (hasOcean && stack.metersPerLayer > 0) {
     ladderBase = SEA_LEVEL_M - Math.ceil((SEA_LEVEL_M - ladderBase) / stack.metersPerLayer) * stack.metersPerLayer;
+  }
+  // The first step can sit at or below everything deep enough to cut: the sea
+  // level snap slides the ladder down, and a deep spot smaller than the cutter
+  // can show still asks for a sheet. The sheet above the base would then be a
+  // second uncut rectangle, so the ladder starts a step higher. Whole steps
+  // keep sea level on a step.
+  if (!flatEngraving && stack.metersPerLayer > 0 && Number.isFinite(cuttableMin)) {
+    while (ladderBase + stack.metersPerLayer <= Math.min(cuttableMin, landMin) + 1e-9) ladderBase += stack.metersPerLayer;
   }
   // Snapping to sea level slides the whole ladder down by up to a full step, so
   // the sheet count is taken from the span the ladder actually has to cover.
@@ -104,7 +112,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // silently punching through the base sheet.
   const water = config.fitLakeDepth && !flatEngraving ? fitLakesToLadder(carved, config, ladderBase) : carved;
   const { grid: modelGrid, clamped } = clampCarveToLadder(water.grid, ladderBase);
-  if (clamped && !flatEngraving && (water === carved ? waterMin : cropElevationRange(config, water.grid, water.waterMask).waterMin) < ladderBase) warnings.push({
+  if (clamped && !flatEngraving && (water === carved ? cuttableWaterMin : cropElevationRange(config, water.grid, water.waterMask).cuttableWaterMin) < ladderBase) warnings.push({
     code: "WATER_DEPTH_CLAMPED",
     ...(!config.fitLakeDepth && carved.surfaces.some((surface) => surface.kind === "lake" && surface.bedElevationM < ladderBase && surface.surfaceElevationM > ladderBase) ? { action: "fit-lake-depth" as const } : {}),
     message: `Water here is deeper than the ${stack.depthLayerCount} sheet${stack.depthLayerCount === 1 ? "" : "s"} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.`,

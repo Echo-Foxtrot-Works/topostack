@@ -139,14 +139,18 @@ describe("fabrication geometry regressions", () => {
     expect(result.layers.map((layer) => layer.elevationM)).toEqual(expected.layers.map((layer) => layer.elevationM));
   });
 
-  it("reports the exaggeration actually cut when the sea-level snap adds a sheet", () => {
+  it("reports the exaggeration actually cut when the sea-level snap shifts the ladder", () => {
     const config = { ...base, materialThicknessMm: 2, showWaterDepth: true };
     const data = source(config, (x) => x < 10 ? -30 : 40 + x * 25);
     data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[-55,-150],[-55,150],[-150,150],[-150,-150]]), holes: [] } }];
     const result = generateGeometry(config, data);
     const plan = planTerrainStack(config, result.landReliefM, bounds, result.waterDepthBelowLandM);
-    // The snap slides the ladder, so it needs one more sheet than planned...
-    expect(result.layers.length).toBe(plan.layerCount + 1);
+    // The snap slides the ladder down, but the step it leaves under the sea
+    // floor is not cut as a second solid base: only the base lies below -30 m.
+    expect(result.layers.length).toBe(plan.layerCount);
+    expect(result.layers[0]!.elevationM).toBeLessThanOrEqual(-30);
+    expect(result.layers[1]!.elevationM).toBeGreaterThan(-30);
+    expect(result.layers.some((layer) => layer.elevationM === 0)).toBe(true);
     // ...but every sheet still spans the planned interval, so the vertical
     // scale of the cut stack - and therefore its exaggeration - is unchanged.
     const stepM = result.layers[1]!.elevationM - result.layers[0]!.elevationM;

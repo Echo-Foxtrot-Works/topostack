@@ -29,6 +29,71 @@ describe("elevation spike repair", () => {
     expect(values).toEqual(original);
   });
 
+  it("repairs the up-and-down overshoot on the Pinellas barrier islands at zoom 10", () => {
+    // Mapzen 10/276/429: flat coast under 40 m with pixels from -336 m to +341 m.
+    const values = decodeTerrainPng(readFileSync(new URL("./fixtures/pinellas-z10.png", import.meta.url)));
+    const original = values.slice();
+    expect(Math.max(...values)).toBeGreaterThan(300);
+    expect(Math.min(...values)).toBeLessThan(-300);
+    const repaired = repairElevationSpikes(values, 256, 256, undefined, 10);
+    expect(repaired).toBeGreaterThan(100);
+    expect(repaired).toBeLessThan(250);
+    expect(Math.max(...values)).toBeLessThan(60);
+    expect(Math.min(...values)).toBeGreaterThan(-100);
+    let changed = 0;
+    for (let i = 0; i < values.length; i += 1) if (values[i] !== original[i]) changed += 1;
+    expect(changed).toBe(repaired);
+  });
+
+  it.each(["hill", "pit", "butte", "sea stack", "quarry"])("leaves a one-sided or wide %s on level ground alone", (kind) => {
+    const size = 64, center = 32 * size + 32;
+    const values = new Float32Array(size * size).fill(5);
+    if (kind === "hill") for (const dy of [-1, 0, 1]) for (const dx of [-1, 0, 1]) values[center + dy * size + dx] = 90;
+    if (kind === "pit") values[center] = -60;
+    if (kind === "butte") for (let dy = -3; dy <= 3; dy += 1) for (let dx = -3; dx <= 3; dx += 1) values[center + dy * size + dx] = 300;
+    if (kind === "sea stack") { values[center] = 80; values[center + 1] = 70; values[center + size] = 60; }
+    // A pit beside its spoil heap swings both ways, but over far more pixels than overshoot does.
+    if (kind === "quarry") for (let dy = -3; dy <= 3; dy += 1) for (let dx = -6; dx <= 6; dx += 1) values[center + dy * size + dx] = dx < 0 ? -90 : 70;
+    const original = values.slice();
+    expect(repairElevationSpikes(values, size, size, undefined, 10)).toBe(0);
+    expect(values).toEqual(original);
+  });
+
+  it("levels a single pixel standing over 100 m above flat ground, and nothing lower", () => {
+    const size = 64;
+    const values = new Float32Array(size * size).fill(1);
+    values[20 * size + 20] = 195;
+    values[40 * size + 40] = 95;
+    expect(repairElevationSpikes(values, size, size, undefined, 12)).toBe(1);
+    expect(values[20 * size + 20]).toBe(1);
+    expect(values[40 * size + 40]).toBe(95);
+  });
+
+  it("repairs one-sided lobes only beside a confirmed severe defect", () => {
+    const size = 64;
+    const build = (withDefect: boolean) => {
+      const values = new Float32Array(size * size).fill(2);
+      for (const [offset, value] of [[0, 85], [1, 70], [size, 64]] as const) values[30 * size + 36 + offset] = value;
+      if (withDefect) { values[30 * size + 30] = 340; values[30 * size + 31] = -330; }
+      return values;
+    };
+    const alone = build(false);
+    expect(repairElevationSpikes(alone, size, size, undefined, 10)).toBe(0);
+    const beside = build(true);
+    expect(repairElevationSpikes(beside, size, size, undefined, 10)).toBe(5);
+    expect(Math.max(...beside)).toBe(2);
+    expect(Math.min(...beside)).toBe(2);
+  });
+
+  it("leaves preferred-source pixels out of the overshoot repair", () => {
+    const size = 64;
+    const values = new Float32Array(size * size).fill(2);
+    const owners = new Uint16Array(values.length);
+    values[30 * size + 30] = 340; values[30 * size + 31] = -330;
+    owners[30 * size + 30] = 1; owners[30 * size + 31] = 1;
+    expect(repairElevationSpikes(values, size, size, owners, 10)).toBe(0);
+  });
+
   it("keeps a trench axis that an ocean grid draws at the base zoom", () => {
     // A V-shaped trench 7,000 m deep with 10° walls at about 250 m per pixel
     // (z9 near 35°N, where GEBCO_2026 is sampled), like the Japan Trench.
