@@ -12,7 +12,7 @@ The feature has four parts:
 
 ## In the studio
 
-The export dialog has a **Sheet layout** section for layered projects. The maker picks **Nested sheets** and sets the sheet size, spacing, edge margin, rotation and search time. These are stored in `project.sheetNesting` without regenerating anything. **Nest parts** then starts a search.
+The export dialog has a **Sheets** step for layered projects, holding the **Sheet layout** section. The maker picks **Nested sheets** and sets the sheet size, spacing, edge margin, rotation and search time. These are stored in `project.sheetNesting` without regenerating anything. **Nest parts** then starts a search.
 
 - **Loading:** `SheetNesting` (`studio/sheet-nesting.svelte.ts`) holds the search state. The planner and part extraction live in core's export chunk, so it loads them on demand from `studio/sheet-nest-runner.ts`. The worker (`workers/nest.worker.ts`) and the `.wasm` are fetched only when a search starts. `check-web-budget.mjs` fails the build if either reaches the startup path, and budgets the engine at 340 KB gzip.
 - **Progress:** the worker streams each improved plan. The dialog draws every sheet as a thumbnail, and a sheet still packed by the fallback is marked pending. **Stop and keep best** terminates the worker and keeps the last plan; every draft is a complete, valid layout. **Cancel** discards the search.

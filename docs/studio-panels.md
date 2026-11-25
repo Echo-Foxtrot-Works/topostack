@@ -16,7 +16,7 @@ Panels group controls by what they change on the model, not by kind of setting. 
 | Labels | Labels and marks | Font, text size, label line width, elevation labels, north arrow, scale bar, title | `LabelsPanel.svelte` |
 | Fabricate | Fabrication | Laser kerf, minimum feature, work area, assembly guides | `MakePanel.svelte` |
 
-Material-saving nests, glue margin and the seam options (puzzle tabs, assembly labels, seam offset) are in the export dialog as **Panels and seams** (`NestsAndSeams.svelte`), beside the sheet layout they feed. They still change the preview.
+Material-saving nests, glue margin and the seam options (puzzle tabs, assembly labels, seam offset) are the first step of the export dialog, **Panels** (`NestsAndSeams.svelte`), ahead of the sheet layout they feed. The dialog (`ExportDialog.svelte`) is a step-by-step flow: **Panels**, **Sheets** (nesting), **Download**, **Share**; a flat engraving has only the last two. Every step is reachable from the step list, and each open starts at the first. They still change the preview.
 
 A new control goes in the panel for the subject it changes. A width for a new kind of line goes under that feature's switch with `LineWidthField.svelte`. If a control fits no panel, that is a sign the panels need rethinking, not a reason for an "Other" panel.
 

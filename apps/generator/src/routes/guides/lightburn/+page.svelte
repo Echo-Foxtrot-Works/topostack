@@ -8,7 +8,7 @@
   <p>Begin with the <a href={`${base}/studio?starter=relief`}>small layered relief</a> or <a href={`${base}/studio?starter=engraving`}>flat contour engraving</a>. Review the size and actual material thickness and generate fresh terrain. Then open Export.</p>
 
   <h2>Open the LightBurn project</h2>
-  <p>In Export → Individual files, choose <strong>LightBurn project with pages</strong> and open the downloaded <code>.lbrn2</code> with File → Open. LightBurn 2.2 and later show a named tab for each panel or nested sheet. Select the tab for the stock on your bed. All pages share Cut Settings, so review those settings when switching materials.</p>
+  <p>In the <strong>Download</strong> step of Export, choose <strong>LightBurn project with pages</strong> and open the downloaded <code>.lbrn2</code> with File → Open. LightBurn 2.2 and later show a named tab for each panel or nested sheet. Select the tab for the stock on your bed. All pages share Cut Settings, so review those settings when switching materials.</p>
   <p>For earlier versions choose <strong>Separate LightBurn files</strong>. The ZIP includes one project per panel or nested sheet, the master, the README and source credits. For a flat engraving choose <strong>LightBurn project</strong> to download a single file.</p>
   <p>Each operation arrives on its own named layer, listed in the order LightBurn runs them, with the through cut last so pieces stay in place while they are marked:</p>
   <table>

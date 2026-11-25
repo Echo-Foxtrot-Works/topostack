@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
+import { showExportStep } from "./studio-panels";
 
 test("generates deterministic real terrain and downloads the complete fabrication package", async ({ page }) => {
   test.setTimeout(180_000);
@@ -20,6 +21,7 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   // the user generates fresh terrain.
   await expect(page.getByText("Generate before export")).toBeVisible();
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   await expect(page.getByRole("button", { name: /Complete project/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Project settings/ })).toBeEnabled();
   await page.keyboard.press("Escape");
@@ -53,11 +55,14 @@ test("generates deterministic real terrain and downloads the complete fabricatio
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 30_000 });
   await expect(page.getByText("Ready to export")).toBeVisible();
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  const downloadButton = page.getByRole("button", { name: /Complete project/ });
-  await expect(downloadButton).toBeEnabled();
-  // Nests and seams sit beside the sheet layout they feed.
+  // The export opens on its first step: nests and seams, ahead of the sheet layout they feed.
   await expect(page.getByRole("switch", { name: "Material-saving nests" })).toBeChecked();
   await expect(page.getByRole("spinbutton", { name: "Glue margin", exact: true })).toHaveValue("8");
+  await page.getByRole("button", { name: "Next: Sheets" }).click();
+  await expect(page.getByRole("radio", { name: "Original panels" })).toBeChecked();
+  await page.getByRole("button", { name: "Next: Download" }).click();
+  const downloadButton = page.getByRole("button", { name: /Complete project/ });
+  await expect(downloadButton).toBeEnabled();
 
   const downloadPromise = page.waitForEvent("download");
   await downloadButton.click();
@@ -107,6 +112,7 @@ test("downloads an xTool project over plain HTTP on a local network", async ({ p
   await page.getByRole("button", { name: /generate terrain/i }).first().click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   await page.getByText("Individual files").click();
   const ready = page.waitForEvent("download");
   await page.getByRole("button", { name: /xTool Studio project/ }).click();
@@ -227,11 +233,11 @@ test("export dialog supports keyboard dismissal, project backups, and compact la
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "Export your project" });
   await expect(dialog).toBeVisible();
+  await showExportStep(page, "Download");
   await expect(dialog.getByRole("button", { name: /Complete project/ })).toBeDisabled();
   await expect(dialog.getByRole("button", { name: /Master SVG/ })).toBeHidden();
   await dialog.getByText("Individual files").click();
   await expect(dialog.getByRole("button", { name: /Master SVG/ })).toBeDisabled();
-  await expect(dialog.getByText("Donations are optional.", { exact: false })).toBeVisible();
   const downloadReady = page.waitForEvent("download");
   await dialog.getByRole("button", { name: /Project settings/ }).click();
   const download = await downloadReady;
@@ -240,6 +246,8 @@ test("export dialog supports keyboard dismissal, project backups, and compact la
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   expect(JSON.parse(Buffer.concat(chunks).toString()).project.name).toBe("Crater Lake");
+  await dialog.getByRole("button", { name: "Next: Share" }).click();
+  await expect(dialog.getByText("Donations are optional.", { exact: false })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
