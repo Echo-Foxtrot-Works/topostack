@@ -7,7 +7,7 @@
 
 <Article title="Export files and SVG structure" intro="What each TopoStack download contains, how the SVG files are organized, and which files to use in your laser software.">
   <h2>Download options</h2>
-  <p>Open <strong>Export</strong> in the studio. The recommended <strong>Complete project</strong> download contains everything below; the other files are listed under <strong>Individual files</strong>, and <strong>Project settings</strong> sits beneath them. Everything except project settings needs freshly generated real terrain with no export-blocking messages.</p>
+  <p>Open <strong>Export</strong> in the studio. A layered project starts with two steps, <strong>Panels</strong> and <strong>Sheets</strong>, that decide how the layers are cut up and laid out; a flat engraving goes straight to <strong>Download</strong>. There, the recommended <strong>Complete project</strong> download contains everything below. Project files for LightBurn and xTool Studio follow it, the other files are listed under <strong>Individual files</strong>, and <strong>Project settings</strong> sits beneath them. Everything except project settings needs freshly generated real terrain with no export-blocking messages.</p>
   <dl class="options">
     <div><dt>Complete project <span>ZIP</span></dt><dd>Every file listed below for your output type. Recommended when you are unsure.</dd></div>
     <div><dt>Master SVG / Engraving SVG <span>SVG</span></dt><dd>The single main artwork file on its own: every layered panel on one sheet, or the flat engraving.</dd></div>

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { DEFAULT_PROJECT } from "@topostack/core";
 import { shareUrl } from "@topostack/data-contracts/share-link";
+import { showExportStep } from "./studio-panels";
 
 type ToolResult = { content: Array<{ text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean };
 
@@ -21,6 +22,7 @@ test("opens an assistant's studio link and generates it straight away", async ({
   await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
   // Export stays closed until fresh terrain is generated, so an enabled package proves the link generated.
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   await expect(page.getByRole("button", { name: /Complete project/ })).toBeEnabled({ timeout: 30_000 });
   await expect(page.getByRole("dialog")).toContainText("Agent ridge");
 });

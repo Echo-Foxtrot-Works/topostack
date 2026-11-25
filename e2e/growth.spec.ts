@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showExportStep } from "./studio-panels";
 
 for (const starter of ["relief", "engraving", "lake"] as const) {
   const title = { relief: "small layered relief", engraving: "flat contour engraving", lake: "surveyed lake relief" }[starter];
@@ -26,9 +27,11 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
     await expect(checklist.getByRole("button", { name: "Open export" })).toBeEnabled({ timeout: 45_000 });
     await checklist.getByRole("button", { name: "Open export" }).click();
     const dialog = page.getByRole("dialog", { name: "Export your project" });
+    await showExportStep(page, "Download");
     const fabrication = page.waitForEvent("download");
     await dialog.getByRole("button", { name: /Complete project/ }).click();
     expect((await fabrication).suggestedFilename()).toMatch(/\.zip$/);
+    await dialog.getByRole("button", { name: "Next: Share" }).click();
     const imageDownload = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Save preview image" }).click();
     const download = await imageDownload;

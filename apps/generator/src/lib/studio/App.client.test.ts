@@ -1164,6 +1164,10 @@ describe("TopoStack Svelte shell", () => {
     exploded.value = "0.75";
     exploded.dispatchEvent(new Event("input", { bubbles: true }));
     await tick();
+    // Sheet layout is the export dialog's second step.
+    [...target.querySelectorAll<HTMLButtonElement>(".export-step-tab")].find((button) => button.textContent?.includes("Sheets"))!.click();
+    await tick();
+    await tick();
     for (const [material, width] of [["wood", "437"], ["acrylic", "251"]] as const) {
       const section = target.querySelector<HTMLInputElement>(`input[name="${material}-sheet-layout"]`)!.closest("section")!;
       const nested = section.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1]!;

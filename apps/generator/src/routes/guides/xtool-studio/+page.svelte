@@ -8,7 +8,7 @@
   <p>Begin with the <a href={`${base}/studio?starter=relief`}>small layered relief</a> or <a href={`${base}/studio?starter=engraving`}>flat contour engraving</a>. Review the size and actual material thickness, generate fresh terrain, then open Export. Choose <strong>Complete project</strong> for the assembly booklet, SVGs and source credits that accompany a layered relief.</p>
 
   <h2>Open a Studio project with a canvas per panel</h2>
-  <p>On topostack.app, choose Export → Individual files → <strong>xTool Studio project</strong>. Open the <code>.xs</code> file in Studio 1.7 or later. In the Canvas panel, click the named thumbnail for the panel or nested stock sheet on your bed. Each canvas includes that sheet’s cuts and marks. A flat engraving opens on a single canvas.</p>
+  <p>On topostack.app, open Export, go to the <strong>Download</strong> step and choose <strong>xTool Studio project</strong>. Open the <code>.xs</code> file in Studio 1.7 or later. In the Canvas panel, click the named thumbnail for the panel or nested stock sheet on your bed. Each canvas includes that sheet’s cuts and marks. A flat engraving opens on a single canvas.</p>
   <p>Select your device, choose the processing mode for each named layer and set the material parameters. Acrylic panels and paint stencils have their own canvases. Projects with more than 100 canvases download as a ZIP of numbered Studio projects.</p>
 
   <h2>Open straight in Studio from Atomm</h2>

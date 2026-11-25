@@ -3,6 +3,7 @@ import { shareUrl } from "@topostack/data-contracts/share-link";
 import { unzipSync } from "fflate";
 import { expect, test, type Page } from "@playwright/test";
 import { chartPdf, chartRings, lakeArchive, lakeCentre } from "./fixtures/depth-chart";
+import { showExportStep } from "./studio-panels";
 
 async function openCharts(page: Page, fromMap = false, withoutSearch = false, project?: ProjectConfigV1): Promise<void> {
   // Linux WebKit can capture a stale WebGL frame after buffer swaps. Preserve
@@ -246,6 +247,7 @@ test("traces an image in the worker, saves it, applies it, and restores the libr
   await expect(page.locator(".generate-dock")).toHaveCount(0);
   // The transferable project file must contain both the reference and chart data.
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   const downloading = page.waitForEvent("download");
   await page.getByRole("button", { name: /^Project settings/ }).click();
   const stream = await (await downloading).createReadStream();
@@ -434,6 +436,7 @@ for (const topology of ["island", "rise"] as const) test(`reviews and restores a
   await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: /Complete project/ }).click();
   const chunks: Buffer[] = [];

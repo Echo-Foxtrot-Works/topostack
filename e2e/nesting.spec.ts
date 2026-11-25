@@ -3,6 +3,7 @@ import { unzipSync } from "fflate";
 import polygonClipping, { type Pair } from "polygon-clipping";
 import { DEFAULT_PROJECT, distanceToSegment, type Point2D } from "@topostack/core";
 import { shareUrl } from "@topostack/data-contracts/share-link";
+import { showExportStep } from "./studio-panels";
 
 test("nests the parts onto stock sheets with sparrow and exports one file per sheet", async ({ page }) => {
   test.setTimeout(180_000);
@@ -19,6 +20,7 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
 
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Sheets");
   // The nesting engine is credited wherever the tool appears.
   await expect(page.getByRole("link", { name: /^sparrow/ })).toHaveAttribute("href", "https://github.com/JeroenGar/sparrow");
   await page.getByRole("radio", { name: "Nested sheets" }).check();
@@ -34,6 +36,8 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   // The WebAssembly engine started: no fallback note.
   await expect(status).not.toContainText("could not start");
   await expect(page.locator(".sheet-previews li")).not.toHaveCount(0);
+  const summary = (await status.textContent())?.trim();
+  await page.getByRole("button", { name: "Next: Download" }).click();
   await expect(page.locator(".export-hero")).toContainText("nested sheet");
 
   async function downloadBytes(label: RegExp): Promise<Buffer> {
@@ -116,7 +120,6 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   const readme = Buffer.from(files["README.txt"]!).toString("utf8");
   expect(readme).toContain("sparrow");
 
-  await page.getByText("Individual files").click();
   const sheetNames = manifest.result.fabrication.panels.map(({ filename }: { filename: string }) =>
     filename.replace("crater-lake-sheet-", "Sheet ").replace(".svg", ""));
   const studio = unzipSync(await downloadBytes(/xTool Studio project/));
@@ -128,13 +131,14 @@ test("nests the parts onto stock sheets with sparrow and exports one file per sh
   expect([...lightburn.matchAll(/SubType="Page" Name="([^"]+)"/g)].map(match => match[1])).toEqual(sheetNames.slice(1));
 
   // After a reload the same design finds its saved layout; no second search.
-  const summary = (await status.textContent())?.trim();
   await page.reload();
   await page.getByRole("button", { name: /generate terrain/i }).first().click();
   await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Sheets");
   await expect(page.getByRole("radio", { name: "Nested sheets" })).toBeChecked();
   await expect(page.locator(".sheet-layout-status")).toHaveText(summary!);
+  await showExportStep(page, "Download");
   await expect(page.locator(".export-hero")).toContainText("nested sheet");
   expect(browserErrors).toEqual([]);
 });
