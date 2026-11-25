@@ -71,6 +71,7 @@
   "vectorDataPartial": "Đã đạt giới hạn đối tượng chi tiết bản đồ, nên có thể thiếu một số đường, đường mòn, đường nước hoặc ranh giới.",
   "vectorDataUnavailable": "Dữ liệu chi tiết bản đồ không khả dụng. Không thể xuất dự án này cho đến khi dữ liệu bản đồ được khôi phục hoặc tắt các chi tiết đó.",
   "waterDepthClamped": "Nước ở đây sâu hơn mức {count, plural, other {# tấm}} dưới đường bờ có thể chứa, nên đáy bị làm phẳng. Hãy tăng giới hạn lớp độ sâu hoặc tắt nó để tự động bao phủ. Khớp độ sâu sẽ nén hồ vào giới hạn đã chọn.",
+  "seaDepthFlat": "Biển ở đây sâu khoảng {depth} m và mỗi tấm bao {step} m, nên đáy biển bị cắt phẳng. Khớp độ sâu biển sẽ trải nó trên các lớp độ sâu bạn chọn.",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other { và # hồ khác}} {count, plural, other {vẫn}} là gỗ: không cắt gọn được đường bờ.",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other { và # hồ khác}} {count, plural, other {vẫn}} là gỗ: mực nước nằm trên tấm dưới cùng, nên không có gì đỡ miếng mica.",
   "waterInsertOversize": "{count, plural, other {Miếng mica {ids, list, series}}} lớn hơn vùng làm việc của máy. Mica không bao giờ bị chia, vì đường nối sẽ lộ trên mặt nước; hãy loại hồ hoặc dùng máy lớn hơn.",

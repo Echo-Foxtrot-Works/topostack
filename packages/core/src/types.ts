@@ -463,6 +463,12 @@ export interface ProjectConfigV1 {
   waterDepthLayerLimit?: number;
   /** Compress each lake around its waterline only when the stack cannot hold its requested depth. */
   fitLakeDepth: boolean;
+  /**
+   * Scale the sea so its depth fills the `waterDepthLayerLimit` sheets below sea
+   * level, stretching a shallow bay as readily as compressing a deep shelf.
+   * Needs the limit, which is then the sheet count. Absent means off.
+   */
+  fitSeaDepth?: boolean;
   /** Per-lake maximum-depth overrides in meters, keyed by HydroLAKES id. */
   waterDepthOverrides: Record<string, number>;
   showAlignmentGuides: boolean;
@@ -997,11 +1003,22 @@ export interface LayerIR {
   id: string;
   index: number;
   elevationM: number;
+  /**
+   * The elevation this sheet stands for where sea depth fitting moved it on the
+   * ladder: a depth sheet at -72 m of a sea stretched 4.5× shows -16 m of water.
+   * Absent when it is `elevationM`. Labels and readouts use `layerElevationM`.
+   */
+  realElevationM?: number;
   materialThicknessMm: number;
   polygons: Polygon2D[];
   markings: OperationPath[];
   /** Physical pieces this layer is cut as. Empty when the layer is one piece per polygon. */
   pieces: LayerPieceV1[];
+}
+
+/** The elevation to show for a sheet: the real one where sea depth fitting moved the sheet on the ladder. */
+export function layerElevationM(layer: Pick<LayerIR, "elevationM" | "realElevationM">): number {
+  return layer.realElevationM ?? layer.elevationM;
 }
 
 export interface FabricationNestCavity {
@@ -1287,6 +1304,7 @@ export type GeometryWarningCode =
   | "LAKE_DEPTH_FROM_CHART"
   | "LABEL_OMITTED"
   | "WATER_DEPTH_CLAMPED"
+  | "SEA_DEPTH_FLAT"
   | "WORK_AREA_OVERSIZE"
   | "WORK_AREA_UNSPLIT"
   | "GRAPHIC_LOOSE_PIECES"
@@ -1328,7 +1346,7 @@ export interface GeometryWarning {
    */
   messageKey?: string;
   params?: Record<string, string | number | string[]>;
-  action?: "fit-lake-depth";
+  action?: "fit-lake-depth" | "fit-sea-depth";
 }
 
 export interface GeometryIRV1 {

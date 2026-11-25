@@ -11,7 +11,7 @@
   import { trackUsage } from "$lib/site/usage";
   import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { boundsForProject, exportBlockMessage, exportBlockReason, graphicsForOutputMode } from "@topostack/core";
+  import { boundsForProject, layerElevationM, exportBlockMessage, exportBlockReason, graphicsForOutputMode } from "@topostack/core";
   import { exportBlockText } from "$lib/i18n/warnings";
   import { errorText } from "$lib/i18n/errors";
   import { readProjectFile } from "$lib/studio/project-file";
@@ -361,7 +361,7 @@
     else previewNotice = "";
   }
 
-  const layerTicks = $derived(geometry.layers.map((layer) => Math.round(displayElevation(layer.elevationM, project.units))));
+  const layerTicks = $derived(geometry.layers.map((layer) => Math.round(displayElevation(layerElevationM(layer), project.units))));
   const shownLengthUnit = $derived(lengthUnit(project.units));
   const outputSummary = $derived(project.outputMode === "engraving"
     ? [project.showEngravingContours ? t("app.outputContours", { count: project.engravingContourCount }) : t("app.outputNoContours"), t("app.outputNoCutPaths")]

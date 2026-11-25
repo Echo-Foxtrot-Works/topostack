@@ -71,6 +71,7 @@
   "vectorDataPartial": "The map detail feature limit was reached, so some roads, trails, water lines, or boundaries may be missing.",
   "vectorDataUnavailable": "Map detail data is unavailable. This project cannot be exported until the map data is restored or those details are disabled.",
   "waterDepthClamped": "Water here is deeper than the {count, plural, one {# sheet} other {# sheets}} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.",
+  "seaDepthFlat": "The sea here is about {depth} m deep and each sheet spans {step} m, so its floor cuts flat. Fit sea depth spreads it across the depth sheets you choose.",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other { and # more}} {count, plural, one {stays} other {stay}} wood: the shoreline could not be cut cleanly.",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other { and # more}} {count, plural, one {stays} other {stay}} wood: the waterline sits on the bottom sheet, so nothing would hold an acrylic insert.",
   "waterInsertOversize": "{count, plural, one {Acrylic insert {ids, list, series} is} other {Acrylic inserts {ids, list, series} are}} larger than the machine work area. Acrylic is never split, since a seam would show in the water; exclude the lake or use a larger machine.",

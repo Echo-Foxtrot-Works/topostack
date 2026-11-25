@@ -1,0 +1,1513 @@
+{
+ "generated": "2026-11-25",
+ "grid": "1 arc-second, EPSG:4326",
+ "bluetopoScheme": "BlueTopo_Tile_Scheme_20261124_195327.gpkg",
+ "sites": {
+  "tampa": [
+   -82.85,
+   27.5,
+   -82.35,
+   28.05
+  ],
+  "charleston": [
+   -80.05,
+   32.65,
+   -79.75,
+   32.9
+  ],
+  "outer-banks": [
+   -75.8,
+   35.1,
+   -75.4,
+   35.45
+  ],
+  "galveston": [
+   -95.0,
+   29.2,
+   -94.65,
+   29.45
+  ],
+  "miami": [
+   -80.3,
+   25.65,
+   -80.05,
+   25.9
+  ],
+  "sf-bay": [
+   -122.55,
+   37.7,
+   -122.2,
+   37.95
+  ],
+  "puget": [
+   -122.6,
+   47.5,
+   -122.25,
+   47.75
+  ],
+  "san-diego": [
+   -117.3,
+   32.6,
+   -117.05,
+   32.8
+  ],
+  "honolulu": [
+   -158.0,
+   21.25,
+   -157.75,
+   21.4
+  ],
+  "anchorage": [
+   -150.2,
+   61.1,
+   -149.8,
+   61.3
+  ],
+  "san-juan-pr": [
+   -66.2,
+   18.4,
+   -65.95,
+   18.5
+  ],
+  "chesapeake": [
+   -76.55,
+   38.9,
+   -76.3,
+   39.1
+  ],
+  "boston": [
+   -71.1,
+   42.25,
+   -70.85,
+   42.4
+  ]
+ },
+ "results": {
+  "charleston": {
+   "grid": [
+    1080,
+    900
+   ],
+   "waterCells": 370401,
+   "tiles": {
+    "bluetopo": 20,
+    "ninth": 5,
+    "third": 1
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.8203,
+    "depth": {
+     "min": -27.0,
+     "p1": -18.0,
+     "p5": -15.6,
+     "p25": -11.0,
+     "p50": -7.93,
+     "p75": -4.05,
+     "p95": -1.16,
+     "p99": -0.24
+    },
+    "sheets": {
+     "1m": 18,
+     "2m": 10,
+     "3m": 7,
+     "5m": 4,
+     "10m": 2
+    },
+    "tid": {
+     "0": 0.1939,
+     "11": 0.1645,
+     "16": 0.252,
+     "17": 0.0535,
+     "40": 0.2679,
+     "44": 0.0683
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9907,
+    "belowDatumShare": 0.9843,
+    "depth": {
+     "min": -25.28,
+     "p1": -18.43,
+     "p5": -13.71,
+     "p25": -8.96,
+     "p50": -5.47,
+     "p75": -3.32,
+     "p95": -0.51,
+     "p99": -0.12
+    },
+    "sheets": {
+     "1m": 18,
+     "2m": 10,
+     "3m": 7,
+     "5m": 4,
+     "10m": 2
+    },
+    "kinds": {
+     "none": 0.0139,
+     "survey": 0.9271,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.059
+    },
+    "onCudemLand": 0.1519,
+    "belowDatumOnCudemLand": 0.0237
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -24.47,
+     "p1": -16.52,
+     "p5": -13.35,
+     "p25": -8.89,
+     "p50": -5.33,
+     "p75": -2.64,
+     "p95": -0.31,
+     "p99": -0.05
+    },
+    "sheets": {
+     "1m": 17,
+     "2m": 9,
+     "3m": 6,
+     "5m": 4,
+     "10m": 2
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.002,
+    "belowDatumShare": 0.002,
+    "depth": {
+     "min": -16.74,
+     "p1": -16.47,
+     "p5": -13.27,
+     "p25": -12.24,
+     "p50": -10.83,
+     "p75": -9.57,
+     "p95": -7.29,
+     "p99": -5.09
+    },
+    "sheets": {
+     "1m": 0,
+     "2m": 0,
+     "3m": 0,
+     "5m": 0,
+     "10m": 0
+    }
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 366943,
+     "median": -0.0,
+     "p5": -2.02,
+     "p95": 0.55,
+     "medianAbs": 0.07
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 343408,
+     "median": 0.0,
+     "p5": -1.93,
+     "p95": 0.43,
+     "medianAbs": 0.07
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 21836,
+     "median": -0.27,
+     "p5": -2.8,
+     "p95": 2.14,
+     "medianAbs": 0.72
+    },
+    "gebco-cudem19": {
+     "cells": 370401,
+     "median": 0.07,
+     "p5": -8.36,
+     "p95": 5.76,
+     "medianAbs": 1.57
+    },
+    "gebco-bluetopo": {
+     "cells": 366943,
+     "median": 0.1,
+     "p5": -8.35,
+     "p95": 6.45,
+     "medianAbs": 1.64
+    }
+   }
+  },
+  "outer-banks": {
+   "grid": [
+    1440,
+    1260
+   ],
+   "waterCells": 1548118,
+   "tiles": {
+    "bluetopo": 36,
+    "ninth": 5,
+    "third": 1
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9835,
+    "depth": {
+     "min": -27.0,
+     "p1": -23.87,
+     "p5": -21.76,
+     "p25": -14.91,
+     "p50": -6.0,
+     "p75": -2.33,
+     "p95": -1.0,
+     "p99": -0.6
+    },
+    "sheets": {
+     "1m": 25,
+     "2m": 13,
+     "3m": 9,
+     "5m": 5,
+     "10m": 3
+    },
+    "tid": {
+     "0": 0.0147,
+     "11": 0.0079,
+     "16": 0.4119,
+     "17": 0.0096,
+     "40": 0.4273,
+     "44": 0.1286
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9998,
+    "belowDatumShare": 0.9978,
+    "depth": {
+     "min": -24.11,
+     "p1": -22.4,
+     "p5": -20.68,
+     "p25": -15.74,
+     "p50": -6.28,
+     "p75": -3.78,
+     "p95": -0.92,
+     "p99": -0.35
+    },
+    "sheets": {
+     "1m": 23,
+     "2m": 12,
+     "3m": 8,
+     "5m": 5,
+     "10m": 3
+    },
+    "kinds": {
+     "none": 0.0032,
+     "survey": 0.9808,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0161
+    },
+    "onCudemLand": 0.5659,
+    "belowDatumOnCudemLand": 0.0145
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -24.12,
+     "p1": -22.61,
+     "p5": -21.07,
+     "p25": -15.89,
+     "p50": -6.05,
+     "p75": -3.39,
+     "p95": -0.64,
+     "p99": -0.25
+    },
+    "sheets": {
+     "1m": 21,
+     "2m": 12,
+     "3m": 8,
+     "5m": 5,
+     "10m": 3
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.002,
+    "belowDatumShare": 0.002,
+    "depth": {
+     "min": -21.36,
+     "p1": -21.17,
+     "p5": -19.6,
+     "p25": -17.81,
+     "p50": -13.87,
+     "p75": -10.62,
+     "p95": -6.34,
+     "p99": -5.97
+    },
+    "sheets": {
+     "1m": 0,
+     "2m": 0,
+     "3m": 0,
+     "5m": 0,
+     "10m": 0
+    }
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 1547820,
+     "median": -0.24,
+     "p5": -1.22,
+     "p95": 1.28,
+     "medianAbs": 0.36
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 1518357,
+     "median": -0.24,
+     "p5": -1.21,
+     "p95": 1.22,
+     "medianAbs": 0.35
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 24875,
+     "median": 1.4,
+     "p5": -2.17,
+     "p95": 4.97,
+     "medianAbs": 1.84
+    },
+    "gebco-cudem19": {
+     "cells": 1548118,
+     "median": -0.05,
+     "p5": -1.6,
+     "p95": 7.9,
+     "medianAbs": 0.68
+    },
+    "gebco-bluetopo": {
+     "cells": 1547820,
+     "median": 0.26,
+     "p5": -2.04,
+     "p95": 6.84,
+     "medianAbs": 0.73
+    }
+   }
+  },
+  "galveston": {
+   "grid": [
+    1260,
+    900
+   ],
+   "waterCells": 716388,
+   "tiles": {
+    "bluetopo": 21,
+    "ninth": 5,
+    "third": 1
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9016,
+    "depth": {
+     "min": -43.0,
+     "p1": -15.04,
+     "p5": -13.1,
+     "p25": -10.0,
+     "p50": -6.63,
+     "p75": -3.0,
+     "p95": -1.0,
+     "p99": -0.25
+    },
+    "sheets": {
+     "1m": 15,
+     "2m": 8,
+     "3m": 6,
+     "5m": 4,
+     "10m": 2
+    },
+    "tid": {
+     "0": 0.103,
+     "11": 0.0609,
+     "16": 0.2517,
+     "17": 0.0135,
+     "40": 0.4332,
+     "44": 0.1377
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9853,
+    "belowDatumShare": 0.9765,
+    "depth": {
+     "min": -22.25,
+     "p1": -15.85,
+     "p5": -12.81,
+     "p25": -8.85,
+     "p50": -3.79,
+     "p75": -1.88,
+     "p95": -0.53,
+     "p99": -0.16
+    },
+    "sheets": {
+     "1m": 16,
+     "2m": 9,
+     "3m": 6,
+     "5m": 4,
+     "10m": 2
+    },
+    "kinds": {
+     "none": 0.0187,
+     "survey": 0.9599,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0214
+    },
+    "onCudemLand": 0.3367,
+    "belowDatumOnCudemLand": 0.018
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -20.86,
+     "p1": -15.44,
+     "p5": -12.72,
+     "p25": -8.87,
+     "p50": -3.53,
+     "p75": -1.52,
+     "p95": -0.41,
+     "p99": -0.09
+    },
+    "sheets": {
+     "1m": 16,
+     "2m": 9,
+     "3m": 6,
+     "5m": 4,
+     "10m": 2
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0023,
+    "belowDatumShare": 0.0023,
+    "depth": {
+     "min": -14.54,
+     "p1": -14.41,
+     "p5": -14.2,
+     "p25": -13.2,
+     "p50": -11.77,
+     "p75": -10.25,
+     "p95": -9.41,
+     "p99": -9.32
+    },
+    "sheets": {
+     "1m": 0,
+     "2m": 0,
+     "3m": 0,
+     "5m": 0,
+     "10m": 0
+    }
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 705864,
+     "median": 0.06,
+     "p5": -0.85,
+     "p95": 0.37,
+     "medianAbs": 0.17
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 687649,
+     "median": 0.06,
+     "p5": -0.84,
+     "p95": 0.35,
+     "medianAbs": 0.17
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 15361,
+     "median": 0.08,
+     "p5": -0.91,
+     "p95": 1.12,
+     "medianAbs": 0.24
+    },
+    "gebco-cudem19": {
+     "cells": 716388,
+     "median": -0.67,
+     "p5": -4.46,
+     "p95": 3.36,
+     "medianAbs": 1.22
+    },
+    "gebco-bluetopo": {
+     "cells": 705864,
+     "median": -0.68,
+     "p5": -4.32,
+     "p95": 3.36,
+     "medianAbs": 1.19
+    }
+   }
+  },
+  "miami": {
+   "grid": [
+    900,
+    900
+   ],
+   "waterCells": 455236,
+   "tiles": {
+    "bluetopo": 18,
+    "ninth": 4,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9587,
+    "depth": {
+     "min": -226.93,
+     "p1": -195.68,
+     "p5": -157.07,
+     "p25": -24.8,
+     "p50": -5.81,
+     "p75": -3.0,
+     "p95": -1.65,
+     "p99": -0.86
+    },
+    "sheets": {
+     "1m": 14,
+     "2m": 10,
+     "3m": 15,
+     "5m": 34,
+     "10m": 20
+    },
+    "tid": {
+     "0": 0.0244,
+     "11": 0.1712,
+     "16": 0.6934,
+     "17": 0.051,
+     "40": 0.0416,
+     "44": 0.0184
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.998,
+    "belowDatumShare": 0.9969,
+    "depth": {
+     "min": -245.12,
+     "p1": -224.02,
+     "p5": -180.2,
+     "p25": -34.77,
+     "p50": -6.48,
+     "p75": -3.2,
+     "p95": -1.51,
+     "p99": -0.8
+    },
+    "sheets": {
+     "1m": 18,
+     "2m": 10,
+     "3m": 10,
+     "5m": 39,
+     "10m": 23
+    },
+    "kinds": {
+     "none": 0.0056,
+     "survey": 0.933,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0613
+    },
+    "onCudemLand": 0.127,
+    "belowDatumOnCudemLand": 0.0562
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -245.27,
+     "p1": -223.6,
+     "p5": -177.38,
+     "p25": -34.4,
+     "p50": -6.55,
+     "p75": -3.01,
+     "p95": -1.4,
+     "p99": -0.59
+    },
+    "sheets": {
+     "1m": 17,
+     "2m": 10,
+     "3m": 11,
+     "5m": 37,
+     "10m": 23
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 454346,
+     "median": -0.01,
+     "p5": -3.21,
+     "p95": 0.53,
+     "medianAbs": 0.19
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 424744,
+     "median": -0.01,
+     "p5": -3.23,
+     "p95": 0.48,
+     "medianAbs": 0.18
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 27924,
+     "median": -0.14,
+     "p5": -3.03,
+     "p95": 1.93,
+     "medianAbs": 0.51
+    },
+    "gebco-cudem19": {
+     "cells": 455236,
+     "median": 1.5,
+     "p5": -1.19,
+     "p95": 24.44,
+     "medianAbs": 1.71
+    },
+    "gebco-bluetopo": {
+     "cells": 454346,
+     "median": 1.43,
+     "p5": -1.06,
+     "p95": 25.78,
+     "medianAbs": 1.6
+    }
+   }
+  },
+  "sf-bay": {
+   "grid": [
+    1260,
+    900
+   ],
+   "waterCells": 487308,
+   "tiles": {
+    "bluetopo": 25,
+    "ninth": 6,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9325,
+    "depth": {
+     "min": -100.0,
+     "p1": -67.1,
+     "p5": -35.53,
+     "p25": -16.95,
+     "p50": -10.89,
+     "p75": -5.05,
+     "p95": -1.93,
+     "p99": -0.6
+    },
+    "sheets": {
+     "1m": 31,
+     "2m": 18,
+     "3m": 15,
+     "5m": 10,
+     "10m": 7
+    },
+    "tid": {
+     "0": 0.0711,
+     "10": 0.0351,
+     "11": 0.4759,
+     "17": 0.0195,
+     "40": 0.3014,
+     "44": 0.0969
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9986,
+    "belowDatumShare": 0.9927,
+    "depth": {
+     "min": -114.39,
+     "p1": -59.07,
+     "p5": -34.0,
+     "p25": -15.94,
+     "p50": -9.64,
+     "p75": -2.85,
+     "p95": -0.99,
+     "p99": -0.27
+    },
+    "sheets": {
+     "1m": 30,
+     "2m": 19,
+     "3m": 15,
+     "5m": 10,
+     "10m": 6
+    },
+    "kinds": {
+     "none": 0.0061,
+     "survey": 0.9817,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0122
+    },
+    "onCudemLand": 0.1002,
+    "belowDatumOnCudemLand": 0.0559
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -114.25,
+     "p1": -59.2,
+     "p5": -34.1,
+     "p25": -15.98,
+     "p50": -9.59,
+     "p75": -2.76,
+     "p95": -0.85,
+     "p99": -0.15
+    },
+    "sheets": {
+     "1m": 31,
+     "2m": 20,
+     "3m": 15,
+     "5m": 10,
+     "10m": 6
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 486631,
+     "median": 0.04,
+     "p5": -0.56,
+     "p95": 0.92,
+     "medianAbs": 0.09
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 478403,
+     "median": 0.04,
+     "p5": -0.52,
+     "p95": 0.91,
+     "medianAbs": 0.09
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 5943,
+     "median": -0.1,
+     "p5": -4.61,
+     "p95": 1.39,
+     "medianAbs": 0.49
+    },
+    "gebco-cudem19": {
+     "cells": 487308,
+     "median": -0.22,
+     "p5": -6.45,
+     "p95": 7.75,
+     "medianAbs": 1.1
+    },
+    "gebco-bluetopo": {
+     "cells": 486631,
+     "median": -0.29,
+     "p5": -6.55,
+     "p95": 7.85,
+     "medianAbs": 1.17
+    }
+   }
+  },
+  "puget": {
+   "grid": [
+    1260,
+    900
+   ],
+   "waterCells": 518220,
+   "tiles": {
+    "bluetopo": 0,
+    "ninth": 9,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9681,
+    "depth": {
+     "min": -1540.41,
+     "p1": -248.93,
+     "p5": -228.4,
+     "p25": -182.29,
+     "p50": -77.18,
+     "p75": -32.39,
+     "p95": -10.0,
+     "p99": -3.67
+    },
+    "sheets": {
+     "1m": 65,
+     "2m": 77,
+     "3m": 78,
+     "5m": 49,
+     "10m": 26
+    },
+    "tid": {
+     "0": 0.0293,
+     "10": 0.0001,
+     "11": 0.8637,
+     "17": 0.0219,
+     "40": 0.0677,
+     "44": 0.0174
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null,
+    "kinds": {
+     "none": 1.0,
+     "survey": 0.0,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0
+    },
+    "onCudemLand": 0.0,
+    "belowDatumOnCudemLand": 0.0
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -291.78,
+     "p1": -256.62,
+     "p5": -230.42,
+     "p25": -181.22,
+     "p50": -62.55,
+     "p75": -24.61,
+     "p95": -2.81,
+     "p99": -0.48
+    },
+    "sheets": {
+     "1m": 69,
+     "2m": 70,
+     "3m": 69,
+     "5m": 50,
+     "10m": 26
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": null,
+    "bluetopoSurvey-cudem19": null,
+    "bluetopoFill-cudem19": null,
+    "gebco-cudem19": {
+     "cells": 518220,
+     "median": -0.05,
+     "p5": -45.28,
+     "p95": 31.03,
+     "medianAbs": 8.07
+    },
+    "gebco-bluetopo": null
+   }
+  },
+  "san-diego": {
+   "grid": [
+    900,
+    720
+   ],
+   "waterCells": 303396,
+   "tiles": {
+    "bluetopo": 14,
+    "ninth": 0,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9125,
+    "depth": {
+     "min": -438.49,
+     "p1": -82.4,
+     "p5": -72.0,
+     "p25": -39.72,
+     "p50": -20.6,
+     "p75": -13.72,
+     "p95": -2.6,
+     "p99": -0.68
+    },
+    "sheets": {
+     "1m": 64,
+     "2m": 41,
+     "3m": 28,
+     "5m": 17,
+     "10m": 9
+    },
+    "tid": {
+     "0": 0.0948,
+     "10": 0.0326,
+     "11": 0.3477,
+     "17": 0.0275,
+     "40": 0.4012,
+     "44": 0.0963
+    }
+   },
+   "bluetopo": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -85.81,
+     "p1": -80.92,
+     "p5": -70.5,
+     "p25": -33.7,
+     "p50": -15.29,
+     "p75": -6.56,
+     "p95": -1.06,
+     "p99": -0.24
+    },
+    "sheets": {
+     "1m": 55,
+     "2m": 42,
+     "3m": 28,
+     "5m": 17,
+     "10m": 9
+    },
+    "kinds": {
+     "none": 0.0105,
+     "survey": 0.9339,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0556
+    },
+    "onCudemLand": 0.0,
+    "belowDatumOnCudemLand": 0.0
+   },
+   "cudem19": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": null,
+    "bluetopoSurvey-cudem19": null,
+    "bluetopoFill-cudem19": null,
+    "gebco-cudem19": null,
+    "gebco-bluetopo": {
+     "cells": 303396,
+     "median": -1.17,
+     "p5": -12.6,
+     "p95": 7.21,
+     "medianAbs": 3.07
+    }
+   }
+  },
+  "san-juan-pr": {
+   "grid": [
+    900,
+    360
+   ],
+   "waterCells": 153712,
+   "tiles": {
+    "bluetopo": 8,
+    "ninth": 0,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9879,
+    "depth": {
+     "min": -557.33,
+     "p1": -435.32,
+     "p5": -348.96,
+     "p25": -127.67,
+     "p50": -32.47,
+     "p75": -6.36,
+     "p95": -2.47,
+     "p99": -1.43
+    },
+    "sheets": {
+     "1m": 38,
+     "2m": 36,
+     "3m": 26,
+     "5m": 35,
+     "10m": 40
+    },
+    "tid": {
+     "0": 0.0135,
+     "11": 0.3233,
+     "16": 0.0355,
+     "17": 0.6146,
+     "40": 0.0106,
+     "44": 0.0025
+    }
+   },
+   "bluetopo": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -540.08,
+     "p1": -435.81,
+     "p5": -324.5,
+     "p25": -102.46,
+     "p50": -36.27,
+     "p75": -6.88,
+     "p95": -2.33,
+     "p99": -0.68
+    },
+    "sheets": {
+     "1m": 42,
+     "2m": 44,
+     "3m": 30,
+     "5m": 34,
+     "10m": 33
+    },
+    "kinds": {
+     "none": 0.0038,
+     "survey": 0.8426,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.1536
+    },
+    "onCudemLand": 0.0,
+    "belowDatumOnCudemLand": 0.0
+   },
+   "cudem19": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": null,
+    "bluetopoSurvey-cudem19": null,
+    "bluetopoFill-cudem19": null,
+    "gebco-cudem19": null,
+    "gebco-bluetopo": {
+     "cells": 153712,
+     "median": 1.13,
+     "p5": -60.27,
+     "p95": 35.4,
+     "medianAbs": 5.49
+    }
+   }
+  },
+  "chesapeake": {
+   "grid": [
+    900,
+    720
+   ],
+   "waterCells": 378669,
+   "tiles": {
+    "bluetopo": 16,
+    "ninth": 4,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.8648,
+    "depth": {
+     "min": -33.0,
+     "p1": -27.71,
+     "p5": -20.4,
+     "p25": -12.27,
+     "p50": -7.27,
+     "p75": -3.67,
+     "p95": -1.2,
+     "p99": -0.31
+    },
+    "sheets": {
+     "1m": 23,
+     "2m": 15,
+     "3m": 10,
+     "5m": 6,
+     "10m": 3
+    },
+    "tid": {
+     "0": 0.1187,
+     "11": 0.0314,
+     "16": 0.0595,
+     "40": 0.5823,
+     "44": 0.2082
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9999,
+    "belowDatumShare": 0.9985,
+    "depth": {
+     "min": -41.63,
+     "p1": -27.94,
+     "p5": -19.55,
+     "p25": -10.87,
+     "p50": -6.52,
+     "p75": -3.25,
+     "p95": -1.05,
+     "p99": -0.51
+    },
+    "sheets": {
+     "1m": 23,
+     "2m": 13,
+     "3m": 10,
+     "5m": 7,
+     "10m": 4
+    },
+    "kinds": {
+     "none": 0.0032,
+     "survey": 0.9752,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0216
+    },
+    "onCudemLand": 0.3981,
+    "belowDatumOnCudemLand": 0.0583
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -41.8,
+     "p1": -28.09,
+     "p5": -19.2,
+     "p25": -10.92,
+     "p50": -6.28,
+     "p75": -2.96,
+     "p95": -0.51,
+     "p99": -0.1
+    },
+    "sheets": {
+     "1m": 24,
+     "2m": 13,
+     "3m": 10,
+     "5m": 7,
+     "10m": 4
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 378641,
+     "median": -0.18,
+     "p5": -0.92,
+     "p95": 0.4,
+     "medianAbs": 0.25
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 369262,
+     "median": -0.17,
+     "p5": -0.85,
+     "p95": 0.4,
+     "medianAbs": 0.25
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 8172,
+     "median": -0.48,
+     "p5": -2.69,
+     "p95": 0.26,
+     "medianAbs": 0.54
+    },
+    "gebco-cudem19": {
+     "cells": 378669,
+     "median": 0.45,
+     "p5": -3.21,
+     "p95": 7.77,
+     "medianAbs": 1.57
+    },
+    "gebco-bluetopo": {
+     "cells": 378641,
+     "median": 0.63,
+     "p5": -3.1,
+     "p95": 8.27,
+     "medianAbs": 1.66
+    }
+   }
+  },
+  "boston": {
+   "grid": [
+    900,
+    540
+   ],
+   "waterCells": 290025,
+   "tiles": {
+    "bluetopo": 12,
+    "ninth": 4,
+    "third": 0
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.8443,
+    "depth": {
+     "min": -27.0,
+     "p1": -24.0,
+     "p5": -21.53,
+     "p25": -12.47,
+     "p50": -7.49,
+     "p75": -3.84,
+     "p95": -1.13,
+     "p99": -0.31
+    },
+    "sheets": {
+     "1m": 25,
+     "2m": 13,
+     "3m": 9,
+     "5m": 5,
+     "10m": 3
+    },
+    "tid": {
+     "0": 0.1405,
+     "11": 0.0369,
+     "17": 0.1424,
+     "40": 0.508,
+     "44": 0.1723
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9913,
+    "belowDatumShare": 0.987,
+    "depth": {
+     "min": -31.15,
+     "p1": -28.45,
+     "p5": -25.14,
+     "p25": -14.64,
+     "p50": -8.26,
+     "p75": -3.97,
+     "p95": -1.61,
+     "p99": -0.81
+    },
+    "sheets": {
+     "1m": 29,
+     "2m": 15,
+     "3m": 10,
+     "5m": 6,
+     "10m": 3
+    },
+    "kinds": {
+     "none": 0.0125,
+     "survey": 0.9528,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0346
+    },
+    "onCudemLand": 0.2145,
+    "belowDatumOnCudemLand": 0.1072
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -29.87,
+     "p1": -27.89,
+     "p5": -24.81,
+     "p25": -14.18,
+     "p50": -7.97,
+     "p75": -3.86,
+     "p95": -1.28,
+     "p99": -0.16
+    },
+    "sheets": {
+     "1m": 29,
+     "2m": 15,
+     "3m": 10,
+     "5m": 6,
+     "10m": 3
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0,
+    "belowDatumShare": 0.0,
+    "depth": null,
+    "sheets": null
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 287497,
+     "median": -0.05,
+     "p5": -1.3,
+     "p95": 0.38,
+     "medianAbs": 0.17
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 276348,
+     "median": -0.04,
+     "p5": -1.2,
+     "p95": 0.35,
+     "medianAbs": 0.17
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 10042,
+     "median": -0.49,
+     "p5": -3.01,
+     "p95": 2.46,
+     "medianAbs": 0.84
+    },
+    "gebco-cudem19": {
+     "cells": 290025,
+     "median": 2.73,
+     "p5": -3.35,
+     "p95": 10.3,
+     "medianAbs": 3.07
+    },
+    "gebco-bluetopo": {
+     "cells": 287497,
+     "median": 2.83,
+     "p5": -3.22,
+     "p95": 10.65,
+     "medianAbs": 3.16
+    }
+   }
+  },
+  "tampa": {
+   "grid": [
+    1800,
+    1980
+   ],
+   "waterCells": 1624295,
+   "tiles": {
+    "bluetopo": 49,
+    "ninth": 11,
+    "third": 1
+   },
+   "gebco": {
+    "coversWater": 1.0,
+    "belowDatumShare": 0.9295,
+    "depth": {
+     "min": -17.0,
+     "p1": -11.02,
+     "p5": -9.67,
+     "p25": -6.24,
+     "p50": -4.52,
+     "p75": -3.0,
+     "p95": -1.03,
+     "p99": -0.4
+    },
+    "sheets": {
+     "1m": 12,
+     "2m": 6,
+     "3m": 4,
+     "5m": 3,
+     "10m": 2
+    },
+    "tid": {
+     "0": 0.061,
+     "11": 0.0014,
+     "16": 0.8761,
+     "17": 0.0008,
+     "40": 0.0495,
+     "44": 0.0111
+    }
+   },
+   "bluetopo": {
+    "coversWater": 0.9912,
+    "belowDatumShare": 0.9858,
+    "depth": {
+     "min": -29.13,
+     "p1": -13.97,
+     "p5": -9.85,
+     "p25": -6.67,
+     "p50": -4.46,
+     "p75": -2.69,
+     "p95": -0.87,
+     "p99": -0.41
+    },
+    "sheets": {
+     "1m": 13,
+     "2m": 8,
+     "3m": 5,
+     "5m": 3,
+     "10m": 2
+    },
+    "kinds": {
+     "none": 0.0133,
+     "survey": 0.9789,
+     "chart": 0.0,
+     "restricted": 0.0,
+     "generalization": 0.0078
+    },
+    "onCudemLand": 0.2263,
+    "belowDatumOnCudemLand": 0.0016
+   },
+   "cudem19": {
+    "coversWater": 1.0,
+    "belowDatumShare": 1.0,
+    "depth": {
+     "min": -28.37,
+     "p1": -13.98,
+     "p5": -9.77,
+     "p25": -6.59,
+     "p50": -4.27,
+     "p75": -2.29,
+     "p95": -0.67,
+     "p99": -0.1
+    },
+    "sheets": {
+     "1m": 13,
+     "2m": 8,
+     "3m": 5,
+     "5m": 3,
+     "10m": 2
+    }
+   },
+   "cudem13": {
+    "coversWater": 0.0004,
+    "belowDatumShare": 0.0004,
+    "depth": {
+     "min": -12.12,
+     "p1": -12.02,
+     "p5": -11.81,
+     "p25": -11.44,
+     "p50": -10.37,
+     "p75": -9.42,
+     "p95": -8.22,
+     "p99": -7.67
+    },
+    "sheets": {
+     "1m": 0,
+     "2m": 0,
+     "3m": 0,
+     "5m": 0,
+     "10m": 0
+    }
+   },
+   "diff": {
+    "bluetopo-cudem19": {
+     "cells": 1609992,
+     "median": -0.01,
+     "p5": -0.9,
+     "p95": 0.4,
+     "medianAbs": 0.18
+    },
+    "bluetopoSurvey-cudem19": {
+     "cells": 1590039,
+     "median": -0.01,
+     "p5": -0.89,
+     "p95": 0.39,
+     "medianAbs": 0.18
+    },
+    "bluetopoFill-cudem19": {
+     "cells": 12722,
+     "median": 0.04,
+     "p5": -2.13,
+     "p95": 1.55,
+     "medianAbs": 0.56
+    },
+    "gebco-cudem19": {
+     "cells": 1624295,
+     "median": 0.03,
+     "p5": -1.99,
+     "p95": 4.21,
+     "medianAbs": 0.9
+    },
+    "gebco-bluetopo": {
+     "cells": 1609992,
+     "median": 0.15,
+     "p5": -1.84,
+     "p95": 4.17,
+     "medianAbs": 0.86
+    }
+   }
+  }
+ }
+}

@@ -91,6 +91,11 @@ export interface ProjectRequestSettings {
   verticalExaggeration?: number;
   /** Flat output only: how many contour lines to engrave; 0 engraves none. */
   contourCount?: number;
+  /**
+   * Layered output only: scale the sea so its depth fills this many sheets below
+   * sea level, and add no more depth sheets than that; 0 turns the fit off.
+   */
+  seaDepthLayers?: number;
   details?: ProjectRequestDetails;
   aviation?: ProjectRequestAviation;
   airspaceStack?: ProjectRequestAirspaceStack | false;
@@ -122,6 +127,7 @@ export const PROJECT_REQUEST_LIMITS = {
   materialThicknessMm: { min: 0.5, max: 25 },
   verticalExaggeration: { min: MIN_VERTICAL_EXAGGERATION, max: MAX_VERTICAL_EXAGGERATION },
   contourCount: { min: 4, max: 40 },
+  seaDepthLayers: { min: 1, max: 12 },
   kerfMm: { min: 0, max: 1 },
   workAreaMm: { min: MIN_WORK_AREA_MM, max: MAX_PROJECT_DIMENSION_MM },
   placeLabelLength: 240,
@@ -153,7 +159,7 @@ const DETAIL_FIELDS: Record<keyof ProjectRequestDetails, keyof ProjectConfigV1> 
   scaleBar: "showScaleBar",
 };
 
-const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "details", "aviation", "airspaceStack", "paintTemplates", "publicLands", "title", "laser", "markers"] as const;
+const SETTINGS_KEYS = ["placeLabel", "name", "widthMm", "heightMm", "shape", "units", "output", "materialThicknessMm", "verticalExaggeration", "contourCount", "seaDepthLayers", "details", "aviation", "airspaceStack", "paintTemplates", "publicLands", "title", "laser", "markers"] as const;
 const DEFAULT_PLACE_LABEL = "Custom coordinates";
 const DEFAULT_NAME = "Terrain model";
 
@@ -355,6 +361,7 @@ function settingsValue(record: Record<string, unknown>, issues: Issues): Project
   if (record.materialThicknessMm !== undefined) settings.materialThicknessMm = numberIn(record.materialThicknessMm, "materialThicknessMm", limits.materialThicknessMm, issues);
   if (record.verticalExaggeration !== undefined) settings.verticalExaggeration = numberIn(record.verticalExaggeration, "verticalExaggeration", limits.verticalExaggeration, issues);
   if (record.contourCount !== undefined) settings.contourCount = record.contourCount === 0 ? 0 : numberIn(record.contourCount, "contourCount", limits.contourCount, issues, true);
+  if (record.seaDepthLayers !== undefined) settings.seaDepthLayers = record.seaDepthLayers === 0 ? 0 : numberIn(record.seaDepthLayers, "seaDepthLayers", limits.seaDepthLayers, issues, true);
   if (record.details !== undefined) settings.details = switches(record.details, PROJECT_REQUEST_DETAIL_KEYS, "details", issues);
   if (record.aviation !== undefined) settings.aviation = switches(record.aviation, PROJECT_REQUEST_AVIATION_KEYS, "aviation", issues);
   if (record.airspaceStack !== undefined) settings.airspaceStack = airspaceStackValue(record.airspaceStack, issues);
@@ -436,6 +443,9 @@ export function requestPatch(project: ProjectConfigV1, change: ProjectRequestSet
   if (change.verticalExaggeration !== undefined) patch.verticalExaggeration = change.verticalExaggeration;
   if (change.contourCount === 0) patch.showEngravingContours = false;
   else if (change.contourCount !== undefined) Object.assign(patch, { showEngravingContours: true, engravingContourCount: change.contourCount });
+  // Turning the fit off keeps the design's own limit on depth sheets.
+  if (change.seaDepthLayers === 0) patch.fitSeaDepth = false;
+  else if (change.seaDepthLayers !== undefined) Object.assign(patch, { fitSeaDepth: true, waterDepthLayerLimit: change.seaDepthLayers });
   for (const key of PROJECT_REQUEST_DETAIL_KEYS) {
     const enabled = change.details?.[key];
     if (enabled !== undefined) (patch as Record<string, unknown>)[DETAIL_FIELDS[key]] = enabled;
@@ -531,6 +541,7 @@ export function describeProject(project: ProjectConfigV1): ProjectRequestV1 {
     materialThicknessMm: project.materialThicknessMm,
     verticalExaggeration: project.verticalExaggeration,
     contourCount: project.showEngravingContours ? project.engravingContourCount : 0,
+    ...(project.fitSeaDepth && project.waterDepthLayerLimit !== undefined ? { seaDepthLayers: project.waterDepthLayerLimit } : {}),
     details,
     ...(project.aviation ? { aviation: { ...project.aviation } } : {}),
     ...(project.airspaceStack ? { airspaceStack: { ...project.airspaceStack, classes: { ...project.airspaceStack.classes }, rod: { ...project.airspaceStack.rod } } } : {}),

@@ -2,7 +2,7 @@
   import { t, type MessageKey } from "$lib/i18n/i18n.svelte";
   import AirspaceCutPreview from "$lib/studio/AirspaceCutPreview.svelte";
   import SvgViewport from "$lib/studio/SvgViewport.svelte";
-  import { SCORE_BURN_WIDTH_MM, fittedWaterInsert, visibleMarkings, displayElevation, elevationUnit, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
+  import { SCORE_BURN_WIDTH_MM, fittedWaterInsert, visibleMarkings, displayElevation, elevationUnit, layerElevationM, paintStencil, type GeometryIRV1, type PaintRegionKind } from "@topostack/core";
   import { Switch } from "@loidolt/theme-svelte";
   import { markingCap, markingColor, markingDash } from "$lib/studio/marking-style";
   import { PAINT_COLORS } from "$lib/studio/paint-colors";
@@ -92,7 +92,7 @@
         {/each}
       {/if}
     </SvgViewport>
-    <div class="axis layer-elevation">{t("preview.layerElevation", { value: Math.round(displayElevation(layer.elevationM, geometry.units)), unit: elevationUnit(geometry.units) })}</div>
+    <div class="axis layer-elevation">{t("preview.layerElevation", { value: Math.round(displayElevation(layerElevationM(layer), geometry.units)), unit: elevationUnit(geometry.units) })}</div>
     {#if (geometry.paintRegions ?? []).length}
       <div class="axis paint-template-toggle">
         <Switch checked={showTemplate} disabled={!paint.length} onCheckedChange={(checked) => { showTemplate = checked; }} aria-label={t("preview.showPaintTemplate")}>{paint.length ? t("preview.paintTemplate") : t("preview.noPaintTemplateOnLayer")}</Switch>

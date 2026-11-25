@@ -404,6 +404,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
       layers: ir.layers.map((layer) => ({
         id: layer.id,
         elevationM: layer.elevationM,
+        ...(layer.realElevationM === undefined ? {} : { realElevationM: layer.realElevationM }),
         filename: filenamesByLayer.get(layer.index)?.[0],
         filenames: filenamesByLayer.get(layer.index) ?? [],
         pieces: layer.pieces,
@@ -494,7 +495,7 @@ export function buildFabricationPackage(generated: GeometryIRV1, config: Project
   const horizontalScale = ir.horizontalScale ?? horizontalScaleFor(ir.widthMm, ir.bounds);
   const scale = horizontalScale > 0 ? ` (horizontal scale 1:${Math.round(1 / horizontalScale).toLocaleString("en-US")})` : "";
   const fittedDepths = ir.waterSurfaces.filter((surface) => surface.depthFitScale !== undefined)
-    .map((surface) => `${surface.name ?? "Lake"}: fitted to ${(surface.depthFitScale! * 100).toFixed(1)}% of requested depth; ${surface.appliedDepthExaggeration!.toFixed(3)}x terrain depth scale.\n`).join("");
+    .map((surface) => `${surface.name ?? (surface.kind === "ocean" ? "Sea" : "Lake")}: fitted to ${(surface.depthFitScale! * 100).toFixed(1)}% of requested depth; ${surface.appliedDepthExaggeration!.toFixed(3)}x terrain depth scale.\n`).join("");
   const vertical = `Vertical exaggeration: ${ir.verticalExaggeration.toFixed(1)}x${scale}\n`;
   const linework = lineworkSummary(config.lineStyle, "Engraved line widths", [], [`labels and guides ${format(config.lineStyle.annotationMm)} mm`]) + aviationSummary(ir, config) + landsSummary(ir, config);
   const seams = ir.splitPlan ? (() => {

@@ -13,7 +13,7 @@ import { northArrowMarkings } from "../annotate/north-arrow.js";
 import { scaleBarMarkings } from "../annotate/scale-bar.js";
 import { plaqueFootprint, plaqueMarkings } from "../annotate/plaque.js";
 import { displayElevation, elevationUnit } from "../primitives/units.js";
-import { DEFAULT_TEXT_STYLE, MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D, type UnitSystem } from "../types.js";
+import { layerElevationM, DEFAULT_TEXT_STYLE, MAP_MARKER_CLEARANCE_MM, MAP_MARKER_SIZE_MM, type LayerIR, type Point2D, type OperationPath, type Polygon2D, type UnitSystem } from "../types.js";
 import type { GenerationContext } from "./generation-context.js";
 import type { LayerClip } from "./layer-clips.js";
 
@@ -106,7 +106,7 @@ export function placeAnnotations(context: GenerationContext, clips: LayerClip[])
 
 /** A layer's elevation label, longest form first: the placer takes the first that fits. */
 export function elevationLabelTexts(layer: LayerIR, units: UnitSystem): string[] {
-  const elevation = Math.round(displayElevation(layer.elevationM, units));
+  const elevation = Math.round(displayElevation(layerElevationM(layer), units));
   const unit = elevationUnit(units);
   return [`${elevation} ${unit}`, `${elevation}${unit}`, `${elevation}`];
 }

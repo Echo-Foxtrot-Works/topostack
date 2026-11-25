@@ -5,7 +5,7 @@ import { pointInPolygon, ringBounds, simplifyClosedRing } from "../primitives/ge
 import { displayElevation, displayLength, elevationUnit, lengthUnit } from "../primitives/units.js";
 import { PAINT_BLEED_MM } from "../pipeline/paint-regions.js";
 import { airspaceFact, airspaceNeeds, airspaceSection, type GuideAirspace } from "./assembly-guide-airspace.js";
-import { PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type PaintRegionKind, type Point2D, type Polygon2D, type ProjectConfigV1, type WaterInsertIR } from "../types.js";
+import { layerElevationM, PAINT_REGION_LABELS, type GeometryIRV1, type LayerIR, type PaintRegionKind, type Point2D, type Polygon2D, type ProjectConfigV1, type WaterInsertIR } from "../types.js";
 
 /**
  * A web font to embed in the guide, as WOFF2 bytes in base64. The core cannot
@@ -237,7 +237,7 @@ export function assemblyGuideToHtml(ir: GeometryIRV1, config: ProjectConfigV1, s
     const facts = [
       ["Cut from", layerSheets.length ? layerSheets.map((sheet) => `<code>${escapeXml(sheet.filename)}</code>${piecesOn(sheet, index)}`).join(" ") : "—"],
       ["Pieces", String(pieces)],
-      ["Elevation", `${elevation(layer.elevationM)} and up`],
+      ["Elevation", `${elevation(layerElevationM(layer))} and up`],
     ].map(([term, value]) => `<div><dt>${term}</dt><dd>${value}</dd></div>`).join("");
     return `<article class="step" id="step-${index + 1}">
 <header><span class="badge">${index + 1}</span><div class="step-title"><p class="label">Step ${index + 1} of ${count}</p><h3>Layer ${number}</h3></div><label class="done"><input type="checkbox"> Done</label></header>

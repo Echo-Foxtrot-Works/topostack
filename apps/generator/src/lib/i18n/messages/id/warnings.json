@@ -71,6 +71,7 @@
   "vectorDataPartial": "Batas fitur detail peta tercapai, jadi sebagian jalan, jalur setapak, garis air, atau batas mungkin hilang.",
   "vectorDataUnavailable": "Data detail peta tidak tersedia. Proyek ini tidak dapat diekspor sampai data peta pulih atau detail tersebut dinonaktifkan.",
   "waterDepthClamped": "Air di sini lebih dalam daripada yang dapat ditampung {count, plural, other {# lembar}} di bawah garis pantai, jadi dasarnya diratakan. Naikkan batas lapisan kedalaman atau matikan untuk cakupan otomatis. Sesuaikan kedalaman memampatkan danau ke batas yang dipilih.",
+  "seaDepthFlat": "Laut di sini sedalam sekitar {depth} m dan tiap lembar mencakup {step} m, sehingga dasarnya terpotong rata. Penyesuaian kedalaman laut membaginya ke lapisan kedalaman yang Anda pilih.",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other { dan # lainnya}} {count, plural, other {tetap}} kayu: garis pantai tidak dapat dipotong dengan rapi.",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other { dan # lainnya}} {count, plural, other {tetap}} kayu: garis air berada di lembar bawah, jadi tidak ada yang menahan sisipan akrilik.",
   "waterInsertOversize": "{count, plural, other {Sisipan akrilik {ids, list, series}}} lebih besar dari area kerja mesin. Akrilik tidak pernah dibelah, karena sambungannya akan terlihat di air; kecualikan danau atau gunakan mesin yang lebih besar.",
