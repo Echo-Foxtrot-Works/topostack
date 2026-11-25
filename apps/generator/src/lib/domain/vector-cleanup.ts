@@ -229,8 +229,28 @@ export function stitchTransportationMarkings(markings: MarkingFeature[]): Markin
   return [...stitched, ...other];
 }
 
+/**
+ * Put a group's roads in the order they should survive a cut: major roads
+ * before local ones, longer before shorter. Tile order otherwise decides, and
+ * it has dropped a trunk road's bridge while keeping side streets. Only the
+ * slots roads already hold are reordered, so other markings keep their turn.
+ */
+function roadsByImportance(group: MarkingFeature[]): MarkingFeature[] {
+  const isRoad = (marking: MarkingFeature) => marking.kind === "road";
+  const roads = group.filter(isRoad);
+  if (roads.length < 2) return group;
+  const rank = (marking: MarkingFeature) => marking.transportationClass === "major-road" ? 0 : marking.transportationClass === "local-road" ? 2 : 1;
+  const ordered = roads
+    .map((marking, index) => ({ marking, index, rank: rank(marking), length: polylineLength(marking.points) }))
+    .sort((a, b) => a.rank - b.rank || b.length - a.length || a.index - b.index);
+  let next = 0;
+  return group.map((marking) => isRoad(marking) ? ordered[next++]!.marking : marking);
+}
+
 export function limitVectorMarkingGroups(groups: MarkingFeature[][], maximum = MAX_VECTOR_MARKINGS): { markings: MarkingFeature[]; truncated: boolean } {
-  const nonempty = groups.filter((group) => group.length > 0);
+  const total = groups.reduce((sum, group) => sum + group.length, 0);
+  // Nothing is reordered when everything fits.
+  const nonempty = groups.filter((group) => group.length > 0).map((group) => total > maximum ? roadsByImportance(group) : group);
   const markings: MarkingFeature[] = [];
   for (let index = 0; markings.length < maximum; index += 1) {
     let added = false;
@@ -243,5 +263,5 @@ export function limitVectorMarkingGroups(groups: MarkingFeature[][], maximum = M
     }
     if (!added) break;
   }
-  return { markings, truncated: groups.reduce((total, group) => total + group.length, 0) > markings.length };
+  return { markings, truncated: total > markings.length };
 }

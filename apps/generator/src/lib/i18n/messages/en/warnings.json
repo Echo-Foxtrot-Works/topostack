@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "{lake} has incomplete {source, select, chart {depth chart} other {survey}} coverage. Uncovered cells use existing terrain, modeled depths, or estimates near surveyed shores; cells without enough information remain at the waterline.",
   "bathymetryIncompleteUnnamed": "A lake has incomplete {source, select, chart {depth chart} other {survey}} coverage. Uncovered cells use existing terrain, modeled depths, or estimates near surveyed shores; cells without enough information remain at the waterline.",
   "capsOmitted": "{count, plural, one {# upper {unit, select, contour {contour} other {sheet}} was} other {# upper {unit, select, contour {contours} other {sheets}} were}} omitted because the circular crop retained no material meeting the minimum feature size.",
+  "topSheetsOmitted": "{count, plural, one {# upper {unit, select, contour {contour} other {sheet}} was} other {# upper {unit, select, contour {contours} other {sheets}} were}} omitted because the crop retained no material meeting the minimum feature size.",
   "elevationLabelsOmitted": "Elevation labels were omitted from {count, plural, one {layer} other {layers}} {layers, list, series} because no collision-free position fit the exposed face.",
   "elevationRepaired": "Isolated depth spikes in the elevation data were replaced with estimates from nearby terrain. Review the terrain before cutting.",
   "emptyLayer": "Layer {layer} has no printable terrain at its elevation.",

@@ -252,6 +252,22 @@ describe("limitVectorMarkingGroups", () => {
     expect(limitVectorMarkingGroups([group("a", 1)], 0)).toEqual({ markings: [], truncated: true });
   });
 
+  it("drops short local roads before a major road when roads must be cut", () => {
+    const local = (id: string, length: number) => road(id, [[0, 0], [length, 0]], { transportationClass: "local-road" });
+    const roads = [local("street-a", 2), local("street-b", 9), road("ramp", [[0, 0], [1, 0]]), local("street-c", 4), road("bridge", [[0, 0], [40, 0]])];
+    const water = group("shore", 2);
+    const { markings, truncated } = limitVectorMarkingGroups([roads, water], 5);
+    expect(truncated).toBe(true);
+    // Major roads first, longest first; the other group still takes its turns.
+    expect(markings.map((marking) => marking.id)).toEqual(["bridge", "shore0", "ramp", "shore1", "street-b"]);
+  });
+
+  it("reorders only roads inside a mixed group, and nothing when everything fits", () => {
+    const mixed = [line("river", [[0, 0], [1, 0]]), road("short", [[0, 0], [1, 0]]), line("creek", [[0, 0], [1, 0]]), road("long", [[0, 0], [9, 0]])];
+    expect(limitVectorMarkingGroups([mixed], 3).markings.map((marking) => marking.id)).toEqual(["river", "long", "creek"]);
+    expect(limitVectorMarkingGroups([mixed], 4).markings.map((marking) => marking.id)).toEqual(["river", "short", "creek", "long"]);
+  });
+
   it("defaults to the shared marking cap", () => {
     const { markings, truncated } = limitVectorMarkingGroups([group("a", MAX_VECTOR_MARKINGS), group("b", 1)]);
     expect(markings).toHaveLength(MAX_VECTOR_MARKINGS);

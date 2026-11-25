@@ -3,7 +3,7 @@ import { engravingContourIntervalM, groundWidthMFor, planTerrainStack } from "./
 import { cropElevationRange } from "../primitives/crop.js";
 import { contours } from "d3-contour";
 import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
-import { close, mercatorWorldY, simplify, toPoint } from "../primitives/geometry2d.js";
+import { close, mercatorWorldY, signedArea, simplify, toPoint } from "../primitives/geometry2d.js";
 import { MIN_LAYER_COUNT, SEA_LEVEL_M, type ElevationGrid, type LayerIR, type WaterAreaV1 } from "../types.js";
 import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, fitTerrainToCoastline } from "../water/water.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
@@ -68,7 +68,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // Size the stack from land alone. A coastal map's grid minimum is the abyssal
   // plain, and dividing the whole of that across the sheet budget is what used
   // to squeeze the land into a layer or two.
-  const { landMin, landMax, waterMin, min: visibleMin, max: visibleMax } = cropElevationRange(config, carved.grid, carved.waterMask);
+  const { landMin, landMax, cuttableWaterMin, min: visibleMin, max: visibleMax, cuttableMin } = cropElevationRange(config, carved.grid, carved.waterMask);
   const landRelief = landMax - landMin;
   const depthBelowLandM = Math.max(0, landMin - (Number.isFinite(visibleMin) ? visibleMin : carved.grid.min));
   const engravedContours = flatEngraving && config.showEngravingContours;
@@ -84,6 +84,14 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   let ladderBase = flatEngraving ? landMin : landMin - stack.depthLayerCount * stack.metersPerLayer;
   if (hasOcean && stack.metersPerLayer > 0) {
     ladderBase = SEA_LEVEL_M - Math.ceil((SEA_LEVEL_M - ladderBase) / stack.metersPerLayer) * stack.metersPerLayer;
+  }
+  // The first step can sit at or below everything deep enough to cut: the sea
+  // level snap slides the ladder down, and a deep spot smaller than the cutter
+  // can show still asks for a sheet. The sheet above the base would then be a
+  // second uncut rectangle, so the ladder starts a step higher. Whole steps
+  // keep sea level on a step.
+  if (!flatEngraving && stack.metersPerLayer > 0 && Number.isFinite(cuttableMin)) {
+    while (ladderBase + stack.metersPerLayer <= Math.min(cuttableMin, landMin) + 1e-9) ladderBase += stack.metersPerLayer;
   }
   // Snapping to sea level slides the whole ladder down by up to a full step, so
   // the sheet count is taken from the span the ladder actually has to cover.
@@ -104,7 +112,7 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   // silently punching through the base sheet.
   const water = config.fitLakeDepth && !flatEngraving ? fitLakesToLadder(carved, config, ladderBase) : carved;
   const { grid: modelGrid, clamped } = clampCarveToLadder(water.grid, ladderBase);
-  if (clamped && !flatEngraving && (water === carved ? waterMin : cropElevationRange(config, water.grid, water.waterMask).waterMin) < ladderBase) warnings.push({
+  if (clamped && !flatEngraving && (water === carved ? cuttableWaterMin : cropElevationRange(config, water.grid, water.waterMask).cuttableWaterMin) < ladderBase) warnings.push({
     code: "WATER_DEPTH_CLAMPED",
     ...(!config.fitLakeDepth && carved.surfaces.some((surface) => surface.kind === "lake" && surface.bedElevationM < ladderBase && surface.surfaceElevationM > ladderBase) ? { action: "fit-lake-depth" as const } : {}),
     message: `Water here is deeper than the ${stack.depthLayerCount} sheet${stack.depthLayerCount === 1 ? "" : "s"} below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance.`,
@@ -113,6 +121,9 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   });
   return { landMin, landMax, visibleMin, visibleMax, depthBelowLandM, stack, ladderBase, thresholds, water, modelGrid };
 }
+
+/** Relative area by which a sheet may fall short of the crop and still count as uncut. */
+const SOLID_SHEET_TOLERANCE = 1e-6;
 
 export function contourLayers({ config, flatEngraving, clip, warnings }: GenerationContext, ladder: ElevationLadder): LayerIR[] {
   const { modelGrid, thresholds } = ladder;
@@ -157,16 +168,38 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
     });
   });
 
-  // A circular clip can retain only an unprintably small edge of an outside
-  // summit. Drop empty caps, but keep any interior gaps as export-blocking errors.
-  let omittedCaps = 0;
-  if (config.cropShape === "circle") {
-    while (layers.length > 1 && layers.at(-1)!.polygons.length === 0) { layers.pop(); omittedCaps += 1; }
-    if (omittedCaps) {
-      thresholds.length = layers.length;
-      const unit = flatEngraving ? "contour" : "sheet";
-      warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the circular crop retained no material meeting the minimum feature size.`, messageKey: "capsOmitted", params: { count: omittedCaps, unit } });
+  // The ladder is sized before anything is contoured, so a step can turn out
+  // to hold nothing to cut: every hole it would open was under the minimum
+  // feature size. The sheet above the base is then the same uncut outline as
+  // the base, and cutting both only adds a blank spacer. Start the stack at
+  // the highest such sheet; the steps above it are unchanged.
+  if (!flatEngraving) {
+    const cropArea = Math.abs(signedArea(clip));
+    const solid = (layer: LayerIR) => layer.polygons.length === 1 && layer.polygons[0]!.holes.length === 0
+      && cropArea - Math.abs(signedArea(layer.polygons[0]!.outer)) <= cropArea * SOLID_SHEET_TOLERANCE;
+    let dropped = 0;
+    while (layers.length - dropped > MIN_LAYER_COUNT && solid(layers[dropped + 1]!)) dropped += 1;
+    if (dropped) {
+      layers.splice(0, dropped);
+      thresholds.splice(0, dropped);
+      ladder.ladderBase = thresholds[0]!;
+      layers[0]!.polygons = [{ outer: clip, holes: [] }];
+      layers.forEach((layer, index) => { layer.index = index; layer.id = `layer-${String(index + 1).padStart(2, "0")}`; });
     }
+  }
+
+  // The top of the stack can hold nothing printable: a circular clip keeps
+  // only a sliver of an outside summit, or the highest ground is a patch
+  // under the minimum feature size. Such caps are dropped with a notice, since
+  // nothing rests on them. An empty sheet with material above it stays, as an
+  // export-blocking error.
+  let omittedCaps = 0;
+  while (layers.length > 1 && layers.at(-1)!.polygons.length === 0) { layers.pop(); omittedCaps += 1; }
+  if (omittedCaps) {
+    thresholds.length = layers.length;
+    const unit = flatEngraving ? "contour" : "sheet";
+    const circle = config.cropShape === "circle";
+    warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the ${circle ? "circular " : ""}crop retained no material meeting the minimum feature size.`, messageKey: circle ? "capsOmitted" : "topSheetsOmitted", params: { count: omittedCaps, unit } });
   }
 
   for (const layer of layers) {

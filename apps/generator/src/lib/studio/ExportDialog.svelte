@@ -101,6 +101,7 @@
         <span class="export-feedback-copy"><strong>{title}</strong><small>{detail}</small></span>
       </div>
     {/if}
+    <p class="export-guide export-guide--projects">Cutting with LightBurn or xTool Studio? Ready-made project files are in the list of single files below.</p>
     {#if layered && sheetLayout}{@render sheetLayout()}{/if}
     <details class="export-more">
       <summary>Individual files <span class="export-more-count">{files.length}</span></summary>
