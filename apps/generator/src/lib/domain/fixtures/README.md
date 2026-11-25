@@ -64,3 +64,14 @@ including USGS NED. See the attribution links above.
 `gebco-2026-ocean-v1` archive. Pixel (132, 147) contains a −314 m sounding
 near 36.836767° N, 121.979828° W. The archive uses whole-metre elevations
 from the public-domain GEBCO Compilation Group (2026) grid. [GEBCO 2026 Grid](https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2026-grid).
+
+# Pinellas overshoot fixture
+
+Unmodified Mapzen Terrarium tile retrieved 2026-11-24:
+
+- `pinellas-z10.png`: https://s3.amazonaws.com/elevation-tiles-prod/terrarium/10/276/429.png
+
+The barrier islands west of Tampa Bay, where the z10 to z12 levels hold clusters
+of pixels from -336 m to +341 m on ground that is under 40 m everywhere. z13 and
+finer levels do not have them. The up-and-down pairs are what
+`repairPairedSpikes` detects.

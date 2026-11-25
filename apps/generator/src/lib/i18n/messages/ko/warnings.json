@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "{lake}의 {source, select, chart {수심도} other {측량}} 범위가 불완전합니다. 빈 셀은 기존 지형, 추정 수심 또는 실측 호안 근처 추정치를 사용하며, 정보가 부족한 셀은 수면선에 남습니다.",
   "bathymetryIncompleteUnnamed": "한 호수의 {source, select, chart {수심도} other {측량}} 범위가 불완전합니다. 빈 셀은 기존 지형, 추정 수심 또는 실측 호안 근처 추정치를 사용하며, 정보가 부족한 셀은 수면선에 남습니다.",
   "capsOmitted": "원형 자르기 후 최소 디테일 크기를 충족하는 소재가 남지 않아 {count, plural, other {상단 {unit, select, contour {등고선} other {시트}} #개}}를 생략했습니다.",
+  "topSheetsOmitted": "자르기 후 최소 디테일 크기를 충족하는 소재가 남지 않아 {count, plural, other {상단 {unit, select, contour {등고선} other {시트}} #개}}를 생략했습니다.",
   "elevationLabelsOmitted": "노출된 면에 겹치지 않는 위치가 없어 {count, plural, other {층}} {layers, list, series}에서 표고 라벨을 생략했습니다.",
   "elevationRepaired": "표고 데이터의 고립된 수심 스파이크를 주변 지형 기반 추정치로 대체했습니다. 커팅 전에 지형을 확인하세요.",
   "emptyLayer": "{layer}층에는 해당 표고에서 출력할 지형이 없습니다.",

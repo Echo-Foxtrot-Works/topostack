@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "{lake} có dữ liệu {source, select, chart {bản đồ độ sâu} other {khảo sát}} bao phủ chưa đầy đủ. Ô chưa được bao phủ dùng địa hình hiện có, độ sâu ước tính hoặc giá trị ước lượng gần bờ đã khảo sát; ô không đủ thông tin giữ nguyên ở mực nước.",
   "bathymetryIncompleteUnnamed": "Một hồ có dữ liệu {source, select, chart {bản đồ độ sâu} other {khảo sát}} bao phủ chưa đầy đủ. Ô chưa được bao phủ dùng địa hình hiện có, độ sâu ước tính hoặc giá trị ước lượng gần bờ đã khảo sát; ô không đủ thông tin giữ nguyên ở mực nước.",
   "capsOmitted": "Đã bỏ {count, plural, other {# {unit, select, contour {đường đồng mức} other {tấm}} trên cùng}} vì vùng cắt tròn không giữ lại phần vật liệu nào đạt kích thước chi tiết nhỏ nhất.",
+  "topSheetsOmitted": "Đã bỏ {count, plural, other {# {unit, select, contour {đường đồng mức} other {tấm}} trên cùng}} vì vùng cắt không giữ lại phần vật liệu nào đạt kích thước chi tiết nhỏ nhất.",
   "elevationLabelsOmitted": "Đã bỏ nhãn độ cao khỏi {count, plural, other {lớp}} {layers, list, series} vì không có vị trí không chồng chéo nào vừa trên mặt lộ ra.",
   "elevationRepaired": "Các điểm nhọn độ sâu đơn lẻ trong dữ liệu độ cao đã được thay bằng giá trị ước tính từ địa hình lân cận. Hãy xem lại địa hình trước khi cắt.",
   "emptyLayer": "Lớp {layer} không có địa hình nào để cắt ở độ cao của nó.",

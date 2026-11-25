@@ -139,19 +139,37 @@ describe("fabrication geometry regressions", () => {
     expect(result.layers.map((layer) => layer.elevationM)).toEqual(expected.layers.map((layer) => layer.elevationM));
   });
 
-  it("reports the exaggeration actually cut when the sea-level snap adds a sheet", () => {
+  it("reports the exaggeration actually cut when the sea-level snap shifts the ladder", () => {
     const config = { ...base, materialThicknessMm: 2, showWaterDepth: true };
     const data = source(config, (x) => x < 10 ? -30 : 40 + x * 25);
     data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[-55,-150],[-55,150],[-150,150],[-150,-150]]), holes: [] } }];
     const result = generateGeometry(config, data);
     const plan = planTerrainStack(config, result.landReliefM, bounds, result.waterDepthBelowLandM);
-    // The snap slides the ladder, so it needs one more sheet than planned...
-    expect(result.layers.length).toBe(plan.layerCount + 1);
+    // The snap slides the ladder down, but the step it leaves under the sea
+    // floor is not cut as a second solid base: only the base lies below -30 m.
+    expect(result.layers.length).toBe(plan.layerCount);
+    expect(result.layers[0]!.elevationM).toBeLessThanOrEqual(-30);
+    expect(result.layers[1]!.elevationM).toBeGreaterThan(-30);
+    expect(result.layers.some((layer) => layer.elevationM === 0)).toBe(true);
     // ...but every sheet still spans the planned interval, so the vertical
     // scale of the cut stack - and therefore its exaggeration - is unchanged.
     const stepM = result.layers[1]!.elevationM - result.layers[0]!.elevationM;
     expect(result.horizontalScale).toBeGreaterThan(0);
     expect(result.verticalExaggeration).toBeCloseTo(config.materialThicknessMm / (stepM * result.horizontalScale! * 1000), 9);
+  });
+
+  it("says in the README that roads over water are on the water sheet, only when there are both", async () => {
+    const config = { ...base, showWaterDepth: true, showRoads: true };
+    const data = source(config, (x) => x < 10 ? -30 : 40 + x * 25);
+    data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[-55,-150],[-55,150],[-150,150],[-150,-150]]), holes: [] } }];
+    data.waterPatternAreas = data.waterAreas.map((area) => area.polygon);
+    const bridge = { id: "bridge", kind: "road" as const, operation: "engrave" as const, transportationClass: "major-road" as const, points: ring([[-140, 0], [100, 0]]) };
+    const readme = async (markings: typeof data.markings) => {
+      const result = generateGeometry(config, { ...data, markings });
+      return buildProjectPackage(result, config).files.find((file) => file.filename === "README.txt")!.blob.text();
+    };
+    expect(await readme([bridge])).toContain("is on the water sheet, not the land sheet above it");
+    expect(await readme([])).not.toContain("water sheet");
   });
 
   it("states the horizontal scale in the README, including for IR recorded before it was stored", async () => {
@@ -182,6 +200,7 @@ describe("fabrication geometry regressions", () => {
     const config = { ...base, widthMm: 10, heightMm: 10, outputMode: "engraving" as const, northArrowSizeMm: 12, showNorthArrow: true, showScaleBar: true };
     const result = generateGeometry(config, source(config, (x) => x));
     expect(result.layers.flatMap((layer) => layer.markings).filter((marking) => /^(north|scale)-/.test(marking.id))).toHaveLength(0);
-    expect(result.warnings.filter((warning) => warning.message.includes("was omitted"))).toHaveLength(2);
+    // The north arrow and the scale bar; an empty top contour is reported separately.
+    expect(result.warnings.filter((warning) => warning.message.includes("was omitted") && warning.messageKey !== "topSheetsOmitted")).toHaveLength(2);
   });
 });

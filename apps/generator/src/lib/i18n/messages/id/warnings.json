@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "Cakupan {source, select, chart {peta kedalaman} other {survei}} {lake} tidak lengkap. Sel yang tidak tercakup memakai medan yang ada, kedalaman model, atau perkiraan di dekat tepian terukur; sel tanpa informasi cukup tetap di garis air.",
   "bathymetryIncompleteUnnamed": "Cakupan {source, select, chart {peta kedalaman} other {survei}} sebuah danau tidak lengkap. Sel yang tidak tercakup memakai medan yang ada, kedalaman model, atau perkiraan di dekat tepian terukur; sel tanpa informasi cukup tetap di garis air.",
   "capsOmitted": "{count, plural, other {# {unit, select, contour {kontur} other {lembar}} atas}} dihilangkan karena potongan lingkaran tidak menyisakan bahan yang memenuhi ukuran fitur minimum.",
+  "topSheetsOmitted": "{count, plural, other {# {unit, select, contour {kontur} other {lembar}} atas}} dihilangkan karena potongan tidak menyisakan bahan yang memenuhi ukuran fitur minimum.",
   "elevationLabelsOmitted": "Label elevasi dihilangkan dari {count, plural, other {lapisan}} {layers, list, series} karena tidak ada posisi bebas tabrakan yang muat di permukaan terbuka.",
   "elevationRepaired": "Lonjakan kedalaman terisolasi pada data elevasi diganti dengan perkiraan dari medan sekitar. Tinjau medan sebelum memotong.",
   "emptyLayer": "Lapisan {layer} tidak memiliki medan yang dapat dicetak pada elevasinya.",

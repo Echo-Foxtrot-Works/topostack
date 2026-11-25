@@ -52,7 +52,7 @@ describe("cropElevationRange", () => {
 
   it("reports a dry rectangle at the grid's declared range", () => {
     const grid = { ...tilted, min: -100.25, max: 100.25 };
-    expect(cropElevationRange(rectangle, grid, dry)).toEqual({ landMin: -100.25, landMax: 100.25, waterMin: Infinity, min: -100, max: 100 });
+    expect(cropElevationRange(rectangle, grid, dry)).toMatchObject({ landMin: -100.25, landMax: 100.25, waterMin: Infinity, min: -100, max: 100 });
   });
 
   it("leaves water out of the land range but not out of the visible range", () => {
@@ -66,7 +66,7 @@ describe("cropElevationRange", () => {
 
   it("falls back to the visible range when every sample is water", () => {
     const range = cropElevationRange(rectangle, tilted, new Uint8Array(25).fill(1));
-    expect(range).toEqual({ landMin: -100, landMax: 100, waterMin: -100, min: -100, max: 100 });
+    expect(range).toMatchObject({ landMin: -100, landMax: 100, waterMin: -100, min: -100, max: 100, cuttableMin: -100, cuttableWaterMin: -100 });
   });
 
   it("ignores corners outside a circle and samples the crop edge between nodes", () => {
@@ -76,6 +76,54 @@ describe("cropElevationRange", () => {
     expect(range.min).toBeCloseTo(-50 * Math.SQRT2, 3);
     expect(range.landMax).toBeCloseTo(range.max, 9);
     expect(range.max).toBeLessThan(tilted.max);
+  });
+
+  describe("extremes too small to cut", () => {
+    // 0.5 mm cells and a 0.8 mm minimum feature: a cuttable patch is 11 cells.
+    const fine: ProjectConfigV1 = { ...rectangle, minimumFeatureMm: 0.8 };
+    const size = 201;
+    const rolling = (x: number, y: number) => 20 + 0.3 * x + 0.1 * y;
+    const withCells = (cells: Array<[number, number]>, water = false) => {
+      const grid = planarGrid(size, fine, rolling);
+      const mask = new Uint8Array(size * size);
+      for (const [index, value] of cells) { grid.values[index] = value; if (water) mask[index] = 1; }
+      return cropElevationRange(fine, { ...grid, min: Math.min(...grid.values), max: Math.max(...grid.values) }, mask);
+    };
+    const centre = 100 * size + 100;
+    const smooth = withCells([]);
+
+    it("keeps a spike of a few cells out of the land range", () => {
+      const range = withCells([[centre, 400], [centre + 1, 380], [centre + size, -300]]);
+      expect(range.landMax).toBeCloseTo(smooth.landMax, 0);
+      expect(range.landMin).toBeCloseTo(smooth.landMin, 0);
+      // What was measured is still reported.
+      expect(range.max).toBe(400);
+    });
+
+    it("keeps a summit wide enough to cut", () => {
+      const cells: Array<[number, number]> = [];
+      for (let row = 98; row < 103; row += 1) for (let column = 98; column < 103; column += 1) cells.push([row * size + column, 400]);
+      expect(withCells(cells).landMax).toBe(400);
+    });
+
+    it("keeps an exact summit that adds little to the range", () => {
+      const range = withCells([[centre, smooth.landMax + 5]]);
+      expect(range.landMax).toBe(smooth.landMax + 5);
+    });
+
+    it("reports the deepest water a cut can show beside the deepest measured", () => {
+      const range = withCells([[centre, -500], [centre + 1, -500]], true);
+      expect(range.waterMin).toBe(-500);
+      expect(range.cuttableWaterMin).toBe(Infinity);
+      expect(range.min).toBeGreaterThan(-500);
+      expect(range.cuttableMin).toBeGreaterThan(-500);
+      const pond: Array<[number, number]> = [];
+      for (let row = 96; row < 105; row += 1) for (let column = 96; column < 105; column += 1) pond.push([row * size + column, -500]);
+      const wide = withCells(pond, true);
+      expect(wide.waterMin).toBe(-500);
+      expect(wide.cuttableWaterMin).toBe(-500);
+      expect(wide.cuttableMin).toBe(-500);
+    });
   });
 
   it("finds the edge range on a grid too coarse to have interior nodes inside the circle", () => {

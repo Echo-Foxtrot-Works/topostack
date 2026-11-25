@@ -187,14 +187,72 @@ describe("geometry generation", () => {
     expect(outerPoints.every((point) => !pointInRing(point, polygon.outer))).toBe(true);
   });
 
-  it("warns about empty layers and blocks their fabrication export", () => {
+  it("does not let a spike too small to cut set the layer ladder", () => {
     const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
-    // Gradient terrain plus one single-cell spike: the top layer's only region
-    // is smaller than the minimum feature size, so it is culled to empty.
-    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx, ny) => (nx > 0.01 && nx < 0.04 && ny > 0.01 && ny < 0.04 ? 100 : 30 * (nx + 1))), 4);
+    const terrain = (nx: number) => 30 * (nx + 1);
+    const spike = (nx: number, ny: number) => (nx > 0.49 && nx < 0.52 && ny > 0.49 && ny < 0.52 ? 400 : terrain(nx));
+    const smooth = generateGeometry(base, gridSource(base, 48, terrain));
+    const spiked = generateGeometry(base, gridSource(base, 48, spike));
+    // One 400 m cell on 30 m of relief: the stack is planned as if it were absent.
+    expect(spiked.layers.length).toBe(smooth.layers.length);
+    expect(spiked.landReliefM).toBeCloseTo(smooth.landReliefM, 0);
+    expect(spiked.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(false);
+    // A summit wide enough to cut still sets it.
+    const summit = generateGeometry(base, gridSource(base, 48, (nx, ny) => (nx > 0.3 && nx < 0.7 && ny > 0.3 && ny < 0.7 ? 400 : terrain(nx))));
+    expect(summit.landReliefM).toBeGreaterThan(300);
+  });
+
+  it("does not cut a second solid sheet over the base for a trench too narrow to cut", () => {
+    const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false, showAlignmentGuides: true };
+    const land = (nx: number) => 30 * (nx + 2);
+    // One column of cells 300 m below the land: enough cells to count as
+    // terrain, but every hole it opens is narrower than the minimum feature.
+    const trench = (nx: number, ny: number) => (Math.abs(nx) < 0.005 && Math.abs(ny) < 0.6 ? -300 : land(nx));
+    // Scaled so the trench alone asks for several sheets below the land.
+    const [project, source] = scaledForLayers(base, gridSource(base, 97, trench), 13);
     const result = generateGeometry(project, source);
-    expect(result.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(true);
-    expect(result.layers.some((layer) => layer.polygons.length === 0)).toBe(true);
+    const area = (ring: Array<{ x: number; y: number }>) => Math.abs(ring.reduce((sum, point, index) => { const next = ring[(index + 1) % ring.length]!; return sum + point.x * next.y - next.x * point.y; }, 0) / 2);
+    const cropArea = base.widthMm * base.heightMm;
+    const solid = result.layers.filter((layer) => layer.polygons.length === 1 && !layer.polygons[0]!.holes.length && cropArea - area(layer.polygons[0]!.outer) < 1e-3);
+    expect(solid.map((layer) => layer.id)).toEqual(["layer-01"]);
+    // The stack starts above the trench floor and keeps one uniform step.
+    expect(result.layers[0]!.elevationM).toBeGreaterThan(-300);
+    expect(result.minElevationM).toBe(-300);
+    const steps = result.layers.slice(1).map((layer, index) => layer.elevationM - result.layers[index]!.elevationM);
+    for (const step of steps) expect(step).toBeCloseTo(steps[0]!, 9);
+    // Ids and indices are renumbered from the new base, with no gaps.
+    expect(result.layers.map((layer) => layer.id)).toEqual(result.layers.map((_, index) => `layer-${String(index + 1).padStart(2, "0")}`));
+    expect(result.layers.map((layer) => layer.index)).toEqual(result.layers.map((_, index) => index));
+    // The trench's depth alone asked for ten more sheets than this.
+    expect(result.layers.length).toBeLessThan(6);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+  });
+
+  it("drops top sheets that hold nothing printable instead of blocking the export", () => {
+    const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
+    // Gradient terrain plus a ridge one cell wide: the top layer's only region
+    // is long enough to count as terrain but narrower than the minimum
+    // feature size, so nothing of it can be cut.
+    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx) => (nx > 0.01 && nx < 0.04 ? 100 : 30 * (nx + 1))), 4);
+    const result = generateGeometry(project, source);
+    expect(result.layers.every((layer) => layer.polygons.length > 0)).toBe(true);
+    expect(result.layers.map((layer) => layer.id)).toEqual(result.layers.map((_, index) => `layer-${String(index + 1).padStart(2, "0")}`));
+    expect(result.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(false);
+    const notice = result.warnings.find((warning) => warning.messageKey === "topSheetsOmitted");
+    expect(notice?.code).toBe("SMALL_FEATURES");
+    expect(notice?.message).toMatch(/^\d+ upper sheets? (was|were) omitted because the crop retained no material/);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+    // A circular crop keeps its own wording.
+    const round = generateGeometry({ ...project, cropShape: "circle" }, source);
+    expect(round.warnings.some((warning) => warning.messageKey === "topSheetsOmitted")).toBe(false);
+  });
+
+  it("still blocks the fabrication export of a sheet with nothing to cut", () => {
+    const base = { ...DEFAULT_PROJECT, optimizeMaterialUse: false };
+    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx) => 30 * (nx + 1)), 4);
+    const result = generateGeometry(project, source);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+    result.layers[1]!.polygons = [];
     expect(() => buildFabricationPackage(result, project)).toThrow(/empty/i);
   });
 });
