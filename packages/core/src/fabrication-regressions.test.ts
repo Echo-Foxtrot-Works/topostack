@@ -158,6 +158,20 @@ describe("fabrication geometry regressions", () => {
     expect(result.verticalExaggeration).toBeCloseTo(config.materialThicknessMm / (stepM * result.horizontalScale! * 1000), 9);
   });
 
+  it("says in the README that roads over water are on the water sheet, only when there are both", async () => {
+    const config = { ...base, showWaterDepth: true, showRoads: true };
+    const data = source(config, (x) => x < 10 ? -30 : 40 + x * 25);
+    data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[-55,-150],[-55,150],[-150,150],[-150,-150]]), holes: [] } }];
+    data.waterPatternAreas = data.waterAreas.map((area) => area.polygon);
+    const bridge = { id: "bridge", kind: "road" as const, operation: "engrave" as const, transportationClass: "major-road" as const, points: ring([[-140, 0], [100, 0]]) };
+    const readme = async (markings: typeof data.markings) => {
+      const result = generateGeometry(config, { ...data, markings });
+      return buildProjectPackage(result, config).files.find((file) => file.filename === "README.txt")!.blob.text();
+    };
+    expect(await readme([bridge])).toContain("is on the water sheet, not the land sheet above it");
+    expect(await readme([])).not.toContain("water sheet");
+  });
+
   it("states the horizontal scale in the README, including for IR recorded before it was stored", async () => {
     const result = generateGeometry(base, source(base, (x, y) => 400 + x * 12 + y * 5));
     const readme = async (ir: typeof result) => buildProjectPackage(ir, base).files.find((file) => file.filename === "README.txt")!.blob.text();
