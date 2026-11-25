@@ -4,6 +4,13 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.14.1 (2026-11-25)
+
+### Fixed
+
+- **Flat coasts no longer lose their layers to stray elevation spikes**: A few bad pixels in the elevation data, as along Tampa Bay's barrier islands, could stretch the layer steps until the land fit in one sheet, leave blank duplicate sheets under it, and block export with an empty layer. Those spikes are now repaired or ignored, a stack never starts with more than one uncut base sheet, and a top sheet with nothing big enough to cut is left out with a notice instead of blocking the export. Saved designs of flat coasts may regenerate with fewer sheets. The export window also points to the LightBurn and xTool Studio project files under **Individual files**. ([#325](https://github.com/Echo-Foxtrot-Works/topostack/pull/325))
+- **Major roads and bridges are kept first when a map has too much detail**: When an area has more roads than a model can carry, the longest major roads are now kept and short side streets go first, so a highway bridge is not the piece that disappears. The README in every download also says that a road over water is engraved on the water sheet beneath it, not on the land sheet. ([#325](https://github.com/Echo-Foxtrot-Works/topostack/pull/325))
+
 ## 0.14.0 (2026-11-24)
 
 ### New
