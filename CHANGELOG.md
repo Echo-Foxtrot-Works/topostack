@@ -4,6 +4,18 @@ User-facing changes to TopoStack, newest first. Also at https://topostack.app/ch
 
 Generated from `changelog/releases.json` by `npm run changelog:prepare`; do not edit by hand. See [docs/changelog.md](docs/changelog.md).
 
+## 0.15.0 (2026-11-25)
+
+### New
+
+- **A setup guide for your first map**: The studio now opens a first visit with a short guide in the sidebar: choose a layered relief or a flat engraving, find your place and size, pick the look, then match your material and laser. Each step shows its effect in the preview. **Skip guide** goes straight to the settings, and **Setup guide** in the studio menu brings it back. ([#328](https://github.com/Echo-Foxtrot-Works/topostack/pull/328))
+- **Fit sea depth to the depth layers you choose**: A shallow bay no longer has to cut as one flat floor. In **Water**, turn on **Limit depth layers**, pick a count, then **Fit sea depth to these layers**: the sea's depth is spread across those layers, so a bay a few metres deep shows its channels and shoals, and a deep shelf fits in a few sheets instead of twenty. The land is cut exactly as before. Depth labels still read the real depth. The preview says when a sea is too shallow to show and offers the fit in one click; agents set it with `seaDepthLayers`. ([#329](https://github.com/Echo-Foxtrot-Works/topostack/pull/329))
+
+### Improved
+
+- **Export is now a step-by-step flow**: Exporting a layered project walks through one decision at a time: **Panels** for nests and seams, **Sheets** for nesting pieces onto stock, **Download**, then **Share**. The step list at the top jumps to any step. LightBurn and xTool Studio project files now sit right under **Complete project** instead of inside **Individual files**. Flat engravings open straight on **Download**. See [export files](https://topostack.app/guides/export-files). ([#328](https://github.com/Echo-Foxtrot-Works/topostack/pull/328))
+- **Choosing a place opens the map**: Picking a new place or entering coordinates now switches the preview to **Map**, where you frame the area, instead of leaving you on a model of the previous terrain. Generating terrain returns to the model as before. ([#328](https://github.com/Echo-Foxtrot-Works/topostack/pull/328))
+
 ## 0.14.1 (2026-11-25)
 
 ### Fixed
