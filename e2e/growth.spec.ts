@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { NO_STORAGE } from "./studio-panels";
 
 for (const starter of ["relief", "engraving", "lake"] as const) {
   const title = { relief: "small layered relief", engraving: "flat contour engraving", lake: "surveyed lake relief" }[starter];
@@ -64,7 +65,7 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
 }
 
 test("LightBurn and xTool Studio workflows and contextual lake links are usable without JavaScript", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport: { width: 375, height: 812 } });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL, viewport: { width: 375, height: 812 } });
   const page = await context.newPage();
   await page.goto("/guides/lightburn");
   await expect(page).toHaveTitle("Open Topographic Map Projects in LightBurn | TopoStack");

@@ -13,3 +13,11 @@ export async function showPanel(page: Page, name: string): Promise<void> {
   await tab.click();
   if (await page.locator('.settings-rail[data-sheet="closed"]').count()) await tab.click();
 }
+
+/**
+ * For a context with JavaScript disabled. The config seeds every context's
+ * localStorage past the studio's setup guide, which Playwright does by running
+ * a script on the page; Firefox cannot do that without JavaScript and the
+ * context never opens. These pages read no storage anyway.
+ */
+export const NO_STORAGE = { cookies: [], origins: [] };
