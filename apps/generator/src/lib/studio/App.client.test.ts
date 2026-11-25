@@ -28,6 +28,7 @@ vi.mock("$app/navigation", () => ({ replaceState: (url: URL) => window.history.r
 vi.mock("$lib/studio/ThreePreview.svelte", async () => ({ default: (await import("$lib/studio/testing/TestPreview.svelte")).default }));
 
 import { PROJECT_UNLOAD_COPY_KEY } from "$lib/storage/storage";
+import { START_GUIDE_KEY } from "$lib/studio/start-guide";
 import App from "$lib/studio/App.svelte";
 import { nav } from "$lib/studio/customdata/custom-data-nav.svelte";
 import { resetDraft } from "$lib/studio/customdata/chart-draft.svelte";
@@ -87,6 +88,8 @@ describe("TopoStack Svelte shell", () => {
     // tests remain isolated without recalculating the same preview for every test.
     initialPreview = generateGeometry(DEFAULT_PROJECT, createSamplePreviewSource());
     Object.defineProperty(globalThis, "localStorage", { configurable: true, value: localStorageStub });
+    // A returning maker: the setup guide's own tests clear this to act as a first visit.
+    localStorage.setItem(START_GUIDE_KEY, "done");
     Object.defineProperty(globalThis, "ResizeObserver", { configurable: true, value: class {
       constructor(private callback: ResizeObserverCallback) {}
       observe(target: Element): void { this.callback([{ target, contentRect: { width: 500, height: 500 } } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver); }
@@ -438,6 +441,22 @@ describe("TopoStack Svelte shell", () => {
     await tick();
     expect(target.querySelector(".warning-stack")?.textContent).not.toContain(prediction);
     expect(preview.warnings.some((warning) => warning.code === "LAKE_DEPTH_PREDICTED")).toBe(true);
+  });
+
+  it("turns on sea depth fitting, with a depth-layer count, from the flat-sea notice", async () => {
+    const preview = structuredClone(initialPreview);
+    preview.warnings = [{ code: "SEA_DEPTH_FLAT", message: "The sea cuts flat.", action: "fit-sea-depth" }];
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: preview } });
+    await tick();
+    const action = target.querySelector<HTMLButtonElement>(".preview-warning .warning-action")!;
+    expect(action.textContent?.trim()).toBe("Fit depth");
+    action.click();
+    // The offer goes away once it is taken.
+    await vi.waitFor(() => expect(target.querySelector(".preview-warning .warning-action")).toBeNull());
+    window.dispatchEvent(new Event("pagehide"));
+    const { saveProject } = await import("$lib/storage/storage");
+    expect(saveProject).toHaveBeenLastCalledWith(expect.objectContaining({ fitSeaDepth: true, waterDepthLayerLimit: 3 }));
   });
 
   it("keeps the fit action visible when other warnings fill the preview", async () => {
@@ -1163,6 +1182,10 @@ describe("TopoStack Svelte shell", () => {
     const exploded = target.querySelector<HTMLInputElement>(".explode-control input")!;
     exploded.value = "0.75";
     exploded.dispatchEvent(new Event("input", { bubbles: true }));
+    await tick();
+    // Sheet layout is the export dialog's second step.
+    [...target.querySelectorAll<HTMLButtonElement>(".export-step-tab")].find((button) => button.textContent?.includes("Sheets"))!.click();
+    await tick();
     await tick();
     for (const [material, width] of [["wood", "437"], ["acrylic", "251"]] as const) {
       const section = target.querySelector<HTMLInputElement>(`input[name="${material}-sheet-layout"]`)!.closest("section")!;
@@ -1923,5 +1946,96 @@ describe("TopoStack Svelte shell", () => {
     [...tips.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Next")!.click();
     await tick();
     expect(tips.querySelector("h3")?.textContent).toBe("Terrain layers");
+  });
+
+  describe("setup guide", () => {
+    const viewChecked = (target: HTMLElement) => target.querySelector('.mode-switch [role="radio"][aria-checked="true"]')?.textContent?.trim();
+    const guideButton = (target: HTMLElement, name: string) => [...target.querySelectorAll<HTMLButtonElement>(".start-guide button")].find((button) => button.textContent?.trim() === name)!;
+    async function firstVisit() {
+      localStorage.removeItem(START_GUIDE_KEY);
+      onTestFinished(() => { localStorage.setItem(START_GUIDE_KEY, "done"); });
+      const target = document.createElement("div");
+      document.body.append(target);
+      onTestFinished(() => target.remove());
+      component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+      await vi.waitFor(() => expect(target.querySelector(".start-guide")).not.toBeNull(), { timeout: 5_000 });
+      return target;
+    }
+
+    it("opens for a first visit in place of the settings rail, and Skip hands over to the rail", async () => {
+      const target = await firstVisit();
+      expect(target.querySelector(".settings-rail")).toBeNull();
+      expect(target.querySelector(".start-guide h2")?.textContent).toBe("What are you making?");
+      expect(target.querySelector(".generate-dock")).not.toBeNull();
+      guideButton(target, "Skip guide").click();
+      await tick();
+      expect(target.querySelector(".start-guide")).toBeNull();
+      expect(target.querySelector(".settings-rail")).not.toBeNull();
+      expect(localStorage.getItem(START_GUIDE_KEY)).toBe("done");
+    });
+
+    it("stays closed for a returning maker and reopens from the studio menu", async () => {
+      const target = document.createElement("div");
+      component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+      await vi.waitFor(() => expect(target.querySelector(".settings-rail")).not.toBeNull());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(target.querySelector(".start-guide")).toBeNull();
+      (await menuItem(target, "Studio menu", "Setup guide")).click();
+      await vi.waitFor(() => expect(target.querySelector(".start-guide")).not.toBeNull(), { timeout: 5_000 });
+      expect(target.querySelector(".settings-rail")).toBeNull();
+      localStorage.setItem(START_GUIDE_KEY, "done");
+    });
+
+    it("walks type, place, look and material, loading terrain once the place is set", async () => {
+      loadTerrainMock.mockResolvedValue({ source: { ...createSyntheticSource(DEFAULT_PROJECT), sourceKind: "real" }, fallback: false });
+      const target = await firstVisit();
+      target.querySelector<HTMLButtonElement>('.start-guide__choices [role="radio"]:last-child')!.click();
+      await vi.waitFor(() => expect(viewChecked(target)).toContain("Engraving"));
+      target.querySelector<HTMLButtonElement>('.start-guide__choices [role="radio"]:first-child')!.click();
+      await vi.waitFor(() => expect(viewChecked(target)).toContain("3D stack"));
+      guideButton(target, "Next").click();
+      await tick();
+      // Framing the area happens on the map.
+      expect(target.querySelector(".start-guide h2")?.textContent).toBe("Where, and how big?");
+      expect(viewChecked(target)).toContain("Map");
+      expect(localStorage.getItem(START_GUIDE_KEY)).toBe("place");
+      expect(target.querySelector('.start-guide input[aria-label="Width"]')).not.toBeNull();
+      guideButton(target, "Load terrain and continue").click();
+      await tick();
+      expect(target.querySelector(".start-guide h2")?.textContent).toBe("Choose the look");
+      await vi.waitFor(() => expect(loadTerrainMock).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(viewChecked(target)).toContain("3D stack"));
+      expect(target.querySelector('.start-guide button[role="switch"][aria-label="Roads"]')).not.toBeNull();
+      guideButton(target, "Next").click();
+      await tick();
+      expect(target.querySelector('.start-guide input[aria-label="Material"]')).not.toBeNull();
+      expect(target.querySelector('.start-guide input[aria-label="Laser kerf"]')).not.toBeNull();
+      await vi.waitFor(() => expect(guideButton(target, "Finish")).toBeDefined());
+      guideButton(target, "Finish").click();
+      await tick();
+      expect(target.querySelector(".start-guide")).toBeNull();
+      expect(target.querySelector('.settings-rail [role="tab"][aria-selected="true"]')?.textContent).toContain("Place");
+      expect(localStorage.getItem(START_GUIDE_KEY)).toBe("done");
+      expect(loadTerrainMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("resumes the step a reload interrupted", async () => {
+      localStorage.setItem(START_GUIDE_KEY, "look");
+      onTestFinished(() => { localStorage.setItem(START_GUIDE_KEY, "done"); });
+      const target = document.createElement("div");
+      component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+      await vi.waitFor(() => expect(target.querySelector(".start-guide h2")?.textContent).toBe("Choose the look"), { timeout: 5_000 });
+    });
+  });
+
+  it("opens the map when the place changes, so the new area can be framed", async () => {
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: structuredClone(initialPreview) } });
+    await vi.waitFor(() => expect(target.querySelector('[data-testid="three-preview"]')).not.toBeNull());
+    const checked = () => target.querySelector('.mode-switch [role="radio"][aria-checked="true"]')?.textContent?.trim();
+    expect(checked()).toContain("3D stack");
+    [...target.querySelectorAll<HTMLButtonElement>(".preset-row button")].find((button) => button.textContent?.includes("Rainier"))!.click();
+    await tick();
+    expect(checked()).toContain("Map");
   });
 });

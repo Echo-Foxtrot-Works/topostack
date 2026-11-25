@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { showExportStep } from "./studio-panels";
 
 async function expectWithinWidth(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -94,6 +95,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
     expect(Math.abs(icon.y + icon.height / 2 - button.y - button.height / 2)).toBeLessThan(1);
     await trigger.tap();
     const dialog = page.getByRole("dialog", { name: "Export your project" });
+    // The last step holds the donation link, the lowest thing in the dialog.
+    await showExportStep(page, "Share");
     const close = dialog.getByRole("button", { name: "Close export dialog" });
     const body = dialog.locator(".export-dialog-body");
     for (const size of [viewport, { width: viewport.width, height: 360 }, { width: viewport.height, height: viewport.width }, viewport]) {
@@ -161,6 +164,7 @@ test("mobile preview warnings can be dismissed without enabling export", async (
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.locator(".warning-stack")).toHaveCount(0);
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   await expect(page.getByRole("button", { name: /Complete project/ })).toBeDisabled();
   await page.getByRole("button", { name: "Close export dialog" }).click();
   // A new failed attempt must still explain why the selected view is unavailable.

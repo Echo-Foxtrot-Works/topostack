@@ -84,6 +84,7 @@
       <tr><td>Limit depth layers</td><td>On, off</td><td>Off (automatic)</td><td><em>Layered</em>. Automatic coverage adds depth sheets without compressing land relief.</td></tr>
       <tr><td>Maximum depth layers</td><td>Positive whole number</td><td>Current required depth sheets when enabled</td><td><em>Layered</em>. Explicit allowance below the lowest land; saved with the project.</td></tr>
       <tr><td>Fit lake depth to available layers</td><td>On, off</td><td>Off</td><td><em>Layered</em>. With an explicit depth-layer limit, compresses over-deep lakes into the allowance instead of flattening their floors.</td></tr>
+      <tr><td>Fit sea depth to these layers</td><td>On, off</td><td>Off</td><td><em>Layered</em>. With an explicit depth-layer limit, scales the sea so its depth fills that many sheets below sea level: a shallow bay is stretched to show its floor, a deep shelf is compressed. The deepest 2% is flattened; land is unchanged.</td></tr>
       <tr><td>Maximum depth</td><td>Per lake, from 1 m</td><td>Published estimate</td><td><em>Layered</em>. Shown for modeled lakes with a depth estimate. Reset restores estimates.</td></tr>
       <tr><td>Acrylic water inserts</td><td>On, off</td><td>Off</td><td><em>Layered</em>, with Water depth on. Cuts each lake's shoreline out of the sheet that carries its waterline and exports a fitted acrylic insert for it, as separate acrylic files with their own sheet layout. The sheet below gets a 2 mm ledge for the insert to rest on, and map detail over the water is engraved on the acrylic. Lakes on the bottom sheet, and arms narrower than 3 mm, stay wood. Each lake can be switched back to wood in the list below the switch.</td></tr>
       <tr><td>Acrylic thickness</td><td>0.5–25 mm</td><td>Material thickness</td><td><em>With acrylic inserts</em>. Thinner than the wood sits just below the shore; thicker stands proud of it, with a warning.</td></tr>
@@ -162,7 +163,7 @@
   </table>
 
   <h2>Panels and seams (export dialog)</h2>
-  <p>In the export dialog, above <strong>Sheet layout</strong>. The seam controls appear once the work area splits a layer.</p>
+  <p>The first step of the export dialog, <strong>Panels</strong>, before <strong>Sheet layout</strong>. The seam controls appear once the work area splits a layer.</p>
   <table>
     <thead><tr><th scope="col">Control</th><th scope="col">Range or options</th><th scope="col">Default</th><th scope="col">Notes</th></tr></thead>
     <tbody>

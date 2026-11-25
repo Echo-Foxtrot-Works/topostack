@@ -70,6 +70,16 @@ describe("project requests", () => {
     expect(requestPatch(project, { contourCount: 18 })).toMatchObject({ showEngravingContours: true, engravingContourCount: 18 });
   });
 
+  it("fits the sea to a number of depth sheets, and turns the fit off without dropping the limit", () => {
+    const project = expandProjectRequest(parsed({ ...rainier, seaDepthLayers: 3 }));
+    expect(project).toMatchObject({ fitSeaDepth: true, waterDepthLayerLimit: 3 });
+    expect(describeProject(project).seaDepthLayers).toBe(3);
+    const off = { ...project, ...requestPatch(project, { seaDepthLayers: 0 }) };
+    expect(off).toMatchObject({ fitSeaDepth: false, waterDepthLayerLimit: 3 });
+    expect(describeProject(off).seaDepthLayers).toBeUndefined();
+    expect(describeProject(expandProjectRequest(parsed(rainier))).seaDepthLayers).toBeUndefined();
+  });
+
   it("keeps the north arrow within what a small model allows", () => {
     const project = expandProjectRequest(parsed({ ...rainier, widthMm: 40, heightMm: 30 }));
     expect(project.northArrowSizeMm).toBe(northArrowMaximumMm(40, 30));
@@ -276,6 +286,10 @@ describe("request schema", () => {
     ["fractional contours", { ...rainier, contourCount: 12.5 }],
     ["no contours", { ...rainier, output: "flat", contourCount: 0 }],
     ["too few contours", { ...rainier, contourCount: 2 }],
+    ["sea depth layers", { ...rainier, seaDepthLayers: 3 }],
+    ["sea fit off", { ...rainier, seaDepthLayers: 0 }],
+    ["fractional sea depth layers", { ...rainier, seaDepthLayers: 2.5 }],
+    ["too many sea depth layers", { ...rainier, seaDepthLayers: 13 }],
     ["tiny work area", { ...rainier, laser: { workAreaWidthMm: 5 } }],
     ["bad symbol", { ...rainier, markers: [{ lat: 1, lon: 1, symbol: "flag" }] }],
     ["too many markers", { ...rainier, markers: Array.from({ length: 21 }, () => ({ lat: 1, lon: 1 })) }],

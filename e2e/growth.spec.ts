@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { NO_STORAGE, showExportStep } from "./studio-panels";
 
 for (const starter of ["relief", "engraving", "lake"] as const) {
   const title = { relief: "small layered relief", engraving: "flat contour engraving", lake: "surveyed lake relief" }[starter];
@@ -26,9 +27,11 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
     await expect(checklist.getByRole("button", { name: "Open export" })).toBeEnabled({ timeout: 45_000 });
     await checklist.getByRole("button", { name: "Open export" }).click();
     const dialog = page.getByRole("dialog", { name: "Export your project" });
+    await showExportStep(page, "Download");
     const fabrication = page.waitForEvent("download");
     await dialog.getByRole("button", { name: /Complete project/ }).click();
     expect((await fabrication).suggestedFilename()).toMatch(/\.zip$/);
+    await dialog.getByRole("button", { name: "Next: Share" }).click();
     const imageDownload = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Save preview image" }).click();
     const download = await imageDownload;
@@ -64,7 +67,7 @@ for (const starter of ["relief", "engraving", "lake"] as const) {
 }
 
 test("LightBurn and xTool Studio workflows and contextual lake links are usable without JavaScript", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport: { width: 375, height: 812 } });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL, viewport: { width: 375, height: 812 } });
   const page = await context.newPage();
   await page.goto("/guides/lightburn");
   await expect(page).toHaveTitle("Open Topographic Map Projects in LightBurn | TopoStack");

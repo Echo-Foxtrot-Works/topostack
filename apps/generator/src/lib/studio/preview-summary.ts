@@ -152,7 +152,7 @@ const warningKey = (warning: Warning): string => `${warning.code}-${warning.mess
 
 // Keep the depth provenance notice visible alongside a depth-fitting action,
 // even when lower-priority messages exceed the preview's warning limit.
-const warningPriority = (warning: Warning) => warning.action === "fit-lake-depth" ? 2 : warning.code === "LAKE_DEPTH_PREDICTED" ? 1 : 0;
+const warningPriority = (warning: Warning) => warning.action === "fit-lake-depth" || warning.action === "fit-sea-depth" ? 2 : warning.code === "LAKE_DEPTH_PREDICTED" ? 1 : 0;
 
 /**
  * The warnings the preview shows. Several unnamed lakes can emit the same

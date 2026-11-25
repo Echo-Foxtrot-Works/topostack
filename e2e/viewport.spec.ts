@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { DEFAULT_PROJECT } from "@topostack/core";
+import { showExportStep } from "./studio-panels";
 
 for (const outputMode of ["stack", "engraving"] as const) {
 for (const [widthMm, heightMm] of [[100, 200], [400, 100]] as const) {
@@ -219,6 +220,7 @@ for (const [widthMm, heightMm] of [[100, 200], [400, 100]] as const) {
     }).toBeCloseTo(widthMm * 2 / heightMm, 2);
     await expect(page.locator(".status-line")).toContainText(outputMode === "stack" ? "Fabrication geometry updated" : "Engraving artwork updated", { timeout: 30_000 });
     await page.getByRole("button", { name: "Export", exact: true }).click();
+    await showExportStep(page, "Download");
     await expect(page.getByRole("button", { name: /Complete project/ })).toBeEnabled();
   });
 }

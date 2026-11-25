@@ -123,6 +123,7 @@ describe("generation warnings in English", () => {
     ["assemblyIdsOmitted", { count: 2, pieces: ["L3-P1", "L4-P2"] }, "Assembly ids were omitted from 2 pieces (L3-P1, L4-P2) because no position stayed hidden under the layer above."],
     ["waterDepthClamped", { count: 1 }, "Water here is deeper than the 1 sheet below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance."],
     ["waterDepthClamped", { count: 4 }, "Water here is deeper than the 4 sheets below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance."],
+    ["seaDepthFlat", { depth: 12, step: 36 }, "The sea here is about 12 m deep and each sheet spans 36 m, so its floor cuts flat. Fit sea depth spreads it across the depth sheets you choose."],
     ["capsOmitted", { count: 1, unit: "sheet" }, "1 upper sheet was omitted because the circular crop retained no material meeting the minimum feature size."],
     ["capsOmitted", { count: 2, unit: "contour" }, "2 upper contours were omitted because the circular crop retained no material meeting the minimum feature size."],
     ["topSheetsOmitted", { count: 1, unit: "sheet" }, "1 upper sheet was omitted because the crop retained no material meeting the minimum feature size."],

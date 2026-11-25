@@ -21,6 +21,9 @@ export default defineConfig({
   outputDir: "test-results",
   use: {
     baseURL: "http://127.0.0.1:4173",
+    // Specs start as a returning maker, on the settings rail. A first visit
+    // opens the setup guide instead; start-guide.spec.ts clears this to test it.
+    storageState: { cookies: [], origins: [{ origin: "http://127.0.0.1:4173", localStorage: [{ name: "topostack-studio-guide-v1", value: "done" }] }] },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

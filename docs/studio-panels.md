@@ -16,7 +16,7 @@ Panels group controls by what they change on the model, not by kind of setting. 
 | Labels | Labels and marks | Font, text size, label line width, elevation labels, north arrow, scale bar, title | `LabelsPanel.svelte` |
 | Fabricate | Fabrication | Laser kerf, minimum feature, work area, assembly guides | `MakePanel.svelte` |
 
-Material-saving nests, glue margin and the seam options (puzzle tabs, assembly labels, seam offset) are in the export dialog as **Panels and seams** (`NestsAndSeams.svelte`), beside the sheet layout they feed. They still change the preview.
+Material-saving nests, glue margin and the seam options (puzzle tabs, assembly labels, seam offset) are the first step of the export dialog, **Panels** (`NestsAndSeams.svelte`), ahead of the sheet layout they feed. The dialog (`ExportDialog.svelte`) is a step-by-step flow: **Panels**, **Sheets** (nesting), **Download**, **Share**; a flat engraving has only the last two. Every step is reachable from the step list, and each open starts at the first. They still change the preview.
 
 A new control goes in the panel for the subject it changes. A width for a new kind of line goes under that feature's switch with `LineWidthField.svelte`. If a control fits no panel, that is a sign the panels need rethinking, not a reason for an "Other" panel.
 
@@ -30,6 +30,18 @@ A new control goes in the panel for the subject it changes. A width for a new ki
 - **Find a setting** (`SettingsSearch.svelte`) is the rail's `panelHeader`, pinned while the panels scroll. It reads labelled controls from the mounted panels each time it searches, so it lists only what the project currently shows. A control behind a switch that is off is found through its switch.
 - One-line summaries under each title come from `panelSummary` in `preview-summary.ts`.
 - The custom data view's sidebar (`CustomDataNav.svelte`) is the same kind of rail, one tab per kind of data. Both rails take their orientation from `railOrientation` (`rail-orientation.svelte.ts`).
+
+## Setup guide
+
+A first visit gets the setup guide (`StartGuide.svelte`) in place of the rail: four steps, **Type**, **Place**, **Look** and **Material**, each built from the same controls as the panel it introduces (`SizeFields`, `LinePresets` and `MachineFields` are shared with the Place, Features and Fabricate panels). The generation dock stays below it.
+
+- "First visit" means startup found nothing to restore and no link that names a design (`guideStepAtStartup` in `start-guide.ts`). A maker with a saved project never sees it unasked; **Setup guide** in the studio menu opens it for anyone.
+- Progress is one localStorage value, `topostack-studio-guide-v1`: the open step, or `done` once finished or skipped. A reload resumes the step.
+- Each step opens the view that shows its effect: the map for **Place**, the model for the rest. Leaving **Place** forward starts Generate when the area has no real terrain yet, so **Look** is chosen on the place itself.
+- The guide is standalone only, loaded on demand, and its own copy is English like the rest of that shell. The Atomm embed never offers it.
+- Tests start past the guide: `playwright.config.ts` seeds the `done` value for every spec and `App.client.test.ts` sets it before mounting. `e2e/start-guide.spec.ts` clears it.
+
+Changing the place (search, a suggested place, coordinates) also opens the map view in the standalone studio, since the model still shows the previous terrain until the next Generate.
 
 ## Platform embed
 

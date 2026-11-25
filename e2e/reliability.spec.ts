@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { DEFAULT_PROJECT, fitCutBounds } from "@topostack/core";
+import { showExportStep } from "./studio-panels";
 
 test("keeps generation and location controls usable when WebGL is unavailable", async ({ page }) => {
   const errors: string[] = [];
@@ -36,6 +37,7 @@ test("keeps generation and location controls usable when WebGL is unavailable", 
   await expect(page.getByLabel("Search places")).toBeFocused();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   await expect(page.getByRole("button", { name: /Complete project/ })).toBeEnabled();
   expect(errors).toEqual([]);
 });

@@ -15,6 +15,8 @@
   import { warningText } from "$lib/i18n/warnings";
   import { formatNumber, t } from "$lib/i18n/i18n.svelte";
   const base = basePath();
+  /** Depth sheets the flat-sea notice asks for when no limit is set: the fewest that show two depth contours. */
+  const SEA_FIT_DEFAULT_LAYERS = 3;
 
   let { openLakeDepthHelp }: { openLakeDepthHelp?: (trigger: HTMLButtonElement) => void } = $props();
   const studio = getStudio();
@@ -131,7 +133,7 @@
         {#each studio.visibleWarnings as warning (`${warning.code}-${warning.message}`)}
           <div class="preview-warning">
             <span class="warning-icon" aria-hidden="true">!</span>
-            <p>{warningText(warning)}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>{t("preview.fitDepth")}</Button>{/if}</p>
+            <p>{warningText(warning)}{#if warning.code === "LAKE_DEPTH_PREDICTED"}&nbsp;<LakeDepthHelp {openLakeDepthHelp} />{/if}{#if warning.action === "fit-lake-depth" && !studio.project.fitLakeDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitLakeDepth: true })}>{t("preview.fitDepth")}</Button>{/if}{#if warning.action === "fit-sea-depth" && !studio.project.fitSeaDepth} <Button class="warning-action" disabled={studio.previewBusy} onclick={() => void updateFabrication({ fitSeaDepth: true, waterDepthLayerLimit: Math.max(SEA_FIT_DEFAULT_LAYERS, studio.project.waterDepthLayerLimit ?? 0) })}>{t("preview.fitDepth")}</Button>{/if}</p>
             <button type="button" class="warning-dismiss" aria-label={t("preview.dismissWarningLabel", { warning: warningText(warning) })} title={t("preview.dismissWarning")} onclick={(event) => dismissPreviewWarning(event, `${warning.code}-${warning.message}`)}><X size={14} aria-hidden="true" /></button>
           </div>
         {/each}

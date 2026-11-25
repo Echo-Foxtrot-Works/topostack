@@ -446,6 +446,7 @@ export function parseProject(value: unknown): ProjectConfigV1 {
     showWaterDepth: record.showWaterDepth === undefined ? DEFAULT_PROJECT.showWaterDepth : booleanValue(record.showWaterDepth, "showWaterDepth"),
     waterDepthExaggeration: record.waterDepthExaggeration === undefined ? DEFAULT_PROJECT.waterDepthExaggeration : numberValue(record.waterDepthExaggeration),
     fitLakeDepth: record.fitLakeDepth === undefined ? false : booleanValue(record.fitLakeDepth, "fitLakeDepth"),
+    ...(record.fitSeaDepth === undefined ? {} : { fitSeaDepth: booleanValue(record.fitSeaDepth, "fitSeaDepth") }),
     waterDepthLayerLimit: record.waterDepthLayerLimit === undefined ? undefined : numberValue(record.waterDepthLayerLimit),
     waterDepthOverrides: waterDepthOverridesValue(record.waterDepthOverrides),
     showAlignmentGuides: record.showAlignmentGuides === undefined ? DEFAULT_PROJECT.showAlignmentGuides : booleanValue(record.showAlignmentGuides, "showAlignmentGuides"),

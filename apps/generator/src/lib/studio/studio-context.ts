@@ -188,6 +188,10 @@ export interface StudioContext {
   togglePanel(id: DisclosureId): void;
   panelSummary(id: DisclosureId): string;
   openExport(): void;
+  /** Opens the setup guide at its first step, in place of the settings rail. */
+  openStartGuide(): void;
+  /** True while the setup guide stands in for the settings rail. */
+  readonly guideOpen: boolean;
   navigateChoice(event: KeyboardEvent & { currentTarget: HTMLButtonElement }): void;
   dismissPreviewWarning(event: MouseEvent, warningKey?: string): void;
   previewMarkingPath(marking: OperationPath): string;

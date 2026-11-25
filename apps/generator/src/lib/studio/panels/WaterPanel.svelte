@@ -21,6 +21,8 @@
   const studio = getStudio();
   const { getFeedbackContext, navigateChoice, setLakeDepth, shownDepth, shownLength, storedLength, updateDepthLayerLimit, updateFabrication, updateMapDetails } = studio;
   const stack = $derived(studio.project.outputMode === "stack");
+  const hasSea = $derived(studio.geometry.waterSurfaces.some((surface) => surface.kind === "ocean"));
+  const fittedSea = $derived(studio.geometry.waterSurfaces.find((surface) => surface.kind === "ocean" && surface.depthFitScale !== undefined));
   /** A lake carved from the maker's own chart; its modeled maximum no longer applies. */
   const charted = (hylakId: number): boolean => studio.project.userDepthCharts?.[String(hylakId)] !== undefined;
   const inserts = $derived(studio.project.waterInserts);
@@ -80,16 +82,23 @@
               <small><span>{t("water.exaggerationMin", { value: MIN_WATER_DEPTH_EXAGGERATION })}</span><span>{t("water.exaggerationMaxTerrain", { value: MAX_WATER_DEPTH_EXAGGERATION })}</span></small>
             </div>
             <small class="depth-note">{t("water.depthExaggerationNote")}</small>
-            <Switch checked={studio.project.waterDepthLayerLimit !== undefined} onCheckedChange={(limited) => void updateFabrication({ waterDepthLayerLimit: limited ? Math.max(1, studio.stackPlan.depthLayerCount) : undefined, fitLakeDepth: false })} aria-label={t("water.limitDepthLayers")}><span class="toggle-label">{t("water.limitDepthLayers")}</span></Switch>
+            <Switch checked={studio.project.waterDepthLayerLimit !== undefined} onCheckedChange={(limited) => void updateFabrication({ waterDepthLayerLimit: limited ? Math.max(1, studio.stackPlan.depthLayerCount) : undefined, fitLakeDepth: false, fitSeaDepth: false })} aria-label={t("water.limitDepthLayers")}><span class="toggle-label">{t("water.limitDepthLayers")}</span></Switch>
             {#if studio.project.waterDepthLayerLimit !== undefined}
               <Field label={t("water.depthLayers")} class="field-row">{#snippet children({ id })}<span class="number-input"><NumberField {id} label={t("water.maxDepthLayers")} value={studio.project.waterDepthLayerLimit} min={1} step={1} oninput={(event) => event.currentTarget.value !== "" && updateDepthLayerLimit(event.currentTarget.valueAsNumber)} onValueChange={updateDepthLayerLimit} /></span>{/snippet}</Field>
               <small class="depth-note">{t("water.depthLayersLimited", { count: studio.project.waterDepthLayerLimit, depth: shownLength(studio.project.waterDepthLayerLimit * studio.project.materialThicknessMm), unit: studio.shownLengthUnit })}</small>
               <Switch checked={studio.project.fitLakeDepth} onCheckedChange={(fitLakeDepth) => void updateFabrication({ fitLakeDepth })} aria-label={t("water.fitLakeDepth")}><span class="toggle-label">{t("water.fitLakeDepth")}</span></Switch>
               <small class="depth-note">{t("water.fitLakeDepthNote")}</small>
+              {#if hasSea}
+                <Switch checked={studio.project.fitSeaDepth === true} onCheckedChange={(fitSeaDepth) => void updateFabrication({ fitSeaDepth })} aria-label={t("water.fitSeaDepth")}><span class="toggle-label">{t("water.fitSeaDepth")}</span></Switch>
+                <small class="depth-note">{t("water.fitSeaDepthNote")}</small>
+              {/if}
             {:else}
               <small class="depth-note">{t("water.depthLayersAutomatic", { count: studio.stackPlan.depthLayerCount, depth: shownLength(studio.stackPlan.depthLayerCount * studio.project.materialThicknessMm), unit: studio.shownLengthUnit })}</small>
             {/if}
-            {#each studio.geometry.waterSurfaces.filter((lake) => lake.depthFitScale !== undefined) as lake (lake.id)}
+            {#if fittedSea && studio.stackPlan.metersPerLayer}
+              <small class="depth-note">{t("water.seaDepthFitted", { depth: formatNumber(studio.stackPlan.metersPerLayer / fittedSea.depthFitScale!, { maximumFractionDigits: 1 }) })}</small>
+            {/if}
+            {#each studio.geometry.waterSurfaces.filter((lake) => lake.kind !== "ocean" && lake.depthFitScale !== undefined) as lake (lake.id)}
               <small class="depth-note">{t("water.lakeDepthFitted", { name: lake.name ?? t("water.lakeFallbackName"), exaggeration: formatNumber(lake.appliedDepthExaggeration!, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), percent: Math.round(lake.depthFitScale! * 100) })}</small>
             {/each}
           </div>

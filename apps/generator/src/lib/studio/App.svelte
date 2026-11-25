@@ -11,7 +11,7 @@
   import { trackUsage } from "$lib/site/usage";
   import { networkSignal } from "$lib/domain/network";
   import { createSamplePreviewSource } from "$lib/domain/sample-preview";
-  import { boundsForProject, exportBlockMessage, exportBlockReason, graphicsForOutputMode } from "@topostack/core";
+  import { boundsForProject, layerElevationM, exportBlockMessage, exportBlockReason, graphicsForOutputMode } from "@topostack/core";
   import { exportBlockText } from "$lib/i18n/warnings";
   import { errorText } from "$lib/i18n/errors";
   import { readProjectFile } from "$lib/studio/project-file";
@@ -43,6 +43,7 @@
   import { PlacementController } from "$lib/studio/placement/placement-controller.svelte";
   import { createProjectPreviewSource } from "$lib/studio/project-preview";
   import { restoreStartupProject } from "$lib/studio/startup-restore";
+  import { guideStepAtStartup, rememberGuideDone, rememberGuideStep, type GuideStep } from "$lib/studio/start-guide";
   import { acrylicPanelCount as findAcrylicPanelCount, airspacePanelCount as findAirspacePanelCount, activeLinePreset as findActiveLinePreset, countDetailMarkings, featuredLayerIndex, layerForEnabledDetail, modeledLakes as findModeledLakes, panelSummary as summarizePanel, visibleWarnings as summarizeWarnings, type DisclosureId } from "$lib/studio/preview-summary";
   import { retryingLoader } from "$lib/studio/lazy-load";
   import { sameMapArea } from "$lib/studio/project-diff";
@@ -131,6 +132,8 @@
   provideEmbedded(() => embeddedInPlatform);
   let exportOpen = $state(false);
   let starterId = $state<StarterId>();
+  // The setup guide's open step; undefined once finished, skipped, or never offered.
+  let guideStep = $state<GuideStep>();
   let exportedFingerprint = $state<string>();
   let previewImageBusy = $state(false);
   let previewImageStatus = $state("");
@@ -244,6 +247,27 @@
   const customDataNav = new LazyComponent(() => import("$lib/studio/customdata/CustomDataNav.svelte"), (error) => {
     console.error("TopoStack could not load the custom data controls.", error);
   });
+  // Only a first visit, or the studio menu, ever asks for the guide.
+  const startGuide = new LazyComponent(() => import("$lib/studio/panels/StartGuide.svelte"), (error) => {
+    console.error("TopoStack could not load the setup guide.", error); guideStep = undefined;
+  });
+  const StartGuide = $derived(startGuide.component);
+  function openGuide(step: GuideStep = "type"): void {
+    if (embeddedInPlatform) return;
+    if (mode === "custom" || mode === "export") mode = defaultModeFor(project.outputMode);
+    guideStep = step;
+    rememberGuideStep(localStorage, step);
+    startGuide.load();
+  }
+  function closeGuide(outcome: "finished" | "skipped"): void {
+    guideStep = undefined;
+    rememberGuideDone(localStorage);
+    // The rail opens where the guide began, with the phone sheet out of the model's way.
+    panels.active = "place";
+    panels.sheet = "closed";
+    // Standalone only, so English like the rest of that shell.
+    if (outcome === "skipped") status = "Setup guide skipped · reopen it from the studio menu";
+  }
   const LocationDialog = $derived(locationDialog.component);
   const CustomDataView = $derived(customDataView.component);
   const CustomDataNav = $derived(customDataNav.component);
@@ -337,7 +361,7 @@
     else previewNotice = "";
   }
 
-  const layerTicks = $derived(geometry.layers.map((layer) => Math.round(displayElevation(layer.elevationM, project.units))));
+  const layerTicks = $derived(geometry.layers.map((layer) => Math.round(displayElevation(layerElevationM(layer), project.units))));
   const shownLengthUnit = $derived(lengthUnit(project.units));
   const outputSummary = $derived(project.outputMode === "engraving"
     ? [project.showEngravingContours ? t("app.outputContours", { count: project.engravingContourCount }) : t("app.outputNoContours"), t("app.outputNoCutPaths")]
@@ -457,6 +481,10 @@
       if (update.phase === "ready") trackUsage("export_prepared", project.outputMode, "atomm");
       if (update.phase === "error") trackUsage("export_failed", project.outputMode, "atomm");
     });
+    // What startup found decides whether a first visit gets the setup guide.
+    // A link that names a design, even one that fails to open, is not a first visit to guide.
+    // Read now: opening the link removes it from the address bar.
+    const startup = { restoredProject: false, openedLink: /^#?p=/.test(window.location.hash) || ["starter", "example", "lake"].some((name) => new URLSearchParams(window.location.search).has(name)) };
     void restoreStartupProject({
       loadProject,
       search: window.location.search,
@@ -477,6 +505,7 @@
       isCancelled: () => cancelled,
       currentProject: () => project,
       restoreSaved: (saved) => {
+        startup.restoredProject = true;
         // A Generate or edit started before the restore finished belongs to
         // the default project; it must neither overwrite nor be undone into it.
         invalidatePendingPreview();
@@ -492,6 +521,10 @@
       openExample: (next, previous) => openProject(next, previous),
       setStatus: (message) => { status = message; },
     }).then(({ autosave }) => {
+      if (!cancelled && !embeddedInPlatform && import.meta.env.VITE_SITE_ENV !== "atomm") {
+        const step = guideStepAtStartup(localStorage, startup);
+        if (step) openGuide(step);
+      }
       // A failed primary read or backup leaves both persistence keys protected.
       if (!cancelled && autosave) booted = true;
       if (!cancelled) loadRealTerrain();
@@ -584,6 +617,17 @@
     projectHistory.record(project, ["location"]);
     project = { ...project, location: { ...project.location, ...patch, ...(("lat" in patch || "lon" in patch || "zoom" in patch) && !("bounds" in patch) ? { bounds: undefined } : {}) } };
     if (!followMapArea()) status = mapAreaChanged();
+    showMapArea();
+  }
+
+  /**
+   * A new place is framed on the map: the model views still show the previous
+   * terrain until the next Generate, which opens them again. The embed reloads
+   * terrain as the area moves, so its model view stays current.
+   */
+  function showMapArea(): void {
+    if (embeddedInPlatform || mode === "map" || mode === "custom" || mode === "export") return;
+    mode = "map"; previewNotice = "";
   }
 
   // The platform embed has no Generate step. A moved map area reloads its
@@ -610,6 +654,7 @@
       ...(place.surveyedLake ? { outputMode: "stack" as const, showWaterDepth: true } : {}),
       location: { ...project.location, lat: place.lat, lon: place.lon, label: place.label, zoom: place.zoom ?? 11, bounds: place.bounds } };
     if (!followMapArea()) status = mapAreaChanged();
+    showMapArea();
     searchOpen = false;
   }
 
@@ -643,6 +688,7 @@
     mapAspectLocked = false;
     previewNotice = "";
     mode = defaultModeFor("stack");
+    if (guideStep) openGuide();
     replaceSourceProject(structuredClone(DEFAULT_PROJECT), createSamplePreviewSource());
     generationState = "ready";
     status = t("status.projectReset");
@@ -993,6 +1039,7 @@
     get placementFade() { return placement.fade; },
     get placementMargin() { return placement.marginMm; },
     get placementHiddenPrefixes() { return placement.hiddenPrefixes; },
+    get guideOpen() { return guideStep !== undefined; },
     get activePanel() { return panels.active; },
     set activePanel(value) { panels.active = value; },
     get settingsSheet() { return panels.sheet; },
@@ -1032,7 +1079,7 @@
     saveChartToLibrary: (record) => customData.saveChartToLibrary(record),
     useChartForLake: (key, reference) => customData.useChartForLake(key, reference),
     clearDepthChart: (key) => customData.clearDepthChart(key),
-    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, togglePanel: (id) => panels.toggle(id), panelSummary, openExport: () => { exportOpen = true; }, navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
+    importMarkerIcon: (file, markerId) => customData.importMarkerIcon(file, markerId), importGraphic: (file) => customData.importGraphic(file), choosePlace, startPlacement: (id) => placement.start(id), placeGraphic: (id) => placement.placeGraphic(id), placeGraphics: () => placement.placeGraphics(), commitPlacement: () => placement.commit(), cancelPlacement: () => placement.cancel(), undo, redo, importProject, copyShareLink, shareDesign, importCustomData, generate, cancelGeneration, togglePanel: (id) => panels.toggle(id), panelSummary, openExport: () => { exportOpen = true; }, openStartGuide: () => openGuide(), navigateChoice, dismissPreviewWarning, previewMarkingPath, trailPatternDash, getFeedbackContext,
   });
 </script>
 
@@ -1097,8 +1144,10 @@
         {@render customDataTools()}
       {:else}
         <h1 class="ldt-visually-hidden">{project.outputMode === "engraving" ? "Draw the landscape." : "Build the landscape."}</h1>
+        {#if guideStep && StartGuide}<StartGuide step={guideStep} onStep={(step) => { guideStep = step; rememberGuideStep(localStorage, step); }} onClose={closeGuide} />{:else}
         {#if starterId && project.id === `topostack-starter-${starterId}`}<StarterSteps id={starterId} ready={exportReady} busy={previewBusy} exported={exportedFingerprint === projectFingerprint(project)} onGenerate={() => void generate()} onExport={() => exportOpen = true} onDismiss={() => starterId = undefined} />{/if}
         <SettingsRail />
+        {/if}
       {/if}
       {#if mode !== "custom"}<GenerationDock />{/if}
     </Sidebar>
@@ -1107,7 +1156,8 @@
     <PreviewPanel />
   </Workspace>
   <ExportDialog open={exportOpen} {project} summary={outputSummary.join(" · ")} panelCount={fabricationPanelCount} nested={Boolean(sheetNesting.exportPlan)} acrylicCount={acrylicPanelTotal} acrylicNested={Boolean(acrylicSheetNesting.exportPlan)} airspaceCount={airspacePanelTotal} blockedReason={exportBlockedBy} preparing={exportPhase === "preparing"} phase={exportPhase} title={exportTitle} detail={exportDetail} onDownload={(option) => void downloadProject(option)} onClose={() => exportOpen = false} onSavePreview={() => void savePreviewImage()} onCopyLink={() => void copyShareLink()} onShare={() => void shareDesign()} {previewImageBusy} {previewImageStatus}>
-    {#snippet sheetLayout()}<NestsAndSeams disabled={exportPhase === "preparing"} /><SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
+    {#snippet panelsStep()}<NestsAndSeams disabled={exportPhase === "preparing"} />{/snippet}
+    {#snippet sheetsStep()}<SheetLayoutSection disabled={Boolean(exportBlockedBy)} />{#if geometry.waterInserts?.length}<SheetLayoutSection material="acrylic" disabled={Boolean(exportBlockedBy)} />{/if}{/snippet}
   </ExportDialog>
   {@render locationSearch()}
 </AppShell>

@@ -8,6 +8,7 @@ Sea floors come from the [GEBCO_2026 Grid](https://www.gebco.net/data-products/g
 - **Where it applies:** it replaces only pixels that both GEBCO and the base terrain put at or below sea level. It never moves the coastline or lifts land, and tiles whose base terrain is all above sea level are never fetched.
 - **Closer views:** requests finer than z9 are upsampled bilinearly from z9. Where GEBCO has no data, the base value stands in at the corners, so the coast feathers into the base over one GEBCO cell.
 - **Depth in the model:** ocean depth reaches the model through the DEM, as before. `keepDemBasin` in `packages/core/src/water/water.ts` scales depths below sea level by the water depth exaggeration, so nothing in core changed.
+- **Fitting the sea:** with a depth-layer limit and `fitSeaDepth`, `fitSeaToLadder` scales the sea about sea level so the depth exceeded by only 2% of its cells lands that many steps below sea level. It stretches a bay shallower than one land step as well as compressing a deep shelf; land and the step are untouched. Without it, a sea no deeper than one step raises the `SEA_DEPTH_FLAT` notice, which offers the fit. A fitted depth sheet keeps its ladder elevation in `elevationM` and carries the water depth it stands for in `realElevationM`; engraved labels, the assembly guide and the studio readouts show that (`layerElevationM`). Agents set the same thing with the request field `seaDepthLayers`.
 
 ## The coastline
 

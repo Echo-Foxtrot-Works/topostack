@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { unzipSync } from "fflate";
+import { showExportStep } from "./studio-panels";
 
 test("marker size persists and fabrication artwork spans visible stack layers", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
@@ -26,6 +27,7 @@ test("marker size persists and fabrication artwork spans visible stack layers", 
   await page.getByRole("radio", { name: /3D stack/ }).click();
   await page.screenshot({ path: testInfo.outputPath("marker-across-stack.png") });
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: /Complete project/ }).click();
   const stream = await (await download).createReadStream();
