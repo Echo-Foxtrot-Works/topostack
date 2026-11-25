@@ -1,9 +1,10 @@
 <script lang="ts">
   import { Building2, Grid3X3, Map as MapIcon, Minus, Square, TrainTrack } from "@lucide/svelte";
-  import { LINE_PRESETS, ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
+  import { ROAD_CAPS, ROAD_STYLES, TRAIL_PATTERNS } from "$lib/studio/options";
   import { LAND_PAINT_OPTIONS, LISTED_LAND_UNITS, PAINT_COLORS, landKindLabel, landUnitLabel, withPaintKind } from "$lib/studio/paint-colors";
   import { BUILDING_MIN_ZOOM, DEFAULT_BUILDING_WIDTH_MM, landStroke, type LandClass, type LandsDetailsV1 } from "@topostack/core";
   import Switch from "$lib/studio/StudioSwitch.svelte";
+  import LinePresets from "$lib/studio/panels/LinePresets.svelte";
   import LineWidthField from "$lib/studio/panels/LineWidthField.svelte";
   import PanelFrame from "$lib/studio/panels/PanelFrame.svelte";
   import { getStudio } from "$lib/studio/studio-context";
@@ -16,7 +17,7 @@
    * model can also take a paint template per kind of public land.
    */
   const studio = getStudio();
-  const { navigateChoice, trailPatternDash, updateFabrication, updateMapDetails } = studio;
+  const { navigateChoice, updateFabrication, updateMapDetails } = studio;
   const lineStyle = $derived(studio.project.lineStyle);
   const lands = $derived<LandsDetailsV1>(studio.project.lands ?? { boundaries: [], hatched: false, labels: false });
 
@@ -45,18 +46,7 @@
 <PanelFrame id="features" title={t("features.title")} class="features-panel">
   <div class="detail-group">
     <p class="subgroup-heading">{t("features.lineWeight")}</p>
-    <div class="line-presets" role="radiogroup" aria-label={t("features.lineworkPreset")}>
-      {#each LINE_PRESETS as preset}
-        <button type="button" role="radio" aria-checked={studio.activeLinePreset === preset.value} data-state={studio.activeLinePreset === preset.value ? "on" : "off"} onclick={() => void updateFabrication({ lineStyle: { ...preset.style } })}>
-          <svg viewBox="0 0 52 24" aria-hidden="true">
-            <path d="M2 5H50" stroke-width={preset.style.contourMm * 5} />
-            <path d="M2 12H50" stroke-width={preset.style.indexContourMm * 5} />
-            <path d="M2 19H50" stroke-width={preset.style.trailMm * 5} stroke-dasharray={trailPatternDash(preset.style)} />
-          </svg>
-          <span><b>{t(`features.linePresetLabel.${preset.value}` as MessageKey)}</b><small>{t(`features.linePresetDescription.${preset.value}` as MessageKey)}</small></span>
-        </button>
-      {/each}
-    </div>
+    <LinePresets />
     <small class="depth-note">{studio.activeLinePreset ? t("features.presetNote") : t("features.customWidthsNote")}</small>
   </div>
 

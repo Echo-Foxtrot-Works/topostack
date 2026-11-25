@@ -1,9 +1,10 @@
 import { pageSecurityPolicy } from "../scripts/lib/static-headers.mjs";
 import { expect, test } from "@playwright/test";
+import { NO_STORAGE } from "./studio-panels";
 import { readFileSync } from "node:fs";
 
 test("homepage explains the product without JavaScript", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL });
   const page = await context.newPage();
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Turn real terrain into");
@@ -124,7 +125,7 @@ test("mobile readers can navigate guides, examples and the studio with correct m
 });
 
 test("a guide explains the workflow with JavaScript disabled", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL });
   const page = await context.newPage();
   await page.goto("/guides/topographic-map-engraving");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Create a topographic map SVG for laser engraving");
@@ -135,7 +136,7 @@ test("a guide explains the workflow with JavaScript disabled", async ({ browser,
 });
 
 test("lake depth pages list surveyed lakes without JavaScript and link into the studio", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL });
   const page = await context.newPage();
   await page.goto("/lakes/minnesota");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Minnesota lake depth maps");
@@ -213,7 +214,7 @@ test("an example link that names no example leaves the studio on its current pro
 
 test("the changelog lists releases newest first with a feed, without JavaScript", async ({ browser, baseURL }) => {
   const { releases } = JSON.parse(readFileSync(new URL("../changelog/releases.json", import.meta.url), "utf8"));
-  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: NO_STORAGE, baseURL });
   const page = await context.newPage();
   await page.goto("/changelog");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Changelog");

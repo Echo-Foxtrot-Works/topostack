@@ -32,7 +32,7 @@
   }
 </script>
 
-<HeaderMenu label={menuLabel} title="Color scheme, guides and what's new" triggerClass="ldt-button ldt-icon-button ldt-button--ghost studio-menu-trigger">
+<HeaderMenu label={menuLabel} title="Color scheme, setup guide and what's new" triggerClass="ldt-button ldt-icon-button ldt-button--ghost studio-menu-trigger">
   {#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{#if unseen}<span class="whats-new-dot" aria-hidden="true"></span>{/if}{/snippet}
   <div class="ldt-menu__label" role="presentation">Color scheme</div>
   {#each schemes as scheme (scheme.value)}
@@ -44,6 +44,7 @@
       <span class="studio-menu__row">What's new{#if unseen}<span class="studio-menu__badge">New</span>{/if}</span><span class="ldt-visually-hidden"> (opens in a new tab)</span>
     </a>
   {/if}
+  <button type="button" class="ldt-menu__item" role="menuitem" onclick={() => studio.openStartGuide()}>Setup guide</button>
   <a class="ldt-menu__item" role="menuitem" href={`${base}${DOCS_HOME}`} target="_blank" rel="noopener noreferrer">Guides<span class="ldt-menu__hint" aria-hidden="true">↗</span><span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
   <button type="button" class="ldt-menu__item" role="menuitem" aria-haspopup="dialog" onclick={openFeedback}>Send feedback</button>
   <a class="ldt-menu__item" role="menuitem" href={`${base}/`} target="_blank" rel="noopener noreferrer">TopoStack home<span class="ldt-menu__hint" aria-hidden="true">↗</span><span class="ldt-visually-hidden"> (opens in a new tab)</span></a>
