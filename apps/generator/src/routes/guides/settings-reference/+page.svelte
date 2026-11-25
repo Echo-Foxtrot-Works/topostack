@@ -162,7 +162,7 @@
   </table>
 
   <h2>Panels and seams (export dialog)</h2>
-  <p>In the export dialog, above <strong>Sheet layout</strong>. The seam controls appear once the work area splits a layer.</p>
+  <p>The first step of the export dialog, <strong>Panels</strong>, before <strong>Sheet layout</strong>. The seam controls appear once the work area splits a layer.</p>
   <table>
     <thead><tr><th scope="col">Control</th><th scope="col">Range or options</th><th scope="col">Default</th><th scope="col">Notes</th></tr></thead>
     <tbody>

@@ -13,3 +13,11 @@ export async function showPanel(page: Page, name: string): Promise<void> {
   await tab.click();
   if (await page.locator('.settings-rail[data-sheet="closed"]').count()) await tab.click();
 }
+
+/**
+ * Shows one step of the export dialog. A layered export opens on Panels and a
+ * flat engraving on Download; the step list reaches any step directly.
+ */
+export async function showExportStep(page: Page, name: "Panels" | "Sheets" | "Download" | "Share"): Promise<void> {
+  await page.getByRole("dialog", { name: "Export your project" }).getByRole("button", { name: new RegExp(`^Step \\d of \\d: ${name}$`) }).click();
+}

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { unzipSync } from "fflate";
+import { showExportStep } from "./studio-panels";
 
 test("keeps supported acrylic stock while changing thin and thick terrain material", async ({ page }) => {
   await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
@@ -59,6 +60,7 @@ test("builds airspace in acrylic over the model and exports its panels, rods and
   await expect(page.getByRole("slider", { name: "Selected layer", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Complete project/ }).click();
   const chunks: Buffer[] = [];
@@ -118,6 +120,7 @@ test("adds blue acrylic plates to the downloaded share PNG", async ({ page }, te
     await page.getByRole("button", { name: /Generate terrain|Regenerate terrain/ }).click();
     await expect(page.locator(".status-line")).toContainText("Real terrain ready", { timeout: 60_000 });
     await page.getByRole("button", { name: "Export", exact: true }).click();
+    await showExportStep(page, "Share");
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Save preview image" }).click();
     const download = await downloadPromise;

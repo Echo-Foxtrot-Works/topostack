@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { unzipSync } from "fflate";
+import { showExportStep } from "./studio-panels";
 
 test("engraves FAA aviation detail and exports it with its cycle and a not-for-navigation notice", async ({ page }) => {
   test.setTimeout(180_000);
@@ -20,6 +21,7 @@ test("engraves FAA aviation detail and exports it with its cycle and a not-for-n
   await expect.poll(async () => Number(await preview.getAttribute("data-aviation-label-markings"))).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: "Export", exact: true }).click();
+  await showExportStep(page, "Download");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Complete project/ }).click();
   const chunks: Buffer[] = [];

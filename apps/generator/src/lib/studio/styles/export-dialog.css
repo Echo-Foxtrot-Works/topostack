@@ -1,4 +1,4 @@
-/* Export dialog: recommended download, individual files, support panel. */
+/* Export dialog: a step list, one step of the workflow at a time, and Back/Next in the footer. */
 
 /* Shell */
 .export-dialog:not([open]) { display: none; }
@@ -22,9 +22,36 @@
 .export-dialog .ldt-dialog__title { font-size: 26px; line-height: 1.2; }
 .export-dialog-body { display: grid; grid-auto-rows: max-content; gap: 16px; min-height: 0; padding: 20px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
 .export-blocked { margin: 0; padding: 12px 14px; border-left: 3px solid var(--loidolt-accent); background: var(--loidolt-surface-alt); color: var(--loidolt-text-muted); font-size: 12px; line-height: 1.6; }
+.export-step-intro { margin: 0; color: var(--loidolt-text-muted); font-size: 13px; line-height: 1.55; }
+.export-dialog-body:focus { outline: none; }
+.export-dialog-body:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: -2px; }
+
+/* Step list: numbered, joined by a rule, every step reachable directly. */
+.export-steps { flex: none; padding: 10px 24px; border-bottom: 1px solid var(--loidolt-border); }
+.export-steps ol { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.export-steps li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.export-steps li + li { flex: 1 1 auto; }
+.export-steps li + li::before { content: ""; flex: 1 1 12px; min-width: 12px; height: 1px; background: var(--loidolt-border); }
+.export-steps li.export-step--done + li::before, .export-steps li.export-step--done::before { background: var(--loidolt-accent); }
+.export-step-tab { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 6px 4px 4px; border: 0; border-radius: var(--loidolt-border-radius); background: none; color: var(--loidolt-text-muted); font-size: 13px; white-space: nowrap; }
+.export-step-tab:focus-visible { outline: 2px solid var(--loidolt-accent); outline-offset: 2px; }
+.export-step-number { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; border: 1px solid var(--loidolt-border); border-radius: 999px; font: 11px var(--loidolt-font-utility); }
+.export-step--done .export-step-number { border-color: var(--loidolt-accent); color: var(--loidolt-accent); }
+.export-step-tab[aria-current="step"] { color: var(--loidolt-text); font-weight: 600; }
+.export-step-tab[aria-current="step"] .export-step-number { border-color: var(--loidolt-accent); background: var(--loidolt-accent); color: var(--loidolt-on-accent); }
+@media (hover: hover) {
+  .export-step-tab:hover { color: var(--loidolt-text); }
+}
+
+.export-dialog-footer { align-items: center; padding: 14px 24px; }
+.export-dialog-footer-spacer { flex: 1; }
+
+.export-software { display: grid; gap: 8px; }
+.export-software h3 { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+.export-software .export-rows { margin-top: 0; }
 .export-guide { margin: 0; font-size: 12px; line-height: 1.6; color: var(--loidolt-text-muted); }
 .export-guide a { color: var(--loidolt-text-accent); text-underline-offset: 3px; }
-.export-share { padding-top: 16px; border-top: 1px solid var(--loidolt-border); }
+.export-share + .export-support { margin-top: 4px; }
 .export-share h3 { margin: 0 0 8px; font-size: 14px; }
 .export-share p { font-size: 12px; line-height: 1.6; color: var(--loidolt-text-muted); }
 .export-share-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -80,7 +107,8 @@
 .export-rows { display: grid; gap: 8px; margin-top: 6px; }
 
 /* Support */
-.export-support { display: flex; gap: 14px; align-items: flex-start; padding-top: 20px; border-top: 1px solid var(--loidolt-border); }
+.export-support { display: flex; gap: 14px; align-items: flex-start; }
+.export-share + .export-support { padding-top: 20px; border-top: 1px solid var(--loidolt-border); }
 .export-support-icon { display: flex; padding-top: 2px; color: var(--loidolt-accent); }
 .export-support-copy { flex: 1; min-width: 0; }
 .export-support h3 { margin: 0 0 7px; font-size: 14px; font-weight: 600; }
@@ -120,6 +148,10 @@
 @media (max-width: 420px) {
   .export-dialog { --export-dialog-gap: 10px; }
   .export-dialog .ldt-dialog__header, .export-dialog-body { padding: 16px; }
+  .export-steps { padding: 8px 16px; }
+  .export-dialog-footer { padding: 12px 16px; }
+  /* Numbers for every step, the name only for the current one. */
+  .export-step-tab:not([aria-current="step"]) .export-step-label { display: none; }
   .export-dialog .ldt-dialog__title { font-size: 22px; }
   .export-hero-icon, .export-row-icon { display: none; }
   .export-hero { grid-template-columns: minmax(0, 1fr); }
