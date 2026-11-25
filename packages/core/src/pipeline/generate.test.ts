@@ -202,6 +202,32 @@ describe("geometry generation", () => {
     expect(summit.landReliefM).toBeGreaterThan(300);
   });
 
+  it("does not cut a second solid sheet over the base for a trench too narrow to cut", () => {
+    const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false, showAlignmentGuides: true };
+    const land = (nx: number) => 30 * (nx + 2);
+    // One column of cells 300 m below the land: enough cells to count as
+    // terrain, but every hole it opens is narrower than the minimum feature.
+    const trench = (nx: number, ny: number) => (Math.abs(nx) < 0.005 && Math.abs(ny) < 0.6 ? -300 : land(nx));
+    // Scaled so the trench alone asks for several sheets below the land.
+    const [project, source] = scaledForLayers(base, gridSource(base, 97, trench), 13);
+    const result = generateGeometry(project, source);
+    const area = (ring: Array<{ x: number; y: number }>) => Math.abs(ring.reduce((sum, point, index) => { const next = ring[(index + 1) % ring.length]!; return sum + point.x * next.y - next.x * point.y; }, 0) / 2);
+    const cropArea = base.widthMm * base.heightMm;
+    const solid = result.layers.filter((layer) => layer.polygons.length === 1 && !layer.polygons[0]!.holes.length && cropArea - area(layer.polygons[0]!.outer) < 1e-3);
+    expect(solid.map((layer) => layer.id)).toEqual(["layer-01"]);
+    // The stack starts above the trench floor and keeps one uniform step.
+    expect(result.layers[0]!.elevationM).toBeGreaterThan(-300);
+    expect(result.minElevationM).toBe(-300);
+    const steps = result.layers.slice(1).map((layer, index) => layer.elevationM - result.layers[index]!.elevationM);
+    for (const step of steps) expect(step).toBeCloseTo(steps[0]!, 9);
+    // Ids and indices are renumbered from the new base, with no gaps.
+    expect(result.layers.map((layer) => layer.id)).toEqual(result.layers.map((_, index) => `layer-${String(index + 1).padStart(2, "0")}`));
+    expect(result.layers.map((layer) => layer.index)).toEqual(result.layers.map((_, index) => index));
+    // The trench's depth alone asked for ten more sheets than this.
+    expect(result.layers.length).toBeLessThan(6);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+  });
+
   it("warns about empty layers and blocks their fabrication export", () => {
     const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
     // Gradient terrain plus a ridge one cell wide: the top layer's only region

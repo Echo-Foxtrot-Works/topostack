@@ -28,8 +28,9 @@ export interface ElevationLadder {
   visibleMax: number;
   depthBelowLandM: number;
   stack: TerrainStackPlan;
+  /** Elevation of the base sheet; raised with `thresholds` when uncut sheets above the base are dropped. */
   ladderBase: number;
-  /** Layer base elevations; trimmed when empty circular caps are dropped. */
+  /** Layer base elevations; trimmed when uncut sheets above the base or empty circular caps are dropped. */
   thresholds: number[];
   /** Carved water after any fit to the ladder floor. */
   water: CarvedWater;

@@ -3,7 +3,7 @@ import { engravingContourIntervalM, groundWidthMFor, planTerrainStack } from "./
 import { cropElevationRange } from "../primitives/crop.js";
 import { contours } from "d3-contour";
 import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
-import { close, mercatorWorldY, simplify, toPoint } from "../primitives/geometry2d.js";
+import { close, mercatorWorldY, signedArea, simplify, toPoint } from "../primitives/geometry2d.js";
 import { MIN_LAYER_COUNT, SEA_LEVEL_M, type ElevationGrid, type LayerIR, type WaterAreaV1 } from "../types.js";
 import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, fitTerrainToCoastline } from "../water/water.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
@@ -122,6 +122,9 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   return { landMin, landMax, visibleMin, visibleMax, depthBelowLandM, stack, ladderBase, thresholds, water, modelGrid };
 }
 
+/** Relative area by which a sheet may fall short of the crop and still count as uncut. */
+const SOLID_SHEET_TOLERANCE = 1e-6;
+
 export function contourLayers({ config, flatEngraving, clip, warnings }: GenerationContext, ladder: ElevationLadder): LayerIR[] {
   const { modelGrid, thresholds } = ladder;
   // Grid-edge interpolation keeps threshold locations accurate; the user-facing
@@ -164,6 +167,26 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
       pieces: [],
     });
   });
+
+  // The ladder is sized before anything is contoured, so a step can turn out
+  // to hold nothing to cut: every hole it would open was under the minimum
+  // feature size. The sheet above the base is then the same uncut outline as
+  // the base, and cutting both only adds a blank spacer. Start the stack at
+  // the highest such sheet; the steps above it are unchanged.
+  if (!flatEngraving) {
+    const cropArea = Math.abs(signedArea(clip));
+    const solid = (layer: LayerIR) => layer.polygons.length === 1 && layer.polygons[0]!.holes.length === 0
+      && cropArea - Math.abs(signedArea(layer.polygons[0]!.outer)) <= cropArea * SOLID_SHEET_TOLERANCE;
+    let dropped = 0;
+    while (layers.length - dropped > MIN_LAYER_COUNT && solid(layers[dropped + 1]!)) dropped += 1;
+    if (dropped) {
+      layers.splice(0, dropped);
+      thresholds.splice(0, dropped);
+      ladder.ladderBase = thresholds[0]!;
+      layers[0]!.polygons = [{ outer: clip, holes: [] }];
+      layers.forEach((layer, index) => { layer.index = index; layer.id = `layer-${String(index + 1).padStart(2, "0")}`; });
+    }
+  }
 
   // A circular clip can retain only an unprintably small edge of an outside
   // summit. Drop empty caps, but keep any interior gaps as export-blocking errors.
