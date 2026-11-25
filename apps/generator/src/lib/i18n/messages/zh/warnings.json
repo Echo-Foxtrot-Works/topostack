@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "{lake} 的{source, select, chart {水深图} other {测量}}覆盖不完整。未覆盖的网格使用现有地形、估算水深或实测岸边附近的推算值；信息不足的网格保持在水位线高度。",
   "bathymetryIncompleteUnnamed": "某个湖泊的{source, select, chart {水深图} other {测量}}覆盖不完整。未覆盖的网格使用现有地形、估算水深或实测岸边附近的推算值；信息不足的网格保持在水位线高度。",
   "capsOmitted": "{count, plural, other {# 条上层{unit, select, contour {等高线} other {板材}}}}已被省略，因为圆形裁剪后没有保留满足最小特征尺寸的材料。",
+  "topSheetsOmitted": "{count, plural, other {# 条上层{unit, select, contour {等高线} other {板材}}}}已被省略，因为裁剪后没有保留满足最小特征尺寸的材料。",
   "elevationLabelsOmitted": "第 {layers, list, series} {count, plural, other {层}}省略了海拔标注，因为外露表面上没有不冲突的位置。",
   "elevationRepaired": "海拔数据中孤立的深度尖峰已替换为根据附近地形的估算值。切割前请检查地形。",
   "emptyLayer": "第 {layer} 层在其海拔高度没有可加工的地形。",

@@ -188,16 +188,18 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
     }
   }
 
-  // A circular clip can retain only an unprintably small edge of an outside
-  // summit. Drop empty caps, but keep any interior gaps as export-blocking errors.
+  // The top of the stack can hold nothing printable: a circular clip keeps
+  // only a sliver of an outside summit, or the highest ground is a patch
+  // under the minimum feature size. Such caps are dropped with a notice, since
+  // nothing rests on them. An empty sheet with material above it stays, as an
+  // export-blocking error.
   let omittedCaps = 0;
-  if (config.cropShape === "circle") {
-    while (layers.length > 1 && layers.at(-1)!.polygons.length === 0) { layers.pop(); omittedCaps += 1; }
-    if (omittedCaps) {
-      thresholds.length = layers.length;
-      const unit = flatEngraving ? "contour" : "sheet";
-      warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the circular crop retained no material meeting the minimum feature size.`, messageKey: "capsOmitted", params: { count: omittedCaps, unit } });
-    }
+  while (layers.length > 1 && layers.at(-1)!.polygons.length === 0) { layers.pop(); omittedCaps += 1; }
+  if (omittedCaps) {
+    thresholds.length = layers.length;
+    const unit = flatEngraving ? "contour" : "sheet";
+    const circle = config.cropShape === "circle";
+    warnings.push({ code: "SMALL_FEATURES", message: `${omittedCaps} upper ${unit}${omittedCaps === 1 ? " was" : "s were"} omitted because the ${circle ? "circular " : ""}crop retained no material meeting the minimum feature size.`, messageKey: circle ? "capsOmitted" : "topSheetsOmitted", params: { count: omittedCaps, unit } });
   }
 
   for (const layer of layers) {

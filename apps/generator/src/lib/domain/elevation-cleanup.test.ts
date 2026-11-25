@@ -85,6 +85,24 @@ describe("elevation spike repair", () => {
     expect(Math.min(...beside)).toBe(2);
   });
 
+  it("leaves the uncovered rim of a channel under a bluff alone", () => {
+    // Carquinez Strait at z11: an ocean grid owns the channel, a few base
+    // pixels remain along its rim, and a 68 m bluff stands beside them.
+    const size = 64;
+    const values = new Float32Array(size * size).fill(4);
+    const owners = new Uint16Array(values.length);
+    for (let y = 28; y < 34; y += 1) for (let x = 8; x < 56; x += 1) { values[y * size + x] = -65; owners[y * size + x] = 1; }
+    for (const x of [30, 31, 32]) { values[27 * size + x] = -55; values[26 * size + x] = -30; }
+    for (let y = 22; y < 25; y += 1) for (const x of [30, 31, 32]) values[y * size + x] = 62;
+    values[23 * size + 31] = 68;
+    const original = values.slice();
+    expect(repairElevationSpikes(values, size, size, owners, 11)).toBe(0);
+    expect(values).toEqual(original);
+    // The same swing made severe is overshoot again, wherever it sits.
+    values[26 * size + 31] = -330; values[25 * size + 31] = 340;
+    expect(repairElevationSpikes(values, size, size, owners, 11)).toBeGreaterThan(0);
+  });
+
   it("leaves preferred-source pixels out of the overshoot repair", () => {
     const size = 64;
     const values = new Float32Array(size * size).fill(2);

@@ -200,6 +200,7 @@ describe("fabrication geometry regressions", () => {
     const config = { ...base, widthMm: 10, heightMm: 10, outputMode: "engraving" as const, northArrowSizeMm: 12, showNorthArrow: true, showScaleBar: true };
     const result = generateGeometry(config, source(config, (x) => x));
     expect(result.layers.flatMap((layer) => layer.markings).filter((marking) => /^(north|scale)-/.test(marking.id))).toHaveLength(0);
-    expect(result.warnings.filter((warning) => warning.message.includes("was omitted"))).toHaveLength(2);
+    // The north arrow and the scale bar; an empty top contour is reported separately.
+    expect(result.warnings.filter((warning) => warning.message.includes("was omitted") && warning.messageKey !== "topSheetsOmitted")).toHaveLength(2);
   });
 });

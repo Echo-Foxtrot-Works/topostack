@@ -112,8 +112,9 @@ const DEFECT_BLOCK = 8;
  *
  * A defect is a small cluster that departs strongly from its surroundings in
  * both directions at once, which a real summit, pit, cliff or sea stack does
- * not do. One-sided clusters are repaired only beside a severe confirmed
- * defect, where the same overshoot leaves smaller lobes, or when they are a
+ * not do. One-sided clusters, and mild pairs at the edge of a preferred
+ * source, are repaired only beside a severe confirmed defect, where the same
+ * overshoot leaves smaller lobes, or when they are a
  * spike of one or two pixels over 100 m above level ground, narrower than
  * anything the model can cut. Lone pits are the deep pass's to judge, and
  * anything wider than a few pixels is left alone.
@@ -168,7 +169,7 @@ function repairPairedSpikes(values: Float32Array, width: number, height: number,
     if (visited.has(start)) continue;
     visited.add(start);
     const cluster = [start];
-    let strongAbove = false, strongBelow = false, highest = 0, largest = 0;
+    let strongAbove = false, strongBelow = false, highest = 0, largest = 0, besidePreferred = false;
     for (let next = 0; next < cluster.length; next += 1) {
       const index = cluster[next]!;
       const entry = deviations.get(index)!;
@@ -180,6 +181,7 @@ function repairPairedSpikes(values: Float32Array, width: number, height: number,
       for (let y = Math.max(0, row - PAIRED_SPIKE_REACH); y <= Math.min(height - 1, row + PAIRED_SPIKE_REACH); y += 1) {
         for (let x = Math.max(0, column - PAIRED_SPIKE_REACH); x <= Math.min(width - 1, column + PAIRED_SPIKE_REACH); x += 1) {
           const neighbor = y * width + x;
+          if (owners?.[neighbor]) besidePreferred = true;
           if (visited.has(neighbor) || !deviations.has(neighbor)) continue;
           visited.add(neighbor);
           cluster.push(neighbor);
@@ -187,7 +189,10 @@ function repairPairedSpikes(values: Float32Array, width: number, height: number,
       }
     }
     if (cluster.length > PAIRED_SPIKE_MAX_PIXELS || (!strongAbove && !strongBelow)) continue;
-    if (strongAbove && strongBelow) {
+    // Beside a preferred source the cluster is only what that source left
+    // uncovered: the rim of a channel under a bluff looks like a small pair
+    // (Carquinez Strait, -68 m beside +68 m). Only a severe swing counts there.
+    if (strongAbove && strongBelow && (!besidePreferred || largest > SEVERE_SPIKE_M)) {
       repairs.push(...cluster);
       if (largest <= SEVERE_SPIKE_M) continue;
       for (const index of cluster) {

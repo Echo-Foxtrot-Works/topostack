@@ -228,15 +228,31 @@ describe("geometry generation", () => {
     expect(() => buildFabricationPackage(result, project)).not.toThrow();
   });
 
-  it("warns about empty layers and blocks their fabrication export", () => {
+  it("drops top sheets that hold nothing printable instead of blocking the export", () => {
     const base = { ...DEFAULT_PROJECT, minimumFeatureMm: 5, optimizeMaterialUse: false };
     // Gradient terrain plus a ridge one cell wide: the top layer's only region
     // is long enough to count as terrain but narrower than the minimum
-    // feature size, so it is culled to empty.
+    // feature size, so nothing of it can be cut.
     const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx) => (nx > 0.01 && nx < 0.04 ? 100 : 30 * (nx + 1))), 4);
     const result = generateGeometry(project, source);
-    expect(result.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(true);
-    expect(result.layers.some((layer) => layer.polygons.length === 0)).toBe(true);
+    expect(result.layers.every((layer) => layer.polygons.length > 0)).toBe(true);
+    expect(result.layers.map((layer) => layer.id)).toEqual(result.layers.map((_, index) => `layer-${String(index + 1).padStart(2, "0")}`));
+    expect(result.warnings.some((warning) => warning.code === "EMPTY_LAYER")).toBe(false);
+    const notice = result.warnings.find((warning) => warning.messageKey === "topSheetsOmitted");
+    expect(notice?.code).toBe("SMALL_FEATURES");
+    expect(notice?.message).toMatch(/^\d+ upper sheets? (was|were) omitted because the crop retained no material/);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+    // A circular crop keeps its own wording.
+    const round = generateGeometry({ ...project, cropShape: "circle" }, source);
+    expect(round.warnings.some((warning) => warning.messageKey === "topSheetsOmitted")).toBe(false);
+  });
+
+  it("still blocks the fabrication export of a sheet with nothing to cut", () => {
+    const base = { ...DEFAULT_PROJECT, optimizeMaterialUse: false };
+    const [project, source] = scaledForLayers(base, gridSource(base, 48, (nx) => 30 * (nx + 1)), 4);
+    const result = generateGeometry(project, source);
+    expect(() => buildFabricationPackage(result, project)).not.toThrow();
+    result.layers[1]!.polygons = [];
     expect(() => buildFabricationPackage(result, project)).toThrow(/empty/i);
   });
 });

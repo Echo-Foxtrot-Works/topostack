@@ -125,6 +125,8 @@ describe("generation warnings in English", () => {
     ["waterDepthClamped", { count: 4 }, "Water here is deeper than the 4 sheets below the shoreline can hold, so its floor is flattened. Increase the depth-layer limit or turn it off for automatic coverage. Fit depth compresses lakes to the chosen allowance."],
     ["capsOmitted", { count: 1, unit: "sheet" }, "1 upper sheet was omitted because the circular crop retained no material meeting the minimum feature size."],
     ["capsOmitted", { count: 2, unit: "contour" }, "2 upper contours were omitted because the circular crop retained no material meeting the minimum feature size."],
+    ["topSheetsOmitted", { count: 1, unit: "sheet" }, "1 upper sheet was omitted because the crop retained no material meeting the minimum feature size."],
+    ["topSheetsOmitted", { count: 3, unit: "contour" }, "3 upper contours were omitted because the crop retained no material meeting the minimum feature size."],
     ["emptyLayer", { layer: 7 }, "Layer 7 has no printable terrain at its elevation."],
     ["paintWindowsOmitted", { count: 1, layers: ["2"] }, "Some paint windows on layer 2 could not be cut, so those areas are left off the stencils. Paint them by hand, or nudge the design and generate again."],
     ["paintWindowsOmitted", { count: 2, layers: ["2", "4"] }, "Some paint windows on layers 2, 4 could not be cut, so those areas are left off the stencils. Paint them by hand, or nudge the design and generate again."],

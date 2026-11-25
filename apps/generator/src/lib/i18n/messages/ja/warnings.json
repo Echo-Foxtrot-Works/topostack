@@ -31,6 +31,7 @@
   "bathymetryIncomplete": "{lake} の{source, select, chart {水深チャート} other {調査}}データの範囲が不完全です。範囲外のセルには既存の地形、推定水深、または実測された岸付近の推定値を使い、十分な情報がないセルは水際線の高さのままになります。",
   "bathymetryIncompleteUnnamed": "ある湖の{source, select, chart {水深チャート} other {調査}}データの範囲が不完全です。範囲外のセルには既存の地形、推定水深、または実測された岸付近の推定値を使い、十分な情報がないセルは水際線の高さのままになります。",
   "capsOmitted": "円形の切り抜きで最小ディテールを満たす素材が残らなかったため、{count, plural, other {上部の{unit, select, contour {等高線} other {シート}} # 件}}を省略しました。",
+  "topSheetsOmitted": "切り抜き範囲で最小ディテールを満たす素材が残らなかったため、{count, plural, other {上部の{unit, select, contour {等高線} other {シート}} # 件}}を省略しました。",
   "elevationLabelsOmitted": "露出面に重ならずに収まる位置がなかったため、{count, plural, other {層}} {layers, list, series} の標高ラベルを省略しました。",
   "elevationRepaired": "標高データ中の孤立した深いスパイクを、周囲の地形からの推定値に置き換えました。カットする前に地形を確認してください。",
   "emptyLayer": "層 {layer} には、その標高でカットできる地形がありません。",
