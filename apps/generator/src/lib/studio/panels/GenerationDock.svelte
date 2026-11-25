@@ -29,7 +29,8 @@
   <div class={`status-line status-${studio.previewBusy ? "loading" : studio.generationState}`} role="status" aria-live="polite"><span></span>{statusLine({ generationState: studio.generationState, status: studio.status, detailsUpdating: studio.detailsUpdating, terrainDataStale: studio.terrainDataStale, terrainDataAction: studio.terrainDataAction, verticalExaggerationStale: studio.verticalExaggerationStale, exportReady: studio.exportReady, exportBlockedBy: studio.exportBlockedBy, sourceKind: studio.geometry.sourceKind })}</div>
   {#if studio.embeddedInPlatform}
     {#if needsTerrain}<Button class="btn btn-secondary generate-retry" onclick={() => void generate()}>{studio.generationState === "error" ? t("place.tryAgain") : t("place.loadTerrain")}</Button>{/if}
-  {:else}
+  {:else if !studio.guideOpen || studio.generationState === "loading"}
+  <!-- The setup guide starts Generate from its own steps, so the dock only offers to cancel one. -->
   <Button variant="primary" class="generate-button" onclick={() => studio.generationState === "loading" ? cancelGeneration() : void generate()}>{#if studio.generationState === "loading"}<X size={18} /> {t("place.cancelGeneration")}{:else}<Sparkles size={18} /> {studio.geometry.sourceKind === "real" ? studio.terrainDataStale ? t("place.regenerateTerrainData") : t("place.regenerateTerrain") : t("place.generateTerrain")}{/if}</Button>
   {/if}
 </div>

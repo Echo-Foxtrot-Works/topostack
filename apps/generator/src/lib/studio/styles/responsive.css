@@ -367,6 +367,17 @@
     order: 1;
   }
 
+  /* The setup guide takes the sheet's place: always open, sharing the screen with the preview. */
+  .app-shell .config-panel > .start-guide {
+    order: 1;
+    flex: 0 1 42dvh;
+  }
+
+  /* As with an open sheet, the layer slider gives its row to the preview. */
+  .app-shell:has(.start-guide) .layer-dock {
+    display: none;
+  }
+
   .app-shell .config-panel > .generate-dock {
     order: 2;
   }

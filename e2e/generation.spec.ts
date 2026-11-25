@@ -100,6 +100,8 @@ test("downloads an xTool project over plain HTTP on a local network", async ({ p
   });
   await page.route("**/v1/**", (route) => route.abort("internetdisconnected"));
   await page.route("https://static-res.makextool.com/**", (route) => route.abort("internetdisconnected"));
+  // The config seeds only the preview's own origin; this one would otherwise open the setup guide.
+  await page.addInitScript(() => localStorage.setItem("topostack-studio-guide-v1", "done"));
   await page.goto(`${origin}/studio`);
   expect(await page.evaluate(() => window.isSecureContext)).toBe(false);
   await page.getByRole("button", { name: /generate terrain/i }).first().click();
