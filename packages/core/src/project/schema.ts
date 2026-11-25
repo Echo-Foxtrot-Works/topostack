@@ -142,6 +142,7 @@ const SETTINGS_PROPERTIES: Record<string, Schema> = {
   materialThicknessMm: range(LIMITS.materialThicknessMm, "Sheet thickness in millimetres (default 3). Thicker material gives fewer, coarser layers."),
   verticalExaggeration: range(LIMITS.verticalExaggeration, "How much to stretch the terrain vertically (default 2). The layer count follows from scale, relief, exaggeration and thickness."),
   contourCount: { anyOf: [{ const: 0 }, range(LIMITS.contourCount, undefined, true)], description: "Flat output only: number of engraved contour lines (default 12); 0 for none, leaving only roads, water and labels." },
+  seaDepthLayers: { anyOf: [{ const: 0 }, range(LIMITS.seaDepthLayers, undefined, true)], description: "Layered output only, for a model that includes sea: scale the sea so its depth fills this many sheets below sea level, and add no more depth sheets than that. Use it (3 is a good start) when a shallow bay would otherwise cut as one flat floor; it also flattens a very deep sea into few sheets. Depths are no longer to the land's scale. 0 turns it off (default)." },
   details: DETAILS_SCHEMA,
   aviation: AVIATION_SCHEMA,
   airspaceStack: AIRSPACE_STACK_SCHEMA,

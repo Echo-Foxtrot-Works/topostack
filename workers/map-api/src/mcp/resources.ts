@@ -36,6 +36,10 @@ The layer count is never set directly. The model's width over the ground width f
 
 Typical materials: 3 mm plywood or MDF, 1.5–3 mm acrylic, 2 mm chipboard. Many hobby lasers cut 3 mm comfortably. Big mountains at small scales can need 40+ sheets; if a plan says so, suggest thicker material, less exaggeration, or a smaller model.
 
+## Shallow seas
+
+Depth sheets use the land's step, so a shallow bay beside even low land (Tampa Bay, Charleston, Galveston) cuts as one flat floor. \`seaDepthLayers\` (${PROJECT_REQUEST_LIMITS.seaDepthLayers.min}–${PROJECT_REQUEST_LIMITS.seaDepthLayers.max}; 3 is a good start) scales the sea so its depth fills that many sheets below sea level, and adds no more depth sheets than that. It also flattens a very deep sea into few sheets. The land is unchanged; sea depths are then no longer to the land's scale, so say so. The studio offers the same fix as **Fit depth** when it sees a flat sea.
+
 ## Size and the laser bed
 
 \`widthMm\` × \`heightMm\` is the finished model (default 300 × 200 mm). If it is larger than the laser's bed, set \`laser.workAreaWidthMm\` and \`laser.workAreaHeightMm\`: each sheet is split into pieces with alignment tabs. \`laser.kerfMm\` (default 0.15) compensates for the beam width.

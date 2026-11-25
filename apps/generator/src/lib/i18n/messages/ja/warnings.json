@@ -71,6 +71,7 @@
   "vectorDataPartial": "地図の詳細の地物数の上限に達したため、一部の道路、トレイル、水域の線、境界が欠けている可能性があります。",
   "vectorDataUnavailable": "地図の詳細データを利用できません。地図データが復旧するか、該当する詳細をオフにするまで、このプロジェクトはエクスポートできません。",
   "waterDepthClamped": "ここの水深は、岸線より下の{count, plural, other {シート # 枚}}で表せる深さを超えているため、湖底が平らになります。水深の層数の上限を上げるか、制限をオフにして自動にしてください。「水深を合わせる」を使うと、湖を指定した範囲に圧縮します。",
+  "seaDepthFlat": "この海の水深は約{depth} mで、1枚あたり{step} mのため、海底は平らに切り出されます。海の水深を合わせると、選んだ水深の層に配分されます。",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other { ほか # 件}}{count, plural, other {}}は木材のままです。岸線をきれいにカットできませんでした。",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other { ほか # 件}}{count, plural, other {}}は木材のままです。水際線が最下層のシートにあるため、アクリルパーツを支えるものがありません。",
   "waterInsertOversize": "{count, plural, other {アクリルパーツ {ids, list, series} }}はマシンの作業エリアより大きくなっています。継ぎ目が水面に見えてしまうため、アクリルは分割しません。その湖を除外するか、より大きなマシンを使ってください。",

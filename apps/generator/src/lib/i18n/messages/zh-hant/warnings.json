@@ -71,6 +71,7 @@
   "vectorDataPartial": "已達地圖細節圖徵上限，部分道路、步道、水系線或邊界可能缺漏。",
   "vectorDataUnavailable": "地圖細節資料無法使用。在地圖資料恢復或關閉這些細節之前，無法匯出此專案。",
   "waterDepthClamped": "此處水深超過岸線以下 {count, plural, other {# 張板材}}的容量，因此湖底被截平。請提高水深層數上限，或關閉該限制以自動涵蓋。「適配水深」會將湖泊壓縮到所選範圍內。",
+  "seaDepthFlat": "這裡的海深約 {depth} 公尺，而每張板材代表 {step} 公尺，因此海底會被切成平面。開啟海洋水深適配後，會把它分配到你選擇的水深層。",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other {及另外 # 個}}{count, plural, other {保留木材}}：無法乾淨地切割岸線。",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other {及另外 # 個}}{count, plural, other {保留木材}}：水位線位於底層板材上，沒有東西能托住壓克力嵌件。",
   "waterInsertOversize": "{count, plural, other {壓克力嵌件 {ids, list, series}}} 大於設備工作範圍。壓克力不會分割，因為拼縫會在水面上顯露；請排除該湖泊或使用更大的設備。",

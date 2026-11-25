@@ -5,7 +5,7 @@ import { contours } from "d3-contour";
 import type { MultiPolygon, Pair, Ring } from "polygon-clipping";
 import { close, mercatorWorldY, signedArea, simplify, toPoint } from "../primitives/geometry2d.js";
 import { MIN_LAYER_COUNT, SEA_LEVEL_M, type ElevationGrid, type LayerIR, type WaterAreaV1 } from "../types.js";
-import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, fitTerrainToCoastline } from "../water/water.js";
+import { type CarvedWater, carveWaterDepth, clampCarveToLadder, fitLakesToLadder, fitSeaToLadder, fitTerrainToCoastline, seaFitDepthM } from "../water/water.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
 
 /** Land relief below this many meters gets the LOW_RELIEF warning. */
@@ -63,8 +63,32 @@ export function carveWater(context: GenerationContext, input: ElevationGrid): { 
   return { waterAreas, carved };
 }
 
-export function buildLadder(context: GenerationContext, carved: CarvedWater, waterAreas: WaterAreaV1[]): ElevationLadder {
+/**
+ * The floor a fitted sea reaches: the chosen number of steps below sea level,
+ * or as many more as land lying below sea level needs to stay on the ladder.
+ */
+function seaFloorFor(landMin: number, depthLayers: number, stepM: number): number {
+  return SEA_LEVEL_M - Math.max(depthLayers, Math.ceil((SEA_LEVEL_M - landMin) / stepM - 1e-9)) * stepM;
+}
+
+export function buildLadder(context: GenerationContext, unfitted: CarvedWater, waterAreas: WaterAreaV1[]): ElevationLadder {
   const { config, source, flatEngraving, warnings } = context;
+  const hasOcean = !flatEngraving && waterAreas.some((area) => area.kind === "ocean");
+  // The sea fit runs first: it changes how far below the land the water
+  // reaches, which everything after this reads. The step comes from the land
+  // alone, so it can be known before the depth is.
+  let carved = unfitted;
+  const seaDepthM = hasOcean ? seaFitDepthM(unfitted, config) : undefined;
+  let seaStepM = 0;
+  let seaFloorM: number | undefined;
+  if (seaDepthM !== undefined) {
+    const land = cropElevationRange(config, unfitted.grid, unfitted.waterMask);
+    seaStepM = planTerrainStack(config, land.landMax - land.landMin, source.bounds, 1).metersPerLayer;
+    if (config.fitSeaDepth && config.waterDepthLayerLimit !== undefined && seaStepM > 0) {
+      seaFloorM = seaFloorFor(land.landMin, config.waterDepthLayerLimit, seaStepM);
+      carved = fitSeaToLadder(unfitted, config, seaFloorM, seaDepthM);
+    }
+  }
   // Size the stack from land alone. A coastal map's grid minimum is the abyssal
   // plain, and dividing the whole of that across the sheet budget is what used
   // to squeeze the land into a layer or two.
@@ -74,8 +98,16 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   const engravedContours = flatEngraving && config.showEngravingContours;
   if (landRelief < LOW_RELIEF_M && (!flatEngraving || config.showEngravingContours)) warnings.push({ code: "LOW_RELIEF", message: flatEngraving ? "This area has very little elevation change; contour lines may be sparse." : "This area has very little elevation change; the layers may look nearly identical.", messageKey: flatEngraving ? "lowReliefContours" : "lowReliefLayers" });
 
-  const hasOcean = !flatEngraving && waterAreas.some((area) => area.kind === "ocean");
   const stack = planTerrainStack(config, landRelief, source.bounds, depthBelowLandM);
+  // A sea no deeper than one step cuts as one flat floor. Fitting is the fix,
+  // so say so instead of leaving a bay that looks like missing data.
+  if (seaDepthM !== undefined && carved === unfitted && seaStepM > 0 && SEA_LEVEL_M - seaDepthM <= seaStepM && SEA_LEVEL_M - seaDepthM >= SEA_DEPTH_NOTICE_M) warnings.push({
+    code: "SEA_DEPTH_FLAT",
+    action: "fit-sea-depth",
+    message: `The sea here is about ${Math.round(SEA_LEVEL_M - seaDepthM)} m deep and each sheet spans ${Math.round(seaStepM)} m, so its floor cuts flat. Fit sea depth spreads it across the depth sheets you choose.`,
+    messageKey: "seaDepthFlat",
+    params: { depth: Math.round(SEA_LEVEL_M - seaDepthM), step: Math.round(seaStepM) },
+  });
 
   // The ladder runs at one uniform step, extended below the land minimum by the
   // depth sheets the budget allowed. When there is an ocean it is shifted so sea
@@ -85,6 +117,10 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
   if (hasOcean && stack.metersPerLayer > 0) {
     ladderBase = SEA_LEVEL_M - Math.ceil((SEA_LEVEL_M - ladderBase) / stack.metersPerLayer) * stack.metersPerLayer;
   }
+  // A fitted sea was scaled to an exact floor counted from sea level. The
+  // allowance above counts from the lowest land, which on a marshy coast lies
+  // a little below sea level and would add a sheet nobody asked for.
+  if (seaFloorM !== undefined && carved !== unfitted) ladderBase = seaFloorM;
   // The first step can sit at or below everything deep enough to cut: the sea
   // level snap slides the ladder down, and a deep spot smaller than the cutter
   // can show still asks for a sheet. The sheet above the base would then be a
@@ -119,8 +155,12 @@ export function buildLadder(context: GenerationContext, carved: CarvedWater, wat
     messageKey: "waterDepthClamped",
     params: { count: stack.depthLayerCount },
   });
-  return { landMin, landMax, visibleMin, visibleMax, depthBelowLandM, stack, ladderBase, thresholds, water, modelGrid };
+  const seaFitScale = carved === unfitted ? undefined : carved.surfaces.find((surface) => surface.kind === "ocean")?.depthFitScale;
+  return { landMin, landMax, visibleMin, visibleMax, depthBelowLandM, stack, ladderBase, thresholds, ...(seaFitScale ? { seaFitScale } : {}), water, modelGrid };
 }
+
+/** A sea shallower than this has no floor worth showing, so the flat-sea notice stays quiet. */
+const SEA_DEPTH_NOTICE_M = 2;
 
 /** Relative area by which a sheet may fall short of the crop and still count as uncut. */
 const SOLID_SHEET_TOLERANCE = 1e-6;
@@ -193,6 +233,12 @@ export function contourLayers({ config, flatEngraving, clip, warnings }: Generat
   // under the minimum feature size. Such caps are dropped with a notice, since
   // nothing rests on them. An empty sheet with material above it stays, as an
   // export-blocking error.
+  // A fitted sea's sheets sit on the ladder at scaled depths; each keeps the
+  // depth of water it stands for, which is what labels and readouts show.
+  if (ladder.seaFitScale) for (const layer of layers) {
+    if (layer.elevationM < SEA_LEVEL_M) layer.realElevationM = SEA_LEVEL_M + (layer.elevationM - SEA_LEVEL_M) / ladder.seaFitScale;
+  }
+
   let omittedCaps = 0;
   while (layers.length > 1 && layers.at(-1)!.polygons.length === 0) { layers.pop(); omittedCaps += 1; }
   if (omittedCaps) {

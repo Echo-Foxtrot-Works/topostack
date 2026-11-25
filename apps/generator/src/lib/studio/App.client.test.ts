@@ -440,6 +440,22 @@ describe("TopoStack Svelte shell", () => {
     expect(preview.warnings.some((warning) => warning.code === "LAKE_DEPTH_PREDICTED")).toBe(true);
   });
 
+  it("turns on sea depth fitting, with a depth-layer count, from the flat-sea notice", async () => {
+    const preview = structuredClone(initialPreview);
+    preview.warnings = [{ code: "SEA_DEPTH_FLAT", message: "The sea cuts flat.", action: "fit-sea-depth" }];
+    const target = document.createElement("div");
+    component = mount(App, { target, props: { initialPreview: preview } });
+    await tick();
+    const action = target.querySelector<HTMLButtonElement>(".preview-warning .warning-action")!;
+    expect(action.textContent?.trim()).toBe("Fit depth");
+    action.click();
+    // The offer goes away once it is taken.
+    await vi.waitFor(() => expect(target.querySelector(".preview-warning .warning-action")).toBeNull());
+    window.dispatchEvent(new Event("pagehide"));
+    const { saveProject } = await import("$lib/storage/storage");
+    expect(saveProject).toHaveBeenLastCalledWith(expect.objectContaining({ fitSeaDepth: true, waterDepthLayerLimit: 3 }));
+  });
+
   it("keeps the fit action visible when other warnings fill the preview", async () => {
     const preview = structuredClone(initialPreview);
     preview.warnings = [

@@ -81,6 +81,7 @@ export function validateProject(config: ProjectConfigV1): void {
   if (config.widthMm > MAX_PROJECT_DIMENSION_MM || config.heightMm > MAX_PROJECT_DIMENSION_MM) throw new Error("Project dimensions must not exceed 10000 mm.");
   if (config.verticalExaggeration < MIN_VERTICAL_EXAGGERATION || config.verticalExaggeration > MAX_VERTICAL_EXAGGERATION) throw new Error(`Vertical exaggeration must be between ${MIN_VERTICAL_EXAGGERATION} and ${MAX_VERTICAL_EXAGGERATION}.`);
   if (typeof config.fitLakeDepth !== "boolean") throw new Error("Fit lake depth must be a boolean.");
+  if (config.fitSeaDepth !== undefined && typeof config.fitSeaDepth !== "boolean") throw new Error("Fit sea depth must be a boolean.");
   if (config.waterDepthLayerLimit !== undefined && (!Number.isSafeInteger(config.waterDepthLayerLimit) || config.waterDepthLayerLimit < 1)) throw new Error("Maximum depth layers must be a positive whole number.");
   if (!Number.isFinite(config.waterDepthExaggeration) || config.waterDepthExaggeration < MIN_WATER_DEPTH_EXAGGERATION || config.waterDepthExaggeration > MAX_WATER_DEPTH_EXAGGERATION) throw new Error(`Water depth exaggeration must be between ${MIN_WATER_DEPTH_EXAGGERATION} and ${MAX_WATER_DEPTH_EXAGGERATION}.`);
   if (config.materialThicknessMm < 0.5 || config.materialThicknessMm > 25) throw new Error("Material thickness must be between 0.5 and 25 mm.");

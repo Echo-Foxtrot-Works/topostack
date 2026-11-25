@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { elevationLabelTexts } from "./pipeline/annotations.js";
 import { buildProjectPackage, createSyntheticSource, DEFAULT_PROJECT, generateGeometry, planTerrainStack, type ProjectConfigV1, type SourceBundleV1, type WaterAreaV1 } from "./index.js";
 import { engravingToSvg } from "./export/engraving-svg.js";
 import { carveWaterDepth } from "./water/water.js";
@@ -12,6 +13,7 @@ function source(config: ProjectConfigV1, value: (x: number, y: number) => number
   return { ...createSyntheticSource(config, size), sourceKind: "real", elevation: { width: size, height: size, values, min: Math.min(...values), max: Math.max(...values) } };
 }
 const ring = (points: number[][]) => points.map(([x, y]) => ({ x: x!, y: y! }));
+const area = (points: Array<{ x: number; y: number }>) => Math.abs(points.reduce((sum, point, index) => { const next = points[(index + 1) % points.length]!; return sum + point.x * next.y - next.x * point.y; }, 0) / 2);
 
 describe("fabrication geometry regressions", () => {
   it.each(["boundary", "grid"] as const)("preserves a sparse %s across all exposed layers", (kind) => {
@@ -156,6 +158,71 @@ describe("fabrication geometry regressions", () => {
     const stepM = result.layers[1]!.elevationM - result.layers[0]!.elevationM;
     expect(result.horizontalScale).toBeGreaterThan(0);
     expect(result.verticalExaggeration).toBeCloseTo(config.materialThicknessMm / (stepM * result.horizontalScale! * 1000), 9);
+  });
+
+  it("fits a shallow sea to the chosen depth sheets without moving the land", async () => {
+    const config = { ...base, materialThicknessMm: 2, showWaterDepth: true };
+    // A bay that deepens from 1 m at the shore to 12 m, beside land rising to 300 m.
+    const data = source(config, (x) => x < 16 ? -1 - (15 - x) * 11 / 15 : 5 + (x - 16) * 295 / 15);
+    data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[5,-150],[5,150],[-150,150],[-150,-150]]), holes: [] } }];
+    const plain = generateGeometry(config, data);
+    const stepM = plain.layers[1]!.elevationM - plain.layers[0]!.elevationM;
+    expect(stepM).toBeGreaterThan(12);
+    // Unfitted, the whole bay sits inside one step and cuts as a flat floor.
+    expect(plain.layers.filter((layer) => layer.elevationM < 0).length).toBe(1);
+    const notice = plain.warnings.find((warning) => warning.code === "SEA_DEPTH_FLAT");
+    expect(notice).toMatchObject({ action: "fit-sea-depth", messageKey: "seaDepthFlat" });
+
+    const fitted = generateGeometry({ ...config, waterDepthLayerLimit: 3, fitSeaDepth: true }, data);
+    expect(fitted.warnings.some((warning) => warning.code === "SEA_DEPTH_FLAT" || warning.code === "WATER_DEPTH_CLAMPED")).toBe(false);
+    const below = fitted.layers.filter((layer) => layer.elevationM < 0);
+    expect(below.map((layer) => layer.elevationM / stepM)).toEqual([-3, -2, -1].map((value) => expect.closeTo(value, 9)));
+    // Each depth sheet above the base opens a different part of the bay.
+    const holeArea = (layer: typeof fitted.layers[number]) => 300 * 300 - layer.polygons.reduce((sum, polygon) => sum + area(polygon.outer) - polygon.holes.reduce((inner, hole) => inner + area(hole), 0), 0);
+    const opened = fitted.layers.filter((layer) => layer.elevationM <= 0).slice(1).map(holeArea);
+    expect(opened.length).toBe(3);
+    for (let index = 1; index < opened.length; index += 1) expect(opened[index]!).toBeGreaterThan(opened[index - 1]! + 1000);
+    // The land is cut exactly as before, on the same steps.
+    const land = (result: typeof fitted) => result.layers.filter((layer) => layer.elevationM > 0);
+    expect(land(fitted).length).toBe(land(plain).length);
+    land(fitted).forEach((layer, index) => {
+      expect(layer.elevationM).toBeCloseTo(land(plain)[index]!.elevationM, 6);
+      expect(holeArea(layer)).toBeCloseTo(holeArea(land(plain)[index]!), 6);
+    });
+    expect(fitted.verticalExaggeration).toBe(plain.verticalExaggeration);
+    const sea = fitted.waterSurfaces.find((surface) => surface.kind === "ocean")!;
+    expect(sea.depthFitScale).toBeGreaterThan(3);
+    expect(sea.bedElevationM).toBeCloseTo(-3 * stepM, 9);
+    // Depth sheets are labelled with the water they stand for, not their place on the stretched ladder.
+    expect(below.map((layer) => layer.realElevationM! * sea.depthFitScale!)).toEqual(below.map((layer) => expect.closeTo(layer.elevationM, 9)));
+    expect(below[0]!.realElevationM).toBeGreaterThan(-12.5);
+    expect(below[0]!.realElevationM).toBeLessThan(-10);
+    expect(fitted.minElevationM).toBeCloseTo(below[0]!.realElevationM!, 3);
+    expect(land(fitted).some((layer) => layer.realElevationM !== undefined)).toBe(false);
+    expect(plain.layers.some((layer) => layer.realElevationM !== undefined)).toBe(false);
+    expect(elevationLabelTexts(below[0]!, "metric")[0]).toBe(`${Math.round(below[0]!.realElevationM!)} m`);
+    const readme = await buildProjectPackage(fitted, { ...config, waterDepthLayerLimit: 3, fitSeaDepth: true }).files.find((file) => file.filename === "README.txt")!.blob.text();
+    expect(readme).toMatch(/Sea: fitted to \d+\.\d% of requested depth/);
+    // Marsh a little below sea level does not add a depth sheet to the count asked for.
+    const marsh = source(config, (x) => x < 16 ? -1 - (15 - x) * 11 / 15 : x < 18 ? -2 : 5 + (x - 16) * 295 / 15);
+    marsh.waterAreas = data.waterAreas;
+    const marshy = generateGeometry({ ...config, waterDepthLayerLimit: 3, fitSeaDepth: true }, marsh);
+    expect(marshy.layers.filter((layer) => layer.elevationM < 0).length).toBe(3);
+    expect(marshy.layers.some((layer) => layer.elevationM === 0)).toBe(true);
+    // Without a limit there is no sheet count to fit to, so the switch alone changes nothing.
+    expect(generateGeometry({ ...config, fitSeaDepth: true }, data).layers.map((layer) => layer.elevationM)).toEqual(plain.layers.map((layer) => layer.elevationM));
+  });
+
+  it("compresses a deep sea into the chosen depth sheets", () => {
+    const config = { ...base, materialThicknessMm: 2, showWaterDepth: true, waterDepthLayerLimit: 2 };
+    const data = source(config, (x) => x < 16 ? -20 - (15 - x) * 60 : 5 + (x - 16) * 4);
+    data.waterAreas = [{ id: "sea", kind: "ocean", polygon: { outer: ring([[-150,-150],[5,-150],[5,150],[-150,150],[-150,-150]]), holes: [] } }];
+    const clipped = generateGeometry(config, data);
+    expect(clipped.warnings.some((warning) => warning.code === "WATER_DEPTH_CLAMPED")).toBe(true);
+    const fitted = generateGeometry({ ...config, fitSeaDepth: true }, data);
+    expect(fitted.warnings.some((warning) => warning.code === "WATER_DEPTH_CLAMPED")).toBe(false);
+    expect(fitted.layers.map((layer) => layer.elevationM)).toEqual(clipped.layers.map((layer) => layer.elevationM));
+    expect(fitted.waterSurfaces.find((surface) => surface.kind === "ocean")!.depthFitScale).toBeLessThan(1);
   });
 
   it("says in the README that roads over water are on the water sheet, only when there are both", async () => {

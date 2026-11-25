@@ -789,6 +789,65 @@ export function fitLakesToLadder(carved: CarvedWater, config: ProjectConfigV1, f
   return { ...carved, grid: { ...carved.grid, values, min, max }, surfaces };
 }
 
+/** Share of the sea allowed to lie deeper than the fitted floor; it is flattened there. */
+const SEA_FIT_DEEP_SHARE = 0.02;
+
+/**
+ * The sea depth a fit stretches to the ladder floor: deeper than all but
+ * `SEA_FIT_DEEP_SHARE` of the sea's cells. The literal deepest point is often
+ * a dredged channel or a single pit, and scaling to it would leave the rest of
+ * a bay in the top band. Returns an elevation below sea level, or undefined
+ * when there is no sea with depth.
+ */
+export function seaFitDepthM(carved: CarvedWater, config: ProjectConfigV1): number | undefined {
+  const depths: number[] = [];
+  carved.surfaces.forEach((surface, surfaceIndex) => {
+    if (surface.kind !== "ocean") return;
+    for (const index of carved.surfaceCells?.[surfaceIndex] ?? surfaceIndexes(surface.polygons, carved.grid, config)) {
+      const value = carved.grid.values[index]!;
+      if (value < surface.surfaceElevationM) depths.push(value);
+    }
+  });
+  if (!depths.length) return undefined;
+  const sorted = Float32Array.from(depths).sort();
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * SEA_FIT_DEEP_SHARE))]!;
+}
+
+/**
+ * Scale the sea about sea level so `deepestM` lands on `floorM`. Unlike the
+ * lake fit this stretches as well as compresses: a bay shallower than one land
+ * step would otherwise show no depth at all. Water deeper than `deepestM` is
+ * held just above the floor.
+ */
+export function fitSeaToLadder(carved: CarvedWater, config: ProjectConfigV1, floorM: number, deepestM: number): CarvedWater {
+  let fitted: Float32Array<ArrayBuffer> | undefined;
+  const heldM = floorM + Math.max(1, Math.abs(floorM)) * 2 ** -23;
+  const surfaces = carved.surfaces.map((surface, surfaceIndex) => {
+    const depth = surface.surfaceElevationM - deepestM;
+    const available = surface.surfaceElevationM - floorM;
+    if (surface.kind !== "ocean" || !(depth > 0 && available > 0)) return surface;
+    const factor = available / depth;
+    const values = fitted ??= Float32Array.from(carved.grid.values);
+    for (const index of carved.surfaceCells?.[surfaceIndex] ?? surfaceIndexes(surface.polygons, carved.grid, config)) {
+      const original = carved.grid.values[index]!;
+      if (original >= surface.surfaceElevationM) continue;
+      values[index] = Math.max(heldM, surface.surfaceElevationM - (surface.surfaceElevationM - original) * factor);
+    }
+    return {
+      ...surface,
+      bedElevationM: floorM,
+      unfittedBedElevationM: surface.bedElevationM,
+      depthFitScale: factor,
+      appliedDepthExaggeration: config.waterDepthExaggeration * factor,
+    };
+  });
+  if (!fitted) return carved;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const value of fitted) { min = Math.min(min, value); max = Math.max(max, value); }
+  return { ...carved, grid: { ...carved.grid, values: fitted, min, max }, surfaces };
+}
+
 /**
  * Raise cells below the chosen layer allowance. Automatic depth coverage
  * normally reaches every visible bed; a user-selected limit can clip it, and

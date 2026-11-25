@@ -71,6 +71,7 @@
   "vectorDataPartial": "지도 세부 피처 한도에 도달해 일부 도로, 탐방로, 물길 또는 경계가 빠졌을 수 있습니다.",
   "vectorDataUnavailable": "지도 세부 데이터를 사용할 수 없습니다. 지도 데이터가 복구되거나 해당 세부 정보를 끌 때까지 이 프로젝트를 내보낼 수 없습니다.",
   "waterDepthClamped": "이곳의 물이 호안선 아래 {count, plural, other {시트 #장}}이 담을 수 있는 것보다 깊어 바닥이 평평해집니다. 수심 층 한도를 높이거나 꺼서 자동으로 맞추세요. 수심 맞춤은 호수를 선택한 범위로 압축합니다.",
+  "seaDepthFlat": "이곳 바다는 수심이 약 {depth} m이고 시트 한 장이 {step} m를 나타내므로 바닥이 평평하게 잘립니다. 바다 수심 맞춤을 켜면 선택한 수심 레이어에 나누어 표현합니다.",
   "waterInsertFailed": "{names, list, series}{more, plural, =0 {} other { 외 #곳}}{count, plural, other {은(는)}} 목재로 유지됩니다. 호안선을 깔끔하게 자를 수 없습니다.",
   "waterInsertOnBottom": "{names, list, series}{more, plural, =0 {} other { 외 #곳}}{count, plural, other {은(는)}} 목재로 유지됩니다. 수면선이 바닥 시트에 있어 아크릴 인서트를 받칠 곳이 없습니다.",
   "waterInsertOversize": "{count, plural, other {아크릴 인서트 {ids, list, series}}}이(가) 기기 작업 영역보다 큽니다. 이음매가 물에 보이므로 아크릴은 나누지 않습니다. 호수를 제외하거나 더 큰 기기를 사용하세요.",

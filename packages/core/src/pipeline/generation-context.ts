@@ -32,6 +32,8 @@ export interface ElevationLadder {
   ladderBase: number;
   /** Layer base elevations; trimmed when uncut sheets above the base or empty circular caps are dropped. */
   thresholds: number[];
+  /** Factor sea depth was scaled by to fill the chosen depth sheets; absent when the sea is to scale. */
+  seaFitScale?: number;
   /** Carved water after any fit to the ladder floor. */
   water: CarvedWater;
   /** The carved, fitted, and floor-clamped grid actually contoured. */

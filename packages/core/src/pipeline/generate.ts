@@ -11,6 +11,7 @@ import { splitLayersForWorkArea } from "./split.js";
 import { paintRegions } from "./paint-regions.js";
 import { buildingOutlinesEnabled, sourceRequirements } from "./source-requirements.js";
 import { cutWaterInserts, labelCoverings, takeInsertMarkings, withInsertSurfaces } from "./water-inserts.js";
+import { SEA_LEVEL_M } from "../types.js";
 import type { ElevationGrid, GeometryIRV1, GeometryWarning, LayerIR, Polygon2D, ProjectConfigV1, SourceBundleV1, WaterInsertIR } from "../types.js";
 import type { ElevationLadder, GenerationContext } from "./generation-context.js";
 import { layerClips } from "./layer-clips.js";
@@ -89,6 +90,11 @@ interface GenerationSession {
 }
 
 /** The land units a project paints and engraves: those loaded, less the ones it leaves out. */
+/** An elevation on a fitted sea's ladder as the real elevation it stands for. */
+function realElevation(elevationM: number, seaFitScale: number | undefined): number {
+  return seaFitScale && elevationM < SEA_LEVEL_M ? SEA_LEVEL_M + (elevationM - SEA_LEVEL_M) / seaFitScale : elevationM;
+}
+
 function keptLandAreas(source: SourceBundleV1, config: ProjectConfigV1) {
   const left = new Set(config.landExclusions ?? []);
   return (source.landAreas ?? []).filter((area) => !left.has(area.unit));
@@ -341,7 +347,7 @@ function* generationSteps(config: ProjectConfigV1, source: SourceBundleV1, optio
     lineStyle: { ...config.lineStyle },
     verticalExaggeration: ladder.stack.verticalExaggeration,
     horizontalScale: horizontalScaleFor(config.widthMm, source.bounds),
-    minElevationM: config.cropShape === "circle" ? Math.max(visibleMin, ladderBase) : modelGrid.min,
+    minElevationM: realElevation(config.cropShape === "circle" ? Math.max(visibleMin, ladderBase) : modelGrid.min, ladder.seaFitScale),
     maxElevationM: config.cropShape === "circle" ? Math.max(visibleMax, ladderBase) : modelGrid.max,
     landReliefM: landMax - landMin,
     waterDepthBelowLandM: ladder.depthBelowLandM,
